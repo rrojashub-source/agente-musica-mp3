@@ -1,0 +1,20 @@
+# Dependencias del Agente de Música MP3
+# Instalar con: pip install -r requirements.txt
+
+# Procesamiento de datos
+pandas>=2.0.0
+
+# Descarga de YouTube
+yt-dlp>=2023.7.6
+
+# Lectura de archivos Excel
+openpyxl>=3.1.0
+
+# HTTP requests para APIs
+requests>=2.31.0
+
+# Logging mejorado (opcional)
+colorlog>=6.7.0
+
+# Para la versión portable (solo si vas a crear ejecutables)
+# pyinstaller>=5.13.0
