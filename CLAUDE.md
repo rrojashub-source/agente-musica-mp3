@@ -1,6 +1,6 @@
 # 🎵 AGENTE_MUSICA_MP3 - Claude Context
 
-**Version:** V1.0 (CLI) → V2.0 (GUI in progress)
+**Version:** Phase 4 Complete + Pre-Phase 5 Hardening Done
 **Project:** YouTube Music Downloader & Library Manager
 **Philosophy:** "Spotify/iTunes experience for personal MP3 library"
 
@@ -8,31 +8,39 @@
 
 ## 🎯 Project Mission
 
-Transform basic CLI MP3 downloader into modern GUI application:
+Modern GUI music manager with professional features:
 - ✅ Download music from YouTube (yt-dlp)
 - ✅ MusicBrainz metadata integration
-- ⏳ Modern GUI (CustomTkinter/PyQt6)
-- ⏳ SQLite database (remove Excel dependency)
-- ⏳ Library management (organize, play, edit metadata)
+- ✅ Modern GUI (PyQt6)
+- ✅ SQLite database (10,000+ songs)
+- ✅ Dual-source search (YouTube + Spotify)
+- ✅ Download queue with concurrent downloads
+- ✅ Auto-metadata tagging
+- ✅ Security hardening (encrypted API keys, input validation)
+- ⏳ Library management tools (duplicates, organize, rename)
 
-**Current:** CLI app with Excel input
-**Target:** Professional GUI app (Spotify-like experience)
+**Current:** Phase 4 Complete (Search & Download System) + Security Hardening Done
+**Target:** Phase 5 (Management & Cleanup Tools)
 
 ---
 
 ## 🛠️ Technology Stack
 
-**Core:**
+**Production Stack (Phase 4 Complete):**
 - Python 3.11+
-- yt-dlp (YouTube download)
-- MusicBrainz API (metadata)
-- Excel (.xlsx) - TO BE REMOVED
-
-**Target Stack (V2.0):**
-- CustomTkinter or PyQt6 (GUI)
-- SQLite (database)
+- PyQt6 (modern GUI framework)
+- yt-dlp (YouTube download engine)
+- SQLite (database with FTS5 search)
 - Mutagen (ID3 tag editing)
-- pygame/vlc (audio playback)
+- MusicBrainz API (metadata)
+- YouTube Data API v3 (search)
+- Spotify Web API (alternative search)
+- Keyring (encrypted API key storage)
+
+**Security (Pre-Phase 5 Hardening):**
+- OS keyring integration (encrypted secrets)
+- Input sanitization (injection prevention)
+- Comprehensive .gitignore (secret protection)
 
 ---
 
@@ -40,61 +48,74 @@ Transform basic CLI MP3 downloader into modern GUI application:
 
 ```
 AGENTE_MUSICA_MP3/
-├── PROJECT_DNA.md          # Project specification
-├── README.md               # Overview
-├── CLAUDE.md               # This file
-├── TRACKING.md             # Session logs
-├── memory/                 # Dynamic state
-│   └── shared/current_phase.md
-├── tasks/                  # External plans
-├── agente_musica.py        # Main downloader
-├── agente_final.py         # Discography search
-├── cleanup_assistant_tab.py # Cleanup features
-├── library_import_worker.py # Library import
-├── downloads/              # Downloaded MP3s
-└── Lista_*.xlsx            # Song lists (legacy)
+├── PROJECT_DNA.md              # Project specification
+├── PROJECT_ID.md               # NEXUS standard spec
+├── README.md                   # Overview
+├── CLAUDE.md                   # This file
+├── TRACKING.md                 # Session logs
+├── memory/                     # Dynamic state
+│   └── shared/current_phase.md # Global phase tracking
+├── tasks/                      # External plans
+├── src/                        # Source code
+│   ├── api/                    # API clients (YouTube, Spotify, MusicBrainz)
+│   ├── core/                   # Core logic (download queue, metadata)
+│   ├── gui/                    # GUI components (tabs, widgets, dialogs)
+│   └── utils/                  # Utilities (input_sanitizer)
+├── tests/                      # Test suite (148 tests)
+├── downloads/                  # Downloaded MP3s
+└── OLD/                        # Legacy CLI code (archived)
 ```
 
 ---
 
-## 🚀 Development Commands
+## 🚀 Running the Application
 
-**Download songs:**
+**Launch GUI (Recommended):**
 ```bash
-python agente_musica.py
-# Input: Excel file with song list
-# Output: MP3s in downloads/
+# Windows:
+LAUNCH_NEXUS_MUSIC.bat
+
+# Linux/Mac:
+source spike_pyqt6/venv/bin/activate
+python main_window_complete.py
 ```
 
-**Search discography:**
+**Run Tests:**
 ```bash
-python agente_final.py
-# Input: Artist name
-# Output: Full discography from MusicBrainz
-```
+# Full test suite (148 tests):
+pytest tests/ -v
 
-**Cleanup assistant:**
-```bash
-python cleanup_assistant_tab.py
-# Detect duplicates, fix tags, organize files
+# Specific tests:
+pytest tests/test_input_sanitizer.py -v
+pytest tests/test_api_settings_dialog.py -v
 ```
 
 ---
 
 ## 📐 Current Phase
 
-**PHASE 4:** COMPLETE ✅
-- CLI app functional
-- Excel integration working
-- Download + organize operational
+**PHASE 4: COMPLETE** ✅ (November 12, 2025)
+- Search & Download System fully operational
+- YouTube + Spotify dual-source search
+- Download queue with concurrent downloads
+- Auto-metadata tagging with MusicBrainz
+- 127/127 tests passing
 
-**PHASE 5:** In Progress (GUI Development)
-- Modern interface design
-- SQLite database migration
-- Playback features
-- Commercial roadmap (ROADMAP_COMERCIAL.md)
+**PRE-PHASE 5 HARDENING: COMPLETE** ✅ (November 13, 2025)
+- API keys encrypted in OS keyring
+- Input validation (prevents injection attacks)
+- Comprehensive .gitignore (60+ patterns)
+- Test suite extended to 148/148 tests
+- Security score: 40/100 → 85/100
 
-**Status:** Evolution from CLI to modern GUI app
+**PHASE 5: READY TO START** ⏳
+- Duplicates detection
+- Auto-organize library
+- Batch rename files
+- Tag editor GUI
+- Import existing library
+
+**Status:** All blockers resolved, ready for Phase 5 development
 
 ---
 
@@ -141,17 +162,21 @@ Update TRACKING.md
 
 ## 📊 Success Metrics
 
-**V1.0 (CLI) - DONE:**
+**Phase 1-4 (CLI + Search & Download) - COMPLETE:**
 - ✅ 100+ songs downloaded successfully
-- ✅ Automatic artist organization
-- ✅ MusicBrainz metadata accuracy
+- ✅ PyQt6 modern GUI operational
+- ✅ Dual-source search (YouTube + Spotify)
+- ✅ Download queue with concurrent downloads
+- ✅ Auto-metadata tagging (MusicBrainz)
+- ✅ 148/148 tests passing
+- ✅ Security hardening complete
 
-**V2.0 (GUI) - Target:**
-- Modern interface (Spotify-like)
-- Zero Excel dependency
+**Phase 5-6 (Management & Player) - Target:**
+- Duplicates detection and removal
+- Auto-organize library by artist/album
+- Batch rename with templates
+- Full-featured music player
 - Playlist management
-- Audio playback
-- Commercial viability
 
 ---
 
@@ -179,11 +204,12 @@ Update TRACKING.md
 - Monetization: Premium features, cloud sync
 
 **Architecture Evolution:**
-- Phase 1-3: CLI prototype
-- Phase 4: Production CLI ✅
-- Phase 5-6: Modern GUI (in progress)
+- Phase 1-3: CLI prototype ✅
+- Phase 4: Search & Download System ✅
+- Pre-Phase 5: Security Hardening ✅
+- Phase 5-6: Management & Player (ready to start)
 
 ---
 
-**Last Updated:** November 2, 2025 (NEXUS methodology migration)
+**Last Updated:** November 13, 2025 (Pre-Phase 5 Hardening COMPLETE - 148/148 tests passing)
 **Maintained by:** Ricardo + NEXUS@CLI
