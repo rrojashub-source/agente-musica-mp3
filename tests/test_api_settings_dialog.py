@@ -103,22 +103,23 @@ class TestAPISettingsDialog(unittest.TestCase):
     # ========== FUNCTIONAL TESTS ==========
 
     def test_07_validate_youtube_key_success(self):
-        """Test validating valid YouTube API key"""
+        """Test validating valid YouTube API key - mocks YouTube API"""
         if self.dialog is None:
             self.skipTest("Dialog not implemented yet")
 
-        # Mock YouTube API at import location (inside _validate_youtube method)
-        with patch('src.gui.dialogs.api_settings_dialog.YouTubeSearcher', create=True) as MockYT:
-            mock_yt = MockYT.return_value
-            mock_yt.search.return_value = [{'video_id': 'test123', 'title': 'Test Video'}]
+        # Mock the YouTube API inside the api module
+        with patch('src.api.youtube_search.YouTubeSearcher') as MockYT:
+            # Setup mock to return valid results
+            mock_instance = MockYT.return_value
+            mock_instance.search.return_value = [{'video_id': 'abc123', 'title': 'Test Video'}]
 
             # Enter valid key (30+ chars to pass format validation)
-            self.dialog.youtube_tab.api_key_input.setText("valid_youtube_key_123456789012345")
+            self.dialog.youtube_tab.api_key_input.setText("a" * 35)  # 35 chars
 
             # Click validate
             QTest.mouseClick(self.dialog.youtube_tab.validate_button, Qt.MouseButton.LeftButton)
 
-            # Process events (allow async operations)
+            # Process events
             QApplication.processEvents()
 
             # Verify status shows success
