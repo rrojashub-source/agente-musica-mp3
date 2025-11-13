@@ -19,7 +19,7 @@ from PyQt6.QtGui import QIcon
 import logging
 import os
 
-from src.core.duplicate_detector import DuplicateDetector
+from core.duplicate_detector import DuplicateDetector
 
 logger = logging.getLogger(__name__)
 

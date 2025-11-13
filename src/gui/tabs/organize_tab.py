@@ -21,7 +21,7 @@ from PyQt6.QtGui import QIcon
 import logging
 import os
 
-from src.core.library_organizer import LibraryOrganizer
+from core.library_organizer import LibraryOrganizer
 
 logger = logging.getLogger(__name__)
 

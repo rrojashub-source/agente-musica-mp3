@@ -21,7 +21,7 @@ from PyQt6.QtGui import QIcon
 import logging
 import os
 
-from src.core.batch_renamer import BatchRenamer
+from core.batch_renamer import BatchRenamer
 
 logger = logging.getLogger(__name__)
 

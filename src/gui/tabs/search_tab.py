@@ -14,8 +14,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 import logging
-from src.api.youtube_search import YouTubeSearcher
-from src.api.spotify_search import SpotifySearcher
+from api.youtube_search import YouTubeSearcher
+from api.spotify_search import SpotifySearcher
 
 # Setup logger
 logger = logging.getLogger(__name__)
