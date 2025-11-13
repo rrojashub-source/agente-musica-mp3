@@ -106,6 +106,15 @@ class DownloadQueue(QObject):
         """
         return list(self._items.values())
 
+    def get_all_items(self) -> Dict[str, dict]:
+        """
+        Get all items in queue as dictionary
+
+        Returns:
+            dict: Dictionary of item_id -> item_dict
+        """
+        return self._items.copy()
+
     def get_item(self, item_id: str) -> Optional[dict]:
         """
         Get specific item by ID
@@ -234,6 +243,25 @@ class DownloadQueue(QObject):
             self._process_next()
 
         return True
+
+    def clear_completed(self):
+        """
+        Remove all completed items from queue
+
+        Returns:
+            int: Number of items removed
+        """
+        completed_ids = [
+            item_id for item_id, item in self._items.items()
+            if item['status'] == 'completed'
+        ]
+
+        for item_id in completed_ids:
+            del self._items[item_id]
+
+        count = len(completed_ids)
+        logger.info(f"Cleared {count} completed items")
+        return count
 
     def update_progress(self, item_id: str, percentage: int):
         """
