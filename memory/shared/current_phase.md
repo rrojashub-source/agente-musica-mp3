@@ -1,18 +1,20 @@
 # AGENTE_MUSICA_MP3 - Current Phase (Global State)
 
-**Last Updated:** November 2, 2025 - NEXUS Methodology Migration
-**Phase:** Phase 4 - PLANNING (Search & Download System)
-**Progress:** ~35% (CLI complete, GUI foundation done, advanced features pending)
+**Last Updated:** November 12, 2025 - Phase 4 Step 1: API Setup
+**Phase:** Phase 4 - IMPLEMENTATION (Search & Download System)
+**Step:** Step 1 - API Credentials Setup (Day 1)
+**Progress:** ~38% (CLI complete, GUI foundation done, Phase 4 planning complete, API setup in progress)
 
 ---
 
-## 🎯 Current Phase: Phase 4 - Search & Download System (PLANNING)
+## 🎯 Current Phase: Phase 4 - Search & Download System (IMPLEMENTATION)
 
-**Goal:** Design and implement YouTube/Spotify search integration + download queue system
+**Goal:** Implement YouTube/Spotify search integration + download queue system
 
-**Status:** 🟡 PLANNING (not started yet)
+**Status:** 🟢 STEP 1: API CREDENTIALS SETUP (in progress)
 
-**Phase Duration:** Estimated 2 weeks
+**Phase Duration:** Estimated 2 weeks (14 days)
+**Days Elapsed:** 1 (Step 1 in progress)
 **Priority:** 🔥 HIGH
 
 ---
@@ -60,31 +62,37 @@
 
 ---
 
-## 🔄 Current Tasks (Phase 4 - Planning)
+## 🔄 Current Tasks (Phase 4 - Step 1: API Setup)
 
-**Next Immediate Steps:**
+**Step 1: Setup API Credentials (Day 1) - IN PROGRESS**
 
-1. **Review ROADMAP_PHASES_4-6.md**
-   - Read complete Phase 4 specification
-   - Understand technical requirements
-   - Identify dependencies
+**Completed:**
+- ✅ Plan approved by Ricardo (Nov 12, 2025)
+- ✅ Created API setup guide: `docs/guides/api_setup.md`
+- ✅ Created test script: `scripts/test_apis.py`
+- ✅ Verified requirements.txt has all dependencies
 
-2. **Create Detailed Plan:**
-   - File: `tasks/phase_4_search_download.md`
-   - Include: Tests to write (TDD), implementation steps, integration points
-   - Get Ricardo approval before coding
+**Next Immediate Steps (Ricardo):**
 
-3. **Technology Research:**
-   - YouTube Data API v3 setup (10,000 requests/day free)
-   - Spotify Web API setup (100 requests/second free)
-   - MusicBrainz API integration (no limit, no API key)
+1. **Get YouTube Data API v3 Key:**
+   - Follow: `docs/guides/api_setup.md` Section 1
+   - Create Google Cloud project
+   - Enable YouTube Data API v3
+   - Get API key
+   - Store: `bash ~/.claude/secrets/set-secret.sh apis youtube api_key "YOUR_KEY"`
 
-4. **Design Decisions:**
-   - Search tab UI mockup
-   - Download queue architecture
-   - Threading vs asyncio for concurrent downloads
+2. **Get Spotify Web API Credentials:**
+   - Follow: `docs/guides/api_setup.md` Section 2
+   - Create Spotify app
+   - Get Client ID + Client Secret
+   - Store: `bash ~/.claude/secrets/set-secret.sh apis spotify client_id "YOUR_ID"`
+   - Store: `bash ~/.claude/secrets/set-secret.sh apis spotify client_secret "YOUR_SECRET"`
 
-**Blocked By:** Nothing (ready to proceed)
+3. **Test API Connections:**
+   - Run: `python scripts/test_apis.py`
+   - Verify all 3 APIs connect successfully
+
+**Blocked By:** Waiting for Ricardo to get API credentials (estimated ~20 minutes)
 
 ---
 
