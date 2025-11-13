@@ -1,20 +1,95 @@
-# Dependencias del Agente de Música MP3
-# Instalar con: pip install -r requirements.txt
+# ============================================
+# NEXUS Music Manager - Complete Dependencies
+# Project: AGENTE_MUSICA_MP3_001
+# Phases: 3+4+5+6 Complete
+# ============================================
 
-# Procesamiento de datos
-pandas>=2.0.0
+# ========================================
+# Core GUI Framework
+# ========================================
+PyQt6>=6.5.0
 
-# Descarga de YouTube
-yt-dlp>=2023.7.6
+# ========================================
+# Phase 3: Library Management
+# ========================================
+# (Uses built-in SQLite3 - no extra packages)
 
-# Lectura de archivos Excel
-openpyxl>=3.1.0
+# ========================================
+# Phase 4: Search & Download
+# ========================================
+# YouTube API
+google-api-python-client>=2.100.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
 
-# HTTP requests para APIs
+# Spotify API
+spotipy>=2.23.0
+
+# YouTube Downloader
+yt-dlp>=2023.10.13
+
+# MusicBrainz API
+musicbrainzngs>=0.7.1
+
+# ========================================
+# Phase 5: Management Tools
+# ========================================
+# Audio metadata
+mutagen>=1.47.0
+
+# Audio processing
+pydub>=0.25.1
+
+# Audio fingerprinting (optional - for duplicate detection)
+pyacoustid>=1.2.2
+
+# ========================================
+# Phase 6: Player & Lyrics
+# ========================================
+# Web scraping for lyrics
+beautifulsoup4>=4.12.0
 requests>=2.31.0
 
-# Logging mejorado (opcional)
-colorlog>=6.7.0
+# Note: PyQt6 includes QtMultimedia for audio playback
+# No additional packages needed for player
 
-# Para la versión portable (solo si vas a crear ejecutables)
-# pyinstaller>=5.13.0
+# ========================================
+# General Utilities
+# ========================================
+# HTTP requests (already included above)
+# requests>=2.31.0
+
+# ========================================
+# Optional Dependencies
+# ========================================
+# For better audio playback on Linux (optional)
+# python-vlc>=3.0.0
+
+# For system audio on Windows (optional)
+# pywin32>=306
+
+# ========================================
+# Development Tools (optional)
+# ========================================
+# pytest>=7.4.0
+# black>=23.7.0
+# flake8>=6.1.0
+
+# ============================================
+# Installation Instructions:
+# ============================================
+# 1. Create virtual environment:
+#    python -m venv venv
+#
+# 2. Activate virtual environment:
+#    Windows: venv\Scripts\activate
+#    Linux/Mac: source venv/bin/activate
+#
+# 3. Install dependencies:
+#    pip install -r requirements.txt
+#
+# 4. Launch application:
+#    Windows: LAUNCH_NEXUS_MUSIC.bat
+#    Linux/Mac: python main_window_complete.py
+# ============================================
