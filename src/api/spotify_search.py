@@ -10,6 +10,9 @@ Features:
 - LRU cache for search results
 - Retry logic with exponential backoff
 - Comprehensive error handling
+
+Security (Pre-Phase 5 Hardening):
+- Input sanitization to prevent injection attacks
 """
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -17,6 +20,7 @@ from spotipy.exceptions import SpotifyException
 import logging
 from time import sleep
 import hashlib
+from src.utils.input_sanitizer import sanitize_query
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -87,6 +91,13 @@ class SpotifySearcher:
             logger.warning("Empty query received")
             return []
 
+        # Sanitize query (remove injection attempts, control chars)
+        query = sanitize_query(query, max_length=500)
+
+        if not query:
+            logger.warning("Query became empty after sanitization")
+            return []
+
         # Limit to Spotify maximum
         limit = min(limit, 50)
 
@@ -148,6 +159,13 @@ class SpotifySearcher:
             logger.warning("Empty query received")
             return []
 
+        # Sanitize query (remove injection attempts, control chars)
+        query = sanitize_query(query, max_length=500)
+
+        if not query:
+            logger.warning("Query became empty after sanitization")
+            return []
+
         # Limit to Spotify maximum
         limit = min(limit, 50)
 
@@ -207,6 +225,13 @@ class SpotifySearcher:
         # Input validation
         if not query:
             logger.warning("Empty query received")
+            return []
+
+        # Sanitize query (remove injection attempts, control chars)
+        query = sanitize_query(query, max_length=500)
+
+        if not query:
+            logger.warning("Query became empty after sanitization")
             return []
 
         # Limit to Spotify maximum

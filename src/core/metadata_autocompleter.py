@@ -7,11 +7,15 @@ Features:
 - Batch autocomplete (auto-select high confidence)
 - Fuzzy string matching for confidence scoring
 - User override support
+
+Security (Pre-Phase 5 Hardening):
+- Input sanitization to prevent injection attacks
 """
 import logging
 from typing import List, Dict, Optional
 from difflib import SequenceMatcher
 from src.api.musicbrainz_client import MusicBrainzClient
+from src.utils.input_sanitizer import sanitize_query
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -60,6 +64,11 @@ class MetadataAutocompleter:
         # Extract query params
         title = song_data.get('title', '')
         artist = song_data.get('artist', None)
+
+        # Sanitize inputs (remove injection attempts, control chars)
+        title = sanitize_query(title, max_length=500)
+        if artist:
+            artist = sanitize_query(artist, max_length=500)
 
         if not title:
             logger.warning("No title provided for autocomplete")

@@ -7,6 +7,9 @@ Optimizations:
 - Exponential backoff for rate limits
 - Request timeout handling
 - Comprehensive error logging
+
+Security (Pre-Phase 5 Hardening):
+- Input sanitization to prevent injection attacks
 """
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -15,6 +18,7 @@ from functools import lru_cache
 from time import sleep
 import logging
 import hashlib
+from src.utils.input_sanitizer import sanitize_query
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -66,11 +70,13 @@ class YouTubeSearcher:
             logger.warning("Empty or None query received")
             return []
 
-        # Sanitize query (truncate if too long)
+        # Sanitize query (remove injection attempts, control chars, truncate)
         original_query = query
-        if len(query) > 500:
-            logger.warning(f"Query too long ({len(query)} chars), truncating to 500")
-            query = query[:500]
+        query = sanitize_query(query, max_length=500)
+
+        if not query:
+            logger.warning("Query became empty after sanitization")
+            return []
 
         # Limit max_results to YouTube API maximum
         max_results = min(max_results, 50)
