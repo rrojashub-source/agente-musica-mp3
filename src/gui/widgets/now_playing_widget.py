@@ -69,6 +69,7 @@ class NowPlayingWidget(QWidget):
         self.current_song = None
         self._is_seeking = False  # Prevent position update during seek
         self._is_playing = False
+        self._is_paused = False  # Track if we're in paused state
 
         self._init_ui()
         self._init_timer()
@@ -252,36 +253,35 @@ class NowPlayingWidget(QWidget):
         self._is_playing = not self._is_playing
 
         if self._is_playing:
+            # User wants to start/resume playback
             self.play_button.setText("⏸")  # Pause icon
             self.position_timer.start()
 
-            # Actually play or resume the audio
             if self.audio_player:
-                # Check current state
-                current_state = self.audio_player.get_state()
-                logger.info(f"Play button clicked - Current state: {current_state}")
-
-                # If paused, resume; otherwise play from beginning
-                if current_state == PlaybackState.PAUSED:
+                # If we were paused, resume; otherwise play from beginning
+                if self._is_paused:
                     self.audio_player.resume()
                     logger.info("Audio resumed from pause")
+                    self._is_paused = False
                 else:
                     self.audio_player.play()
                     logger.info("Audio playing from beginning")
         else:
+            # User wants to pause
             self.play_button.setText("▶")  # Play icon
             self.position_timer.stop()
 
-            # Actually pause the audio
             if self.audio_player:
                 self.audio_player.pause()
                 logger.info("Audio paused")
+                self._is_paused = True  # Mark that we're in paused state
 
         self.play_clicked.emit()
 
     def _on_stop_clicked(self):
         """Handle stop button click"""
         self._is_playing = False
+        self._is_paused = False  # Clear paused state on stop
         self.play_button.setText("▶")
         self.position_timer.stop()
         self.progress_slider.setValue(0)
