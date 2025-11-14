@@ -47,6 +47,7 @@ from core.playlist_manager import PlaylistManager
 # Import GUI tabs
 from gui.tabs.library_tab import LibraryTab
 from gui.tabs.search_tab import SearchTab
+from gui.tabs.import_tab import ImportTab
 from gui.tabs.duplicates_tab import DuplicatesTab
 from gui.tabs.organize_tab import OrganizeTab
 from gui.tabs.rename_tab import RenameTab
@@ -182,7 +183,16 @@ class MusicPlayerApp(QMainWindow):
             logger.error(f"Failed to load Search tab: {e}")
             tabs.addTab(QWidget(), "🔍 Search (Error)")
 
-        # Tab 3: Download Queue (Phase 4)
+        # Tab 3: Import Library (NEW - Library Import Feature)
+        try:
+            self.import_tab = ImportTab(self.db_manager)
+            tabs.addTab(self.import_tab, "📥 Import Library")
+            logger.info("Import tab loaded")
+        except Exception as e:
+            logger.error(f"Failed to load Import tab: {e}")
+            tabs.addTab(QWidget(), "📥 Import (Error)")
+
+        # Tab 4: Download Queue (Phase 4)
         try:
             # Note: QueueWidget needs download_queue instance
             # For now, use placeholder
