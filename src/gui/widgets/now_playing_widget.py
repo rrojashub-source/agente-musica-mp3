@@ -253,9 +253,19 @@ class NowPlayingWidget(QWidget):
         if self._is_playing:
             self.play_button.setText("⏸")  # Pause icon
             self.position_timer.start()
+
+            # Actually play the audio
+            if self.audio_player:
+                self.audio_player.play()
+                logger.info("Audio playing")
         else:
             self.play_button.setText("▶")  # Play icon
             self.position_timer.stop()
+
+            # Actually pause the audio
+            if self.audio_player:
+                self.audio_player.pause()
+                logger.info("Audio paused")
 
         self.play_clicked.emit()
 
@@ -290,6 +300,11 @@ class NowPlayingWidget(QWidget):
                 position = (self.progress_slider.value() / 1000.0) * duration
                 self.seek_requested.emit(position)
                 logger.debug(f"Seek requested: {position:.2f}s")
+
+                # Actually seek in audio player
+                if self.audio_player:
+                    self.audio_player.seek(position)
+                    logger.info(f"Audio seeked to: {position:.2f}s")
 
         if self._is_playing:
             self.position_timer.start()
