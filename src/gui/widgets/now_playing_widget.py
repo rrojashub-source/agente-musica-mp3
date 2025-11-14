@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QPixmap
+from core.audio_player import PlaybackState
 
 logger = logging.getLogger(__name__)
 
@@ -256,14 +257,17 @@ class NowPlayingWidget(QWidget):
 
             # Actually play or resume the audio
             if self.audio_player:
-                # Check if paused - use resume(), otherwise use play()
-                from core.audio_player import PlaybackState
-                if self.audio_player.get_state() == PlaybackState.PAUSED:
+                # Check current state
+                current_state = self.audio_player.get_state()
+                logger.info(f"Play button clicked - Current state: {current_state}")
+
+                # If paused, resume; otherwise play from beginning
+                if current_state == PlaybackState.PAUSED:
                     self.audio_player.resume()
-                    logger.info("Audio resumed")
+                    logger.info("Audio resumed from pause")
                 else:
                     self.audio_player.play()
-                    logger.info("Audio playing")
+                    logger.info("Audio playing from beginning")
         else:
             self.play_button.setText("▶")  # Play icon
             self.position_timer.stop()
