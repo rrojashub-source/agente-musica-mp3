@@ -176,18 +176,38 @@ class AudioPlayer:
         Args:
             position: Position in seconds
 
-        Note: pygame.mixer.music.set_pos() has limited support
-              Some formats may not support seeking
+        Note: pygame.mixer.music.set_pos() has limited support for MP3
+              Using workaround: reload + set_pos for better compatibility
         """
         if not self._pygame or not self._current_file:
             return
 
         try:
-            # pygame.mixer.music.set_pos() takes seconds
-            self._pygame.mixer.music.set_pos(position)
+            # Store current state
+            was_playing = self.is_playing()
+
+            # Stop current playback
+            self._pygame.mixer.music.stop()
+
+            # Reload the file
+            self._pygame.mixer.music.load(self._current_file)
+
+            # Try to set position (works better after reload)
+            try:
+                self._pygame.mixer.music.set_pos(position)
+            except:
+                # set_pos might fail for MP3, but we tried
+                logger.warning(f"set_pos() not supported, seeking may be limited")
+
+            # Resume playback if it was playing
+            if was_playing:
+                self._pygame.mixer.music.play()
+                self._state = PlaybackState.PLAYING
+                self._start_time = self._pygame.time.get_ticks() / 1000.0 - position
+
             logger.debug(f"Seeked to {position:.2f}s")
         except Exception as e:
-            logger.warning(f"Seek not supported or failed: {e}")
+            logger.error(f"Seek failed: {e}")
 
     def get_position(self) -> float:
         """
