@@ -1,56 +1,37 @@
 # 🚀 Quick Start - NEXUS Music Manager
 
-## 📥 PASO 1: Importar Tu Biblioteca (PRIMERO)
+## ✅ Cómo Usar la Aplicación (Simple - 1 Paso)
 
-**⚠️ IMPORTANTE:** Antes de usar el reproductor, debes importar tus MP3s a la base de datos.
+La aplicación te guía automáticamente en el primer uso.
 
-### **Opción Rápida: Script Automático** ⭐ RECOMENDADO
+### **PASO ÚNICO: Ejecutar el Reproductor**
 
-1. **Doble clic en:**
-   ```
-   import_music.bat
-   ```
+**Opción 1: Doble clic en Windows** ⭐ RECOMENDADO
 
-2. **Presiona Enter** para usar la carpeta por defecto (`C:\Users\ricar\Music\`)
-   O ingresa otra ruta
-
-3. **Espera** mientras se importan tus MP3s
-   - Verás progreso en tiempo real
-   - Skips duplicados automáticamente
-   - Tarda ~3-5 segundos por cada 100 canciones
-
-4. **¡Listo!** Ahora puedes usar el reproductor
-
----
-
-## ✅ PASO 2: Ejecutar el Reproductor (Phases 1-7)
-
-### **Opción 1: Doble clic en Windows** ⭐ RECOMENDADO
-
-1. **Navega al directorio del proyecto:**
-   ```
-   D:\01_PROYECTOS_ACTIVOS\AGENTE_MUSICA_MP3\
-   ```
-
-2. **Doble clic en:**
+1. Doble clic en:
    ```
    run_music_player.bat
    ```
 
-3. **¡Listo!** La aplicación se abrirá con todos los features.
+2. **Si es la primera vez:**
+   - Verás mensaje: "Your music library is empty"
+   - Click "OK"
+   - La app te llevará automáticamente a la pestaña "📥 Import Library"
+   - Click "Browse" y selecciona tu carpeta de música (o usa `C:\Users\ricar\Music\`)
+   - Click "🚀 Import Library"
+   - Espera a que termine (verás progreso en tiempo real)
+   - ¡Listo! Ya puedes usar el reproductor
+
+3. **Si ya importaste música antes:**
+   - La app abre directamente en la pestaña "🎵 Library"
+   - Doble-click en cualquier canción para reproducir
 
 ---
 
-### **Opción 2: Desde terminal**
+**Opción 2: Desde terminal**
 
 ```bash
-cd /mnt/d/01_PROYECTOS_ACTIVOS/AGENTE_MUSICA_MP3
-
-# Ejecutar directamente
 python src/main.py
-
-# O usar el .bat
-./run_music_player.bat
 ```
 
 ---
@@ -70,46 +51,38 @@ pip install PyQt6 pygame mutagen requests spotipy yt-dlp
 
 ---
 
-## 🎵 Features Disponibles en la Aplicación
+## 🎵 Features Disponibles
 
-Cuando ejecutes `run_music_player.bat`, verás:
+### **Tabs Principales:**
 
-### **Top Panel:**
-- **Now Playing Widget** - Controles de reproducción (play/pause/stop/volume)
-- **Audio Visualizer** - Waveform en tiempo real (60 FPS)
-
-### **Tabs (Pestañas):**
-1. **🎵 Library** - Tu biblioteca completa (10,000+ canciones)
+1. **🎵 Library** - Tu biblioteca completa
    - Doble clic para reproducir
-   - Búsqueda FTS5 (rápida)
-   - Keyboard shortcuts (Space, Up/Down)
+   - Búsqueda rápida (FTS5)
+   - Keyboard shortcuts
 
-2. **🔍 Search & Download** - Buscar en YouTube + Spotify
-   - Dual-source search
-   - Download queue
-   - Auto-metadata (MusicBrainz)
+2. **🔍 Search** - Buscar en YouTube + Spotify
+   - Download y auto-metadata
 
-3. **📥 Queue** - Download queue (placeholder por ahora)
+3. **📥 Import Library** ⭐ NUEVO
+   - Importa tu colección de MP3s
+   - Progress bar en tiempo real
+   - Skips duplicados automáticamente
 
-4. **🔍 Duplicates** - Detector de duplicados
-   - 3 métodos: metadata, fingerprint, filesize
-   - Preview antes de borrar
+4. **🔍 Duplicates** - Encuentra duplicados
+   - 3 métodos de detección
 
-5. **📁 Organize** - Auto-organizar carpetas
+5. **📁 Organize** - Organiza por carpetas
    - Templates personalizables
-   - Preview mode
-   - Rollback support
+   - Preview + Rollback
 
-6. **✏️ Rename** - Renombrar archivos en lote
-   - Find/replace
-   - Case conversion
+6. **✏️ Rename** - Renombra archivos
+   - Find/replace masivo
    - Preview antes de aplicar
 
-### **Right Panel:**
+### **Otros:**
+- **Now Playing** - Controles de reproducción
+- **Visualizer** - Waveform en tiempo real
 - **Playlist Manager** - Gestión de playlists
-  - Create/delete/rename
-  - Import/export .m3u8
-  - Drag & drop (próximamente)
 
 ---
 
