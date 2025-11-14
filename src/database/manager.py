@@ -205,6 +205,159 @@ class DatabaseManager:
             pattern = f"%{query}%"
             return self.fetch_all(sql, (pattern, pattern, pattern, limit))
 
+    # ==========================================
+    # CRUD OPERATIONS
+    # ==========================================
+
+    def add_song(self, song_data: Dict[str, Any]) -> Optional[int]:
+        """
+        Add new song to library
+
+        Args:
+            song_data: Dictionary with song fields
+                Required: title, file_path
+                Optional: artist, album, year, genre, duration, bitrate, etc.
+
+        Returns:
+            Song ID if successful, None if duplicate file_path
+        """
+        # Check for duplicate file_path
+        if self.song_exists(song_data.get('file_path', '')):
+            logger.warning(f"Song already exists: {song_data.get('file_path')}")
+            return None
+
+        # Extract fields with defaults
+        title = song_data.get('title', 'Unknown')
+        artist = song_data.get('artist')
+        album = song_data.get('album')
+        year = song_data.get('year')
+        genre = song_data.get('genre')
+        duration = song_data.get('duration')
+        bitrate = song_data.get('bitrate')
+        sample_rate = song_data.get('sample_rate')
+        file_path = song_data.get('file_path')
+        file_size = song_data.get('file_size')
+
+        # Validate required fields
+        if not file_path:
+            logger.error("Cannot add song without file_path")
+            return None
+
+        try:
+            sql = """
+                INSERT INTO songs (
+                    title, artist, album, year, genre,
+                    duration, bitrate, sample_rate,
+                    file_path, file_size
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
+            params = (
+                title, artist, album, year, genre,
+                duration, bitrate, sample_rate,
+                file_path, file_size
+            )
+
+            song_id = self.execute_query(sql, params)
+            logger.info(f"Added song: {title} (ID: {song_id})")
+            return song_id
+
+        except sqlite3.IntegrityError as e:
+            logger.error(f"Failed to add song (duplicate?): {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to add song: {e}")
+            return None
+
+    def get_all_songs(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Get all songs from library
+
+        Args:
+            limit: Maximum number of songs to return (None = all)
+
+        Returns:
+            List of song dictionaries
+        """
+        if limit:
+            sql = "SELECT * FROM songs ORDER BY added_date DESC LIMIT ?"
+            return self.fetch_all(sql, (limit,))
+        else:
+            sql = "SELECT * FROM songs ORDER BY added_date DESC"
+            return self.fetch_all(sql)
+
+    def get_song_by_id(self, song_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get song by ID
+
+        Args:
+            song_id: Song ID
+
+        Returns:
+            Song dictionary or None if not found
+        """
+        sql = "SELECT * FROM songs WHERE id = ?"
+        return self.fetch_one(sql, (song_id,))
+
+    def song_exists(self, file_path: str) -> bool:
+        """
+        Check if song with file_path already exists
+
+        Args:
+            file_path: Absolute file path
+
+        Returns:
+            True if exists, False otherwise
+        """
+        if not file_path:
+            return False
+
+        sql = "SELECT id FROM songs WHERE file_path = ?"
+        result = self.fetch_one(sql, (file_path,))
+        return result is not None
+
+    def update_song(self, song_id: int, updates: Dict[str, Any]) -> bool:
+        """
+        Update song metadata
+
+        Args:
+            song_id: Song ID to update
+            updates: Dictionary of fields to update
+
+        Returns:
+            True if successful, False if song not found
+        """
+        # Check song exists
+        if not self.get_song_by_id(song_id):
+            logger.warning(f"Cannot update non-existent song: {song_id}")
+            return False
+
+        # Build UPDATE query dynamically
+        fields = []
+        values = []
+
+        for key, value in updates.items():
+            fields.append(f"{key} = ?")
+            values.append(value)
+
+        if not fields:
+            logger.warning("No fields to update")
+            return False
+
+        # Add modified_date update (avoid trigger recursion)
+        fields.append("modified_date = CURRENT_TIMESTAMP")
+
+        values.append(song_id)  # For WHERE clause
+
+        sql = f"UPDATE songs SET {', '.join(fields)} WHERE id = ?"
+
+        try:
+            self.execute_query(sql, tuple(values))
+            logger.info(f"Updated song {song_id}: {updates}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update song {song_id}: {e}")
+            return False
+
     def close(self):
         """Close database connection"""
         if self.conn:
