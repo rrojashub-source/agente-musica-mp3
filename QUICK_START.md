@@ -1,6 +1,29 @@
 # 🚀 Quick Start - NEXUS Music Manager
 
-## ✅ Cómo Ejecutar la Aplicación Completa (Phases 1-7)
+## 📥 PASO 1: Importar Tu Biblioteca (PRIMERO)
+
+**⚠️ IMPORTANTE:** Antes de usar el reproductor, debes importar tus MP3s a la base de datos.
+
+### **Opción Rápida: Script Automático** ⭐ RECOMENDADO
+
+1. **Doble clic en:**
+   ```
+   import_music.bat
+   ```
+
+2. **Presiona Enter** para usar la carpeta por defecto (`C:\Users\ricar\Music\`)
+   O ingresa otra ruta
+
+3. **Espera** mientras se importan tus MP3s
+   - Verás progreso en tiempo real
+   - Skips duplicados automáticamente
+   - Tarda ~3-5 segundos por cada 100 canciones
+
+4. **¡Listo!** Ahora puedes usar el reproductor
+
+---
+
+## ✅ PASO 2: Ejecutar el Reproductor (Phases 1-7)
 
 ### **Opción 1: Doble clic en Windows** ⭐ RECOMENDADO
 
