@@ -94,6 +94,9 @@ class MusicPlayerApp(QMainWindow):
 
         logger.info("Application started successfully")
 
+        # Check if library is empty and suggest import
+        self._check_empty_library()
+
     def _init_ui(self):
         """Initialize user interface"""
         # Central widget with main layout
@@ -230,6 +233,34 @@ class MusicPlayerApp(QMainWindow):
             tabs.addTab(QWidget(), "✏️ Rename (Error)")
 
         return tabs
+
+    def _check_empty_library(self):
+        """Check if library is empty and suggest importing music"""
+        try:
+            song_count = self.db_manager.get_song_count()
+
+            if song_count == 0:
+                logger.info("Library is empty, showing import suggestion")
+
+                reply = QMessageBox.information(
+                    self,
+                    "Welcome to NEXUS Music Manager",
+                    "Your music library is empty.\n\n"
+                    "Would you like to import your MP3 collection now?\n\n"
+                    "Go to the '📥 Import Library' tab to get started.",
+                    QMessageBox.StandardButton.Ok
+                )
+
+                # Switch to Import tab automatically
+                # Find Import tab index (should be tab 2)
+                for i in range(self.findChild(QTabWidget).count()):
+                    if "Import" in self.findChild(QTabWidget).tabText(i):
+                        self.findChild(QTabWidget).setCurrentIndex(i)
+                        logger.info("Switched to Import tab automatically")
+                        break
+
+        except Exception as e:
+            logger.error(f"Error checking library status: {e}")
 
     def closeEvent(self, event):
         """Handle application close event"""
