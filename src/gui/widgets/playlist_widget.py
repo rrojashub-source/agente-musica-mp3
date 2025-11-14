@@ -284,15 +284,18 @@ class PlaylistWidget(QWidget):
             )
 
             if ok and new_name:
-                # Update playlist name
-                query = "UPDATE playlists SET name = ? WHERE id = ?"
-                self.db_manager.execute_query(query, (new_name, playlist_id))
+                # Update playlist name using manager
+                success = self.playlist_manager.rename_playlist(playlist_id, new_name)
 
-                # Reload playlists
-                self.load_playlists()
+                if success:
+                    # Reload playlists
+                    self.load_playlists()
 
-                logger.info(f"Renamed playlist {playlist_id}: {old_name} → {new_name}")
-                QMessageBox.information(self, "Success", f"Playlist renamed to '{new_name}'!")
+                    logger.info(f"Renamed playlist {playlist_id}: {old_name} → {new_name}")
+                    QMessageBox.information(self, "Success", f"Playlist renamed to '{new_name}'!")
+                else:
+                    logger.error(f"Failed to rename playlist {playlist_id}")
+                    QMessageBox.warning(self, "Error", f"Failed to rename playlist")
 
         except Exception as e:
             logger.error(f"Failed to rename playlist: {e}")

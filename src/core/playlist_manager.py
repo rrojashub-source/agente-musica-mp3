@@ -101,6 +101,27 @@ class PlaylistManager:
             logger.error(f"Failed to delete playlist: {e}")
             return False
 
+    def rename_playlist(self, playlist_id: int, new_name: str) -> bool:
+        """
+        Rename playlist
+
+        Args:
+            playlist_id: Playlist ID to rename
+            new_name: New playlist name
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            query = "UPDATE playlists SET name = ? WHERE id = ?"
+            self.db_manager.execute_query(query, (new_name, playlist_id))
+            logger.info(f"Renamed playlist ID {playlist_id} to: {new_name}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to rename playlist: {e}")
+            return False
+
     def add_song(self, playlist_id: int, song_id: int, position: Optional[int] = None) -> bool:
         """
         Add song to playlist
