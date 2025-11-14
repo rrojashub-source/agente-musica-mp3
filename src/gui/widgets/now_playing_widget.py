@@ -54,6 +54,7 @@ class NowPlayingWidget(QWidget):
     next_clicked = pyqtSignal()
     seek_requested = pyqtSignal(float)
     volume_changed = pyqtSignal(float)
+    position_changed = pyqtSignal(float)  # Emits current position in seconds
 
     def __init__(self, audio_player=None):
         """
@@ -266,6 +267,11 @@ class NowPlayingWidget(QWidget):
         self.progress_slider.setValue(0)
         self.current_time_label.setText("0:00")
 
+        # Actually stop the audio player
+        if self.audio_player:
+            self.audio_player.stop()
+            logger.info("Audio stopped")
+
         self.stop_clicked.emit()
 
     def _on_slider_pressed(self):
@@ -323,6 +329,9 @@ class NowPlayingWidget(QWidget):
             if duration > 0:
                 slider_value = int((position / duration) * 1000)
                 self.progress_slider.setValue(slider_value)
+
+            # Emit position changed signal (for visualizer sync)
+            self.position_changed.emit(position)
 
             # Check if song ended
             if not self.audio_player.is_playing() and self._is_playing:
