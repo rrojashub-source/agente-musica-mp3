@@ -254,10 +254,16 @@ class NowPlayingWidget(QWidget):
             self.play_button.setText("⏸")  # Pause icon
             self.position_timer.start()
 
-            # Actually play the audio
+            # Actually play or resume the audio
             if self.audio_player:
-                self.audio_player.play()
-                logger.info("Audio playing")
+                # Check if paused - use resume(), otherwise use play()
+                from core.audio_player import PlaybackState
+                if self.audio_player.get_state() == PlaybackState.PAUSED:
+                    self.audio_player.resume()
+                    logger.info("Audio resumed")
+                else:
+                    self.audio_player.play()
+                    logger.info("Audio playing")
         else:
             self.play_button.setText("▶")  # Play icon
             self.position_timer.stop()
