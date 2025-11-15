@@ -57,6 +57,7 @@ class LibraryTab(QWidget):
         # State
         self._current_song_id = None
         self._current_song_row = -1
+        self._user_stopped = False  # Track if user manually stopped playback
 
         self._init_ui()
         self._load_library()
@@ -136,10 +137,11 @@ class LibraryTab(QWidget):
         self.play_button.clicked.connect(self._on_play_button_clicked)
         self.refresh_button.clicked.connect(self._load_library)
 
-        # Now Playing Widget prev/next buttons
+        # Now Playing Widget prev/next/stop buttons
         if self.now_playing_widget:
             self.now_playing_widget.prev_clicked.connect(self._on_prev_clicked)
             self.now_playing_widget.next_clicked.connect(self._on_next_clicked)
+            self.now_playing_widget.stop_clicked.connect(self._on_stop_clicked)
 
     def _load_library(self):
         """Load songs from database into table"""
@@ -236,6 +238,12 @@ class LibraryTab(QWidget):
         logger.info("Next button clicked")
         self._play_next_song()
 
+    def _on_stop_clicked(self):
+        """Handle stop button click from Now Playing widget"""
+        logger.info("Stop button clicked - setting user_stopped flag")
+        self._user_stopped = True  # Prevent auto-play after stop
+        # No need to stop audio_player here - NowPlayingWidget already does it
+
     def _play_song_at_row(self, row: int):
         """
         Play song at specified row
@@ -277,6 +285,9 @@ class LibraryTab(QWidget):
         Args:
             song_info: Dictionary with song information
         """
+        # Reset user stopped flag when manually playing
+        self._user_stopped = False
+
         file_path = song_info.get('file_path')
         if not file_path:
             logger.error("Song has no file path")
@@ -364,12 +375,12 @@ class LibraryTab(QWidget):
         # Import PlaybackState for state checking
         from core.audio_player import PlaybackState
 
-        # If not playing and NOT paused, then song ended
-        # (Don't auto-play next if user just paused)
+        # If not playing and NOT paused and NOT manually stopped, then song ended
+        # (Don't auto-play next if user paused or stopped)
         if not self.audio_player.is_playing() and self._current_song_id:
             current_state = self.audio_player.get_state()
-            if current_state != PlaybackState.PAUSED:
-                logger.info("Song ended, playing next")
+            if current_state != PlaybackState.PAUSED and not self._user_stopped:
+                logger.info("Song ended naturally, playing next")
                 self._end_monitor_timer.stop()
                 self._play_next_song()
 
