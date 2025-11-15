@@ -348,11 +348,17 @@ class LibraryTab(QWidget):
         if not self.audio_player:
             return
 
-        # If not playing and we had a current song, it ended
+        # Import PlaybackState for state checking
+        from core.audio_player import PlaybackState
+
+        # If not playing and NOT paused, then song ended
+        # (Don't auto-play next if user just paused)
         if not self.audio_player.is_playing() and self._current_song_id:
-            logger.info("Song ended, playing next")
-            self._end_monitor_timer.stop()
-            self._play_next_song()
+            current_state = self.audio_player.get_state()
+            if current_state != PlaybackState.PAUSED:
+                logger.info("Song ended, playing next")
+                self._end_monitor_timer.stop()
+                self._play_next_song()
 
     def _highlight_playing_song(self, row: int):
         """
