@@ -136,6 +136,11 @@ class LibraryTab(QWidget):
         self.play_button.clicked.connect(self._on_play_button_clicked)
         self.refresh_button.clicked.connect(self._load_library)
 
+        # Now Playing Widget prev/next buttons
+        if self.now_playing_widget:
+            self.now_playing_widget.prev_clicked.connect(self._on_prev_clicked)
+            self.now_playing_widget.next_clicked.connect(self._on_next_clicked)
+
     def _load_library(self):
         """Load songs from database into table"""
         try:
@@ -220,8 +225,16 @@ class LibraryTab(QWidget):
             if title_item:
                 title = title_item.text()
                 self.status_label.setText(f"Selected: {title}")
-        else:
-            self.status_label.setText("No song selected")
+
+    def _on_prev_clicked(self):
+        """Handle previous button click from Now Playing widget"""
+        logger.info("Previous button clicked")
+        self._play_previous_song()
+
+    def _on_next_clicked(self):
+        """Handle next button click from Now Playing widget"""
+        logger.info("Next button clicked")
+        self._play_next_song()
 
     def _play_song_at_row(self, row: int):
         """
