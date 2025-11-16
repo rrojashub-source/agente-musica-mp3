@@ -43,6 +43,7 @@ from database.manager import DatabaseManager
 # Import core engines
 from core.audio_player import AudioPlayer
 from core.playlist_manager import PlaylistManager
+from core.waveform_extractor import WaveformExtractor
 
 # Import GUI tabs
 from gui.tabs.library_tab import LibraryTab
@@ -88,6 +89,10 @@ class MusicPlayerApp(QMainWindow):
         # Initialize playlist manager
         self.playlist_manager = PlaylistManager(self.db_manager)
         logger.info("Playlist manager initialized")
+
+        # Initialize waveform extractor
+        self.waveform_extractor = WaveformExtractor()
+        logger.info("Waveform extractor initialized")
 
         # Setup UI
         self._init_ui()
@@ -138,6 +143,7 @@ class MusicPlayerApp(QMainWindow):
         self.now_playing.position_changed.connect(
             lambda pos: self.visualizer.set_position(pos)
         )
+        self.now_playing.song_loaded.connect(self._on_song_loaded)
 
         return top_widget
 
@@ -233,6 +239,32 @@ class MusicPlayerApp(QMainWindow):
             tabs.addTab(QWidget(), "✏️ Rename (Error)")
 
         return tabs
+
+    def _on_song_loaded(self, file_path: str):
+        """
+        Handle song loaded event - extract waveform and update visualizer
+
+        Args:
+            file_path: Path to audio file
+        """
+        try:
+            logger.info(f"Extracting waveform for: {Path(file_path).name}")
+
+            # Extract waveform (1000 points is good for visualization)
+            waveform = self.waveform_extractor.extract(file_path, num_points=1000)
+
+            if waveform:
+                # Update visualizer with waveform
+                self.visualizer.set_waveform(waveform)
+                logger.info(f"Waveform loaded: {len(waveform)} points")
+            else:
+                logger.warning(f"Failed to extract waveform from: {file_path}")
+                # Clear visualizer on failure
+                self.visualizer.clear()
+
+        except Exception as e:
+            logger.error(f"Error extracting waveform: {e}")
+            self.visualizer.clear()
 
     def _check_empty_library(self):
         """Check if library is empty and suggest importing music"""

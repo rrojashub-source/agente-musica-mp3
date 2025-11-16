@@ -46,6 +46,7 @@ class NowPlayingWidget(QWidget):
     - next_clicked: User clicked next
     - seek_requested(float): User dragged progress slider to position (seconds)
     - volume_changed(float): User changed volume (0.0-1.0)
+    - song_loaded(str): New song loaded, emits file_path
     """
 
     # Signals
@@ -56,6 +57,7 @@ class NowPlayingWidget(QWidget):
     seek_requested = pyqtSignal(float)
     volume_changed = pyqtSignal(float)
     position_changed = pyqtSignal(float)  # Emits current position in seconds
+    song_loaded = pyqtSignal(str)  # Emits file_path when new song loaded
 
     def __init__(self, audio_player=None):
         """
@@ -247,6 +249,11 @@ class NowPlayingWidget(QWidget):
             self.album_art_label.setText("♪")
 
         logger.info(f"Loaded song: {song_info.get('title', 'Unknown')}")
+
+        # Emit signal for waveform extraction
+        file_path = song_info.get('file_path')
+        if file_path:
+            self.song_loaded.emit(file_path)
 
     def _on_play_clicked(self):
         """Handle play/pause button click"""
