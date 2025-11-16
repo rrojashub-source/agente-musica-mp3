@@ -51,6 +51,7 @@ class VisualizerWidget(QWidget):
         # Waveform data
         self.waveform_data: Optional[List[float]] = None
         self.position: float = 0.0  # Current position (0.0 to 1.0)
+        self.duration: float = 0.0  # Total duration in seconds (for position conversion)
 
         # Visual settings
         self.waveform_color: QColor = QColor(0, 150, 255)  # Blue default
@@ -80,10 +81,26 @@ class VisualizerWidget(QWidget):
         Set current playback position
 
         Args:
-            position: Position as fraction (0.0 = start, 1.0 = end)
+            position: Position in SECONDS (will be converted to fraction)
         """
-        self.position = max(0.0, min(1.0, position))  # Clamp to [0, 1]
+        # Convert seconds to fraction (0.0 to 1.0)
+        if self.duration > 0:
+            fraction = position / self.duration
+            self.position = max(0.0, min(1.0, fraction))  # Clamp to [0, 1]
+        else:
+            self.position = 0.0
+
         self.update()  # Trigger repaint
+
+    def set_duration(self, duration: float):
+        """
+        Set total song duration (for position conversion)
+
+        Args:
+            duration: Total duration in seconds
+        """
+        self.duration = duration
+        logger.debug(f"Duration set: {duration:.2f}s")
 
     def set_color(self, color: QColor):
         """

@@ -250,13 +250,17 @@ class MusicPlayerApp(QMainWindow):
         try:
             logger.info(f"Extracting waveform for: {Path(file_path).name}")
 
+            # Get duration from audio player (already loaded)
+            duration = self.audio_player.get_duration() if self.audio_player else 0.0
+
             # Extract waveform (1000 points is good for visualization)
             waveform = self.waveform_extractor.extract(file_path, num_points=1000)
 
             if waveform:
-                # Update visualizer with waveform
+                # Update visualizer with waveform and duration
                 self.visualizer.set_waveform(waveform)
-                logger.info(f"Waveform loaded: {len(waveform)} points")
+                self.visualizer.set_duration(duration)
+                logger.info(f"Waveform loaded: {len(waveform)} points, duration: {duration:.2f}s")
             else:
                 logger.warning(f"Failed to extract waveform from: {file_path}")
                 # Clear visualizer on failure
