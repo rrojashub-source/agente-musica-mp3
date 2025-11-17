@@ -358,6 +358,33 @@ class DatabaseManager:
             logger.error(f"Failed to update song {song_id}: {e}")
             return False
 
+    def delete_song(self, song_id: int) -> bool:
+        """
+        Delete song from database
+
+        Args:
+            song_id: Song ID to delete
+
+        Returns:
+            bool: True if deleted successfully, False otherwise
+        """
+        try:
+            query = "DELETE FROM songs WHERE id = ?"
+            cursor = self.conn.cursor()
+            cursor.execute(query, (song_id,))
+            self.conn.commit()
+
+            if cursor.rowcount > 0:
+                logger.info(f"Deleted song ID: {song_id}")
+                return True
+            else:
+                logger.warning(f"Song ID {song_id} not found")
+                return False
+
+        except Exception as e:
+            logger.error(f"Failed to delete song {song_id}: {e}")
+            return False
+
     def close(self):
         """Close database connection"""
         if self.conn:
