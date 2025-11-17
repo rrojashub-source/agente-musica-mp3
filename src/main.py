@@ -613,30 +613,40 @@ and are never shared or transmitted outside of official API requests to YouTube 
 
     def _handle_volume_change(self, delta):
         """Handle Up/Down arrows - Volume change"""
-        current = self.audio_player.get_volume()
-        new_volume = max(0, min(100, current + delta))
-        self.audio_player.set_volume(new_volume)
+        try:
+            import pygame
+            # Get current volume (0.0-1.0 range)
+            current = pygame.mixer.music.get_volume()
+            # Calculate new volume
+            new_volume = max(0.0, min(1.0, current + (delta / 100.0)))
+            self.audio_player.set_volume(new_volume)
 
-        # Update status bar
-        self.statusBar.showMessage(f"Volume: {new_volume}%", 1000)
-        logger.debug(f"Shortcut: Volume {new_volume}%")
+            # Update status bar (show as percentage)
+            self.statusBar.showMessage(f"Volume: {int(new_volume * 100)}%", 1000)
+            logger.debug(f"Shortcut: Volume {int(new_volume * 100)}%")
+        except Exception as e:
+            logger.error(f"Volume change failed: {e}")
 
     def _handle_mute_toggle(self):
         """Handle M key - Mute/Unmute"""
-        if self.audio_player.get_volume() > 0:
-            # Mute: save current volume
-            if not hasattr(self, '_previous_volume'):
-                self._previous_volume = 70
-            self._previous_volume = self.audio_player.get_volume()
-            self.audio_player.set_volume(0)
-            self.statusBar.showMessage("Muted", 1000)
-            logger.debug("Shortcut: Muted")
-        else:
-            # Unmute: restore previous volume
-            volume = getattr(self, '_previous_volume', 70)
-            self.audio_player.set_volume(volume)
-            self.statusBar.showMessage(f"Volume: {volume}%", 1000)
-            logger.debug(f"Shortcut: Unmuted to {volume}%")
+        try:
+            import pygame
+            current = pygame.mixer.music.get_volume()
+
+            if current > 0:
+                # Mute: save current volume
+                self._previous_volume = current
+                self.audio_player.set_volume(0.0)
+                self.statusBar.showMessage("Muted", 1000)
+                logger.debug("Shortcut: Muted")
+            else:
+                # Unmute: restore previous volume
+                volume = getattr(self, '_previous_volume', 0.7)
+                self.audio_player.set_volume(volume)
+                self.statusBar.showMessage(f"Volume: {int(volume * 100)}%", 1000)
+                logger.debug(f"Shortcut: Unmuted to {int(volume * 100)}%")
+        except Exception as e:
+            logger.error(f"Mute toggle failed: {e}")
 
     def _handle_focus_search(self):
         """Handle Ctrl+F - Focus search"""
