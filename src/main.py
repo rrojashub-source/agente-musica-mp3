@@ -46,6 +46,7 @@ from core.playlist_manager import PlaylistManager
 from core.waveform_extractor import WaveformExtractor
 from core.download_queue import DownloadQueue
 from core.theme_manager import ThemeManager
+from core.keyboard_shortcuts import KeyboardShortcutManager
 
 # Import GUI tabs
 from gui.tabs.library_tab import LibraryTab
@@ -109,11 +110,19 @@ class MusicPlayerApp(QMainWindow):
         self.theme_manager = ThemeManager()
         logger.info("Theme manager initialized")
 
+        # Initialize keyboard shortcuts manager
+        self.shortcuts_manager = KeyboardShortcutManager()
+        QApplication.instance().installEventFilter(self.shortcuts_manager)
+        logger.info("Keyboard shortcuts manager initialized")
+
         # Setup UI
         self._init_ui()
 
         # Apply theme (after UI is created)
         self.theme_manager.apply_theme(self.theme_manager.current_theme)
+
+        # Connect shortcut signals (after UI is created)
+        self._connect_keyboard_shortcuts()
 
         logger.info("Application started successfully")
 
@@ -176,9 +185,14 @@ class MusicPlayerApp(QMainWindow):
         # Help menu
         help_menu = menubar.addMenu("&Help")
 
-        # API Setup Guide action
+        # Keyboard Shortcuts action (F1)
+        shortcuts_action = help_menu.addAction("&Keyboard Shortcuts")
+        shortcuts_action.setShortcut("F1")
+        shortcuts_action.triggered.connect(self._show_shortcuts_dialog)
+
+        # API Setup Guide action (F2)
         api_guide_action = help_menu.addAction("&API Setup Guide")
-        api_guide_action.setShortcut("F1")
+        api_guide_action.setShortcut("F2")
         api_guide_action.triggered.connect(self._show_api_guide)
 
         # Separator
@@ -427,8 +441,8 @@ and are never shared or transmitted outside of official API requests to YouTube 
 
     def _create_tab_widget(self):
         """Create tab widget with all features"""
-        tabs = QTabWidget()
-        tabs.setTabPosition(QTabWidget.TabPosition.North)
+        self.tabs = QTabWidget()
+        self.tabs.setTabPosition(QTabWidget.TabPosition.North)
 
         # Tab 1: Library (Phase 3 + Phase 6 playback integration)
         try:
@@ -437,34 +451,34 @@ and are never shared or transmitted outside of official API requests to YouTube 
                 self.audio_player,
                 self.now_playing
             )
-            tabs.addTab(self.library_tab, "🎵 Library")
+            self.tabs.addTab(self.library_tab, "🎵 Library")
             logger.info("Library tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Library tab: {e}")
-            tabs.addTab(QWidget(), "🎵 Library (Error)")
+            self.tabs.addTab(QWidget(), "🎵 Library (Error)")
 
         # Tab 2: Search & Download (Phase 4)
         try:
             self.search_tab = SearchTab(self.download_queue)
-            tabs.addTab(self.search_tab, "🔍 Search & Download")
+            self.tabs.addTab(self.search_tab, "🔍 Search & Download")
             logger.info("Search tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Search tab: {e}")
-            tabs.addTab(QWidget(), "🔍 Search (Error)")
+            self.tabs.addTab(QWidget(), "🔍 Search (Error)")
 
         # Tab 3: Import Library (NEW - Library Import Feature)
         try:
             self.import_tab = ImportTab(self.db_manager)
-            tabs.addTab(self.import_tab, "📥 Import Library")
+            self.tabs.addTab(self.import_tab, "📥 Import Library")
             logger.info("Import tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Import tab: {e}")
-            tabs.addTab(QWidget(), "📥 Import (Error)")
+            self.tabs.addTab(QWidget(), "📥 Import (Error)")
 
         # Tab 4: Download Queue (Phase 4)
         try:
             self.queue_widget = QueueWidget(self.download_queue)
-            tabs.addTab(self.queue_widget, "📥 Queue")
+            self.tabs.addTab(self.queue_widget, "📥 Queue")
             logger.info("Queue tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Queue tab: {e}")
@@ -472,31 +486,31 @@ and are never shared or transmitted outside of official API requests to YouTube 
         # Tab 4: Duplicates (Phase 5)
         try:
             self.duplicates_tab = DuplicatesTab(self.db_manager)
-            tabs.addTab(self.duplicates_tab, "🔍 Duplicates")
+            self.tabs.addTab(self.duplicates_tab, "🔍 Duplicates")
             logger.info("Duplicates tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Duplicates tab: {e}")
-            tabs.addTab(QWidget(), "🔍 Duplicates (Error)")
+            self.tabs.addTab(QWidget(), "🔍 Duplicates (Error)")
 
         # Tab 5: Organize (Phase 5)
         try:
             self.organize_tab = OrganizeTab(self.db_manager)
-            tabs.addTab(self.organize_tab, "📁 Organize")
+            self.tabs.addTab(self.organize_tab, "📁 Organize")
             logger.info("Organize tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Organize tab: {e}")
-            tabs.addTab(QWidget(), "📁 Organize (Error)")
+            self.tabs.addTab(QWidget(), "📁 Organize (Error)")
 
         # Tab 6: Rename (Phase 5)
         try:
             self.rename_tab = RenameTab(self.db_manager)
-            tabs.addTab(self.rename_tab, "✏️ Rename")
+            self.tabs.addTab(self.rename_tab, "✏️ Rename")
             logger.info("Rename tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Rename tab: {e}")
-            tabs.addTab(QWidget(), "✏️ Rename (Error)")
+            self.tabs.addTab(QWidget(), "✏️ Rename (Error)")
 
-        return tabs
+        return self.tabs
 
     def _on_song_loaded(self, file_path: str):
         """
@@ -555,6 +569,105 @@ and are never shared or transmitted outside of official API requests to YouTube 
 
         except Exception as e:
             logger.error(f"Error checking library status: {e}")
+
+    def _connect_keyboard_shortcuts(self):
+        """Connect keyboard shortcut signals to handlers"""
+        sm = self.shortcuts_manager
+
+        # Playback controls
+        sm.play_pause_requested.connect(self._handle_play_pause_shortcut)
+        sm.seek_backward_requested.connect(self._handle_seek_backward)
+        sm.seek_forward_requested.connect(self._handle_seek_forward)
+        sm.volume_change_requested.connect(self._handle_volume_change)
+        sm.mute_toggled.connect(self._handle_mute_toggle)
+
+        # Navigation
+        sm.focus_search_requested.connect(self._handle_focus_search)
+        sm.switch_to_tab_requested.connect(self._handle_switch_tab)
+
+        logger.info("Keyboard shortcuts connected")
+
+    def _handle_play_pause_shortcut(self):
+        """Handle Space key - Play/Pause"""
+        if self.audio_player.is_playing():
+            self.now_playing.pause_song()
+            logger.debug("Shortcut: Paused")
+        else:
+            self.now_playing.play_song()
+            logger.debug("Shortcut: Play")
+
+    def _handle_seek_backward(self, seconds):
+        """Handle Left arrow - Seek backward"""
+        current = self.audio_player.get_current_position()
+        new_pos = max(0, current - seconds)
+        self.audio_player.seek(new_pos)
+        logger.debug(f"Shortcut: Seek to {new_pos}s")
+
+    def _handle_seek_forward(self, seconds):
+        """Handle Right arrow - Seek forward"""
+        current = self.audio_player.get_current_position()
+        duration = self.audio_player.get_duration()
+        new_pos = min(duration, current + seconds)
+        self.audio_player.seek(new_pos)
+        logger.debug(f"Shortcut: Seek to {new_pos}s")
+
+    def _handle_volume_change(self, delta):
+        """Handle Up/Down arrows - Volume change"""
+        current = self.audio_player.get_volume()
+        new_volume = max(0, min(100, current + delta))
+        self.audio_player.set_volume(new_volume)
+
+        # Update status bar
+        self.statusBar.showMessage(f"Volume: {new_volume}%", 1000)
+        logger.debug(f"Shortcut: Volume {new_volume}%")
+
+    def _handle_mute_toggle(self):
+        """Handle M key - Mute/Unmute"""
+        if self.audio_player.get_volume() > 0:
+            # Mute: save current volume
+            if not hasattr(self, '_previous_volume'):
+                self._previous_volume = 70
+            self._previous_volume = self.audio_player.get_volume()
+            self.audio_player.set_volume(0)
+            self.statusBar.showMessage("Muted", 1000)
+            logger.debug("Shortcut: Muted")
+        else:
+            # Unmute: restore previous volume
+            volume = getattr(self, '_previous_volume', 70)
+            self.audio_player.set_volume(volume)
+            self.statusBar.showMessage(f"Volume: {volume}%", 1000)
+            logger.debug(f"Shortcut: Unmuted to {volume}%")
+
+    def _handle_focus_search(self):
+        """Handle Ctrl+F - Focus search"""
+        if hasattr(self, 'search_tab') and hasattr(self, 'tabs'):
+            # Switch to search tab
+            self.tabs.setCurrentWidget(self.search_tab)
+
+            # Focus search input field
+            if hasattr(self.search_tab, 'search_input'):
+                self.search_tab.search_input.setFocus()
+                logger.debug("Shortcut: Focused search")
+
+    def _handle_switch_tab(self, tab_name):
+        """Handle Ctrl+L/D - Switch tabs"""
+        if not hasattr(self, 'tabs'):
+            return
+
+        if tab_name == 'library' and hasattr(self, 'library_tab'):
+            self.tabs.setCurrentWidget(self.library_tab)
+            logger.debug("Shortcut: Switched to Library tab")
+        elif tab_name == 'queue' and hasattr(self, 'queue_widget'):
+            self.tabs.setCurrentWidget(self.queue_widget)
+            logger.debug("Shortcut: Switched to Queue tab")
+
+    def _show_shortcuts_dialog(self):
+        """Show keyboard shortcuts help dialog"""
+        from gui.dialogs.shortcuts_dialog import ShortcutsDialog
+
+        shortcuts = self.shortcuts_manager.get_shortcuts()
+        dialog = ShortcutsDialog(shortcuts, self)
+        dialog.exec()
 
     def closeEvent(self, event):
         """Handle application close event"""

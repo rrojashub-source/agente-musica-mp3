@@ -1174,6 +1174,134 @@ Fix critical bug preventing downloaded songs from importing to library database 
 
 ---
 
+### **Session (Nov 17, 2025) - UX Polish + Critical Playback Bug Fix + Database Cleanup**
+
+**Duration:** 120 minutes
+**Assigned to:** NEXUS@CLI
+**Phase:** Phase 4 Post-Completion (UX + Critical Bug Fix)
+
+**Objective:**
+Add professional UX improvements (API setup guidance) and fix critical bug preventing downloaded songs from playing after app restart. User emphasized: "Sera nuestro primero software comercial serio" - commercial quality required.
+
+**Tasks Completed:**
+1. ✅ **UX Improvement: API Setup Guide in Help menu (F1)**
+   - Comprehensive HTML guide (700x600px scrollable dialog)
+   - Step-by-step instructions for YouTube Data API v3
+   - Step-by-step instructions for Spotify Web API
+   - Clickable links to Google Cloud Console and Spotify Dashboard
+   - Testing instructions and troubleshooting section
+   - Commit: `0f19491`
+
+2. ✅ **UX Improvement: Inline instructions in API Settings Dialog**
+   - Enhanced YouTube tab with numbered instructions and tips
+   - Enhanced Spotify tab with detailed app creation workflow
+   - Professional styling (light gray boxes with borders)
+   - Clickable external links enabled
+   - Reference to F1 help guide for details
+   - Commit: `bed2635`
+
+3. ✅ **CRITICAL BUG FIX: Playback failure after app restart**
+   - **Issue:** Downloaded songs wouldn't play after closing/reopening app
+   - **Error:** "File not found: CANCIÓN PARA REGRESAR.mp3.mp3"
+   - **Root Cause:** yt-dlp renames files during post-processing (FFmpegExtractAudio)
+   - **Database stored:** Template path (`self.output_path`)
+   - **Actual file saved:** Different name after post-processing
+   - **Fix:** Capture ACTUAL file path from `info['requested_downloads'][0]['filepath']`
+   - **Fallback:** Use `ydl.prepare_filename()` if needed
+   - **Location:** `src/workers/download_worker.py` line 103
+   - **Impact:** Future downloads will have correct paths ✅
+   - Commit: `695cae6`
+
+4. ✅ **Added missing delete_song() method to DatabaseManager**
+   - **Issue:** Database manager lacked CRUD delete operation
+   - **Implementation:** Lines 361-386 in `src/database/manager.py`
+   - **Features:** Proper error handling, logging, rowcount validation
+   - **Why Critical:** Enables database cleanup for commercial quality
+   - Commit: `57c2f97`
+
+5. ✅ **Created professional database cleanup tool**
+   - **File:** `scripts/cleanup_broken_paths.py` (208 lines)
+   - **Features:**
+     - Scans all songs for non-existent file paths
+     - Dry-run mode (--dry-run flag)
+     - Interactive confirmation prompt
+     - Professional CLI output with emojis
+     - Statistics reporting
+     - Exit codes for automation
+   - **Execution:** Successfully removed 316 broken entries
+   - **Result:** Database now clean (0 songs), ready for fresh import
+   - Commit: `57c2f97`
+
+**Key Decisions:**
+- **Decision 1:** Total database cleanup instead of selective fix
+  - Why: User chose "Opcion 1" - start fresh with correct paths
+  - Context: "Estamos en pruebas... esto sera algo comercial"
+  - Result: Clean slate, all future downloads will have correct paths
+
+- **Decision 2:** Comprehensive UX help system (multi-tier)
+  - Tier 1: F1 comprehensive guide (700x600px, full instructions)
+  - Tier 2: Inline help in dialogs (quick reference)
+  - Why: Professional software needs self-service documentation
+  - Result: Users can configure APIs without external docs
+
+- **Decision 3:** Use `info['requested_downloads'][0]['filepath']` for path capture
+  - Why: This is the ACTUAL saved file path after post-processing
+  - Alternative considered: Parse template and guess final name (unreliable)
+  - Result: Robust solution that handles all yt-dlp renaming scenarios
+
+**Learnings:**
+- **Learning 1:** yt-dlp post-processing changes filenames unpredictably
+  - Previous session: Worked around with 3-tier file search
+  - This session: Root cause identified - capture actual path at source
+  - Prevention: Always use `info['requested_downloads'][0]['filepath']`
+
+- **Learning 2:** Commercial quality requires comprehensive cleanup tools
+  - User insight: "Sera nuestro primero software comercial serio"
+  - Impact: Created professional cleanup tool (dry-run, confirmations, stats)
+  - Future: All admin tools should follow this quality standard
+
+- **Learning 3:** Multi-tier help system improves user experience
+  - Observation: Users need both quick inline help AND comprehensive guides
+  - Implementation: F1 guide (deep) + inline boxes (quick)
+  - Result: Self-service API setup without external documentation
+
+**User Validation:**
+- ✅ Saw UX improvements (Help guide + inline instructions)
+- ✅ Confirmed playback bug (songs not playing after restart)
+- ✅ Chose total database cleanup for commercial quality
+- ✅ Database cleaned successfully (316 entries removed)
+- ✅ Ready for validation: Download fresh song to test fix
+
+**Technical Evidence:**
+```
+Cleanup Results:
+=============================================================
+Total songs (before):  316
+Broken paths found:    316
+Successfully removed:  316
+Remaining songs:       0
+=============================================================
+
+Fixes in Place:
+✅ src/workers/download_worker.py:103 - Uses actual_filepath
+✅ src/database/manager.py:361-386 - delete_song() method added
+✅ src/main.py:215-357 - API Setup Guide (F1)
+✅ src/gui/dialogs/api_settings_dialog.py - Inline instructions
+```
+
+**Next Steps:**
+- **CRITICAL:** Validate fix by downloading ONE test song
+  1. Open NEXUS Music Manager
+  2. Search & Download tab → Download 1 song
+  3. Verify it appears in Library
+  4. CLOSE and REOPEN app
+  5. Try to play the song
+  6. ✅ Success = Fix confirmed / ❌ Fail = Investigate further
+- Continue UX improvements as user tests ("pruebas y mejoras de la mano, una a una")
+- Phase 5 development after validation
+
+---
+
 ## 🔄 Session Template (Future Sessions)
 
 ### **Session [Date] - [Title]**
@@ -1253,7 +1381,7 @@ Fix critical bug preventing downloaded songs from importing to library database 
 
 ---
 
-**Last Updated:** November 17, 2025 - Session: Critical Bug Fix (Auto-Import) ✅
+**Last Updated:** November 17, 2025 - Session: UX Polish + Critical Playback Bug Fix + Database Cleanup ✅
 **Maintained by:** Ricardo + NEXUS@CLI
 **Review Frequency:** After each session
 **Format:** Markdown (optimized for Claude Code reading)
