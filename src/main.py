@@ -45,6 +45,7 @@ from core.audio_player import AudioPlayer
 from core.playlist_manager import PlaylistManager
 from core.waveform_extractor import WaveformExtractor
 from core.download_queue import DownloadQueue
+from core.theme_manager import ThemeManager
 
 # Import GUI tabs
 from gui.tabs.library_tab import LibraryTab
@@ -104,8 +105,15 @@ class MusicPlayerApp(QMainWindow):
         self.download_queue.start()  # Start processing downloads
         logger.info("Download queue initialized")
 
+        # Initialize theme manager
+        self.theme_manager = ThemeManager()
+        logger.info("Theme manager initialized")
+
         # Setup UI
         self._init_ui()
+
+        # Apply theme (after UI is created)
+        self.theme_manager.apply_theme(self.theme_manager.current_theme)
 
         logger.info("Application started successfully")
 
@@ -157,6 +165,14 @@ class MusicPlayerApp(QMainWindow):
         api_settings_action.setShortcut("Ctrl+K")
         api_settings_action.triggered.connect(self._show_api_settings)
 
+        # View menu
+        view_menu = menubar.addMenu("&View")
+
+        # Toggle Dark/Light Theme action
+        theme_action = view_menu.addAction("Toggle &Dark/Light Theme")
+        theme_action.setShortcut("Ctrl+T")
+        theme_action.triggered.connect(self._toggle_theme)
+
         # Help menu
         help_menu = menubar.addMenu("&Help")
 
@@ -183,6 +199,18 @@ class MusicPlayerApp(QMainWindow):
             self.statusBar.showMessage("API settings saved successfully", 3000)
         else:
             logger.info("API settings dialog cancelled")
+
+    def _toggle_theme(self):
+        """Toggle between dark and light themes"""
+        new_theme = self.theme_manager.toggle_theme()
+
+        # Capitalize first letter for display
+        theme_display = new_theme.capitalize()
+
+        # Show status message
+        self.statusBar.showMessage(f"Switched to {theme_display} theme", 2000)
+
+        logger.info(f"User toggled theme to: {new_theme}")
 
     def _show_about(self):
         """Show about dialog"""
