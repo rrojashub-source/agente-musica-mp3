@@ -285,12 +285,10 @@ class SearchTab(QWidget):
             results (list): Spotify search results
         """
         for result in results:
-            # Add visual indicator for Spotify + disable for now
-            item = QListWidgetItem(f"🎵 {result['artist']} - {result['title']} (Spotify - Not yet supported)")
+            # Add visual indicator for Spotify (now with auto-conversion)
+            item = QListWidgetItem(f"🎵 {result['artist']} - {result['title']}")
             item.setData(Qt.ItemDataRole.UserRole, result)
-            item.setToolTip("Spotify track - YouTube conversion not yet implemented")
-            # Grey out Spotify items
-            item.setForeground(QColor("gray"))
+            item.setToolTip("Spotify track - Will auto-convert to YouTube for download")
             self.spotify_results.addItem(item)
 
         logger.info(f"Displayed {len(results)} Spotify results")
@@ -317,6 +315,58 @@ class SearchTab(QWidget):
         self.selected_songs.append(song_data)
         self._update_selected_count()
         logger.info(f"Added to selection: {song_data.get('title', 'Unknown')}")
+
+    def _convert_spotify_to_youtube(self, spotify_song: dict) -> dict:
+        """
+        Convert Spotify song to YouTube video by searching
+
+        Args:
+            spotify_song (dict): Spotify song metadata with 'artist' and 'title'
+
+        Returns:
+            dict: YouTube video data, or None if not found
+        """
+        if not self.youtube_searcher:
+            logger.error("YouTube searcher not available for Spotify conversion")
+            return None
+
+        try:
+            # Build search query from Spotify metadata
+            artist = spotify_song.get('artist', '')
+            title = spotify_song.get('title', '')
+            search_query = f"{artist} {title}".strip()
+
+            if not search_query:
+                logger.warning("Empty search query for Spotify conversion")
+                return None
+
+            logger.info(f"Converting Spotify to YouTube: '{search_query}'")
+
+            # Search YouTube for this song
+            youtube_results = self.youtube_searcher.search(search_query, max_results=1)
+
+            if youtube_results and len(youtube_results) > 0:
+                youtube_video = youtube_results[0]
+                logger.info(f"Found YouTube match: {youtube_video['title']}")
+
+                # Merge Spotify metadata with YouTube video_id
+                converted = {
+                    'source': 'spotify_converted',
+                    'video_id': youtube_video['video_id'],
+                    'title': title,  # Use Spotify title (cleaner)
+                    'artist': artist,  # Use Spotify artist (cleaner)
+                    'youtube_title': youtube_video['title'],  # Keep original for reference
+                    'spotify_metadata': spotify_song  # Keep full Spotify metadata
+                }
+
+                return converted
+            else:
+                logger.warning(f"No YouTube results found for: {search_query}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Error converting Spotify to YouTube: {e}")
+            return None
 
     def _update_selected_count(self):
         """Update selected songs counter"""
@@ -353,29 +403,49 @@ class SearchTab(QWidget):
         added_count = 0
         total_selected = len(self.selected_songs)
 
+        # Track conversion stats
+        spotify_converted = 0
+        spotify_failed = 0
+
         # Add each song to download queue
         for song in self.selected_songs:
             try:
+                video_url = None
+                metadata = song
+
                 # Determine URL based on source
                 if song['source'] == 'youtube':
+                    # Direct YouTube download
                     video_url = f"https://www.youtube.com/watch?v={song['video_id']}"
+
                 elif song['source'] == 'spotify':
-                    # For Spotify, we'll need to search YouTube for the song
-                    # For now, just log
-                    logger.info(f"Spotify song needs YouTube conversion: {song['title']}")
-                    continue
+                    # Convert Spotify to YouTube
+                    logger.info(f"Converting Spotify song: {song.get('artist', '')} - {song.get('title', '')}")
+                    converted = self._convert_spotify_to_youtube(song)
+
+                    if converted:
+                        video_url = f"https://www.youtube.com/watch?v={converted['video_id']}"
+                        metadata = converted  # Use converted metadata (has both Spotify + YouTube data)
+                        spotify_converted += 1
+                        logger.info(f"Spotify converted successfully: {converted['title']}")
+                    else:
+                        spotify_failed += 1
+                        logger.warning(f"Failed to convert Spotify song: {song.get('title', 'Unknown')}")
+                        continue
+
                 else:
                     logger.warning(f"Unknown source: {song['source']}")
                     continue
 
-                # Add to queue
-                self.download_queue.add(
-                    video_url=video_url,
-                    metadata=song
-                )
+                # Add to queue if we have a valid URL
+                if video_url:
+                    self.download_queue.add(
+                        video_url=video_url,
+                        metadata=metadata
+                    )
 
-                logger.info(f"Added to queue: {song['title']}")
-                added_count += 1
+                    logger.info(f"Added to queue: {metadata.get('title', 'Unknown')}")
+                    added_count += 1
 
             except Exception as e:
                 logger.error(f"Failed to add song to queue: {e}")
@@ -391,23 +461,35 @@ class SearchTab(QWidget):
         # Show confirmation
         if added_count > 0:
             from PyQt6.QtWidgets import QMessageBox
-            spotify_skipped = total_selected - added_count
             message = f"Added {added_count} song(s) to download queue!\n\n"
-            if spotify_skipped > 0:
-                message += f"Note: {spotify_skipped} Spotify song(s) skipped (not yet supported).\n\n"
+
+            # Show conversion stats
+            if spotify_converted > 0:
+                message += f"✅ Spotify songs converted: {spotify_converted}\n"
+            if spotify_failed > 0:
+                message += f"⚠️ Spotify songs failed to convert: {spotify_failed}\n"
+
+            if spotify_converted > 0 or spotify_failed > 0:
+                message += "\n"
+
             message += "Check the '📥 Queue' tab to see download progress."
 
             QMessageBox.information(self, "Success", message)
-            logger.info(f"Added {added_count} songs to download queue")
+            logger.info(f"Added {added_count} songs to download queue (Spotify converted: {spotify_converted}, failed: {spotify_failed})")
         else:
             from PyQt6.QtWidgets import QMessageBox
-            QMessageBox.warning(
-                self,
-                "No Songs Added",
-                "No songs were added to the queue.\n\n"
-                "Note: Spotify songs are not yet supported.\n"
-                "Please select YouTube videos (marked with ▶️)."
-            )
+            message = "No songs were added to the queue.\n\n"
+
+            if spotify_failed > 0:
+                message += f"⚠️ {spotify_failed} Spotify song(s) could not be converted to YouTube.\n\n"
+                message += "This can happen if:\n"
+                message += "• The song is not available on YouTube\n"
+                message += "• The search didn't find a good match\n\n"
+                message += "Try selecting different songs or using YouTube search directly."
+            else:
+                message += "Please select some songs first by double-clicking on them."
+
+            QMessageBox.warning(self, "No Songs Added", message)
 
     def _show_missing_credentials_prompt(self):
         """
