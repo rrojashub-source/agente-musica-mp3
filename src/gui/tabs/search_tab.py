@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QCheckBox, QListWidget, QLabel, QSplitter, QListWidgetItem
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QColor
 import logging
 from api.youtube_search import YouTubeSearcher
 from api.spotify_search import SpotifySearcher
@@ -268,8 +269,10 @@ class SearchTab(QWidget):
             results (list): YouTube search results
         """
         for result in results:
-            item = QListWidgetItem(f"{result['title']}")
+            # Add visual indicator for YouTube
+            item = QListWidgetItem(f"▶️ {result['title']}")
             item.setData(Qt.ItemDataRole.UserRole, result)
+            item.setToolTip("YouTube video - Click 'Add to Library' to download")
             self.youtube_results.addItem(item)
 
         logger.info(f"Displayed {len(results)} YouTube results")
@@ -282,8 +285,12 @@ class SearchTab(QWidget):
             results (list): Spotify search results
         """
         for result in results:
-            item = QListWidgetItem(f"{result['artist']} - {result['title']}")
+            # Add visual indicator for Spotify + disable for now
+            item = QListWidgetItem(f"🎵 {result['artist']} - {result['title']} (Spotify - Not yet supported)")
             item.setData(Qt.ItemDataRole.UserRole, result)
+            item.setToolTip("Spotify track - YouTube conversion not yet implemented")
+            # Grey out Spotify items
+            item.setForeground(QColor("gray"))
             self.spotify_results.addItem(item)
 
         logger.info(f"Displayed {len(results)} Spotify results")
@@ -344,6 +351,7 @@ class SearchTab(QWidget):
 
         # Count successful additions
         added_count = 0
+        total_selected = len(self.selected_songs)
 
         # Add each song to download queue
         for song in self.selected_songs:
@@ -372,19 +380,24 @@ class SearchTab(QWidget):
             except Exception as e:
                 logger.error(f"Failed to add song to queue: {e}")
 
-        # Clear selection
+        # Clear selection (both data and visual)
         self.selected_songs = []
         self._update_selected_count()
+
+        # Clear visual selection from both lists
+        self.youtube_results.clearSelection()
+        self.spotify_results.clearSelection()
 
         # Show confirmation
         if added_count > 0:
             from PyQt6.QtWidgets import QMessageBox
-            QMessageBox.information(
-                self,
-                "Success",
-                f"Added {added_count} song(s) to download queue!\n\n"
-                f"Check the '📥 Queue' tab to see download progress."
-            )
+            spotify_skipped = total_selected - added_count
+            message = f"Added {added_count} song(s) to download queue!\n\n"
+            if spotify_skipped > 0:
+                message += f"Note: {spotify_skipped} Spotify song(s) skipped (not yet supported).\n\n"
+            message += "Check the '📥 Queue' tab to see download progress."
+
+            QMessageBox.information(self, "Success", message)
             logger.info(f"Added {added_count} songs to download queue")
         else:
             from PyQt6.QtWidgets import QMessageBox
@@ -392,7 +405,8 @@ class SearchTab(QWidget):
                 self,
                 "No Songs Added",
                 "No songs were added to the queue.\n\n"
-                "Note: Spotify songs are not yet supported."
+                "Note: Spotify songs are not yet supported.\n"
+                "Please select YouTube videos (marked with ▶️)."
             )
 
     def _show_missing_credentials_prompt(self):
