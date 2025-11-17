@@ -78,10 +78,13 @@ class TestVisualizerWidget(unittest.TestCase):
         waveform_data = [0.0] * 100
         self.widget.set_waveform(waveform_data)
 
-        # Update position (0.5 = 50% through song)
-        self.widget.set_position(0.5)
+        # Set duration (e.g., 100 seconds song)
+        self.widget.set_duration(100.0)
 
-        # Should update position
+        # Update position (50 seconds = 50% through 100s song)
+        self.widget.set_position(50.0)
+
+        # Should update position to 0.5 (50%)
         self.assertTrue(hasattr(self.widget, 'position'))
         self.assertEqual(self.widget.position, 0.5)
 

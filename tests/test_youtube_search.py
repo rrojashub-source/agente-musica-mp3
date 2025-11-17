@@ -42,8 +42,8 @@ class TestYouTubeSearch(unittest.TestCase):
         if self.searcher is None:
             self.fail("YouTubeSearcher class not found")
 
-        # Search for "The Beatles"
-        results = self.searcher.search("The Beatles", max_results=5)
+        # Search for "The Beatles" (use_cache=False ensures fresh API call for test reliability)
+        results = self.searcher.search("The Beatles", max_results=5, use_cache=False)
 
         # Verify results
         self.assertIsInstance(results, list)
