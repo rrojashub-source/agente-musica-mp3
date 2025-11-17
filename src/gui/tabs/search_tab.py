@@ -58,10 +58,23 @@ class SearchTab(QWidget):
         spotify_client_id = None
         spotify_client_secret = None
 
+        # Priority 0: OS Keyring (most secure, used by API Settings dialog)
+        try:
+            import keyring
+            youtube_api_key = keyring.get_password("nexus_music", "youtube_api_key")
+            spotify_client_id = keyring.get_password("nexus_music", "spotify_client_id")
+            spotify_client_secret = keyring.get_password("nexus_music", "spotify_client_secret")
+            if youtube_api_key or spotify_client_id or spotify_client_secret:
+                logger.info("Loaded credentials from OS keyring")
+        except ImportError:
+            logger.debug("keyring module not available")
+        except Exception as e:
+            logger.warning(f"Failed to load from keyring: {e}")
+
         # Priority 1: Environment variables
-        youtube_api_key = os.getenv('YOUTUBE_API_KEY')
-        spotify_client_id = os.getenv('SPOTIFY_CLIENT_ID')
-        spotify_client_secret = os.getenv('SPOTIFY_CLIENT_SECRET')
+        youtube_api_key = youtube_api_key or os.getenv('YOUTUBE_API_KEY')
+        spotify_client_id = spotify_client_id or os.getenv('SPOTIFY_CLIENT_ID')
+        spotify_client_secret = spotify_client_secret or os.getenv('SPOTIFY_CLIENT_SECRET')
 
         # Priority 2: .env file (if python-dotenv is available)
         if not all([youtube_api_key, spotify_client_id, spotify_client_secret]):
