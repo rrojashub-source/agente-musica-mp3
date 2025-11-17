@@ -405,20 +405,26 @@ class DownloadQueue(QObject):
             file_size = file_path_obj.stat().st_size
             bitrate = int(audio.info.bitrate / 1000) if audio else 0  # kbps
 
-            # Insert into database
-            self.db_manager.add_song(
-                title=title,
-                artist=artist,
-                album=album,
-                year=year,
-                genre=genre,
-                duration=duration,
-                file_path=str(file_path_obj.absolute()),
-                file_size=file_size,
-                bitrate=bitrate
-            )
+            # Prepare song data dictionary
+            song_data = {
+                'title': title,
+                'artist': artist,
+                'album': album,
+                'year': year,
+                'genre': genre,
+                'duration': duration,
+                'file_path': str(file_path_obj.absolute()),
+                'file_size': file_size,
+                'bitrate': bitrate
+            }
 
-            logger.info(f"Imported to database: {artist} - {title}")
+            # Insert into database
+            song_id = self.db_manager.add_song(song_data)
+
+            if song_id:
+                logger.info(f"Imported to database (id={song_id}): {artist} - {title}")
+            else:
+                logger.warning(f"Song not imported (duplicate?): {artist} - {title}")
 
         except Exception as e:
             logger.error(f"Failed to import to database: {e}")
