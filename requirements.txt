@@ -47,12 +47,15 @@ pyacoustid>=1.2.2
 # ========================================
 # Phase 6: Player & Lyrics
 # ========================================
+# Audio playback engine
+pygame>=2.5.0
+
+# Audio visualization
+numpy>=1.24.0
+
 # Web scraping for lyrics
 beautifulsoup4>=4.12.0
 requests>=2.31.0
-
-# Note: PyQt6 includes QtMultimedia for audio playback
-# No additional packages needed for player
 
 # ========================================
 # General Utilities
