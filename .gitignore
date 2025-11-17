@@ -10,10 +10,15 @@ api_keys_config.txt
 api_keys.txt
 config.txt
 *.env
-.env*
+.env
+.env.local
+.env.*.local
 credentials.json
 secrets/
 .nexus_music/config.json
+
+# Exception: Allow .env.example (template for users)
+!.env.example
 
 # === DATABASE (USER DATA - contains personal music library) ===
 *.db
