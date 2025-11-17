@@ -320,7 +320,7 @@ class DownloadQueue(QObject):
         Import downloaded song to database
 
         Args:
-            file_path (str): Path to downloaded MP3 file
+            file_path (str): Path to downloaded MP3 file (relative or absolute)
             metadata (dict): Song metadata
         """
         try:
@@ -328,15 +328,23 @@ class DownloadQueue(QObject):
             from mutagen.id3 import ID3
             from pathlib import Path
 
+            # Convert to Path object and resolve to absolute path
             file_path_obj = Path(file_path)
 
+            # If relative path, resolve from current working directory
+            if not file_path_obj.is_absolute():
+                file_path_obj = Path.cwd() / file_path_obj
+
+            # Verify file exists
             if not file_path_obj.exists():
-                logger.error(f"Downloaded file not found: {file_path}")
+                logger.error(f"Downloaded file not found: {file_path_obj}")
+                logger.debug(f"Current working directory: {Path.cwd()}")
+                logger.debug(f"Attempted paths: {file_path} → {file_path_obj}")
                 return
 
             # Read MP3 metadata
             try:
-                audio = MP3(file_path)
+                audio = MP3(str(file_path_obj))
                 id3 = audio.tags if audio.tags else ID3()
             except Exception as e:
                 logger.warning(f"Could not read ID3 tags: {e}")
