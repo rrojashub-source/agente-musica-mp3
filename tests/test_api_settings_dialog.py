@@ -107,8 +107,8 @@ class TestAPISettingsDialog(unittest.TestCase):
         if self.dialog is None:
             self.skipTest("Dialog not implemented yet")
 
-        # Mock the YouTube API inside the api module
-        with patch('src.api.youtube_search.YouTubeSearcher') as MockYT:
+        # Mock the YouTube API where it's imported (api_settings_dialog module level)
+        with patch('src.gui.dialogs.api_settings_dialog.YouTubeSearcher') as MockYT:
             # Setup mock to return valid results
             mock_instance = MockYT.return_value
             mock_instance.search.return_value = [{'video_id': 'abc123', 'title': 'Test Video'}]

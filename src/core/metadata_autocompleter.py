@@ -14,8 +14,8 @@ Security (Pre-Phase 5 Hardening):
 import logging
 from typing import List, Dict, Optional
 from difflib import SequenceMatcher
-from src.api.musicbrainz_client import MusicBrainzClient
-from src.utils.input_sanitizer import sanitize_query
+from api.musicbrainz_client import MusicBrainzClient
+from utils.input_sanitizer import sanitize_query
 
 # Setup logger
 logger = logging.getLogger(__name__)

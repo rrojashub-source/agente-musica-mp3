@@ -15,7 +15,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Callable
 from PyQt6.QtCore import QObject, pyqtSignal
-from src.workers.download_worker import DownloadWorker
+from workers.download_worker import DownloadWorker
 
 # Setup logger
 logger = logging.getLogger(__name__)

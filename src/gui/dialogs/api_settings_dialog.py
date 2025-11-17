@@ -23,6 +23,15 @@ from PyQt6.QtCore import Qt, pyqtSignal
 import keyring
 import logging
 
+# Import API clients at module level for testability
+try:
+    from api.youtube_search import YouTubeSearcher
+    from api.spotify_search import SpotifySearcher
+except ImportError:
+    # Fallback if API modules not available (shouldn't happen in normal use)
+    YouTubeSearcher = None
+    SpotifySearcher = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -151,7 +160,8 @@ class APITabWidget(QWidget):
             Exception: If validation fails
         """
         try:
-            from src.api.youtube_search import YouTubeSearcher
+            if YouTubeSearcher is None:
+                raise ImportError("YouTubeSearcher not available")
 
             yt = YouTubeSearcher(api_key)
             results = yt.search("test", max_results=1)

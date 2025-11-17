@@ -20,7 +20,7 @@ from spotipy.exceptions import SpotifyException
 import logging
 from time import sleep
 import hashlib
-from src.utils.input_sanitizer import sanitize_query
+from utils.input_sanitizer import sanitize_query
 
 # Setup logger
 logger = logging.getLogger(__name__)

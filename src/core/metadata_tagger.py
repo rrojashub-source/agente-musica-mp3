@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, Optional
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TCON, APIC
-from src.core.metadata_autocompleter import MetadataAutocompleter
+from core.metadata_autocompleter import MetadataAutocompleter
 
 # Setup logger
 logger = logging.getLogger(__name__)

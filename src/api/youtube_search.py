@@ -18,7 +18,7 @@ from functools import lru_cache
 from time import sleep
 import logging
 import hashlib
-from src.utils.input_sanitizer import sanitize_query
+from utils.input_sanitizer import sanitize_query
 
 # Setup logger
 logger = logging.getLogger(__name__)
