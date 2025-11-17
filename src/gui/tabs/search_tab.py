@@ -50,23 +50,65 @@ class SearchTab(QWidget):
         # Initialize API searchers
         from pathlib import Path
         import json
+        import os
 
-        # Load API credentials
-        secrets_path = Path.home() / ".claude" / "secrets" / "credentials.json"
-        try:
-            with open(secrets_path) as f:
-                secrets = json.load(f)
+        # Load API credentials (try multiple sources)
+        youtube_api_key = None
+        spotify_client_id = None
+        spotify_client_secret = None
 
-            youtube_api_key = secrets['apis']['youtube']['api_key']
-            spotify_client_id = secrets['apis']['spotify']['client_id']
-            spotify_client_secret = secrets['apis']['spotify']['client_secret']
+        # Priority 1: Environment variables
+        youtube_api_key = os.getenv('YOUTUBE_API_KEY')
+        spotify_client_id = os.getenv('SPOTIFY_CLIENT_ID')
+        spotify_client_secret = os.getenv('SPOTIFY_CLIENT_SECRET')
 
-            self.youtube_searcher = YouTubeSearcher(youtube_api_key)
-            self.spotify_searcher = SpotifySearcher(spotify_client_id, spotify_client_secret)
+        # Priority 2: .env file (if python-dotenv is available)
+        if not all([youtube_api_key, spotify_client_id, spotify_client_secret]):
+            try:
+                from dotenv import load_dotenv
+                env_path = Path('.env')
+                if env_path.exists():
+                    load_dotenv(env_path)
+                    youtube_api_key = youtube_api_key or os.getenv('YOUTUBE_API_KEY')
+                    spotify_client_id = spotify_client_id or os.getenv('SPOTIFY_CLIENT_ID')
+                    spotify_client_secret = spotify_client_secret or os.getenv('SPOTIFY_CLIENT_SECRET')
+                    logger.info("Loaded credentials from .env file")
+            except ImportError:
+                logger.debug("python-dotenv not available, skipping .env file")
 
-        except Exception as e:
-            logger.error(f"Failed to load API credentials: {e}")
-            # Create mock searchers for testing
+        # Priority 3: Credentials file (fallback for development)
+        if not all([youtube_api_key, spotify_client_id, spotify_client_secret]):
+            credentials_path = os.getenv('CREDENTIALS_PATH') or str(Path.home() / ".claude" / "secrets" / "credentials.json")
+            try:
+                with open(credentials_path) as f:
+                    secrets = json.load(f)
+
+                youtube_api_key = youtube_api_key or secrets['apis']['youtube']['api_key']
+                spotify_client_id = spotify_client_id or secrets['apis']['spotify']['client_id']
+                spotify_client_secret = spotify_client_secret or secrets['apis']['spotify']['client_secret']
+                logger.info(f"Loaded credentials from {credentials_path}")
+
+            except FileNotFoundError:
+                logger.warning(f"Credentials file not found: {credentials_path}")
+            except KeyError as e:
+                logger.error(f"Missing key in credentials file: {e}")
+            except Exception as e:
+                logger.error(f"Failed to load credentials file: {e}")
+
+        # Initialize searchers if credentials available
+        if youtube_api_key and spotify_client_id and spotify_client_secret:
+            try:
+                self.youtube_searcher = YouTubeSearcher(youtube_api_key)
+                self.spotify_searcher = SpotifySearcher(spotify_client_id, spotify_client_secret)
+                logger.info("API searchers initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize API searchers: {e}")
+                self.youtube_searcher = None
+                self.spotify_searcher = None
+        else:
+            logger.warning("Missing API credentials - Search functionality will be limited")
+            logger.warning("Set YOUTUBE_API_KEY, SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET")
+            logger.warning("Or create .env file (see .env.example)")
             self.youtube_searcher = None
             self.spotify_searcher = None
 

@@ -63,6 +63,9 @@ requests>=2.31.0
 # HTTP requests (already included above)
 # requests>=2.31.0
 
+# Environment variable management (.env file support)
+python-dotenv>=1.0.0
+
 # ========================================
 # Optional Dependencies
 # ========================================
