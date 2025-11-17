@@ -42,18 +42,20 @@ class DownloadQueue(QObject):
     item_failed = pyqtSignal(str, str)      # item_id, error
     queue_completed = pyqtSignal()          # All items done
 
-    def __init__(self, max_concurrent=50, max_retries=3):
+    def __init__(self, max_concurrent=50, max_retries=3, db_manager=None):
         """
         Initialize download queue
 
         Args:
             max_concurrent (int): Maximum simultaneous downloads (default: 50)
             max_retries (int): Maximum retry attempts for failed downloads (default: 3)
+            db_manager (DatabaseManager): Database manager for auto-import (optional)
         """
         super().__init__()
 
         self.max_concurrent = max_concurrent
         self.max_retries = max_retries
+        self.db_manager = db_manager
         self._items = {}  # item_id -> item_dict
         self._workers = {}  # item_id -> DownloadWorker
         self._running = False
@@ -61,7 +63,7 @@ class DownloadQueue(QObject):
         # Callback for completion (optional)
         self.on_complete = None
 
-        logger.info(f"DownloadQueue initialized (max_concurrent={max_concurrent}, max_retries={max_retries})")
+        logger.info(f"DownloadQueue initialized (max_concurrent={max_concurrent}, max_retries={max_retries}, db_integration={'enabled' if db_manager else 'disabled'})")
 
     def add(self, video_url: str, metadata: dict) -> str:
         """
@@ -294,6 +296,10 @@ class DownloadQueue(QObject):
 
         logger.info(f"Completed: {item['metadata'].get('title', item_id)}")
 
+        # Auto-import to database if available
+        if self.db_manager and 'output_path' in metadata:
+            self._import_to_database(metadata['output_path'], metadata)
+
         # Fire callback
         if self.on_complete:
             self.on_complete(item_id, metadata)
@@ -308,6 +314,64 @@ class DownloadQueue(QObject):
         # Process next
         if self._running:
             self._process_next()
+
+    def _import_to_database(self, file_path: str, metadata: dict):
+        """
+        Import downloaded song to database
+
+        Args:
+            file_path (str): Path to downloaded MP3 file
+            metadata (dict): Song metadata
+        """
+        try:
+            from mutagen.mp3 import MP3
+            from mutagen.id3 import ID3
+            from pathlib import Path
+
+            file_path_obj = Path(file_path)
+
+            if not file_path_obj.exists():
+                logger.error(f"Downloaded file not found: {file_path}")
+                return
+
+            # Read MP3 metadata
+            try:
+                audio = MP3(file_path)
+                id3 = audio.tags if audio.tags else ID3()
+            except Exception as e:
+                logger.warning(f"Could not read ID3 tags: {e}")
+                audio = None
+                id3 = None
+
+            # Extract metadata
+            title = metadata.get('title', file_path_obj.stem)
+            artist = metadata.get('artist', 'Unknown Artist')
+            album = metadata.get('album', '')
+            year = metadata.get('year', '')
+            genre = metadata.get('genre', '')
+            duration = int(audio.info.length) if audio else 0
+
+            # Get file info
+            file_size = file_path_obj.stat().st_size
+            bitrate = int(audio.info.bitrate / 1000) if audio else 0  # kbps
+
+            # Insert into database
+            self.db_manager.add_song(
+                title=title,
+                artist=artist,
+                album=album,
+                year=year,
+                genre=genre,
+                duration=duration,
+                file_path=str(file_path_obj.absolute()),
+                file_size=file_size,
+                bitrate=bitrate
+            )
+
+            logger.info(f"Imported to database: {artist} - {title}")
+
+        except Exception as e:
+            logger.error(f"Failed to import to database: {e}")
 
     def _mark_failed(self, item_id: str, error: str):
         """

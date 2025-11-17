@@ -95,8 +95,12 @@ class MusicPlayerApp(QMainWindow):
         self.waveform_extractor = WaveformExtractor()
         logger.info("Waveform extractor initialized")
 
-        # Initialize download queue
-        self.download_queue = DownloadQueue(max_concurrent=50, max_retries=3)
+        # Initialize download queue (with database integration)
+        self.download_queue = DownloadQueue(
+            max_concurrent=50,
+            max_retries=3,
+            db_manager=self.db_manager  # Pass database for auto-import
+        )
         self.download_queue.start()  # Start processing downloads
         logger.info("Download queue initialized")
 
