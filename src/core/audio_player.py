@@ -176,8 +176,8 @@ class AudioPlayer:
         Args:
             position: Position in seconds
 
-        Note: pygame.mixer.music.set_pos() has limited support for MP3
-              Using workaround: reload + set_pos for better compatibility
+        Note: Uses play(start=position) for MP3 compatibility
+              This method works reliably with MP3 files (unlike set_pos)
         """
         if not self._pygame or not self._current_file:
             return
@@ -185,6 +185,7 @@ class AudioPlayer:
         try:
             # Store current state
             was_playing = self.is_playing()
+            was_paused = self._state == PlaybackState.PAUSED
 
             # Stop current playback
             self._pygame.mixer.music.stop()
@@ -192,20 +193,17 @@ class AudioPlayer:
             # Reload the file
             self._pygame.mixer.music.load(self._current_file)
 
-            # Try to set position (works better after reload)
-            try:
-                self._pygame.mixer.music.set_pos(position)
-            except:
-                # set_pos might fail for MP3, but we tried
-                logger.warning(f"set_pos() not supported, seeking may be limited")
+            # Use play(start=position) - works reliably with MP3
+            self._pygame.mixer.music.play(start=position)
+            self._state = PlaybackState.PLAYING
+            self._start_time = self._pygame.time.get_ticks() / 1000.0 - position
 
-            # Resume playback if it was playing
-            if was_playing:
-                self._pygame.mixer.music.play()
-                self._state = PlaybackState.PLAYING
-                self._start_time = self._pygame.time.get_ticks() / 1000.0 - position
+            # If it was paused or stopped, pause it again at the new position
+            if was_paused or not was_playing:
+                self._pygame.mixer.music.pause()
+                self._state = PlaybackState.PAUSED
 
-            logger.debug(f"Seeked to {position:.2f}s")
+            logger.debug(f"Seeked to {position:.2f}s (using play start)")
         except Exception as e:
             logger.error(f"Seek failed: {e}")
 
