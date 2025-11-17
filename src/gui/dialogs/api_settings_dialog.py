@@ -345,7 +345,7 @@ class SpotifyTabWidget(QWidget):
 
             # Test Spotify authentication
             spotify = SpotifySearcher(client_id, client_secret)
-            results = spotify.search("test", max_results=1)
+            results = spotify.search_tracks("test", limit=1)
 
             if results:
                 self.status_label.setText("✅ Valid - Spotify API working!")
