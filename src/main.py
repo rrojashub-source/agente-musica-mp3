@@ -44,6 +44,7 @@ from database.manager import DatabaseManager
 from core.audio_player import AudioPlayer
 from core.playlist_manager import PlaylistManager
 from core.waveform_extractor import WaveformExtractor
+from core.download_queue import DownloadQueue
 
 # Import GUI tabs
 from gui.tabs.library_tab import LibraryTab
@@ -93,6 +94,11 @@ class MusicPlayerApp(QMainWindow):
         # Initialize waveform extractor
         self.waveform_extractor = WaveformExtractor()
         logger.info("Waveform extractor initialized")
+
+        # Initialize download queue
+        self.download_queue = DownloadQueue(max_concurrent=50, max_retries=3)
+        self.download_queue.start()  # Start processing downloads
+        logger.info("Download queue initialized")
 
         # Setup UI
         self._init_ui()
@@ -185,7 +191,7 @@ class MusicPlayerApp(QMainWindow):
 
         # Tab 2: Search & Download (Phase 4)
         try:
-            self.search_tab = SearchTab(self.db_manager)
+            self.search_tab = SearchTab(self.download_queue)
             tabs.addTab(self.search_tab, "🔍 Search & Download")
             logger.info("Search tab loaded")
         except Exception as e:
@@ -203,11 +209,9 @@ class MusicPlayerApp(QMainWindow):
 
         # Tab 4: Download Queue (Phase 4)
         try:
-            # Note: QueueWidget needs download_queue instance
-            # For now, use placeholder
-            self.queue_widget = QWidget()  # TODO: Integrate with DownloadQueue
+            self.queue_widget = QueueWidget(self.download_queue)
             tabs.addTab(self.queue_widget, "📥 Queue")
-            logger.info("Queue tab loaded (placeholder)")
+            logger.info("Queue tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Queue tab: {e}")
 
@@ -306,6 +310,13 @@ class MusicPlayerApp(QMainWindow):
             logger.info("Audio player cleaned up")
         except Exception as e:
             logger.error(f"Error cleaning up audio player: {e}")
+
+        # Stop download queue
+        try:
+            self.download_queue.stop()
+            logger.info("Download queue stopped")
+        except Exception as e:
+            logger.error(f"Error stopping download queue: {e}")
 
         # Close database
         try:
