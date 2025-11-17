@@ -160,6 +160,14 @@ class MusicPlayerApp(QMainWindow):
         # Help menu
         help_menu = menubar.addMenu("&Help")
 
+        # API Setup Guide action
+        api_guide_action = help_menu.addAction("&API Setup Guide")
+        api_guide_action.setShortcut("F1")
+        api_guide_action.triggered.connect(self._show_api_guide)
+
+        # Separator
+        help_menu.addSeparator()
+
         # About action
         about_action = help_menu.addAction("&About")
         about_action.triggered.connect(self._show_about)
@@ -203,6 +211,150 @@ audio playback, playlists, and visualizer.</p>
         """
 
         QMessageBox.about(self, "About NEXUS Music Manager", about_text)
+
+    def _show_api_guide(self):
+        """Show API setup guide"""
+        from PyQt6.QtWidgets import QMessageBox, QTextBrowser, QDialog, QVBoxLayout, QPushButton
+
+        # Create custom dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle("API Setup Guide")
+        dialog.setMinimumSize(700, 600)
+
+        layout = QVBoxLayout(dialog)
+
+        # Create text browser for rich text with links
+        text_browser = QTextBrowser()
+        text_browser.setOpenExternalLinks(True)
+        text_browser.setHtml("""
+<h2>🔑 API Setup Guide</h2>
+
+<p>NEXUS Music Manager uses API keys to search and download music from YouTube and Spotify.
+Follow the steps below to obtain your free API keys.</p>
+
+<hr>
+
+<h3>📺 YouTube Data API v3</h3>
+
+<p><b>Step 1:</b> Go to <a href="https://console.cloud.google.com/">Google Cloud Console</a></p>
+<p><b>Step 2:</b> Create a new project (or select existing)</p>
+<p><b>Step 3:</b> Enable "YouTube Data API v3":</p>
+<ul>
+<li>Click "Enable APIs and Services"</li>
+<li>Search for "YouTube Data API v3"</li>
+<li>Click "Enable"</li>
+</ul>
+<p><b>Step 4:</b> Create credentials:</p>
+<ul>
+<li>Go to "Credentials" tab</li>
+<li>Click "Create Credentials" → "API Key"</li>
+<li>Copy your API key</li>
+<li>(Optional) Restrict key to "YouTube Data API v3" only</li>
+</ul>
+
+<p><b>💡 Quota:</b> Free tier provides 10,000 units/day (≈ 100 searches)</p>
+
+<hr>
+
+<h3>🎵 Spotify Web API</h3>
+
+<p><b>Step 1:</b> Go to <a href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</a></p>
+<p><b>Step 2:</b> Log in with your Spotify account (free account works)</p>
+<p><b>Step 3:</b> Create an app:</p>
+<ul>
+<li>Click "Create App"</li>
+<li>App Name: "NEXUS Music Manager" (or any name)</li>
+<li>App Description: "Personal music library manager"</li>
+<li>Redirect URI: Leave default or use "http://localhost:8888/callback"</li>
+<li>Check "Web API" checkbox</li>
+<li>Accept terms and click "Create"</li>
+</ul>
+<p><b>Step 4:</b> Get credentials:</p>
+<ul>
+<li>Click "Settings" on your app</li>
+<li>Copy "Client ID"</li>
+<li>Click "View client secret" and copy "Client Secret"</li>
+</ul>
+
+<p><b>💡 Quota:</b> Free tier provides unlimited searches (rate limited)</p>
+
+<hr>
+
+<h3>💾 Saving Your Keys</h3>
+
+<p><b>Method 1: API Settings Dialog (Recommended)</b></p>
+<ul>
+<li>Go to <b>Settings → API Configuration</b> (or press <b>Ctrl+K</b>)</li>
+<li>Paste your keys in the respective tabs</li>
+<li>Click "Test" to verify each API</li>
+<li>Click "Save" to store securely in your OS keyring</li>
+</ul>
+
+<p><b>Method 2: Environment Variables</b></p>
+<pre style="background-color: #f0f0f0; padding: 10px;">
+export YOUTUBE_API_KEY="your_youtube_key_here"
+export SPOTIFY_CLIENT_ID="your_spotify_id_here"
+export SPOTIFY_CLIENT_SECRET="your_spotify_secret_here"
+</pre>
+
+<p><b>Method 3: .env File</b></p>
+<ul>
+<li>Create a file named <code>.env</code> in the project root</li>
+<li>Copy from <code>.env.example</code> and fill in your keys</li>
+</ul>
+
+<hr>
+
+<h3>✅ Testing Your Setup</h3>
+
+<p>After saving your keys:</p>
+<ol>
+<li>Restart the application</li>
+<li>Go to <b>Search & Download</b> tab</li>
+<li>Try searching for an artist or song</li>
+<li>Both YouTube and Spotify results should appear</li>
+</ol>
+
+<hr>
+
+<h3>❓ Troubleshooting</h3>
+
+<p><b>Error: "Missing API credentials"</b></p>
+<ul>
+<li>Check that all three keys are saved correctly</li>
+<li>Restart the application</li>
+<li>Try opening Settings → API Configuration and click "Test"</li>
+</ul>
+
+<p><b>Error: "API quota exceeded"</b></p>
+<ul>
+<li>YouTube: Wait 24 hours for quota reset</li>
+<li>Spotify: Wait a few minutes and try again</li>
+</ul>
+
+<p><b>Need Help?</b></p>
+<ul>
+<li>Check logs in console for detailed error messages</li>
+<li>Verify your keys are correct (no extra spaces)</li>
+<li>Ensure APIs are enabled in respective dashboards</li>
+</ul>
+
+<hr>
+
+<p style="color: #666;"><small>
+<b>Note:</b> Your API keys are stored securely in your operating system's credential manager
+and are never shared or transmitted outside of official API requests to YouTube and Spotify.
+</small></p>
+        """)
+
+        layout.addWidget(text_browser)
+
+        # Close button
+        close_button = QPushButton("Close")
+        close_button.clicked.connect(dialog.accept)
+        layout.addWidget(close_button)
+
+        dialog.exec()
 
     def _create_top_section(self):
         """Create top section with Now Playing + Visualizer"""
