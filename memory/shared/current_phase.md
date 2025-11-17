@@ -1,9 +1,56 @@
 # AGENTE_MUSICA_MP3 - Current Phase (Global State)
 
-**Last Updated:** November 16, 2025 - 🎊 ALL PHASES COMPLETE + SECURITY HARDENED 🎊
-**Phase:** Post-Phase 7 - Production-Ready + Security + UX Polish
-**Step:** PA4 Quick Wins COMPLETE + Security Hardening COMPLETE + UX Flow COMPLETE
-**Progress:** ~98% (All core features complete, health score 90/100, ready for production)
+**Last Updated:** November 17, 2025 - 🎊 CRITICAL BUG FIX COMPLETE - PRODUCTION READY 🎊
+**Phase:** Post-Phase 4 - Download Auto-Import Fixed
+**Step:** Critical Bug Fixes COMPLETE - Auto-Import Working 100%
+**Progress:** ~98% (All core features complete + critical bugs fixed, ready for extended testing)
+
+---
+
+## ✅ CRITICAL BUG FIX (Nov 17, 2025) - Download Auto-Import to Library 🐛→✅
+
+**Goal:** Fix critical bug preventing downloaded songs from auto-importing to library database
+
+**Status:** ✅ 100% COMPLETE - Auto-import working perfectly
+
+**Session Duration:** 90 minutes (Nov 17, 2025)
+**Priority:** CRITICAL FIX - Downloads completing but not appearing in library
+
+**Root Causes Identified:**
+1. **yt-dlp double extension bug:** Reports "song.mp3" but saves "song.mp3.mp3"
+2. **yt-dlp backslash bug:** Creates subdirectories instead of escaping special chars
+3. **Database API mismatch:** Called add_song(kwargs) but API expects add_song(dict)
+
+**Solutions Implemented:**
+1. ✅ **Intelligent file finder (`_find_downloaded_file()`):**
+   - Strategy 1: Try reported path as-is
+   - Strategy 2: Try with double extension (.mp3.mp3)
+   - Strategy 3: Search recursively in subdirectories
+   - Commit: `defe701`
+
+2. ✅ **Fixed database API call:**
+   - Changed from kwargs to dictionary parameter
+   - Added song_id return value logging
+   - Better duplicate detection warnings
+   - Commit: `5daed0e`
+
+**User Validation (100% Success):**
+- ✅ Downloaded 2 songs from Spotify (Vicente Fernández)
+- ✅ Files found with double extension fix
+- ✅ Songs imported to database (IDs 315, 316)
+- ✅ Library count increased: 314 → 316 ✅
+- ✅ Playback confirmed working with waveform visualizer
+- ✅ Complete end-to-end flow verified
+
+**Technical Evidence:**
+```
+✅ Found file with double extension: Un Millón de Primaveras.mp3.mp3
+✅ Added song: Vicente Fernández - Un Millón de Primaveras (ID: 315)
+✅ Imported to database (id=315)
+✅ Loaded 316 songs into library (was 314)
+```
+
+**Achievement:** Critical blocker resolved - Download system now fully operational
 
 ---
 
