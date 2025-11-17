@@ -79,13 +79,28 @@ class DownloadWorker(QThread):
                 # Extract info first
                 info = ydl.extract_info(self.video_url, download=True)
 
+                # Get actual downloaded file path (yt-dlp may rename after post-processing)
+                actual_filepath = None
+                if 'requested_downloads' in info and info['requested_downloads']:
+                    # After post-processing, filepath contains the final MP3 path
+                    actual_filepath = info['requested_downloads'][0].get('filepath')
+
+                # Fallback to prepare_filename if requested_downloads not available
+                if not actual_filepath:
+                    actual_filepath = ydl.prepare_filename(info)
+                    # If post-processor changed extension to .mp3, update path
+                    if not actual_filepath.endswith('.mp3'):
+                        actual_filepath = actual_filepath.rsplit('.', 1)[0] + '.mp3'
+
+                logger.debug(f"Downloaded file path: {actual_filepath}")
+
                 # Build metadata dict
                 metadata = {
                     'title': info.get('title', 'Unknown'),
                     'artist': info.get('uploader', 'Unknown'),
                     'duration': info.get('duration', 0),
                     'upload_date': info.get('upload_date', None),
-                    'output_path': str(self.output_path)
+                    'output_path': actual_filepath  # Use ACTUAL path, not template
                 }
 
                 # Emit finished signal
