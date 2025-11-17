@@ -315,6 +315,57 @@ class DownloadQueue(QObject):
         if self._running:
             self._process_next()
 
+    def _find_downloaded_file(self, reported_path: str) -> Optional[Path]:
+        """
+        Find the actual downloaded file, handling yt-dlp quirks
+
+        yt-dlp has two known issues:
+        1. Double extension: Reports "song.mp3" but saves "song.mp3.mp3"
+        2. Backslash in titles: "Title\\Subtitle.mp3" creates subdirectory "Title/Subtitle.mp3"
+
+        Args:
+            reported_path (str): Path reported by yt-dlp
+
+        Returns:
+            Path: Actual file path if found, None otherwise
+        """
+        from pathlib import Path
+
+        # Convert to Path object
+        file_path = Path(reported_path)
+
+        # If relative path, resolve from current working directory
+        if not file_path.is_absolute():
+            file_path = Path.cwd() / file_path
+
+        # Strategy 1: Try reported path as-is
+        if file_path.exists() and file_path.is_file():
+            logger.debug(f"Found file at reported path: {file_path}")
+            return file_path
+
+        # Strategy 2: Try with double extension (.mp3.mp3)
+        double_ext_path = Path(str(file_path) + ".mp3")
+        if double_ext_path.exists() and double_ext_path.is_file():
+            logger.info(f"Found file with double extension: {double_ext_path}")
+            return double_ext_path
+
+        # Strategy 3: Search in subdirectories (for backslash issue)
+        # Look in downloads/ and immediate subdirectories
+        downloads_dir = Path.cwd() / "downloads"
+        if downloads_dir.exists():
+            # Get the filename we're looking for
+            target_filename = file_path.name
+
+            # Search recursively (max 2 levels deep)
+            for mp3_file in downloads_dir.rglob("*.mp3"):
+                if mp3_file.name == target_filename or mp3_file.name == f"{target_filename}.mp3":
+                    logger.info(f"Found file in subdirectory: {mp3_file}")
+                    return mp3_file
+
+        logger.error(f"Could not find downloaded file: {reported_path}")
+        logger.debug(f"Attempted paths: {file_path}, {double_ext_path}")
+        return None
+
     def _import_to_database(self, file_path: str, metadata: dict):
         """
         Import downloaded song to database
@@ -326,20 +377,11 @@ class DownloadQueue(QObject):
         try:
             from mutagen.mp3 import MP3
             from mutagen.id3 import ID3
-            from pathlib import Path
 
-            # Convert to Path object and resolve to absolute path
-            file_path_obj = Path(file_path)
-
-            # If relative path, resolve from current working directory
-            if not file_path_obj.is_absolute():
-                file_path_obj = Path.cwd() / file_path_obj
-
-            # Verify file exists
-            if not file_path_obj.exists():
-                logger.error(f"Downloaded file not found: {file_path_obj}")
-                logger.debug(f"Current working directory: {Path.cwd()}")
-                logger.debug(f"Attempted paths: {file_path} → {file_path_obj}")
+            # Find actual file (handles yt-dlp quirks)
+            file_path_obj = self._find_downloaded_file(file_path)
+            if not file_path_obj:
+                logger.error(f"Cannot import - file not found: {file_path}")
                 return
 
             # Read MP3 metadata
