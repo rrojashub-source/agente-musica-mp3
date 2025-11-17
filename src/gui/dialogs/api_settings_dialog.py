@@ -226,6 +226,161 @@ class APITabWidget(QWidget):
         return self.api_key_input.text().strip()
 
 
+class SpotifyTabWidget(QWidget):
+    """
+    Specialized tab for Spotify (needs Client ID + Client Secret)
+    """
+
+    def __init__(self, service_name: str = "nexus_music"):
+        super().__init__()
+        self.service_name = service_name
+        self._setup_ui()
+        self._load_existing_keys()
+
+    def _setup_ui(self):
+        """Setup UI with Client ID + Client Secret fields"""
+        layout = QVBoxLayout()
+
+        # Spotify credentials group
+        input_group = QGroupBox("Spotify API Configuration")
+        input_layout = QVBoxLayout()
+
+        # Client ID field
+        self.client_id_input = QLineEdit()
+        self.client_id_input.setPlaceholderText("Paste your Spotify Client ID here")
+        self.client_id_input.setEchoMode(QLineEdit.EchoMode.Password)
+        input_layout.addWidget(QLabel("Spotify Client ID:"))
+        input_layout.addWidget(self.client_id_input)
+
+        # Client Secret field
+        self.client_secret_input = QLineEdit()
+        self.client_secret_input.setPlaceholderText("Paste your Spotify Client Secret here")
+        self.client_secret_input.setEchoMode(QLineEdit.EchoMode.Password)
+        input_layout.addWidget(QLabel("Spotify Client Secret:"))
+        input_layout.addWidget(self.client_secret_input)
+
+        # Buttons
+        button_layout = QHBoxLayout()
+        self.validate_button = QPushButton("Validate")
+        self.validate_button.clicked.connect(self._on_validate_clicked)
+        self.clear_button = QPushButton("Clear Both")
+        self.clear_button.clicked.connect(self._clear_fields)
+        button_layout.addWidget(self.validate_button)
+        button_layout.addWidget(self.clear_button)
+        button_layout.addStretch()
+        input_layout.addLayout(button_layout)
+
+        input_group.setLayout(input_layout)
+        layout.addWidget(input_group)
+
+        # Status label
+        self.status_label = QLabel("")
+        self.status_label.setWordWrap(True)
+        self.status_label.setStyleSheet("""
+            QLabel {
+                padding: 10px;
+                border-radius: 5px;
+                background-color: #f0f0f0;
+            }
+        """)
+        layout.addWidget(self.status_label)
+
+        # Instructions
+        instructions = QLabel(
+            "<b>How to get Spotify credentials:</b><br>"
+            "1. Go to <a href='https://developer.spotify.com/dashboard'>developer.spotify.com/dashboard</a><br>"
+            "2. Create an app<br>"
+            "3. Copy Client ID and Client Secret"
+        )
+        instructions.setWordWrap(True)
+        instructions.setOpenExternalLinks(True)
+        layout.addWidget(instructions)
+
+        layout.addStretch()
+        self.setLayout(layout)
+
+    def _load_existing_keys(self):
+        """Load existing Spotify credentials from keyring"""
+        try:
+            client_id = keyring.get_password(self.service_name, "spotify_client_id")
+            client_secret = keyring.get_password(self.service_name, "spotify_client_secret")
+
+            if client_id:
+                self.client_id_input.setText(client_id)
+            if client_secret:
+                self.client_secret_input.setText(client_secret)
+
+            if client_id and client_secret:
+                self.status_label.setText("✅ Existing credentials loaded from secure storage")
+                logger.info("Spotify credentials loaded from keyring")
+            elif client_id or client_secret:
+                self.status_label.setText("⚠️ Partial credentials found. Please enter both Client ID and Secret.")
+            else:
+                self.status_label.setText("ℹ️ No existing credentials. Please enter both above.")
+        except Exception as e:
+            logger.debug(f"No existing Spotify credentials: {e}")
+            self.status_label.setText("ℹ️ No existing credentials found. Please enter both above.")
+
+    def _clear_fields(self):
+        """Clear both input fields"""
+        self.client_id_input.clear()
+        self.client_secret_input.clear()
+
+    def _on_validate_clicked(self):
+        """Validate Spotify credentials"""
+        client_id = self.client_id_input.text().strip()
+        client_secret = self.client_secret_input.text().strip()
+
+        if not client_id or not client_secret:
+            self.status_label.setText("❌ Please enter both Client ID and Client Secret")
+            return
+
+        self.status_label.setText("⏳ Validating...")
+        self.validate_button.setEnabled(False)
+        QApplication.processEvents()
+
+        try:
+            if SpotifySearcher is None:
+                raise ImportError("SpotifySearcher not available")
+
+            # Test Spotify authentication
+            spotify = SpotifySearcher(client_id, client_secret)
+            results = spotify.search("test", max_results=1)
+
+            if results:
+                self.status_label.setText("✅ Valid - Spotify API working!")
+                logger.info("Spotify credentials validated successfully")
+            else:
+                raise Exception("No results returned")
+
+        except ImportError:
+            # Fallback: Just validate format
+            if len(client_id) == 32 and client_id.isalnum():
+                if len(client_secret) == 32 and client_secret.isalnum():
+                    self.status_label.setText("✅ Valid - Credentials format correct")
+                else:
+                    self.status_label.setText("❌ Invalid Client Secret format")
+            else:
+                self.status_label.setText("❌ Invalid Client ID format")
+        except Exception as e:
+            self.status_label.setText(f"❌ Invalid: {str(e)}")
+            logger.error(f"Spotify validation failed: {e}")
+        finally:
+            self.validate_button.setEnabled(True)
+
+    def get_credentials(self) -> tuple:
+        """
+        Get Spotify credentials
+
+        Returns:
+            tuple: (client_id, client_secret)
+        """
+        return (
+            self.client_id_input.text().strip(),
+            self.client_secret_input.text().strip()
+        )
+
+
 class APISettingsDialog(QDialog):
     """
     API Settings Dialog
@@ -268,7 +423,7 @@ class APISettingsDialog(QDialog):
 
         # Create tabs
         self.youtube_tab = APITabWidget("YouTube")
-        self.spotify_tab = APITabWidget("Spotify")
+        self.spotify_tab = SpotifyTabWidget()  # Specialized for Client ID + Secret
         self.genius_tab = APITabWidget("Genius")
 
         self.tab_widget.addTab(self.youtube_tab, "YouTube")
@@ -347,12 +502,21 @@ class APISettingsDialog(QDialog):
                 logger.info("YouTube API key saved to keyring")
                 saved_count += 1
 
-            # Save Spotify key
-            spotify_key = self.spotify_tab.get_api_key()
-            if spotify_key:
-                keyring.set_password("nexus_music", "spotify_client_id", spotify_key)
-                logger.info("Spotify client ID saved to keyring")
+            # Save Spotify credentials (Client ID + Secret)
+            spotify_client_id, spotify_client_secret = self.spotify_tab.get_credentials()
+            if spotify_client_id and spotify_client_secret:
+                keyring.set_password("nexus_music", "spotify_client_id", spotify_client_id)
+                keyring.set_password("nexus_music", "spotify_client_secret", spotify_client_secret)
+                logger.info("Spotify credentials saved to keyring")
                 saved_count += 1
+            elif spotify_client_id or spotify_client_secret:
+                # Partial credentials - warn user
+                from PyQt6.QtWidgets import QMessageBox
+                QMessageBox.warning(
+                    self,
+                    "Incomplete Spotify Credentials",
+                    "Please enter both Spotify Client ID and Client Secret, or leave both empty."
+                )
 
             # Save Genius key
             genius_key = self.genius_tab.get_api_key()

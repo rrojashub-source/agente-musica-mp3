@@ -118,8 +118,15 @@ class SearchTab(QWidget):
         # Selected songs
         self.selected_songs = []
 
+        # Track if credentials are missing
+        self._credentials_missing = not (youtube_api_key and spotify_client_id and spotify_client_secret)
+
         # Setup UI
         self._setup_ui()
+
+        # Show API configuration dialog if credentials missing
+        if self._credentials_missing:
+            self._show_missing_credentials_prompt()
 
         logger.info("SearchTab initialized")
 
@@ -354,3 +361,78 @@ class SearchTab(QWidget):
         self._update_selected_count()
 
         logger.info(f"Added {len(self.selected_songs)} songs to download queue")
+
+    def _show_missing_credentials_prompt(self):
+        """
+        Show prompt to configure API keys when credentials are missing
+
+        Uses QTimer to delay dialog until UI is fully initialized
+        """
+        from PyQt6.QtCore import QTimer
+        from PyQt6.QtWidgets import QMessageBox
+
+        def show_dialog():
+            # Show informative message first
+            reply = QMessageBox.information(
+                self,
+                "API Configuration Required",
+                "To use the Search & Download feature, you need to configure your API keys:\n\n"
+                "• YouTube Data API v3 key\n"
+                "• Spotify Client ID and Client Secret\n\n"
+                "Would you like to configure them now?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes
+            )
+
+            if reply == QMessageBox.StandardButton.Yes:
+                # Import and show API settings dialog
+                from gui.dialogs.api_settings_dialog import APISettingsDialog
+
+                dialog = APISettingsDialog(self)
+                dialog.keys_saved.connect(self._on_keys_saved)
+
+                if dialog.exec():
+                    logger.info("API settings dialog closed - credentials may have been saved")
+
+        # Delay dialog until UI is ready (500ms)
+        QTimer.singleShot(500, show_dialog)
+
+    def _on_keys_saved(self):
+        """
+        Handle keys saved event - reload credentials and initialize searchers
+        """
+        import keyring
+
+        logger.info("API keys saved - reloading credentials")
+
+        try:
+            # Load from keyring
+            youtube_api_key = keyring.get_password("nexus_music", "youtube_api_key")
+            spotify_client_id = keyring.get_password("nexus_music", "spotify_client_id")
+            spotify_client_secret = keyring.get_password("nexus_music", "spotify_client_secret")
+
+            # Re-initialize searchers
+            if youtube_api_key and spotify_client_id and spotify_client_secret:
+                self.youtube_searcher = YouTubeSearcher(youtube_api_key)
+                self.spotify_searcher = SpotifySearcher(spotify_client_id, spotify_client_secret)
+                self._credentials_missing = False
+
+                logger.info("API searchers re-initialized successfully")
+
+                from PyQt6.QtWidgets import QMessageBox
+                QMessageBox.information(
+                    self,
+                    "Success",
+                    "API credentials configured successfully!\n\nYou can now search for music."
+                )
+            else:
+                logger.warning("Some credentials still missing after save")
+
+        except Exception as e:
+            logger.error(f"Error reloading credentials: {e}")
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "Error",
+                f"Failed to reload credentials:\n{str(e)}"
+            )

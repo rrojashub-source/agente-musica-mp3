@@ -110,6 +110,9 @@ class MusicPlayerApp(QMainWindow):
 
     def _init_ui(self):
         """Initialize user interface"""
+        # Create menu bar
+        self._create_menu_bar()
+
         # Central widget with main layout
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -129,6 +132,73 @@ class MusicPlayerApp(QMainWindow):
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
         self.statusBar.showMessage("Ready")
+
+    def _create_menu_bar(self):
+        """Create application menu bar"""
+        menubar = self.menuBar()
+
+        # File menu
+        file_menu = menubar.addMenu("&File")
+
+        # Exit action
+        exit_action = file_menu.addAction("E&xit")
+        exit_action.setShortcut("Ctrl+Q")
+        exit_action.triggered.connect(self.close)
+
+        # Settings menu
+        settings_menu = menubar.addMenu("&Settings")
+
+        # API Settings action
+        api_settings_action = settings_menu.addAction("&API Configuration...")
+        api_settings_action.setShortcut("Ctrl+K")
+        api_settings_action.triggered.connect(self._show_api_settings)
+
+        # Help menu
+        help_menu = menubar.addMenu("&Help")
+
+        # About action
+        about_action = help_menu.addAction("&About")
+        about_action.triggered.connect(self._show_about)
+
+    def _show_api_settings(self):
+        """Show API settings dialog"""
+        from gui.dialogs.api_settings_dialog import APISettingsDialog
+
+        dialog = APISettingsDialog(self)
+
+        if dialog.exec():
+            logger.info("API settings updated")
+            self.statusBar.showMessage("API settings saved successfully", 3000)
+        else:
+            logger.info("API settings dialog cancelled")
+
+    def _show_about(self):
+        """Show about dialog"""
+        from PyQt6.QtWidgets import QMessageBox
+
+        about_text = """
+<h2>NEXUS Music Manager</h2>
+<p><b>Version:</b> 2.0 (Production)</p>
+<p><b>Phases:</b> 1-7 Complete</p>
+<br>
+<p>Modern music player with library management, search & download,
+audio playback, playlists, and visualizer.</p>
+<br>
+<p><b>Features:</b></p>
+<ul>
+<li>Library Management (10,000+ songs)</li>
+<li>Search & Download (YouTube + Spotify)</li>
+<li>Duplicate Detection</li>
+<li>Auto-Organize Folders</li>
+<li>Batch Rename</li>
+<li>Music Player with Visualizer</li>
+<li>Playlist Management</li>
+</ul>
+<br>
+<p><small>Built with Python, PyQt6, yt-dlp, and pygame</small></p>
+        """
+
+        QMessageBox.about(self, "About NEXUS Music Manager", about_text)
 
     def _create_top_section(self):
         """Create top section with Now Playing + Visualizer"""
