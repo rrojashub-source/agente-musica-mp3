@@ -100,12 +100,52 @@ class APITabWidget(QWidget):
         """)
         layout.addWidget(self.status_label)
 
-        # Instructions
-        instructions = QLabel(
-            f"<b>How to get {self.api_name} API key:</b><br>"
-            "Click 'Validate' to test your key with a real API call."
-        )
+        # Instructions (detailed guide)
+        if self.api_name == "YouTube":
+            instructions_text = """
+<b>📺 How to get YouTube API key:</b>
+<ol style="margin-left: -20px;">
+<li>Go to <a href="https://console.cloud.google.com/">Google Cloud Console</a></li>
+<li>Create a new project (or select existing)</li>
+<li>Enable "YouTube Data API v3"</li>
+<li>Go to "Credentials" → "Create Credentials" → "API Key"</li>
+<li>Copy the API key and paste it above</li>
+<li>Click "Validate" to test (makes a real API call)</li>
+</ol>
+<p><b>💡 Tip:</b> Free tier provides 10,000 units/day (≈ 100 searches)</p>
+<p><small>For detailed instructions, see Help → API Setup Guide (F1)</small></p>
+            """
+        elif self.api_name == "Genius":
+            instructions_text = """
+<b>🎤 How to get Genius API token:</b>
+<ol style="margin-left: -20px;">
+<li>Go to <a href="https://genius.com/api-clients">Genius API Clients</a></li>
+<li>Log in with your Genius account</li>
+<li>Create a new API client</li>
+<li>Copy the "Client Access Token"</li>
+<li>Paste it above and click "Validate"</li>
+</ol>
+<p><b>💡 Tip:</b> Free tier provides unlimited lyrics searches</p>
+<p><small>For detailed instructions, see Help → API Setup Guide (F1)</small></p>
+            """
+        else:
+            instructions_text = f"""
+<b>How to get {self.api_name} API key:</b><br>
+Click 'Validate' to test your key with a real API call.
+<p><small>For detailed instructions, see Help → API Setup Guide (F1)</small></p>
+            """
+
+        instructions = QLabel(instructions_text)
         instructions.setWordWrap(True)
+        instructions.setOpenExternalLinks(True)  # Enable clickable links
+        instructions.setStyleSheet("""
+            QLabel {
+                background-color: #f9f9f9;
+                padding: 15px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+            }
+        """)
         layout.addWidget(instructions)
 
         layout.addStretch()
@@ -285,15 +325,41 @@ class SpotifyTabWidget(QWidget):
         """)
         layout.addWidget(self.status_label)
 
-        # Instructions
-        instructions = QLabel(
-            "<b>How to get Spotify credentials:</b><br>"
-            "1. Go to <a href='https://developer.spotify.com/dashboard'>developer.spotify.com/dashboard</a><br>"
-            "2. Create an app<br>"
-            "3. Copy Client ID and Client Secret"
-        )
+        # Instructions (detailed guide)
+        instructions_text = """
+<b>🎵 How to get Spotify credentials:</b>
+<ol style="margin-left: -20px;">
+<li>Go to <a href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</a></li>
+<li>Log in with your Spotify account (free account works)</li>
+<li>Click "Create App"</li>
+<li>Fill in:
+    <ul>
+    <li>App Name: "NEXUS Music Manager"</li>
+    <li>App Description: "Personal music library"</li>
+    <li>Redirect URI: http://localhost:8888/callback</li>
+    <li>Check "Web API"</li>
+    </ul>
+</li>
+<li>Click "Settings" on your new app</li>
+<li>Copy "Client ID" and paste above</li>
+<li>Click "View client secret" and copy "Client Secret"</li>
+<li>Click "Validate" to test both credentials</li>
+</ol>
+<p><b>💡 Tip:</b> Free tier provides unlimited searches (rate limited)</p>
+<p><small>For detailed instructions, see Help → API Setup Guide (F1)</small></p>
+        """
+
+        instructions = QLabel(instructions_text)
         instructions.setWordWrap(True)
         instructions.setOpenExternalLinks(True)
+        instructions.setStyleSheet("""
+            QLabel {
+                background-color: #f9f9f9;
+                padding: 15px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+            }
+        """)
         layout.addWidget(instructions)
 
         layout.addStretch()
