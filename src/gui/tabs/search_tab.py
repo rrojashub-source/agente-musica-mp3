@@ -324,11 +324,26 @@ class SearchTab(QWidget):
         """
         if not self.selected_songs:
             logger.warning("No songs selected")
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "No Songs Selected",
+                "Please select songs first by double-clicking on them."
+            )
             return
 
         if not self.download_queue:
             logger.warning("No download queue available")
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.critical(
+                self,
+                "Download Queue Error",
+                "Download queue is not available. Please restart the application."
+            )
             return
+
+        # Count successful additions
+        added_count = 0
 
         # Add each song to download queue
         for song in self.selected_songs:
@@ -352,6 +367,7 @@ class SearchTab(QWidget):
                 )
 
                 logger.info(f"Added to queue: {song['title']}")
+                added_count += 1
 
             except Exception as e:
                 logger.error(f"Failed to add song to queue: {e}")
@@ -360,7 +376,24 @@ class SearchTab(QWidget):
         self.selected_songs = []
         self._update_selected_count()
 
-        logger.info(f"Added {len(self.selected_songs)} songs to download queue")
+        # Show confirmation
+        if added_count > 0:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.information(
+                self,
+                "Success",
+                f"Added {added_count} song(s) to download queue!\n\n"
+                f"Check the '📥 Queue' tab to see download progress."
+            )
+            logger.info(f"Added {added_count} songs to download queue")
+        else:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "No Songs Added",
+                "No songs were added to the queue.\n\n"
+                "Note: Spotify songs are not yet supported."
+            )
 
     def _show_missing_credentials_prompt(self):
         """
