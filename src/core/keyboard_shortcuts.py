@@ -17,7 +17,7 @@ Usage:
 import logging
 from PyQt6.QtCore import QObject, Qt, QEvent, pyqtSignal
 from PyQt6.QtWidgets import QLineEdit, QTextEdit, QPlainTextEdit
-from PyQt6.QtGui import QShortcut, QKeySequence
+from PyQt6.QtGui import QAction, QKeySequence
 
 logger = logging.getLogger(__name__)
 
@@ -47,42 +47,47 @@ class KeyboardShortcutManager(QObject):
     def __init__(self, parent=None):
         """Initialize keyboard shortcuts manager"""
         super().__init__(parent)
-        self._shortcuts = []  # Store QShortcut instances
+        self._actions = []  # Store QAction instances
         logger.info("KeyboardShortcutManager initialized")
 
     def setup_shortcuts(self, main_window):
         """
-        Setup application-wide shortcuts using QShortcut (high priority)
+        Setup application-wide shortcuts using QAction (high priority)
 
         Args:
-            main_window: Main window widget to attach shortcuts to
+            main_window: Main window widget to attach actions to
 
-        Note: QShortcut has ApplicationShortcut context by default,
-              which means it works globally and cannot be blocked by widgets
+        Note: QAction shortcuts are more robust than QShortcut for arrow keys
+              and work reliably even when tables/lists have focus
         """
-        # Seek shortcuts (high priority - not blockable by tables/lists)
-        seek_left = QShortcut(QKeySequence(Qt.Key.Key_Left), main_window)
-        seek_left.activated.connect(lambda: self._on_seek_left_activated())
-        seek_left.setContext(Qt.ShortcutContext.ApplicationShortcut)
-        self._shortcuts.append(seek_left)
-        logger.debug(f"Seek left shortcut created: {seek_left.key().toString()}")
+        # Seek Left (←)
+        seek_left_action = QAction("Seek Backward", main_window)
+        seek_left_action.setShortcut(QKeySequence(Qt.Key.Key_Left))
+        seek_left_action.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
+        seek_left_action.triggered.connect(lambda: self._on_seek_left_activated())
+        main_window.addAction(seek_left_action)
+        self._actions.append(seek_left_action)
+        logger.info(f"Seek left action created: {seek_left_action.shortcut().toString()}")
 
-        seek_right = QShortcut(QKeySequence(Qt.Key.Key_Right), main_window)
-        seek_right.activated.connect(lambda: self._on_seek_right_activated())
-        seek_right.setContext(Qt.ShortcutContext.ApplicationShortcut)
-        self._shortcuts.append(seek_right)
-        logger.debug(f"Seek right shortcut created: {seek_right.key().toString()}")
+        # Seek Right (→)
+        seek_right_action = QAction("Seek Forward", main_window)
+        seek_right_action.setShortcut(QKeySequence(Qt.Key.Key_Right))
+        seek_right_action.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
+        seek_right_action.triggered.connect(lambda: self._on_seek_right_activated())
+        main_window.addAction(seek_right_action)
+        self._actions.append(seek_right_action)
+        logger.info(f"Seek right action created: {seek_right_action.shortcut().toString()}")
 
-        logger.info("QShortcut-based shortcuts configured (Left/Right seek)")
+        logger.info("QAction-based shortcuts configured (Left/Right seek)")
 
     def _on_seek_left_activated(self):
         """Handle Left arrow shortcut activation"""
-        logger.debug("QShortcut: Left Arrow activated (Seek -5s)")
+        logger.info("ACTION: Left Arrow activated (Seek -5s)")
         self.seek_backward_requested.emit(5)
 
     def _on_seek_right_activated(self):
         """Handle Right arrow shortcut activation"""
-        logger.debug("QShortcut: Right Arrow activated (Seek +5s)")
+        logger.info("ACTION: Right Arrow activated (Seek +5s)")
         self.seek_forward_requested.emit(5)
 
     def eventFilter(self, obj, event):
