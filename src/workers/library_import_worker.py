@@ -28,7 +28,7 @@ def extract_metadata(file_path: str) -> Optional[Dict]:
     Extract metadata from MP3 file using mutagen
 
     Args:
-        file_path: Absolute path to MP3 file
+        file_path: Absolute path to MP3 file (should be normalized before calling)
 
     Returns:
         Dictionary with song metadata, or None if extraction fails
@@ -42,25 +42,28 @@ def extract_metadata(file_path: str) -> Optional[Dict]:
         - duration (int): Duration in seconds
         - bitrate (int): Bitrate in bps
         - sample_rate (int): Sample rate in Hz
-        - file_path (str): Absolute file path
+        - file_path (str): Normalized absolute file path
         - file_size (int): File size in bytes
     """
     try:
         from mutagen.mp3 import MP3
         from mutagen.id3 import ID3
 
+        # Normalize path to canonical format (absolute, resolved symlinks, correct separators)
+        normalized_path = str(Path(file_path).resolve())
+
         # Check file exists
-        if not os.path.exists(file_path):
-            logger.error(f"File not found: {file_path}")
+        if not os.path.exists(normalized_path):
+            logger.error(f"File not found: {normalized_path}")
             return None
 
         # Read audio info
-        audio = MP3(file_path)
+        audio = MP3(normalized_path)
 
         # Read ID3 tags
-        tags = ID3(file_path)
+        tags = ID3(normalized_path)
 
-        # Extract metadata with defaults
+        # Extract metadata with defaults (IMPORTANT: Use normalized_path for storage)
         song_data = {
             'title': str(tags.get('TIT2', 'Unknown')),
             'artist': str(tags.get('TPE1', 'Unknown Artist')),
@@ -70,8 +73,8 @@ def extract_metadata(file_path: str) -> Optional[Dict]:
             'duration': int(audio.info.length),
             'bitrate': audio.info.bitrate,
             'sample_rate': audio.info.sample_rate,
-            'file_path': file_path,
-            'file_size': os.path.getsize(file_path)
+            'file_path': normalized_path,  # Store normalized path
+            'file_size': os.path.getsize(normalized_path)
         }
 
         # Parse year from TDRC tag (handles various formats)
@@ -86,12 +89,12 @@ def extract_metadata(file_path: str) -> Optional[Dict]:
 
         # Clean up "Unknown" to None for optional fields
         if song_data['title'] == 'Unknown':
-            song_data['title'] = Path(file_path).stem  # Use filename as fallback
+            song_data['title'] = Path(normalized_path).stem  # Use filename as fallback
 
         return song_data
 
     except Exception as e:
-        logger.error(f"Failed to extract metadata from {file_path}: {e}")
+        logger.error(f"Failed to extract metadata from {normalized_path}: {e}")
         return None
 
 
@@ -251,18 +254,28 @@ class LibraryImportWorker(QThread):
             - skipped_count if duplicate
             - failed_count if error
         """
-        # Check if already imported
-        if self.db_manager.song_exists(file_path):
-            self.skipped_count += 1
-            logger.debug(f"Skipping duplicate: {file_path}")
+        # CRITICAL: Normalize path to canonical format before processing
+        # This ensures duplicate detection works across different path formats
+        # (forward/backward slashes, relative/absolute, case variations)
+        try:
+            normalized_path = str(Path(file_path).resolve())
+        except Exception as e:
+            logger.error(f"Failed to normalize path {file_path}: {e}")
+            self.failed_count += 1
             return
 
-        # Extract metadata
-        metadata = extract_metadata(file_path)
+        # Check if already imported (using normalized path)
+        if self.db_manager.song_exists(normalized_path):
+            self.skipped_count += 1
+            logger.debug(f"Skipping duplicate: {normalized_path}")
+            return
+
+        # Extract metadata (pass NORMALIZED path)
+        metadata = extract_metadata(normalized_path)
 
         if metadata is None:
             self.failed_count += 1
-            error_msg = f"Could not extract metadata: {file_path}"
+            error_msg = f"Could not extract metadata: {normalized_path}"
             self.errors.append(error_msg)
             logger.warning(error_msg)
             return

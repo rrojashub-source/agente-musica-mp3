@@ -220,12 +220,10 @@ class DatabaseManager:
 
         Returns:
             Song ID if successful, None if duplicate file_path
-        """
-        # Check for duplicate file_path
-        if self.song_exists(song_data.get('file_path', '')):
-            logger.warning(f"Song already exists: {song_data.get('file_path')}")
-            return None
 
+        Note: file_path should already be normalized before calling this method
+              (done by extract_metadata in import worker)
+        """
         # Extract fields with defaults
         title = song_data.get('title', 'Unknown')
         artist = song_data.get('artist')
@@ -241,6 +239,11 @@ class DatabaseManager:
         # Validate required fields
         if not file_path:
             logger.error("Cannot add song without file_path")
+            return None
+
+        # Check for duplicate file_path (song_exists() will normalize internally)
+        if self.song_exists(file_path):
+            logger.warning(f"Song already exists: {file_path}")
             return None
 
         try:
@@ -303,16 +306,26 @@ class DatabaseManager:
         Check if song with file_path already exists
 
         Args:
-            file_path: Absolute file path
+            file_path: Absolute file path (will be normalized before checking)
 
         Returns:
             True if exists, False otherwise
+
+        Note: Path normalization ensures duplicate detection works across
+              different path formats (forward/back slashes, relative/absolute)
         """
         if not file_path:
             return False
 
+        # Normalize path for consistent comparison
+        try:
+            normalized_path = str(Path(file_path).resolve())
+        except Exception as e:
+            logger.error(f"Failed to normalize path {file_path}: {e}")
+            return False
+
         sql = "SELECT id FROM songs WHERE file_path = ?"
-        result = self.fetch_one(sql, (file_path,))
+        result = self.fetch_one(sql, (normalized_path,))
         return result is not None
 
     def update_song(self, song_id: int, updates: Dict[str, Any]) -> bool:

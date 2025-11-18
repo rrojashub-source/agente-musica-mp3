@@ -87,6 +87,50 @@ def test_add_song_duplicate_file_path_fails(temp_db, sample_song_data):
     assert song_id2 is None
 
 
+def test_path_normalization_detects_duplicates(temp_db):
+    """
+    Test that path normalization prevents duplicates with different path formats
+
+    Bug fix for: Import allowed duplicates (IDs 630-941 = duplicates of 1-310)
+    Root cause: Paths stored in different formats not detected as duplicates
+    """
+    # Create a temporary file to test with real paths
+    with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as f:
+        real_path = f.name
+
+    try:
+        # Add song with absolute normalized path (Windows format)
+        song_data_1 = {
+            'title': 'Test Song',
+            'file_path': str(Path(real_path).resolve())  # Normalized absolute path
+        }
+        song_id1 = temp_db.add_song(song_data_1)
+        assert song_id1 is not None
+
+        # Try to add same file but with different path format
+        # Path.resolve() normalizes to absolute path with correct separators
+        song_data_2 = {
+            'title': 'Test Song Duplicate',
+            'file_path': real_path  # May have different format (relative, forward slashes, etc.)
+        }
+
+        # song_exists() should normalize and detect as duplicate
+        assert temp_db.song_exists(real_path) is True
+
+        # add_song() should reject as duplicate
+        song_id2 = temp_db.add_song(song_data_2)
+        assert song_id2 is None, "Should reject duplicate even with different path format"
+
+        # Verify only one song was added
+        count = temp_db.get_song_count()
+        assert count == 1, "Should have only 1 song, not 2 duplicates"
+
+    finally:
+        # Cleanup
+        if os.path.exists(real_path):
+            os.remove(real_path)
+
+
 def test_add_song_stores_all_fields(temp_db, sample_song_data):
     """Test all fields are stored correctly"""
     song_id = temp_db.add_song(sample_song_data)
