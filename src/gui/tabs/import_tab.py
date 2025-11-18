@@ -65,7 +65,8 @@ class ImportTab(QWidget):
             "Import MP3 files from a folder into your library.\n"
             "The importer will read ID3 tags and audio metadata automatically."
         )
-        info_label.setStyleSheet("color: #666; margin-bottom: 10px;")
+        info_label.setStyleSheet("margin-bottom: 10px;")
+        info_label.setProperty("class", "secondary")  # Use theme color
         layout.addWidget(info_label)
 
         # === FOLDER SELECTION ===
@@ -111,7 +112,7 @@ class ImportTab(QWidget):
         layout.addWidget(self.progress_bar)
 
         self.status_label = QLabel("Ready to import")
-        self.status_label.setStyleSheet("color: #666;")
+        self.status_label.setProperty("class", "secondary")  # Use theme color
         layout.addWidget(self.status_label)
 
         # === RESULTS ===

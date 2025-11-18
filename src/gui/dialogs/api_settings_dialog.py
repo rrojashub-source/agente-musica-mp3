@@ -17,7 +17,7 @@ Date: November 13, 2025
 """
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget,
-    QWidget, QLineEdit, QPushButton, QLabel, QGroupBox, QApplication
+    QWidget, QLineEdit, QPushButton, QLabel, QGroupBox, QApplication, QFrame
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 import keyring
@@ -95,9 +95,9 @@ class APITabWidget(QWidget):
             QLabel {
                 padding: 10px;
                 border-radius: 5px;
-                background-color: #f0f0f0;
             }
         """)
+        self.status_label.setProperty("class", "secondary")  # Use theme color
         layout.addWidget(self.status_label)
 
         # Instructions (detailed guide)
@@ -140,12 +140,11 @@ Click 'Validate' to test your key with a real API call.
         instructions.setOpenExternalLinks(True)  # Enable clickable links
         instructions.setStyleSheet("""
             QLabel {
-                background-color: #f9f9f9;
                 padding: 15px;
-                border: 1px solid #ddd;
                 border-radius: 5px;
             }
         """)
+        instructions.setFrameStyle(QFrame.Shape.StyledPanel)  # Use themed border
         layout.addWidget(instructions)
 
         layout.addStretch()
@@ -320,9 +319,9 @@ class SpotifyTabWidget(QWidget):
             QLabel {
                 padding: 10px;
                 border-radius: 5px;
-                background-color: #f0f0f0;
             }
         """)
+        self.status_label.setProperty("class", "secondary")  # Use theme color
         layout.addWidget(self.status_label)
 
         # Instructions (detailed guide)
@@ -354,12 +353,11 @@ class SpotifyTabWidget(QWidget):
         instructions.setOpenExternalLinks(True)
         instructions.setStyleSheet("""
             QLabel {
-                background-color: #f9f9f9;
                 padding: 15px;
-                border: 1px solid #ddd;
                 border-radius: 5px;
             }
         """)
+        instructions.setFrameStyle(QFrame.Shape.StyledPanel)  # Use themed border
         layout.addWidget(instructions)
 
         layout.addStretch()

@@ -76,7 +76,8 @@ class LibraryTab(QWidget):
         header_layout.addWidget(title_label)
 
         self.count_label = QLabel("0 songs")
-        self.count_label.setStyleSheet("font-size: 12px; color: #666;")
+        self.count_label.setStyleSheet("font-size: 12px;")
+        self.count_label.setProperty("class", "secondary")  # Use theme color
         header_layout.addWidget(self.count_label)
 
         header_layout.addStretch()
@@ -121,7 +122,8 @@ class LibraryTab(QWidget):
         buttons_layout.addStretch()
 
         self.status_label = QLabel("No song selected")
-        self.status_label.setStyleSheet("font-size: 12px; color: #666;")
+        self.status_label.setStyleSheet("font-size: 12px;")
+        self.status_label.setProperty("class", "secondary")  # Use theme color
         buttons_layout.addWidget(self.status_label)
 
         layout.addLayout(buttons_layout)
