@@ -115,10 +115,10 @@ class LyricsTab(QWidget):
         self.status_label.setStyleSheet("""
             QLabel {
                 font-size: 10pt;
-                color: #888;
                 padding: 2px;
             }
         """)
+        self.status_label.setProperty("class", "secondary")  # Use theme color
         header_layout.addWidget(self.status_label)
 
         header_frame.setLayout(header_layout)
@@ -138,12 +138,9 @@ class LyricsTab(QWidget):
             font = QFont("Courier New", 11)
         self.lyrics_text.setFont(font)
 
-        # Styling
+        # Let theme handle colors, only set padding
         self.lyrics_text.setStyleSheet("""
             QTextEdit {
-                background-color: #f5f5f5;
-                border: 1px solid #ccc;
-                border-radius: 5px;
                 padding: 15px;
                 line-height: 1.6;
             }
@@ -164,12 +161,6 @@ class LyricsTab(QWidget):
                 font-size: 10pt;
                 border-radius: 4px;
             }
-            QPushButton:hover {
-                background-color: #e0e0e0;
-            }
-            QPushButton:disabled {
-                color: #999;
-            }
         """)
         controls_layout.addWidget(self.search_button)
 
@@ -183,12 +174,6 @@ class LyricsTab(QWidget):
                 padding: 8px 16px;
                 font-size: 10pt;
                 border-radius: 4px;
-            }
-            QPushButton:hover {
-                background-color: #e0e0e0;
-            }
-            QPushButton:disabled {
-                color: #999;
             }
         """)
         controls_layout.addWidget(self.copy_button)

@@ -61,7 +61,7 @@ class VisualizerWidget(QWidget):
 
         # Widget settings
         self.setMinimumSize(200, 100)
-        self.setStyleSheet("background-color: #1e1e1e;")
+        # Let theme handle background color
 
         logger.info("VisualizerWidget initialized")
 

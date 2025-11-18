@@ -92,7 +92,7 @@ class NowPlayingWidget(QWidget):
         self.album_art_label = QLabel()
         self.album_art_label.setFixedSize(100, 100)
         self.album_art_label.setFrameStyle(QFrame.Shape.Box)
-        self.album_art_label.setStyleSheet("background-color: #333; color: #fff;")
+        # Let theme handle colors
         self.album_art_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.album_art_label.setText("♪")  # Placeholder
         top_layout.addWidget(self.album_art_label)
@@ -105,11 +105,13 @@ class NowPlayingWidget(QWidget):
         info_layout.addWidget(self.title_label)
 
         self.artist_label = QLabel("Artist")
-        self.artist_label.setStyleSheet("font-size: 12px; color: #666;")
+        self.artist_label.setStyleSheet("font-size: 12px;")
+        self.artist_label.setProperty("class", "secondary")  # Use theme color
         info_layout.addWidget(self.artist_label)
 
         self.album_label = QLabel("Album")
-        self.album_label.setStyleSheet("font-size: 12px; color: #666;")
+        self.album_label.setStyleSheet("font-size: 12px;")
+        self.album_label.setProperty("class", "secondary")  # Use theme color
         info_layout.addWidget(self.album_label)
 
         info_layout.addStretch()

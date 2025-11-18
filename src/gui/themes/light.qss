@@ -415,3 +415,22 @@ QMessageBox {
 QMessageBox QLabel {
     color: #000000;
 }
+
+/* ===== Text Edit (Lyrics, Multi-line text) ===== */
+QTextEdit {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #cccccc;
+    border-radius: 5px;
+    selection-background-color: #e3f2fd;
+    selection-color: #000000;
+}
+
+QTextEdit:focus {
+    border: 1px solid #0078d4;
+}
+
+QTextEdit:disabled {
+    background-color: #f5f5f5;
+    color: #999999;
+}
