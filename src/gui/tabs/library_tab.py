@@ -96,14 +96,20 @@ class LibraryTab(QWidget):
         self.library_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.library_table.setSortingEnabled(True)
 
-        # Column widths
+        # Column widths - All columns manually resizable
         header = self.library_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)  # Title
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # Artist
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # Album
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # Genre
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # Year
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # Duration
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)  # All columns resizable
+
+        # Set initial default widths (user can adjust)
+        header.resizeSection(0, 250)  # Title
+        header.resizeSection(1, 150)  # Artist
+        header.resizeSection(2, 150)  # Album
+        header.resizeSection(3, 100)  # Genre
+        header.resizeSection(4, 60)   # Year
+        header.resizeSection(5, 80)   # Duration
+
+        # Last column stretches to fill remaining space
+        header.setStretchLastSection(True)
 
         layout.addWidget(self.library_table)
 
