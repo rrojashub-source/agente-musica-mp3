@@ -42,7 +42,7 @@ class DownloadQueue(QObject):
     item_failed = pyqtSignal(str, str)      # item_id, error
     queue_completed = pyqtSignal()          # All items done
 
-    def __init__(self, max_concurrent=50, max_retries=3, db_manager=None):
+    def __init__(self, max_concurrent=50, max_retries=3, db_manager=None, config_manager=None):
         """
         Initialize download queue
 
@@ -50,12 +50,14 @@ class DownloadQueue(QObject):
             max_concurrent (int): Maximum simultaneous downloads (default: 50)
             max_retries (int): Maximum retry attempts for failed downloads (default: 3)
             db_manager (DatabaseManager): Database manager for auto-import (optional)
+            config_manager (ConfigManager): Configuration manager for download directory (optional)
         """
         super().__init__()
 
         self.max_concurrent = max_concurrent
         self.max_retries = max_retries
         self.db_manager = db_manager
+        self.config_manager = config_manager
         self._items = {}  # item_id -> item_dict
         self._workers = {}  # item_id -> DownloadWorker
         self._running = False
@@ -508,9 +510,16 @@ class DownloadQueue(QObject):
         """
         item_id = item['id']
 
+        # Get download directory from config (or use fallback)
+        if self.config_manager:
+            download_dir = Path(self.config_manager.get_download_directory())
+        else:
+            # Fallback to downloads/ in current directory
+            download_dir = Path.cwd() / "downloads"
+            logger.warning("No config_manager provided, using fallback downloads/ directory")
+
         # Create output path
-        # For now, use a simple path (can be customized later)
-        output_path = Path(f"downloads/{item['metadata'].get('title', item_id)}.mp3")
+        output_path = download_dir / f"{item['metadata'].get('title', item_id)}.mp3"
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Create worker

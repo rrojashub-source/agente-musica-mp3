@@ -47,6 +47,7 @@ from core.waveform_extractor import WaveformExtractor
 from core.download_queue import DownloadQueue
 from core.theme_manager import ThemeManager
 from core.keyboard_shortcuts import KeyboardShortcutManager
+from config_manager import ConfigManager
 
 # Import API clients
 from api.genius_client import GeniusClient
@@ -104,11 +105,16 @@ class MusicPlayerApp(QMainWindow):
         self.waveform_extractor = WaveformExtractor()
         logger.info("Waveform extractor initialized")
 
-        # Initialize download queue (with database integration)
+        # Initialize configuration manager
+        self.config_manager = ConfigManager()
+        logger.info("Configuration manager initialized")
+
+        # Initialize download queue (with database and config integration)
         self.download_queue = DownloadQueue(
             max_concurrent=50,
             max_retries=3,
-            db_manager=self.db_manager  # Pass database for auto-import
+            db_manager=self.db_manager,  # Pass database for auto-import
+            config_manager=self.config_manager  # Pass config for download directory
         )
         self.download_queue.start()  # Start processing downloads
         logger.info("Download queue initialized")
