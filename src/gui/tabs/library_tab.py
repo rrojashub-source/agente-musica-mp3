@@ -93,7 +93,7 @@ class LibraryTab(QWidget):
         # Table settings
         self.library_table.setAlternatingRowColors(True)
         self.library_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.library_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.library_table.setSelectionMode(QTableWidget.SelectionMode.ExtendedSelection)  # Multi-selection enabled
         self.library_table.setSortingEnabled(True)
 
         # Context menu (right-click)
@@ -492,83 +492,139 @@ class LibraryTab(QWidget):
         Args:
             position: Mouse position relative to table
         """
-        # Get selected row
-        selected_rows = self.library_table.selectedIndexes()
-        if not selected_rows:
+        # Get selected rows (unique row numbers)
+        selected_indexes = self.library_table.selectedIndexes()
+        if not selected_indexes:
             return  # No row selected
 
-        row = selected_rows[0].row()
+        # Get unique row numbers (each row has 6 columns, so we get duplicates)
+        selected_rows = sorted(set(index.row() for index in selected_indexes))
 
-        # Get song data
-        title_item = self.library_table.item(row, 0)
-        if not title_item:
+        # Get song data for all selected rows
+        songs_to_delete = []
+        for row in selected_rows:
+            title_item = self.library_table.item(row, 0)
+            if not title_item:
+                continue
+
+            song_id = title_item.data(Qt.ItemDataRole.UserRole)
+            title = title_item.text()
+            artist = self.library_table.item(row, 1).text() if self.library_table.item(row, 1) else "Unknown"
+
+            songs_to_delete.append({
+                'id': song_id,
+                'title': title,
+                'artist': artist,
+                'row': row
+            })
+
+        if not songs_to_delete:
             return
-
-        song_id = title_item.data(Qt.ItemDataRole.UserRole)
-        title = title_item.text()
-        artist = self.library_table.item(row, 1).text() if self.library_table.item(row, 1) else "Unknown"
 
         # Create context menu
         menu = QMenu(self)
 
-        # Delete action
-        delete_action = menu.addAction("🗑️ Delete Song")
-        delete_action.setStatusTip(f"Delete '{title}' from library")
+        # Delete action (singular or plural)
+        if len(songs_to_delete) == 1:
+            delete_text = "🗑️ Delete Song"
+            status_tip = f"Delete '{songs_to_delete[0]['title']}' from library"
+        else:
+            delete_text = f"🗑️ Delete {len(songs_to_delete)} Songs"
+            status_tip = f"Delete {len(songs_to_delete)} selected songs from library"
+
+        delete_action = menu.addAction(delete_text)
+        delete_action.setStatusTip(status_tip)
 
         # Show menu and get action
         action = menu.exec(self.library_table.viewport().mapToGlobal(position))
 
         # Handle action
         if action == delete_action:
-            self._delete_selected_song(song_id, title, artist, row)
+            self._delete_selected_songs(songs_to_delete)
 
-    def _delete_selected_song(self, song_id: int, title: str, artist: str, row: int):
+    def _delete_selected_songs(self, songs: list):
         """
-        Delete selected song from database
+        Delete selected songs from database (supports single or multiple songs)
 
         Args:
-            song_id: Song ID to delete
-            title: Song title (for confirmation)
-            artist: Artist name (for confirmation)
-            row: Row index in table (for removal after deletion)
+            songs: List of song dicts with keys: id, title, artist, row
         """
+        if not songs:
+            return
+
+        # Build confirmation message
+        if len(songs) == 1:
+            # Single song confirmation
+            song = songs[0]
+            message = (
+                f"Are you sure you want to delete this song from the library?\n\n"
+                f"Title: {song['title']}\n"
+                f"Artist: {song['artist']}\n\n"
+                f"Note: This will only remove the song from the library database.\n"
+                f"The MP3 file will remain on your disk."
+            )
+            title = "Delete Song"
+        else:
+            # Multiple songs confirmation
+            message = (
+                f"Are you sure you want to delete {len(songs)} songs from the library?\n\n"
+                f"First 5 songs:\n"
+            )
+            for song in songs[:5]:
+                message += f"  • {song['title']} - {song['artist']}\n"
+
+            if len(songs) > 5:
+                message += f"  ... and {len(songs) - 5} more\n"
+
+            message += (
+                f"\nNote: This will only remove songs from the library database.\n"
+                f"The MP3 files will remain on your disk."
+            )
+            title = f"Delete {len(songs)} Songs"
+
         # Confirm deletion
         reply = QMessageBox.question(
             self,
-            "Delete Song",
-            f"Are you sure you want to delete this song from the library?\n\n"
-            f"Title: {title}\n"
-            f"Artist: {artist}\n\n"
-            f"Note: This will only remove the song from the library database.\n"
-            f"The MP3 file will remain on your disk.",
+            title,
+            message,
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No  # Default to No for safety
         )
 
         if reply == QMessageBox.StandardButton.No:
-            logger.info(f"Delete canceled by user: {title}")
+            logger.info(f"Delete canceled by user ({len(songs)} songs)")
             return
 
-        # Delete from database
+        # Delete from database (batch delete)
         try:
             cursor = self.db_manager.conn.cursor()
-            cursor.execute("DELETE FROM songs WHERE id = ?", (song_id,))
+            song_ids = [song['id'] for song in songs]
+
+            # Batch delete using IN clause
+            placeholders = ','.join('?' * len(song_ids))
+            cursor.execute(f"DELETE FROM songs WHERE id IN ({placeholders})", song_ids)
             self.db_manager.conn.commit()
 
-            logger.info(f"Deleted song from database: {song_id} - {title} by {artist}")
+            logger.info(f"Deleted {len(songs)} songs from database")
 
-            # Remove row from table
-            self.library_table.removeRow(row)
+            # Remove rows from table (in reverse order to avoid index issues)
+            rows_to_remove = sorted([song['row'] for song in songs], reverse=True)
+            for row in rows_to_remove:
+                self.library_table.removeRow(row)
 
             # Update count label
             song_count = self.library_table.rowCount()
             self.count_label.setText(f"{song_count} songs")
 
             # Update status
-            self.status_label.setText(f"Deleted: {title}")
+            if len(songs) == 1:
+                self.status_label.setText(f"Deleted: {songs[0]['title']}")
+            else:
+                self.status_label.setText(f"Deleted {len(songs)} songs")
 
-            # If deleted song was playing, stop playback
-            if self._current_song_id == song_id:
+            # If any deleted song was playing, stop playback
+            deleted_ids = set(song['id'] for song in songs)
+            if self._current_song_id in deleted_ids:
                 logger.info("Deleted song was playing, stopping playback")
                 if self.audio_player:
                     self.audio_player.stop()
@@ -577,14 +633,14 @@ class LibraryTab(QWidget):
                 if self.now_playing_widget:
                     self.now_playing_widget.clear()
 
-            logger.info(f"Successfully deleted song: {title}")
+            logger.info(f"Successfully deleted {len(songs)} songs")
 
         except Exception as e:
-            logger.error(f"Failed to delete song {song_id}: {e}", exc_info=True)
+            logger.error(f"Failed to delete {len(songs)} songs: {e}", exc_info=True)
             QMessageBox.critical(
                 self,
                 "Delete Failed",
-                f"Failed to delete song from database:\n{e}"
+                f"Failed to delete songs from database:\n{e}"
             )
 
     def cleanup(self):
