@@ -48,9 +48,16 @@ from core.download_queue import DownloadQueue
 from core.theme_manager import ThemeManager
 from core.keyboard_shortcuts import KeyboardShortcutManager
 
+# Import API clients
+from api.genius_client import GeniusClient
+
+# Import utilities
+import keyring
+
 # Import GUI tabs
 from gui.tabs.library_tab import LibraryTab
 from gui.tabs.search_tab import SearchTab
+from gui.tabs.lyrics_tab import LyricsTab
 from gui.tabs.import_tab import ImportTab
 from gui.tabs.duplicates_tab import DuplicatesTab
 from gui.tabs.organize_tab import OrganizeTab
@@ -114,6 +121,19 @@ class MusicPlayerApp(QMainWindow):
         self.shortcuts_manager = KeyboardShortcutManager()
         QApplication.instance().installEventFilter(self.shortcuts_manager)
         logger.info("Keyboard shortcuts manager initialized")
+
+        # Initialize Genius API client (optional - for lyrics)
+        try:
+            genius_token = keyring.get_password("nexus_music", "genius_token")
+            if genius_token:
+                self.genius_client = GeniusClient(genius_token)
+                logger.info("Genius client initialized")
+            else:
+                self.genius_client = None
+                logger.info("Genius API token not found (lyrics disabled)")
+        except Exception as e:
+            logger.error(f"Failed to initialize Genius client: {e}")
+            self.genius_client = None
 
         # Setup UI
         self._init_ui()
@@ -419,6 +439,10 @@ and are never shared or transmitted outside of official API requests to YouTube 
         )
         self.now_playing.song_loaded.connect(self._on_song_loaded)
 
+        # Connect metadata signal for lyrics (Feature #2)
+        if hasattr(self, 'lyrics_tab'):
+            self.now_playing.song_metadata_changed.connect(self.lyrics_tab.on_song_changed)
+
         return top_widget
 
     def _create_middle_section(self):
@@ -466,7 +490,16 @@ and are never shared or transmitted outside of official API requests to YouTube 
             logger.error(f"Failed to load Search tab: {e}")
             self.tabs.addTab(QWidget(), "🔍 Search (Error)")
 
-        # Tab 3: Import Library (NEW - Library Import Feature)
+        # Tab 3: Lyrics (Feature #2)
+        try:
+            self.lyrics_tab = LyricsTab(self.genius_client)
+            self.tabs.addTab(self.lyrics_tab, "📝 Lyrics")
+            logger.info("Lyrics tab loaded")
+        except Exception as e:
+            logger.error(f"Failed to load Lyrics tab: {e}")
+            self.tabs.addTab(QWidget(), "📝 Lyrics (Error)")
+
+        # Tab 4: Import Library (NEW - Library Import Feature)
         try:
             self.import_tab = ImportTab(self.db_manager)
             self.tabs.addTab(self.import_tab, "📥 Import Library")
