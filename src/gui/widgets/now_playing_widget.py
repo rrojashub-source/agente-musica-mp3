@@ -58,6 +58,7 @@ class NowPlayingWidget(QWidget):
     volume_changed = pyqtSignal(float)
     position_changed = pyqtSignal(float)  # Emits current position in seconds
     song_loaded = pyqtSignal(str)  # Emits file_path when new song loaded
+    song_metadata_changed = pyqtSignal(dict)  # Emits full song_info (for lyrics, stats, etc.)
 
     def __init__(self, audio_player=None):
         """
@@ -254,6 +255,9 @@ class NowPlayingWidget(QWidget):
         file_path = song_info.get('file_path')
         if file_path:
             self.song_loaded.emit(file_path)
+
+        # Emit signal for lyrics, statistics, and other metadata-based features
+        self.song_metadata_changed.emit(song_info)
 
     def _on_play_clicked(self):
         """Handle play/pause button click"""
