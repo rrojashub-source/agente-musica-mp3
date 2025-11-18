@@ -393,18 +393,24 @@ class LibraryTab(QWidget):
         Args:
             row: Row index to highlight
         """
-        # Clear previous highlight
+        from PyQt6.QtGui import QBrush
+
+        # Clear previous highlight (reset to default)
         for r in range(self.library_table.rowCount()):
             for c in range(self.library_table.columnCount()):
                 item = self.library_table.item(r, c)
                 if item:
-                    item.setBackground(QColor(255, 255, 255))  # White
+                    # Reset to default (let theme handle it)
+                    item.setData(Qt.ItemDataRole.BackgroundRole, None)
 
-        # Highlight current row
+        # Highlight current row with theme-aware color
+        palette = self.library_table.palette()
+        highlight_color = palette.color(palette.ColorRole.Highlight)
+
         for c in range(self.library_table.columnCount()):
             item = self.library_table.item(row, c)
             if item:
-                item.setBackground(QColor(200, 255, 200))  # Light green
+                item.setBackground(highlight_color)
 
     def _format_duration(self, seconds: float) -> str:
         """
