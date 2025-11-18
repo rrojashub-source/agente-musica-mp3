@@ -143,12 +143,17 @@ class TestAudioPlayer(unittest.TestCase):
         # Simulate file loaded
         self.player._current_file = "/path/to/test.mp3"
 
-        # Mock pygame.mixer.music.set_pos
-        with patch('pygame.mixer.music.set_pos') as mock_set_pos:
+        # Mock pygame.mixer.music methods (seek uses stop, load, play)
+        with patch('pygame.mixer.music.stop') as mock_stop, \
+             patch('pygame.mixer.music.load') as mock_load, \
+             patch('pygame.mixer.music.play') as mock_play, \
+             patch('pygame.mixer.music.get_busy', return_value=False):
             self.player.seek(30.0)  # Seek to 30 seconds
 
-            # Should call pygame set_pos
-            mock_set_pos.assert_called_once_with(30.0)
+            # Should call stop, reload, and play with start parameter
+            mock_stop.assert_called_once()
+            mock_load.assert_called_once_with("/path/to/test.mp3")
+            mock_play.assert_called_once_with(start=30.0)
 
     def test_08_player_gets_current_position(self):
         """Test get current position"""

@@ -62,6 +62,7 @@ class AudioPlayer:
         self._duration = 0.0
         self._state = PlaybackState.STOPPED
         self._start_time = 0.0
+        self._paused_position = 0.0  # Track position when paused
 
         # Initialize pygame.mixer
         try:
@@ -139,9 +140,13 @@ class AudioPlayer:
             return
 
         try:
+            # Save current position before pausing
+            if self._state == PlaybackState.PLAYING:
+                self._paused_position = self.get_position()
+
             self._pygame.mixer.music.pause()
             self._state = PlaybackState.PAUSED
-            logger.debug("Playback paused")
+            logger.debug(f"Playback paused at {self._paused_position:.2f}s")
         except Exception as e:
             logger.error(f"Failed to pause: {e}")
 
@@ -165,6 +170,7 @@ class AudioPlayer:
         try:
             self._pygame.mixer.music.stop()
             self._state = PlaybackState.STOPPED
+            self._paused_position = 0.0  # Reset position
             logger.debug("Playback stopped")
         except Exception as e:
             logger.error(f"Failed to stop: {e}")
@@ -202,6 +208,7 @@ class AudioPlayer:
             if was_paused or not was_playing:
                 self._pygame.mixer.music.pause()
                 self._state = PlaybackState.PAUSED
+                self._paused_position = position  # Save new paused position
 
             logger.debug(f"Seeked to {position:.2f}s (using play start)")
         except Exception as e:
@@ -214,9 +221,18 @@ class AudioPlayer:
         Returns:
             Current position in seconds
         """
-        if not self._pygame or self._state != PlaybackState.PLAYING:
+        if not self._pygame:
             return 0.0
 
+        # If paused, return the saved paused position
+        if self._state == PlaybackState.PAUSED:
+            return self._paused_position
+
+        # If stopped, return 0
+        if self._state == PlaybackState.STOPPED:
+            return 0.0
+
+        # If playing, get current position from pygame
         try:
             # pygame.mixer.music.get_pos() returns milliseconds since start
             pos_ms = self._pygame.mixer.music.get_pos()

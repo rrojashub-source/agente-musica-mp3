@@ -655,9 +655,19 @@ and are never shared or transmitted outside of official API requests to YouTube 
             new_volume = max(0.0, min(1.0, current + (delta / 100.0)))
             self.audio_player.set_volume(new_volume)
 
+            # Update UI slider (prevent signal loop)
+            percentage = int(new_volume * 100)
+            if hasattr(self, 'now_playing') and hasattr(self.now_playing, 'volume_slider'):
+                self.now_playing.volume_slider.blockSignals(True)
+                self.now_playing.volume_slider.setValue(percentage)
+                self.now_playing.volume_slider.blockSignals(False)
+                # Also update the percentage label
+                if hasattr(self.now_playing, 'volume_label_value'):
+                    self.now_playing.volume_label_value.setText(f"{percentage}%")
+
             # Update status bar (show as percentage)
-            self.statusBar.showMessage(f"Volume: {int(new_volume * 100)}%", 1000)
-            logger.debug(f"Shortcut: Volume {int(new_volume * 100)}%")
+            self.statusBar.showMessage(f"Volume: {percentage}%", 1000)
+            logger.debug(f"Shortcut: Volume {percentage}%")
         except Exception as e:
             logger.error(f"Volume change failed: {e}")
 
@@ -671,14 +681,33 @@ and are never shared or transmitted outside of official API requests to YouTube 
                 # Mute: save current volume
                 self._previous_volume = current
                 self.audio_player.set_volume(0.0)
+
+                # Update UI slider to 0%
+                if hasattr(self, 'now_playing') and hasattr(self.now_playing, 'volume_slider'):
+                    self.now_playing.volume_slider.blockSignals(True)
+                    self.now_playing.volume_slider.setValue(0)
+                    self.now_playing.volume_slider.blockSignals(False)
+                    if hasattr(self.now_playing, 'volume_label_value'):
+                        self.now_playing.volume_label_value.setText("0%")
+
                 self.statusBar.showMessage("Muted", 1000)
                 logger.debug("Shortcut: Muted")
             else:
                 # Unmute: restore previous volume
                 volume = getattr(self, '_previous_volume', 0.7)
                 self.audio_player.set_volume(volume)
-                self.statusBar.showMessage(f"Volume: {int(volume * 100)}%", 1000)
-                logger.debug(f"Shortcut: Unmuted to {int(volume * 100)}%")
+
+                # Update UI slider to restored volume
+                percentage = int(volume * 100)
+                if hasattr(self, 'now_playing') and hasattr(self.now_playing, 'volume_slider'):
+                    self.now_playing.volume_slider.blockSignals(True)
+                    self.now_playing.volume_slider.setValue(percentage)
+                    self.now_playing.volume_slider.blockSignals(False)
+                    if hasattr(self.now_playing, 'volume_label_value'):
+                        self.now_playing.volume_label_value.setText(f"{percentage}%")
+
+                self.statusBar.showMessage(f"Volume: {percentage}%", 1000)
+                logger.debug(f"Shortcut: Unmuted to {percentage}%")
         except Exception as e:
             logger.error(f"Mute toggle failed: {e}")
 
