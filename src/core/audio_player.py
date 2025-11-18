@@ -196,7 +196,7 @@ class AudioPlayer:
             # Store current state
             was_playing = self.is_playing()
             was_paused = self._state == PlaybackState.PAUSED
-            logger.info(f"Seek to {position:.2f}s - was_playing={was_playing}, was_paused={was_paused}")
+            logger.debug(f"Seek to {position:.2f}s - was_playing={was_playing}, was_paused={was_paused}")
 
             # Stop current playback
             self._pygame.mixer.music.stop()
@@ -205,7 +205,7 @@ class AudioPlayer:
             self._pygame.mixer.music.load(self._current_file)
 
             # Use play(start=position) - works reliably with MP3
-            logger.info(f"Calling pygame play(start={position:.2f})")
+            logger.debug(f"Calling pygame play(start={position:.2f})")
             self._pygame.mixer.music.play(start=position)
             self._state = PlaybackState.PLAYING
             self._start_time = self._pygame.time.get_ticks() / 1000.0 - position
@@ -213,12 +213,12 @@ class AudioPlayer:
 
             # If it was paused or stopped, pause it again at the new position
             if was_paused or not was_playing:
-                logger.info(f"Re-pausing at position {position:.2f}s")
+                logger.debug(f"Re-pausing at position {position:.2f}s")
                 self._pygame.mixer.music.pause()
                 self._state = PlaybackState.PAUSED
                 self._paused_position = position  # Save new paused position
 
-            logger.info(f"Seek completed to {position:.2f}s")
+            logger.debug(f"Seek completed to {position:.2f}s")
         except Exception as e:
             logger.error(f"Seek failed: {e}")
 

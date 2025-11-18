@@ -82,12 +82,12 @@ class KeyboardShortcutManager(QObject):
 
     def _on_seek_left_activated(self):
         """Handle Left arrow shortcut activation"""
-        logger.info("ACTION: Left Arrow activated (Seek -5s)")
+        logger.debug("ACTION: Left Arrow activated (Seek -5s)")
         self.seek_backward_requested.emit(5)
 
     def _on_seek_right_activated(self):
         """Handle Right arrow shortcut activation"""
-        logger.info("ACTION: Right Arrow activated (Seek +5s)")
+        logger.debug("ACTION: Right Arrow activated (Seek +5s)")
         self.seek_forward_requested.emit(5)
 
     def eventFilter(self, obj, event):

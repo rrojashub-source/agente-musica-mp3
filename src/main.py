@@ -638,7 +638,7 @@ and are never shared or transmitted outside of official API requests to YouTube 
         """Handle Left arrow - Seek backward"""
         current = self.audio_player.get_position()
         new_pos = max(0, current - seconds)
-        logger.info(f"Seek backward: current={current:.2f}s, new_pos={new_pos:.2f}s")
+        logger.debug(f"Seek backward: current={current:.2f}s, new_pos={new_pos:.2f}s")
         self.audio_player.seek(new_pos)
 
     def _handle_seek_forward(self, seconds):
@@ -646,7 +646,7 @@ and are never shared or transmitted outside of official API requests to YouTube 
         current = self.audio_player.get_position()
         duration = self.audio_player.get_duration()
         new_pos = min(duration, current + seconds)
-        logger.info(f"Seek forward: current={current:.2f}s, new_pos={new_pos:.2f}s")
+        logger.debug(f"Seek forward: current={current:.2f}s, new_pos={new_pos:.2f}s")
         self.audio_player.seek(new_pos)
 
     def _handle_volume_change(self, delta):
