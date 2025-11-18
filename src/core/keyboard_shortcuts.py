@@ -62,16 +62,28 @@ class KeyboardShortcutManager(QObject):
         """
         # Seek shortcuts (high priority - not blockable by tables/lists)
         seek_left = QShortcut(QKeySequence(Qt.Key.Key_Left), main_window)
-        seek_left.activated.connect(lambda: self.seek_backward_requested.emit(5))
+        seek_left.activated.connect(lambda: self._on_seek_left_activated())
         seek_left.setContext(Qt.ShortcutContext.ApplicationShortcut)
         self._shortcuts.append(seek_left)
+        logger.debug(f"Seek left shortcut created: {seek_left.key().toString()}")
 
         seek_right = QShortcut(QKeySequence(Qt.Key.Key_Right), main_window)
-        seek_right.activated.connect(lambda: self.seek_forward_requested.emit(5))
+        seek_right.activated.connect(lambda: self._on_seek_right_activated())
         seek_right.setContext(Qt.ShortcutContext.ApplicationShortcut)
         self._shortcuts.append(seek_right)
+        logger.debug(f"Seek right shortcut created: {seek_right.key().toString()}")
 
         logger.info("QShortcut-based shortcuts configured (Left/Right seek)")
+
+    def _on_seek_left_activated(self):
+        """Handle Left arrow shortcut activation"""
+        logger.debug("QShortcut: Left Arrow activated (Seek -5s)")
+        self.seek_backward_requested.emit(5)
+
+    def _on_seek_right_activated(self):
+        """Handle Right arrow shortcut activation"""
+        logger.debug("QShortcut: Right Arrow activated (Seek +5s)")
+        self.seek_forward_requested.emit(5)
 
     def eventFilter(self, obj, event):
         """
