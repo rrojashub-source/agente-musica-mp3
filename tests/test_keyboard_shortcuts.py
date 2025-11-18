@@ -95,26 +95,37 @@ class TestKeyboardShortcutManager(unittest.TestCase):
         signal_mock.assert_called_once()
 
     def test_05_left_arrow_triggers_seek_backward(self):
-        """Left arrow should emit seek_backward_requested(5)"""
+        """Left arrow should emit seek_backward_requested(5) via QShortcut"""
         signal_mock = Mock()
         self.manager.seek_backward_requested.connect(signal_mock)
 
-        widget = QWidget()
-        event = self._create_key_event(Qt.Key.Key_Left)
+        # Create a main window for QShortcut attachment
+        main_window = QWidget()
 
-        self.manager.eventFilter(widget, event)
+        # Setup QShortcut-based shortcuts
+        self.manager.setup_shortcuts(main_window)
+
+        # Verify shortcuts were created
+        self.assertEqual(len(self.manager._shortcuts), 2)  # Left and Right
+
+        # Trigger the shortcut by activating it directly
+        self.manager._shortcuts[0].activated.emit()
 
         signal_mock.assert_called_once_with(5)
 
     def test_06_right_arrow_triggers_seek_forward(self):
-        """Right arrow should emit seek_forward_requested(5)"""
+        """Right arrow should emit seek_forward_requested(5) via QShortcut"""
         signal_mock = Mock()
         self.manager.seek_forward_requested.connect(signal_mock)
 
-        widget = QWidget()
-        event = self._create_key_event(Qt.Key.Key_Right)
+        # Create a main window for QShortcut attachment
+        main_window = QWidget()
 
-        self.manager.eventFilter(widget, event)
+        # Setup QShortcut-based shortcuts
+        self.manager.setup_shortcuts(main_window)
+
+        # Trigger the shortcut by activating it directly
+        self.manager._shortcuts[1].activated.emit()
 
         signal_mock.assert_called_once_with(5)
 

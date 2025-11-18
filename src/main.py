@@ -144,6 +144,9 @@ class MusicPlayerApp(QMainWindow):
         # Connect shortcut signals (after UI is created)
         self._connect_keyboard_shortcuts()
 
+        # Setup QShortcut-based shortcuts (high priority, cannot be blocked)
+        self.shortcuts_manager.setup_shortcuts(self)
+
         # Connect lyrics signal (after lyrics_tab is created)
         if hasattr(self, 'lyrics_tab') and self.lyrics_tab:
             self.now_playing.song_metadata_changed.connect(self.lyrics_tab.on_song_changed)

@@ -17,6 +17,7 @@ Usage:
 import logging
 from PyQt6.QtCore import QObject, Qt, QEvent, pyqtSignal
 from PyQt6.QtWidgets import QLineEdit, QTextEdit, QPlainTextEdit
+from PyQt6.QtGui import QShortcut, QKeySequence
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,31 @@ class KeyboardShortcutManager(QObject):
     def __init__(self, parent=None):
         """Initialize keyboard shortcuts manager"""
         super().__init__(parent)
+        self._shortcuts = []  # Store QShortcut instances
         logger.info("KeyboardShortcutManager initialized")
+
+    def setup_shortcuts(self, main_window):
+        """
+        Setup application-wide shortcuts using QShortcut (high priority)
+
+        Args:
+            main_window: Main window widget to attach shortcuts to
+
+        Note: QShortcut has ApplicationShortcut context by default,
+              which means it works globally and cannot be blocked by widgets
+        """
+        # Seek shortcuts (high priority - not blockable by tables/lists)
+        seek_left = QShortcut(QKeySequence(Qt.Key.Key_Left), main_window)
+        seek_left.activated.connect(lambda: self.seek_backward_requested.emit(5))
+        seek_left.setContext(Qt.ShortcutContext.ApplicationShortcut)
+        self._shortcuts.append(seek_left)
+
+        seek_right = QShortcut(QKeySequence(Qt.Key.Key_Right), main_window)
+        seek_right.activated.connect(lambda: self.seek_forward_requested.emit(5))
+        seek_right.setContext(Qt.ShortcutContext.ApplicationShortcut)
+        self._shortcuts.append(seek_right)
+
+        logger.info("QShortcut-based shortcuts configured (Left/Right seek)")
 
     def eventFilter(self, obj, event):
         """
@@ -107,21 +132,16 @@ class KeyboardShortcutManager(QObject):
 
         Returns:
             bool: True if shortcut was handled
+
+        Note: Left/Right are handled by QShortcut (setup_shortcuts) for higher priority
         """
         if key == Qt.Key.Key_Space:
             self.play_pause_requested.emit()
             logger.debug("Shortcut: Space (Play/Pause)")
             return True
 
-        elif key == Qt.Key.Key_Left:
-            self.seek_backward_requested.emit(5)
-            logger.debug("Shortcut: Left Arrow (Seek -5s)")
-            return True
-
-        elif key == Qt.Key.Key_Right:
-            self.seek_forward_requested.emit(5)
-            logger.debug("Shortcut: Right Arrow (Seek +5s)")
-            return True
+        # Left/Right handled by QShortcut (see setup_shortcuts)
+        # This avoids conflicts with table/list navigation
 
         elif key == Qt.Key.Key_Up:
             self.volume_change_requested.emit(10)
