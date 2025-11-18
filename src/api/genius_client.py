@@ -51,6 +51,7 @@ class GeniusClient:
             self.genius = lyricsgenius.Genius(self.access_token)
             self.genius.verbose = False  # Disable console output
             self.genius.remove_section_headers = True  # Clean lyrics
+            self.genius.timeout = 10  # 10 second timeout to prevent freezing
             logger.info("GeniusClient initialized successfully")
         except ImportError:
             logger.error("lyricsgenius library not installed - run: pip install lyricsgenius")

@@ -247,14 +247,20 @@ class LyricsTab(QWidget):
 
         # Cancel previous search if still running
         if self._worker and self._worker.isRunning():
+            logger.debug("Cancelling previous lyrics search")
             self._worker.quit()
-            self._worker.wait()
+            # Wait max 2 seconds, then force terminate
+            if not self._worker.wait(2000):
+                logger.warning("Previous search didn't stop, terminating")
+                self._worker.terminate()
+                self._worker.wait()
 
         # Start background search
         self._worker = LyricsSearchWorker(self.genius_client, title, artist)
         self._worker.finished.connect(self._on_lyrics_found)
         self._worker.error.connect(self._on_lyrics_error)
         self._worker.start()
+        logger.debug("Started lyrics search worker")
 
     def _on_lyrics_found(self, lyrics: str):
         """
