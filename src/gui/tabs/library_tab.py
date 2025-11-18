@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Optional, Dict
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
-    QPushButton, QLabel, QHeaderView, QMessageBox
+    QPushButton, QLabel, QHeaderView, QMessageBox, QMenu
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor
@@ -95,6 +95,10 @@ class LibraryTab(QWidget):
         self.library_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.library_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.library_table.setSortingEnabled(True)
+
+        # Context menu (right-click)
+        self.library_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.library_table.customContextMenuRequested.connect(self._show_context_menu)
 
         # Column widths - All columns manually resizable
         header = self.library_table.horizontalHeader()
@@ -480,6 +484,108 @@ class LibraryTab(QWidget):
                 return
 
         logger.error(f"Song ID not found in table: {song_id}")
+
+    def _show_context_menu(self, position):
+        """
+        Show context menu on right-click
+
+        Args:
+            position: Mouse position relative to table
+        """
+        # Get selected row
+        selected_rows = self.library_table.selectedIndexes()
+        if not selected_rows:
+            return  # No row selected
+
+        row = selected_rows[0].row()
+
+        # Get song data
+        title_item = self.library_table.item(row, 0)
+        if not title_item:
+            return
+
+        song_id = title_item.data(Qt.ItemDataRole.UserRole)
+        title = title_item.text()
+        artist = self.library_table.item(row, 1).text() if self.library_table.item(row, 1) else "Unknown"
+
+        # Create context menu
+        menu = QMenu(self)
+
+        # Delete action
+        delete_action = menu.addAction("🗑️ Delete Song")
+        delete_action.setStatusTip(f"Delete '{title}' from library")
+
+        # Show menu and get action
+        action = menu.exec(self.library_table.viewport().mapToGlobal(position))
+
+        # Handle action
+        if action == delete_action:
+            self._delete_selected_song(song_id, title, artist, row)
+
+    def _delete_selected_song(self, song_id: int, title: str, artist: str, row: int):
+        """
+        Delete selected song from database
+
+        Args:
+            song_id: Song ID to delete
+            title: Song title (for confirmation)
+            artist: Artist name (for confirmation)
+            row: Row index in table (for removal after deletion)
+        """
+        # Confirm deletion
+        reply = QMessageBox.question(
+            self,
+            "Delete Song",
+            f"Are you sure you want to delete this song from the library?\n\n"
+            f"Title: {title}\n"
+            f"Artist: {artist}\n\n"
+            f"Note: This will only remove the song from the library database.\n"
+            f"The MP3 file will remain on your disk.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No  # Default to No for safety
+        )
+
+        if reply == QMessageBox.StandardButton.No:
+            logger.info(f"Delete canceled by user: {title}")
+            return
+
+        # Delete from database
+        try:
+            cursor = self.db_manager.conn.cursor()
+            cursor.execute("DELETE FROM songs WHERE id = ?", (song_id,))
+            self.db_manager.conn.commit()
+
+            logger.info(f"Deleted song from database: {song_id} - {title} by {artist}")
+
+            # Remove row from table
+            self.library_table.removeRow(row)
+
+            # Update count label
+            song_count = self.library_table.rowCount()
+            self.count_label.setText(f"{song_count} songs")
+
+            # Update status
+            self.status_label.setText(f"Deleted: {title}")
+
+            # If deleted song was playing, stop playback
+            if self._current_song_id == song_id:
+                logger.info("Deleted song was playing, stopping playback")
+                if self.audio_player:
+                    self.audio_player.stop()
+                self._current_song_id = None
+                self._current_song_row = -1
+                if self.now_playing_widget:
+                    self.now_playing_widget.clear()
+
+            logger.info(f"Successfully deleted song: {title}")
+
+        except Exception as e:
+            logger.error(f"Failed to delete song {song_id}: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Delete Failed",
+                f"Failed to delete song from database:\n{e}"
+            )
 
     def cleanup(self):
         """Cleanup resources"""
