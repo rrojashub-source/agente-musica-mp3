@@ -469,6 +469,10 @@ and are never shared or transmitted outside of official API requests to YouTube 
         self.tabs = QTabWidget()
         self.tabs.setTabPosition(QTabWidget.TabPosition.North)
 
+        # Disable keyboard focus on tab widget to allow global shortcuts (Left/Right)
+        # This prevents QTabWidget from consuming arrow keys for tab navigation
+        self.tabs.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
         # Tab 1: Library (Phase 3 + Phase 6 playback integration)
         try:
             self.library_tab = LibraryTab(
@@ -623,12 +627,9 @@ and are never shared or transmitted outside of official API requests to YouTube 
 
     def _handle_play_pause_shortcut(self):
         """Handle Space key - Play/Pause"""
-        if self.audio_player.is_playing():
-            self.now_playing.pause_song()
-            logger.debug("Shortcut: Paused")
-        else:
-            self.now_playing.play_song()
-            logger.debug("Shortcut: Play")
+        # Use the widget's play/pause method directly
+        self.now_playing._on_play_clicked()
+        logger.debug("Shortcut: Play/Pause toggled")
 
     def _handle_seek_backward(self, seconds):
         """Handle Left arrow - Seek backward"""
