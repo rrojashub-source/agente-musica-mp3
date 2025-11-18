@@ -16,7 +16,7 @@ Usage:
 
 import logging
 from PyQt6.QtCore import QObject, Qt, QEvent, pyqtSignal
-from PyQt6.QtWidgets import QLineEdit, QTextEdit, QPlainTextEdit
+from PyQt6.QtWidgets import QLineEdit, QTextEdit, QPlainTextEdit, QApplication
 from PyQt6.QtGui import QAction, QKeySequence
 
 logger = logging.getLogger(__name__)
@@ -128,16 +128,21 @@ class KeyboardShortcutManager(QObject):
         Check if user is typing in a text field
 
         Args:
-            widget: Widget to check
+            widget: Widget to check (not used - kept for API compatibility)
 
         Returns:
-            bool: True if widget or its parent is a text field
+            bool: True if focused widget or its parent is a text field
         """
-        focus_widget = widget
+        # Get the widget that actually has focus (not obj from eventFilter)
+        focus_widget = QApplication.focusWidget()
+
+        # Check if focus widget is a text input field
         while focus_widget:
             if isinstance(focus_widget, (QLineEdit, QTextEdit, QPlainTextEdit)):
+                logger.debug(f"Typing context detected: {focus_widget.__class__.__name__}")
                 return True
             focus_widget = focus_widget.parent()
+
         return False
 
     def _handle_shortcut(self, key):
