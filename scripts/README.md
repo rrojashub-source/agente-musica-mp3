@@ -141,3 +141,154 @@ cp music_library_backup_YYYYMMDD_HHMMSS.db music_library.db
 **Created:** November 18, 2025
 **Author:** NEXUS + Ricardo
 **Related Bug:** Import allowed duplicates (IDs 630-941)
+
+---
+
+## 🔄 convert_paths_wsl_to_windows.py
+
+**Purpose:** Convert WSL paths to Windows paths in database (reference implementation)
+
+### What It Does
+
+1. **Analyze** - Counts WSL paths vs Windows paths in database
+2. **Preview** - Shows examples of conversion
+3. **Convert** - Attempts to UPDATE WSL paths to Windows format
+4. **Verify** - Checks conversion results
+
+### When to Use
+
+- ❌ **NOT recommended:** This script was created as proof-of-concept but has issues
+- ⚠️ **Problem:** If Windows paths already exist, causes UNIQUE constraint violations
+- ✅ **Better alternative:** Use `delete_wsl_paths.py` instead
+
+### How It Works
+
+**Conversion logic:**
+```python
+# /mnt/c/Users/ricar/Music/... → C:\Users\ricar\Music\...
+# /mnt/d/... → D:\...
+
+def convert_wsl_to_windows(wsl_path: str) -> str:
+    if wsl_path.startswith('/mnt/'):
+        parts = wsl_path.split('/')
+        drive = parts[2].upper()  # 'c' -> 'C'
+        rest = '/'.join(parts[3:])
+        return f"{drive}:\\{rest.replace('/', '\\')}"
+    return wsl_path
+```
+
+### Notes
+
+- Created: November 18, 2025
+- Status: **Educational reference only** (use delete_wsl_paths.py instead)
+- Issue: Fails when target Windows paths already exist in database
+
+---
+
+## 🗑️ delete_wsl_paths.py
+
+**Purpose:** Delete songs with WSL paths from database (RECOMMENDED SOLUTION)
+
+### What It Does
+
+1. **Analyze** - Counts WSL paths vs Windows paths
+2. **Preview** - Shows examples of songs to delete
+3. **Delete** - Removes all songs with WSL paths (`/mnt/...`)
+4. **Verify** - Confirms zero WSL paths remain
+
+### When to Use
+
+- ✅ After fresh_start_database.py ran from WSL
+- ✅ When database has duplicate songs (WSL + Windows paths)
+- ✅ When seeing "File not found" errors but files exist
+
+### How to Use
+
+**From WSL:**
+
+```bash
+python3 scripts/delete_wsl_paths.py
+```
+
+**Interactive prompts:**
+1. Shows count of WSL vs Windows paths
+2. Shows 5 example songs to delete
+3. Asks confirmation: "Delete all songs with WSL paths? (yes/no)"
+4. Deletes and verifies
+
+### What Happens
+
+```
+============================================================
+🗑️  DELETE WSL PATHS FROM DATABASE
+============================================================
+
+Total songs: 623
+
+WSL paths (will delete): 311
+Windows paths (will keep): 312
+
+Examples of songs to DELETE:
+  [310] Zacarías Ferreira - Asesina
+      Path: /mnt/c/Users/ricar/Music/NEXUS_Organized/...
+
+Delete all songs with WSL paths? (yes/no): yes
+
+Deleting songs with WSL paths...
+  Deleted 50/311 songs...
+  Deleted 100/311 songs...
+  ...
+  Deleted 311/311 songs...
+
+✅ Deleted 311 songs with WSL paths!
+
+Verification:
+  Total songs: 312
+  WSL paths remaining: 0
+  Windows paths: 312
+
+============================================================
+✅ ALL WSL PATHS DELETED!
+============================================================
+
+Next steps:
+1. Restart the application
+2. Library should work with Windows paths only
+```
+
+### Safety Features
+
+- ✅ **Shows preview** before deleting (first 5 songs)
+- ✅ **Confirmation prompt** required
+- ✅ **Progress logging** every 50 songs
+- ✅ **Final verification** of results
+
+### Expected Results
+
+**Before (with duplicates):**
+- 623 songs total
+- 311 WSL paths (`/mnt/c/...`)
+- 312 Windows paths (`C:\...`)
+- "File not found" errors when playing
+
+**After (clean):**
+- 312 songs total
+- 0 WSL paths
+- 312 Windows paths only
+- No more "File not found" errors
+
+### Troubleshooting
+
+**Problem:** "Database locked" error
+- **Solution:** Close GUI application before running script
+
+**Problem:** "Permission denied"
+- **Solution:** Run from WSL with proper permissions
+
+**Problem:** Script deleted wrong songs
+- **Solution:** Restore from backup: `music_library_backup_*.db`
+
+---
+
+**Last Updated:** November 18, 2025 (Added WSL path conversion/deletion scripts)
+**Author:** NEXUS + Ricardo

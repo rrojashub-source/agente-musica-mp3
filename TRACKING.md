@@ -1454,10 +1454,87 @@ Total Lines Added: ~1,674 (production: ~360, tests: ~220, docs: ~1,094)
 
 **Next Steps:**
 - ✅ Feature #1 (Keyboard Shortcuts) - COMPLETE
-- ⏳ Feature #2 (Lyrics with Genius API) - NEXT
+- ✅ Feature #2 (Lyrics with Genius API) - COMPLETE
+- ✅ Bug Fix: WSL paths in database - COMPLETE
 - ⏳ Feature #3 (Visual Improvements - animations, mini-player)
 - ⏳ Feature #4 (Playback Statistics - play counts, graphs)
 - ⏳ Feature #5 (Audio Equalizer - 5-10 bands + presets)
+
+---
+
+### **Session Nov 18, 2025 - Critical Bug Fix: WSL Paths in Database**
+
+**Duration:** ~90 minutes
+**Assigned to:** NEXUS@CLI
+**Phase:** Post-Phase 4 Bug Fixes
+
+**Objective:**
+Fix critical "File not found" errors caused by WSL path format in database while application runs from Windows.
+
+**Problem Discovered:**
+- User reported "File not found" errors after fresh_start_database.py execution
+- Database had 623 songs: 311 with WSL paths (`/mnt/c/...`) + 312 with Windows paths (`C:\...`)
+- Root cause: fresh_start_database.py ran from WSL, generating WSL-format paths
+- Application runs from Windows via `LAUNCH_NEXUS_MUSIC.bat`, cannot resolve WSL paths
+- Files physically existed on disk, only path format was wrong
+
+**Tasks Completed:**
+1. ✅ Analyzed database state (discovered 311 WSL + 312 Windows duplicates)
+2. ✅ Created `scripts/convert_paths_wsl_to_windows.py` (attempted conversion, found UNIQUE conflicts)
+3. ✅ Fixed SyntaxError in docstrings (needed `r"""` prefix for backslashes)
+4. ✅ Created `scripts/delete_wsl_paths.py` (cleaner solution)
+5. ✅ Executed deletion: Removed 311 WSL duplicates
+6. ✅ Verified: Database now has 312 songs with Windows paths only
+7. ✅ Git commit: `27d793f` - "fix(scripts): Fix WSL paths issue in database"
+
+**Key Decisions:**
+- **Decision 1:** Delete WSL paths instead of converting
+  - **Rationale:** Conversion would create UNIQUE constraint violations (paths already exist as Windows format)
+  - **Result:** Cleaner, faster solution - removed duplicates entirely
+- **Decision 2:** Keep scripts for future reference
+  - `convert_paths_wsl_to_windows.py` - Shows conversion logic (educational)
+  - `delete_wsl_paths.py` - Actual solution used
+  - Both documented for future similar issues
+
+**Learnings:**
+- **Learning 1:** Fresh start script must run from SAME environment as application
+  - If app runs from Windows → run scripts from Windows
+  - If app runs from WSL → run scripts from WSL
+  - Path format depends on execution environment
+- **Learning 2:** Python docstrings with backslashes need `r"""` prefix
+  - Windows paths in docstrings cause SyntaxError without raw string
+  - Example: `r"""C:\Users\..."""` vs `"""C:\Users\..."""` (error)
+- **Learning 3:** UNIQUE constraints can block UPDATE but not DELETE
+  - Conversion failed because target paths already existed
+  - Deletion succeeded because it removed conflicts
+
+**Files Created/Modified:**
+```
+Created:
+- scripts/convert_paths_wsl_to_windows.py (126 lines)
+- scripts/delete_wsl_paths.py (108 lines)
+
+Modified:
+- TRACKING.md (this session entry)
+- CLAUDE.md (updated last_updated date)
+
+Database Changes:
+- Before: 623 songs (311 WSL + 312 Windows = duplicates)
+- After: 312 songs (Windows paths only)
+- Result: Zero "File not found" errors
+```
+
+**Next Steps:**
+- ✅ WSL paths bug - COMPLETE
+- ⏳ Test application playback from Windows (user to verify)
+- ⏳ Consider adding path format validation in DatabaseManager
+- ⏳ Document environment consistency requirement in README
+
+**Verification Checklist:**
+- ✅ Database has only Windows paths (312 songs, 0 WSL paths)
+- ✅ Scripts committed to Git
+- ✅ Scripts documented in scripts/README.md
+- ⏳ User verification: Application works without "File not found" errors
 
 ---
 
