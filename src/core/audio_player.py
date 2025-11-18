@@ -63,6 +63,7 @@ class AudioPlayer:
         self._state = PlaybackState.STOPPED
         self._start_time = 0.0
         self._paused_position = 0.0  # Track position when paused
+        self._start_offset = 0.0  # Track where playback started (for seek)
 
         # Initialize pygame.mixer
         try:
@@ -130,6 +131,7 @@ class AudioPlayer:
             self._pygame.mixer.music.play()
             self._state = PlaybackState.PLAYING
             self._start_time = self._pygame.time.get_ticks() / 1000.0
+            self._start_offset = 0.0  # Playing from beginning
             logger.debug("Playback started")
         except Exception as e:
             logger.error(f"Failed to play: {e}")
@@ -171,6 +173,7 @@ class AudioPlayer:
             self._pygame.mixer.music.stop()
             self._state = PlaybackState.STOPPED
             self._paused_position = 0.0  # Reset position
+            self._start_offset = 0.0  # Reset offset
             logger.debug("Playback stopped")
         except Exception as e:
             logger.error(f"Failed to stop: {e}")
@@ -206,6 +209,7 @@ class AudioPlayer:
             self._pygame.mixer.music.play(start=position)
             self._state = PlaybackState.PLAYING
             self._start_time = self._pygame.time.get_ticks() / 1000.0 - position
+            self._start_offset = position  # Remember where we started playing from
 
             # If it was paused or stopped, pause it again at the new position
             if was_paused or not was_playing:
@@ -238,9 +242,12 @@ class AudioPlayer:
 
         # If playing, get current position from pygame
         try:
-            # pygame.mixer.music.get_pos() returns milliseconds since start
+            # pygame.mixer.music.get_pos() returns milliseconds since play() was called
+            # Need to add the start offset (where we started playing from)
             pos_ms = self._pygame.mixer.music.get_pos()
-            return pos_ms / 1000.0
+            elapsed = pos_ms / 1000.0
+            absolute_position = self._start_offset + elapsed
+            return absolute_position
         except Exception as e:
             logger.error(f"Failed to get position: {e}")
             return 0.0
