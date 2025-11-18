@@ -476,7 +476,16 @@ and are never shared or transmitted outside of official API requests to YouTube 
         # This prevents QTabWidget from consuming arrow keys for tab navigation
         self.tabs.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
-        # Tab 1: Library (Phase 3 + Phase 6 playback integration)
+        # Tab 1: Import Library (Workflow: Import first)
+        try:
+            self.import_tab = ImportTab(self.db_manager)
+            self.tabs.addTab(self.import_tab, "📥 Import Library")
+            logger.info("Import tab loaded")
+        except Exception as e:
+            logger.error(f"Failed to load Import tab: {e}")
+            self.tabs.addTab(QWidget(), "📥 Import (Error)")
+
+        # Tab 2: Library (Main library view)
         try:
             self.library_tab = LibraryTab(
                 self.db_manager,
@@ -489,16 +498,7 @@ and are never shared or transmitted outside of official API requests to YouTube 
             logger.error(f"Failed to load Library tab: {e}")
             self.tabs.addTab(QWidget(), "🎵 Library (Error)")
 
-        # Tab 2: Search & Download (Phase 4)
-        try:
-            self.search_tab = SearchTab(self.download_queue)
-            self.tabs.addTab(self.search_tab, "🔍 Search & Download")
-            logger.info("Search tab loaded")
-        except Exception as e:
-            logger.error(f"Failed to load Search tab: {e}")
-            self.tabs.addTab(QWidget(), "🔍 Search (Error)")
-
-        # Tab 3: Lyrics (Feature #2)
+        # Tab 3: Lyrics (View lyrics while listening)
         try:
             self.lyrics_tab = LyricsTab(self.genius_client)
             self.tabs.addTab(self.lyrics_tab, "📝 Lyrics")
@@ -507,16 +507,16 @@ and are never shared or transmitted outside of official API requests to YouTube 
             logger.error(f"Failed to load Lyrics tab: {e}")
             self.tabs.addTab(QWidget(), "📝 Lyrics (Error)")
 
-        # Tab 4: Import Library (NEW - Library Import Feature)
+        # Tab 4: Search & Download (Find new music)
         try:
-            self.import_tab = ImportTab(self.db_manager)
-            self.tabs.addTab(self.import_tab, "📥 Import Library")
-            logger.info("Import tab loaded")
+            self.search_tab = SearchTab(self.download_queue)
+            self.tabs.addTab(self.search_tab, "🔍 Search & Download")
+            logger.info("Search tab loaded")
         except Exception as e:
-            logger.error(f"Failed to load Import tab: {e}")
-            self.tabs.addTab(QWidget(), "📥 Import (Error)")
+            logger.error(f"Failed to load Search tab: {e}")
+            self.tabs.addTab(QWidget(), "🔍 Search (Error)")
 
-        # Tab 4: Download Queue (Phase 4)
+        # Tab 5: Queue (Download queue)
         try:
             self.queue_widget = QueueWidget(self.download_queue)
             self.tabs.addTab(self.queue_widget, "📥 Queue")
@@ -524,7 +524,7 @@ and are never shared or transmitted outside of official API requests to YouTube 
         except Exception as e:
             logger.error(f"Failed to load Queue tab: {e}")
 
-        # Tab 4: Duplicates (Phase 5)
+        # Tab 6: Duplicates (Find duplicate files)
         try:
             self.duplicates_tab = DuplicatesTab(self.db_manager)
             self.tabs.addTab(self.duplicates_tab, "🔍 Duplicates")
@@ -533,16 +533,7 @@ and are never shared or transmitted outside of official API requests to YouTube 
             logger.error(f"Failed to load Duplicates tab: {e}")
             self.tabs.addTab(QWidget(), "🔍 Duplicates (Error)")
 
-        # Tab 5: Organize (Phase 5)
-        try:
-            self.organize_tab = OrganizeTab(self.db_manager)
-            self.tabs.addTab(self.organize_tab, "📁 Organize")
-            logger.info("Organize tab loaded")
-        except Exception as e:
-            logger.error(f"Failed to load Organize tab: {e}")
-            self.tabs.addTab(QWidget(), "📁 Organize (Error)")
-
-        # Tab 6: Rename (Phase 5)
+        # Tab 7: Rename (Rename files)
         try:
             self.rename_tab = RenameTab(self.db_manager)
             self.tabs.addTab(self.rename_tab, "✏️ Rename")
@@ -550,6 +541,15 @@ and are never shared or transmitted outside of official API requests to YouTube 
         except Exception as e:
             logger.error(f"Failed to load Rename tab: {e}")
             self.tabs.addTab(QWidget(), "✏️ Rename (Error)")
+
+        # Tab 8: Organize (Organize library)
+        try:
+            self.organize_tab = OrganizeTab(self.db_manager)
+            self.tabs.addTab(self.organize_tab, "📁 Organize")
+            logger.info("Organize tab loaded")
+        except Exception as e:
+            logger.error(f"Failed to load Organize tab: {e}")
+            self.tabs.addTab(QWidget(), "📁 Organize (Error)")
 
         return self.tabs
 
