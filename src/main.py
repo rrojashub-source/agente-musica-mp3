@@ -144,6 +144,11 @@ class MusicPlayerApp(QMainWindow):
         # Connect shortcut signals (after UI is created)
         self._connect_keyboard_shortcuts()
 
+        # Connect lyrics signal (after lyrics_tab is created)
+        if hasattr(self, 'lyrics_tab') and self.lyrics_tab:
+            self.now_playing.song_metadata_changed.connect(self.lyrics_tab.on_song_changed)
+            logger.info("Lyrics signal connected")
+
         logger.info("Application started successfully")
 
         # Check if library is empty and suggest import
@@ -438,10 +443,6 @@ and are never shared or transmitted outside of official API requests to YouTube 
             lambda pos: self.visualizer.set_position(pos)
         )
         self.now_playing.song_loaded.connect(self._on_song_loaded)
-
-        # Connect metadata signal for lyrics (Feature #2)
-        if hasattr(self, 'lyrics_tab'):
-            self.now_playing.song_metadata_changed.connect(self.lyrics_tab.on_song_changed)
 
         return top_widget
 
