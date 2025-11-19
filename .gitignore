@@ -307,3 +307,11 @@ lerna-debug.log*
 # END OF .GITIGNORE
 # Patterns: 60+ (comprehensive protection)
 # ============================================
+
+# === EXTERNAL TOOLS (binaries not in repo) ===
+# Chromaprint / fpcalc for audio fingerprinting
+tools/fpcalc.exe
+tools/fpcalc
+tools/*.dll
+tools/*.so
+tools/*.dylib
