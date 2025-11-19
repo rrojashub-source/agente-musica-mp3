@@ -142,7 +142,7 @@ class APITabWidget(QWidget):
     </ul>
 </li>
 <li>Submit the form</li>
-<li>Copy your API key (8 characters)</li>
+<li>Copy your API key (typically 8+ alphanumeric characters, may include hyphens)</li>
 <li>Paste it above and click "Validate"</li>
 </ol>
 <p><b>💡 What is AcoustID?</b> Audio fingerprinting service that identifies songs by their acoustic signature (similar to Shazam). Useful for songs with missing/corrupted metadata.</p>
@@ -288,13 +288,16 @@ Click 'Validate' to test your key with a real API call.
         Raises:
             Exception: If validation fails
         """
-        # AcoustID API key format: 8 characters (alphanumeric)
-        # Example: "8XaBELgH" or similar
-        if len(api_key) == 8 and api_key.replace('-', '').isalnum():
+        # AcoustID API key format: typically 8+ characters (alphanumeric, may include hyphens)
+        # Examples: "8XaBELgH" or "abc123de-f456-7890-abcd-ef1234567890"
+        # Remove hyphens and check if remaining chars are alphanumeric
+        cleaned_key = api_key.replace('-', '').replace('_', '')
+
+        if len(cleaned_key) >= 8 and cleaned_key.isalnum():
             self.status_label.setText("✅ Valid - AcoustID API key format correct")
             logger.info("AcoustID API key format validated")
         else:
-            raise Exception("Invalid format (expected 8 alphanumeric characters)")
+            raise Exception(f"Invalid format (expected 8+ alphanumeric characters, got {len(cleaned_key)} valid chars)")
 
     def get_api_key(self) -> str:
         """
