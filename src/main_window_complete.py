@@ -55,6 +55,9 @@ from music_player import MusicPlayerWidget
 # Import Cleanup Assistant (NEW - Fase 1)
 from cleanup_assistant_tab import CleanupAssistantTab
 
+# Import Cleanup Wizard (NEW - Bug #9 Fix)
+from gui.tabs.cleanup_tab import CleanupTab
+
 # Import API Config Wizard
 from api_config_wizard import APIConfigWizard
 
@@ -115,6 +118,12 @@ class NEXUSMusicManager(QMainWindow):
         # ========================================
         self.cleanup_tab = CleanupAssistantTab()
         self.tabs.addTab(self.cleanup_tab, "🧹 Limpieza Metadata")
+
+        # ========================================
+        # CLEANUP WIZARD (NEW - Bug #9 Fix)
+        # ========================================
+        self.cleanup_wizard_tab = CleanupTab(self.db_path)
+        self.tabs.addTab(self.cleanup_wizard_tab, "✨ Metadata Wizard")
 
         # ========================================
         # PHASE 3: LIBRARY MANAGEMENT

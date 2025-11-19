@@ -116,9 +116,11 @@ def reimport_library(db_manager: DatabaseManager, music_folder: str, app: QCoreA
     """
     logger.info(f"Starting fresh import from: {music_folder}")
     logger.info("Path normalization: ENABLED ✅")
+    logger.info("Duration filter: Skip files > 15 minutes ✅")
 
-    # Create import worker
-    worker = LibraryImportWorker(db_manager, music_folder, recursive=True)
+    # Create import worker with duration filter
+    # max_duration=900 seconds (15 minutes) - skips playlists and mixes
+    worker = LibraryImportWorker(db_manager, music_folder, recursive=True, max_duration=900)
 
     # Track progress
     def on_progress(percentage, message):

@@ -371,6 +371,72 @@ class DatabaseManager:
             logger.error(f"Failed to update song {song_id}: {e}")
             return False
 
+    def find_by_metadata(self, title: str, artist: str, duration: int, tolerance: int = 3) -> Optional[Dict[str, Any]]:
+        """
+        Find song by metadata (title + artist + duration with tolerance)
+
+        Used for intelligent duplicate detection when file paths change.
+        Searches case-insensitive with duration tolerance.
+
+        Args:
+            title: Song title
+            artist: Artist name
+            duration: Duration in seconds
+            tolerance: Duration tolerance in seconds (default: ±3s)
+
+        Returns:
+            Song dictionary if found, None otherwise
+        """
+        try:
+            # Case-insensitive search with duration tolerance
+            sql = """
+                SELECT * FROM songs
+                WHERE LOWER(title) = LOWER(?)
+                AND LOWER(artist) = LOWER(?)
+                AND duration BETWEEN ? AND ?
+                LIMIT 1
+            """
+
+            duration_min = duration - tolerance
+            duration_max = duration + tolerance
+
+            return self.fetch_one(sql, (title, artist, duration_min, duration_max))
+
+        except Exception as e:
+            logger.error(f"Failed to find song by metadata: {e}")
+            return None
+
+    def update_song_path(self, song_id: int, new_path: str) -> bool:
+        """
+        Update file path for a song (used after file rename operations)
+
+        Args:
+            song_id: Song ID to update
+            new_path: New file path (should be normalized)
+
+        Returns:
+            bool: True if updated successfully, False otherwise
+        """
+        try:
+            # Normalize path before storing
+            normalized_path = str(Path(new_path).resolve())
+
+            query = "UPDATE songs SET file_path = ?, modified_date = CURRENT_TIMESTAMP WHERE id = ?"
+            cursor = self.conn.cursor()
+            cursor.execute(query, (normalized_path, song_id))
+            self.conn.commit()
+
+            if cursor.rowcount > 0:
+                logger.info(f"Updated path for song ID {song_id}: {normalized_path}")
+                return True
+            else:
+                logger.warning(f"Song ID {song_id} not found")
+                return False
+
+        except Exception as e:
+            logger.error(f"Failed to update path for song {song_id}: {e}")
+            return False
+
     def delete_song(self, song_id: int) -> bool:
         """
         Delete song from database

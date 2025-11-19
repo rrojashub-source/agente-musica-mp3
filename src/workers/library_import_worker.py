@@ -124,7 +124,7 @@ class LibraryImportWorker(QThread):
     finished = pyqtSignal(dict)  # Summary dictionary
     error = pyqtSignal(str)  # Fatal error message
 
-    def __init__(self, db_manager, folder_path: str, recursive: bool = True):
+    def __init__(self, db_manager, folder_path: str, recursive: bool = True, max_duration: int = 900):
         """
         Initialize import worker
 
@@ -132,11 +132,14 @@ class LibraryImportWorker(QThread):
             db_manager: DatabaseManager instance
             folder_path: Root folder to scan
             recursive: Scan subfolders recursively (default: True)
+            max_duration: Maximum song duration in seconds (default: 900s = 15 min)
+                         Songs longer than this are skipped (prevents importing playlists)
         """
         super().__init__()
         self.db_manager = db_manager
         self.folder_path = folder_path
         self.recursive = recursive
+        self.max_duration = max_duration  # Skip ultra-long files (playlists)
 
         # State tracking
         self.success_count = 0
@@ -244,7 +247,12 @@ class LibraryImportWorker(QThread):
 
     def _process_file(self, file_path: str):
         """
-        Process single MP3 file
+        Process single MP3 file with INTELLIGENT duplicate detection
+
+        Uses multi-level detection:
+        1. Check by file path (fast)
+        2. Check by metadata (title + artist + duration) if path fails
+        3. Update path if file moved, or add as new if truly unique
 
         Args:
             file_path: Absolute path to MP3
@@ -264,13 +272,13 @@ class LibraryImportWorker(QThread):
             self.failed_count += 1
             return
 
-        # Check if already imported (using normalized path)
+        # LEVEL 1: Check if already imported by path (fast check)
         if self.db_manager.song_exists(normalized_path):
             self.skipped_count += 1
-            logger.debug(f"Skipping duplicate: {normalized_path}")
+            logger.debug(f"Skipping duplicate (by path): {normalized_path}")
             return
 
-        # Extract metadata (pass NORMALIZED path)
+        # Extract metadata for deeper checks
         metadata = extract_metadata(normalized_path)
 
         if metadata is None:
@@ -280,7 +288,36 @@ class LibraryImportWorker(QThread):
             logger.warning(error_msg)
             return
 
-        # Insert into database
+        # VALIDATION: Skip ultra-long files (playlists, mixes, etc.)
+        duration = metadata.get('duration', 0)
+        if duration > self.max_duration:
+            self.skipped_count += 1
+            duration_min = duration / 60
+            max_min = self.max_duration / 60
+            logger.info(
+                f"Skipping long file ({duration_min:.1f} min > {max_min:.1f} min max): "
+                f"{metadata.get('title', 'Unknown')}"
+            )
+            return
+
+        # LEVEL 2: Check by metadata (title + artist + duration ±3s)
+        # This catches files that were moved/organized to different paths
+        existing = self.db_manager.find_by_metadata(
+            title=metadata['title'],
+            artist=metadata['artist'],
+            duration=metadata['duration'],
+            tolerance=3
+        )
+
+        if existing:
+            # File was moved! Update path instead of adding duplicate
+            old_path = existing.get('file_path', 'unknown')
+            self.db_manager.update_song_path(existing['id'], normalized_path)
+            self.skipped_count += 1
+            logger.info(f"Updated path for song ID {existing['id']}: {old_path} -> {normalized_path}")
+            return
+
+        # LEVEL 3: Truly new song - add to database
         song_id = self.db_manager.add_song(metadata)
 
         if song_id is None:
