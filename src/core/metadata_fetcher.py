@@ -110,7 +110,7 @@ class MetadataFetcher:
             # Build MusicBrainz query
             query = f'recording:"{title}" AND artist:"{artist}"'
 
-            # Search
+            # Search (using adapter or direct client)
             mb_results = self.musicbrainz_client.search_recordings(query, limit=5)
 
             if not mb_results:
@@ -119,12 +119,20 @@ class MetadataFetcher:
 
             # Process results
             for mb_recording in mb_results:
-                # Extract metadata
+                # Extract metadata (handle both adapter and raw formats)
                 mb_title = mb_recording.get('title', '')
                 mb_artist = self._extract_artist_name(mb_recording)
                 mb_album = self._extract_album_name(mb_recording)
                 mb_year = self._extract_year(mb_recording)
-                mb_duration = mb_recording.get('length', 0) // 1000  # Convert ms to seconds
+
+                # Handle duration (may be missing or in different formats)
+                mb_duration = 0
+                if 'length' in mb_recording:
+                    # Raw format: milliseconds
+                    mb_duration = mb_recording.get('length', 0) // 1000
+                elif 'duration' in mb_recording:
+                    # Adapter format: seconds
+                    mb_duration = mb_recording.get('duration', 0)
 
                 # Calculate match score
                 score = self._calculate_match_score(
@@ -174,7 +182,7 @@ class MetadataFetcher:
             # Build Spotify query
             query = f"track:{title} artist:{artist}"
 
-            # Search
+            # Search (using adapter or direct client)
             spotify_results = self.spotify_client.search_tracks(query, limit=5)
 
             if not spotify_results:
@@ -183,12 +191,35 @@ class MetadataFetcher:
 
             # Process results
             for track in spotify_results:
-                # Extract metadata
-                sp_title = track.get('name', '')
-                sp_artist = track.get('artists', [{}])[0].get('name', '') if track.get('artists') else ''
-                sp_album = track.get('album', {}).get('name', '')
+                # Extract metadata (handle both adapter and raw formats)
+                sp_title = track.get('name', '') or track.get('title', '')
+
+                # Handle artists (different formats)
+                sp_artist = ''
+                if 'artists' in track and track['artists']:
+                    sp_artist = track['artists'][0].get('name', '')
+                elif 'artist' in track:
+                    sp_artist = track.get('artist', '')
+
+                # Handle album (different formats)
+                sp_album = ''
+                if 'album' in track:
+                    if isinstance(track['album'], dict):
+                        sp_album = track['album'].get('name', '')
+                    else:
+                        sp_album = track['album']
+
+                # Handle year
                 sp_year = self._extract_spotify_year(track)
-                sp_duration = track.get('duration_ms', 0) // 1000  # Convert ms to seconds
+
+                # Handle duration (may be in different formats)
+                sp_duration = 0
+                if 'duration_ms' in track:
+                    # Raw format: milliseconds
+                    sp_duration = track.get('duration_ms', 0) // 1000
+                elif 'duration' in track:
+                    # Adapter format: seconds
+                    sp_duration = track.get('duration', 0)
 
                 # Calculate match score
                 score = self._calculate_match_score(

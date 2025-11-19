@@ -193,15 +193,39 @@ class CleanupTab(QWidget):
         # Initialize fetcher if needed
         if self.fetch_metadata_check.isChecked():
             try:
-                # Import API clients
+                # Import API clients and adapters
                 from api.musicbrainz_client import MusicBrainzClient
-                from api.spotify_client import SpotifyClient
+                from api.spotify_search import SpotifySearcher
+                from core.api_adapters import MusicBrainzAdapter, SpotifyAdapter
+                import keyring
 
-                # Initialize clients
-                mb_client = MusicBrainzClient()
-                spotify_client = SpotifyClient()
+                # Initialize MusicBrainz client
+                mb_client = MusicBrainzClient(
+                    app_name="NEXUS Music Manager",
+                    app_version="2.0",
+                    contact="support@nexusmusic.com"
+                )
+                mb_adapter = MusicBrainzAdapter(mb_client)
 
-                self.fetcher = MetadataFetcher(mb_client, spotify_client)
+                # Initialize Spotify client (with credentials from keyring)
+                try:
+                    spotify_id = keyring.get_password("nexus_music", "spotify_client_id")
+                    spotify_secret = keyring.get_password("nexus_music", "spotify_client_secret")
+
+                    if spotify_id and spotify_secret:
+                        spotify_searcher = SpotifySearcher(spotify_id, spotify_secret)
+                        spotify_adapter = SpotifyAdapter(spotify_searcher)
+                    else:
+                        logger.warning("Spotify credentials not found in keyring")
+                        spotify_adapter = None
+                except Exception as e:
+                    logger.warning(f"Failed to initialize Spotify: {e}")
+                    spotify_adapter = None
+
+                # Create MetadataFetcher with adapters
+                self.fetcher = MetadataFetcher(mb_adapter, spotify_adapter)
+                logger.info("Metadata fetcher initialized with API adapters")
+
             except Exception as e:
                 logger.warning(f"Failed to initialize API clients: {e}")
                 self.fetcher = None
