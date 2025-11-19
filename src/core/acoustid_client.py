@@ -103,10 +103,12 @@ class AcoustIDClient:
 
             # Generate fingerprint and query AcoustID
             # acoustid.match() handles both fingerprinting and lookup
+            # CRITICAL: Pass fpcalc path explicitly (pyacoustid doesn't auto-detect)
             results = acoustid.match(
                 apikey=self.api_key,
                 path=str(audio_path),
-                parse=True  # Parse MusicBrainz metadata
+                parse=True,  # Parse MusicBrainz metadata
+                fpcalc=self.fpcalc_checker.fpcalc_path  # Explicit fpcalc path
             )
 
             # Process results
@@ -233,7 +235,11 @@ class AcoustIDClient:
 
         try:
             # Generate fingerprint only (no API call)
-            duration, fingerprint = acoustid.fingerprint_file(str(audio_file_path))
+            # CRITICAL: Pass fpcalc path explicitly
+            duration, fingerprint = acoustid.fingerprint_file(
+                str(audio_file_path),
+                fpcalc=self.fpcalc_checker.fpcalc_path
+            )
 
             logger.debug(f"Generated fingerprint: {len(fingerprint)} chars, {duration}s")
             return fingerprint
