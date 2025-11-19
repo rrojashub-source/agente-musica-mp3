@@ -36,7 +36,8 @@ class CleanupWorkflowWorker(QThread):
     error = pyqtSignal(str)  # Error message
 
     def __init__(self, db_manager, cleaner, fetcher, songs_to_clean: List[Dict],
-                 fetch_metadata: bool = True, min_confidence: float = 70.0):
+                 fetch_metadata: bool = True, min_confidence: float = 70.0,
+                 download_covers: bool = False):
         """
         Initialize cleanup workflow
 
@@ -47,6 +48,7 @@ class CleanupWorkflowWorker(QThread):
             songs_to_clean: List of songs to process
             fetch_metadata: Whether to fetch from external APIs
             min_confidence: Minimum confidence for metadata matches
+            download_covers: Whether to download cover art
         """
         super().__init__()
         self.db_manager = db_manager
@@ -55,6 +57,7 @@ class CleanupWorkflowWorker(QThread):
         self.songs = songs_to_clean
         self.fetch_metadata = fetch_metadata
         self.min_confidence = min_confidence
+        self.download_covers = download_covers
 
         # Results tracking
         self.analysis_report = None
@@ -62,7 +65,7 @@ class CleanupWorkflowWorker(QThread):
         self.fetched_songs = []
         self.preview_changes = []
 
-        logger.info(f"CleanupWorkflowWorker initialized for {len(songs_to_clean)} songs")
+        logger.info(f"CleanupWorkflowWorker initialized for {len(songs_to_clean)} songs (covers: {download_covers})")
 
     def run(self):
         """
@@ -250,6 +253,7 @@ class CleanupApplier:
     - MP3 file ID3 tags
     - Database records
     - File names (if rename enabled)
+    - Cover art (if enabled)
     """
 
     def __init__(self, db_manager):
@@ -260,28 +264,38 @@ class CleanupApplier:
             db_manager: DatabaseManager instance
         """
         self.db_manager = db_manager
+        self.cover_manager = None  # Initialized when needed
         logger.info("CleanupApplier initialized")
 
-    def apply_changes(self, approved_changes: List[Dict]) -> Dict:
+    def apply_changes(self, approved_changes: List[Dict], download_covers: bool = False) -> Dict:
         """
         Apply approved metadata changes
 
         Args:
             approved_changes: List of changes approved by user
+            download_covers: Whether to download album cover art
 
         Returns:
             Results summary:
             {
                 'success': int,
                 'failed': int,
-                'errors': [str]
+                'errors': [str],
+                'covers_downloaded': int
             }
         """
         results = {
             'success': 0,
             'failed': 0,
-            'errors': []
+            'errors': [],
+            'covers_downloaded': 0
         }
+
+        # Initialize cover manager if needed
+        if download_covers and self.cover_manager is None:
+            from core.cover_art_manager import CoverArtManager
+            self.cover_manager = CoverArtManager()
+            logger.info("CoverArtManager initialized for batch download")
 
         for change in approved_changes:
             try:
@@ -299,6 +313,23 @@ class CleanupApplier:
                 if success:
                     results['success'] += 1
                     logger.info(f"Updated song {song_id}: {new_metadata.get('title')}")
+
+                    # Download cover art if enabled
+                    if download_covers and self.cover_manager:
+                        artist = new_metadata.get('artist')
+                        album = new_metadata.get('album')
+
+                        if artist and album:
+                            try:
+                                # Skip if already exists
+                                if not self.cover_manager.has_cover(artist, album):
+                                    if self.cover_manager.download_cover(artist, album):
+                                        results['covers_downloaded'] += 1
+                                        logger.info(f"Downloaded cover: {artist} - {album}")
+                                else:
+                                    logger.debug(f"Cover already exists: {artist} - {album}")
+                            except Exception as e:
+                                logger.warning(f"Failed to download cover for {artist} - {album}: {e}")
 
                     # TODO: Update MP3 file ID3 tags
                     # self._update_id3_tags(song_id, new_metadata)

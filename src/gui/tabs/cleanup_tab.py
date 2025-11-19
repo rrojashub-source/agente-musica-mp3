@@ -85,6 +85,15 @@ class CleanupTab(QWidget):
         )
         scan_layout.addWidget(self.fetch_metadata_check)
 
+        # Download cover art checkbox
+        self.download_covers_check = QCheckBox("Download album cover art automatically")
+        self.download_covers_check.setChecked(False)
+        self.download_covers_check.setToolTip(
+            "Download cover images from Cover Art Archive\n"
+            "Saves to: downloads/covers/{artist}/{album}/cover.jpg"
+        )
+        scan_layout.addWidget(self.download_covers_check)
+
         # Confidence threshold
         confidence_layout = QHBoxLayout()
         confidence_label = QLabel("Min. Confidence:")
@@ -237,7 +246,8 @@ class CleanupTab(QWidget):
             fetcher=self.fetcher,
             songs_to_clean=songs,
             fetch_metadata=self.fetch_metadata_check.isChecked(),
-            min_confidence=self.confidence_spin.value()
+            min_confidence=self.confidence_spin.value(),
+            download_covers=self.download_covers_check.isChecked()
         )
 
         # Connect signals
@@ -412,10 +422,11 @@ class CleanupTab(QWidget):
             return
 
         # Apply changes
-        logger.info(f"Applying {len(approved_changes)} changes")
+        download_covers = self.download_covers_check.isChecked()
+        logger.info(f"Applying {len(approved_changes)} changes (covers: {download_covers})")
         self.status_label.setText(f"Applying {len(approved_changes)} changes...")
 
-        results = self.applier.apply_changes(approved_changes)
+        results = self.applier.apply_changes(approved_changes, download_covers=download_covers)
 
         # Show results
         self._show_apply_results(results)
@@ -431,24 +442,32 @@ class CleanupTab(QWidget):
         success = results['success']
         failed = results['failed']
         errors = results.get('errors', [])
+        covers_downloaded = results.get('covers_downloaded', 0)
 
         if failed == 0:
+            message = f"Successfully updated {success} songs!"
+            if covers_downloaded > 0:
+                message += f"\n\nCover art downloaded: {covers_downloaded} albums"
+
             QMessageBox.information(
                 self,
                 "Changes Applied",
-                f"Successfully updated {success} songs!"
+                message
             )
         else:
             error_text = "\n".join(errors[:5])
             if len(errors) > 5:
                 error_text += f"\n... and {len(errors) - 5} more errors"
 
+            message = f"Updated {success} songs.\nFailed to update {failed} songs."
+            if covers_downloaded > 0:
+                message += f"\n\nCover art downloaded: {covers_downloaded} albums"
+            message += f"\n\nErrors:\n{error_text}"
+
             QMessageBox.warning(
                 self,
                 "Partially Complete",
-                f"Updated {success} songs.\n"
-                f"Failed to update {failed} songs.\n\n"
-                f"Errors:\n{error_text}"
+                message
             )
 
-        logger.info(f"Apply complete: {success} success, {failed} failed")
+        logger.info(f"Apply complete: {success} success, {failed} failed, {covers_downloaded} covers")
