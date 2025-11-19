@@ -47,7 +47,7 @@ class CleanupTab(QWidget):
         # Initialize components
         self.cleaner = MetadataCleaner()
         self.fetcher = None  # Initialize when needed (requires API clients)
-        self.applier = CleanupApplier(db_manager)
+        self.applier = CleanupApplier(self.db)
 
         # Workflow state
         self.workflow_worker = None
