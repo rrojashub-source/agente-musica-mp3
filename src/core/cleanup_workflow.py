@@ -5,15 +5,18 @@ Purpose: Orchestrate the entire metadata cleanup process
 - Step 1: Analyze library (find corrupted metadata)
 - Step 2: Clean titles/artists/albums (normalize)
 - Step 3: Fetch correct metadata (MusicBrainz/Spotify)
+- Step 3.5: Fallback to AcoustID fingerprinting (severe corruption)
 - Step 4: Preview changes (user confirmation)
 - Step 5: Apply changes (update files + database)
 - Step 6: Organize library (optional)
 
 Created: November 18, 2025
+Updated: November 18, 2025 (Added AcoustID fallback)
 """
 import logging
 from typing import Dict, List, Optional
 from PyQt6.QtCore import QThread, pyqtSignal
+import keyring
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +67,24 @@ class CleanupWorkflowWorker(QThread):
         self.cleaned_songs = []
         self.fetched_songs = []
         self.preview_changes = []
+
+        # Initialize AcoustID client (fallback for severe corruption)
+        self.acoustid_client = None
+        try:
+            acoustid_key = keyring.get_password("nexus_music", "acoustid_api_key")
+            if acoustid_key:
+                from core.acoustid_client import AcoustIDClient
+                self.acoustid_client = AcoustIDClient(acoustid_key)
+                if self.acoustid_client.is_available():
+                    logger.info("AcoustID fingerprinting enabled (fallback for severe corruption)")
+                else:
+                    logger.warning("AcoustID API key found but fpcalc not available")
+                    self.acoustid_client = None
+            else:
+                logger.debug("AcoustID API key not configured (fingerprinting unavailable)")
+        except Exception as e:
+            logger.debug(f"Could not initialize AcoustID: {e}")
+            self.acoustid_client = None
 
         logger.info(f"CleanupWorkflowWorker initialized for {len(songs_to_clean)} songs (covers: {download_covers})")
 
@@ -165,7 +186,7 @@ class CleanupWorkflowWorker(QThread):
         })
 
     def _step3_fetch(self):
-        """Step 3: Fetch correct metadata from external APIs"""
+        """Step 3: Fetch correct metadata from external APIs (with AcoustID fallback)"""
         for cleaned_song in self.cleaned_songs:
             try:
                 # Use cleaned metadata for search
@@ -195,6 +216,29 @@ class CleanupWorkflowWorker(QThread):
                         'confidence': best_match.get('score'),
                         'source': best_match.get('source')
                     })
+                elif self.acoustid_client and cleaned_song.get('corruption_level') == 'severe':
+                    # Fallback: Try AcoustID fingerprinting for severely corrupted songs
+                    logger.info(f"Trying AcoustID fallback for song {cleaned_song['id']}")
+                    file_path = self._get_song_file_path(cleaned_song['id'])
+
+                    if file_path:
+                        acoustid_match = self.acoustid_client.identify_song(file_path)
+
+                        if acoustid_match:
+                            self.fetched_songs.append({
+                                'id': cleaned_song['id'],
+                                'original': cleaned_song['original'],
+                                'cleaned': cleaned_song['cleaned'],
+                                'fetched': {
+                                    'title': acoustid_match.get('title'),
+                                    'artist': acoustid_match.get('artist'),
+                                    'album': acoustid_match.get('album', 'Unknown Album'),
+                                    'year': acoustid_match.get('year')
+                                },
+                                'confidence': acoustid_match.get('score', 0) * 100,  # Convert to percentage
+                                'source': 'acoustid'
+                            })
+                            logger.info(f"AcoustID match found for song {cleaned_song['id']}")
 
             except Exception as e:
                 logger.warning(f"Failed to fetch metadata for song {cleaned_song['id']}: {e}")
@@ -241,6 +285,14 @@ class CleanupWorkflowWorker(QThread):
         try:
             song = self.db_manager.get_song_by_id(song_id)
             return song.get('duration') if song else None
+        except:
+            return None
+
+    def _get_song_file_path(self, song_id: int) -> Optional[str]:
+        """Get song file path from database"""
+        try:
+            song = self.db_manager.get_song_by_id(song_id)
+            return song.get('file_path') if song else None
         except:
             return None
 

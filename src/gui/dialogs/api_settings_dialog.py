@@ -128,6 +128,27 @@ class APITabWidget(QWidget):
 <p><b>💡 Tip:</b> Free tier provides unlimited lyrics searches</p>
 <p><small>For detailed instructions, see Help → API Setup Guide (F1)</small></p>
             """
+        elif self.api_name == "AcoustID":
+            instructions_text = """
+<b>🎵 How to get AcoustID API key:</b>
+<ol style="margin-left: -20px;">
+<li>Go to <a href="https://acoustid.org/new-application">AcoustID New Application</a></li>
+<li>Register or log in with your account</li>
+<li>Fill in:
+    <ul>
+    <li>Application Name: "NEXUS Music Manager"</li>
+    <li>Version: "2.0"</li>
+    <li>Description: "Personal music library manager with audio fingerprinting"</li>
+    </ul>
+</li>
+<li>Submit the form</li>
+<li>Copy your API key (8 characters)</li>
+<li>Paste it above and click "Validate"</li>
+</ol>
+<p><b>💡 What is AcoustID?</b> Audio fingerprinting service that identifies songs by their acoustic signature (similar to Shazam). Useful for songs with missing/corrupted metadata.</p>
+<p><b>⚠️ Prerequisite:</b> Requires fpcalc.exe (Chromaprint) in tools/ folder. See Metadata Wizard tab for download instructions.</p>
+<p><small>For detailed instructions, see Help → API Setup Guide (F1)</small></p>
+            """
         else:
             instructions_text = f"""
 <b>How to get {self.api_name} API key:</b><br>
@@ -182,6 +203,8 @@ Click 'Validate' to test your key with a real API call.
                 self._validate_spotify(api_key)
             elif self.api_name == "Genius":
                 self._validate_genius(api_key)
+            elif self.api_name == "AcoustID":
+                self._validate_acoustid(api_key)
         except Exception as e:
             self.status_label.setText(f"❌ Invalid: {str(e)}")
             logger.error(f"{self.api_name} validation failed: {e}")
@@ -254,6 +277,24 @@ Click 'Validate' to test your key with a real API call.
             logger.info("Genius token format validated")
         else:
             raise Exception("Token too short (expected 20+ characters)")
+
+    def _validate_acoustid(self, api_key: str):
+        """
+        Validate AcoustID API key
+
+        Args:
+            api_key: AcoustID API key
+
+        Raises:
+            Exception: If validation fails
+        """
+        # AcoustID API key format: 8 characters (alphanumeric)
+        # Example: "8XaBELgH" or similar
+        if len(api_key) == 8 and api_key.replace('-', '').isalnum():
+            self.status_label.setText("✅ Valid - AcoustID API key format correct")
+            logger.info("AcoustID API key format validated")
+        else:
+            raise Exception("Invalid format (expected 8 alphanumeric characters)")
 
     def get_api_key(self) -> str:
         """
@@ -489,10 +530,12 @@ class APISettingsDialog(QDialog):
         self.youtube_tab = APITabWidget("YouTube")
         self.spotify_tab = SpotifyTabWidget()  # Specialized for Client ID + Secret
         self.genius_tab = APITabWidget("Genius")
+        self.acoustid_tab = APITabWidget("AcoustID")  # Audio fingerprinting
 
         self.tab_widget.addTab(self.youtube_tab, "YouTube")
         self.tab_widget.addTab(self.spotify_tab, "Spotify")
         self.tab_widget.addTab(self.genius_tab, "Genius (Optional)")
+        self.tab_widget.addTab(self.acoustid_tab, "AcoustID (Fingerprinting)")
 
         layout.addWidget(self.tab_widget)
 
@@ -587,6 +630,13 @@ class APISettingsDialog(QDialog):
             if genius_key:
                 keyring.set_password("nexus_music", "genius_token", genius_key)
                 logger.info("Genius token saved to keyring")
+                saved_count += 1
+
+            # Save AcoustID key
+            acoustid_key = self.acoustid_tab.get_api_key()
+            if acoustid_key:
+                keyring.set_password("nexus_music", "acoustid_api_key", acoustid_key)
+                logger.info("AcoustID API key saved to keyring")
                 saved_count += 1
 
             if saved_count > 0:
