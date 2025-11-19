@@ -267,10 +267,18 @@ class CleanupWorkflowWorker(QThread):
                 })
             else:
                 # Use cleaned metadata only
+                # Skip if cleaned metadata has "Unknown Artist" or "Unknown Album"
+                # (no point updating to unknown values)
+                cleaned = song['cleaned']
+                if (cleaned.get('artist') == 'Unknown Artist' or
+                    cleaned.get('album') == 'Unknown Album'):
+                    logger.debug(f"Skipping song {song_id}: cleaned metadata has unknown artist/album")
+                    continue
+
                 self.preview_changes.append({
                     'id': song_id,
                     'original': song['original'],
-                    'proposed': song['cleaned'],
+                    'proposed': cleaned,
                     'confidence': 50.0,  # Lower confidence (no external validation)
                     'source': 'cleaned',
                     'status': 'cleaned_only'
