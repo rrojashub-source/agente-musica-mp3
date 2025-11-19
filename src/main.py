@@ -63,6 +63,7 @@ from gui.tabs.import_tab import ImportTab
 from gui.tabs.duplicates_tab import DuplicatesTab
 from gui.tabs.organize_tab import OrganizeTab
 from gui.tabs.rename_tab import RenameTab
+from gui.tabs.cleanup_tab import CleanupTab
 
 # Import GUI widgets
 from gui.widgets.now_playing_widget import NowPlayingWidget
@@ -556,6 +557,17 @@ and are never shared or transmitted outside of official API requests to YouTube 
         except Exception as e:
             logger.error(f"Failed to load Organize tab: {e}")
             self.tabs.addTab(QWidget(), "📁 Organize (Error)")
+
+        # Tab 9: Cleanup Wizard (Metadata cleanup)
+        try:
+            # Get db_path from db_manager
+            db_path = self.db_manager.db_path if hasattr(self.db_manager, 'db_path') else 'music_library.db'
+            self.cleanup_tab = CleanupTab(db_path)
+            self.tabs.addTab(self.cleanup_tab, "✨ Metadata Wizard")
+            logger.info("Cleanup Wizard tab loaded")
+        except Exception as e:
+            logger.error(f"Failed to load Cleanup Wizard tab: {e}")
+            self.tabs.addTab(QWidget(), "✨ Metadata Wizard (Error)")
 
         return self.tabs
 
