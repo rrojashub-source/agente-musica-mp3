@@ -11,18 +11,21 @@ Features:
 - Volume slider
 - Time labels (current / total)
 - Position updates via QTimer (100ms)
+- On-demand cover art search
 
 Created: November 13, 2025
 """
 import logging
 from typing import Optional, Dict
+from pathlib import Path
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QSlider, QFrame
+    QSlider, QFrame, QMessageBox
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QPixmap
 from core.audio_player import PlaybackState
+from core.cover_art_manager import CoverArtManager
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +77,9 @@ class NowPlayingWidget(QWidget):
         self._is_playing = False
         self._is_paused = False  # Track if we're in paused state
 
+        # Initialize cover art manager
+        self.cover_manager = CoverArtManager()
+
         self._init_ui()
         self._init_timer()
         self._connect_signals()
@@ -88,6 +94,9 @@ class NowPlayingWidget(QWidget):
         # ========== Top Section: Album Art + Song Info ==========
         top_layout = QHBoxLayout()
 
+        # Album art section (with search button)
+        art_layout = QVBoxLayout()
+
         # Album art thumbnail (100x100)
         self.album_art_label = QLabel()
         self.album_art_label.setFixedSize(100, 100)
@@ -95,7 +104,36 @@ class NowPlayingWidget(QWidget):
         # Let theme handle colors
         self.album_art_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.album_art_label.setText("♪")  # Placeholder
-        top_layout.addWidget(self.album_art_label)
+        art_layout.addWidget(self.album_art_label)
+
+        # Search cover button (on-demand)
+        self.search_cover_button = QPushButton("🔍 Cover")
+        self.search_cover_button.setFixedSize(100, 25)
+        self.search_cover_button.setToolTip("Search for album cover art")
+        self.search_cover_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2d2d2d;
+                color: #cccccc;
+                border: 1px solid #3f3f3f;
+                border-radius: 4px;
+                font-size: 10px;
+            }
+            QPushButton:hover {
+                background-color: #3f3f3f;
+                border: 1px solid #0078d4;
+            }
+            QPushButton:pressed {
+                background-color: #1e1e1e;
+            }
+            QPushButton:disabled {
+                background-color: #1e1e1e;
+                color: #555555;
+            }
+        """)
+        self.search_cover_button.setEnabled(False)  # Disabled until song loaded
+        art_layout.addWidget(self.search_cover_button)
+
+        top_layout.addLayout(art_layout)
 
         # Song info
         info_layout = QVBoxLayout()
@@ -148,23 +186,95 @@ class NowPlayingWidget(QWidget):
 
         # ========== Bottom Section: Controls + Volume ==========
         controls_layout = QHBoxLayout()
+        controls_layout.setSpacing(15)  # More spacing between buttons
 
-        # Playback controls
+        # Playback controls with professional styling
+        # Previous button
         self.prev_button = QPushButton("⏮")
-        self.prev_button.setFixedWidth(40)
+        self.prev_button.setFixedSize(50, 50)
+        self.prev_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 2px solid #3f3f3f;
+                border-radius: 25px;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #3f3f3f;
+                border: 2px solid #0078d4;
+            }
+            QPushButton:pressed {
+                background-color: #1e1e1e;
+            }
+        """)
         controls_layout.addWidget(self.prev_button)
 
+        # Play/Pause button (larger, more prominent)
         self.play_button = QPushButton("▶")
-        self.play_button.setFixedWidth(50)
-        self.play_button.setStyleSheet("font-size: 16px;")
+        self.play_button.setFixedSize(60, 60)
+        self.play_button.setStyleSheet("""
+            QPushButton {
+                background-color: #0078d4;
+                color: #ffffff;
+                border: none;
+                border-radius: 30px;
+                font-size: 22px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #1e8ce8;
+                transform: scale(1.05);
+            }
+            QPushButton:pressed {
+                background-color: #005a9e;
+            }
+        """)
         controls_layout.addWidget(self.play_button)
 
+        # Stop button
         self.stop_button = QPushButton("⏹")
-        self.stop_button.setFixedWidth(40)
+        self.stop_button.setFixedSize(50, 50)
+        self.stop_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 2px solid #3f3f3f;
+                border-radius: 25px;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #3f3f3f;
+                border: 2px solid #dc143c;
+            }
+            QPushButton:pressed {
+                background-color: #1e1e1e;
+            }
+        """)
         controls_layout.addWidget(self.stop_button)
 
+        # Next button
         self.next_button = QPushButton("⏭")
-        self.next_button.setFixedWidth(40)
+        self.next_button.setFixedSize(50, 50)
+        self.next_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 2px solid #3f3f3f;
+                border-radius: 25px;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #3f3f3f;
+                border: 2px solid #0078d4;
+            }
+            QPushButton:pressed {
+                background-color: #1e1e1e;
+            }
+        """)
         controls_layout.addWidget(self.next_button)
 
         controls_layout.addStretch()
@@ -201,6 +311,9 @@ class NowPlayingWidget(QWidget):
         self.prev_button.clicked.connect(self.prev_clicked.emit)
         self.next_button.clicked.connect(self.next_clicked.emit)
 
+        # Cover art search
+        self.search_cover_button.clicked.connect(self._on_search_cover_clicked)
+
         # Progress slider
         self.progress_slider.sliderPressed.connect(self._on_slider_pressed)
         self.progress_slider.sliderReleased.connect(self._on_slider_released)
@@ -234,6 +347,14 @@ class NowPlayingWidget(QWidget):
         # Enable progress slider
         self.progress_slider.setEnabled(True)
         self.progress_slider.setValue(0)
+
+        # Enable cover search button if artist and album are present
+        artist = song_info.get('artist')
+        album = song_info.get('album')
+        if artist and album and artist != 'Unknown Artist' and album != 'Unknown Album':
+            self.search_cover_button.setEnabled(True)
+        else:
+            self.search_cover_button.setEnabled(False)
 
         # Load album art if provided
         album_art_path = song_info.get('album_art')
@@ -306,6 +427,115 @@ class NowPlayingWidget(QWidget):
             logger.info("Audio stopped")
 
         self.stop_clicked.emit()
+
+    def _on_search_cover_clicked(self):
+        """Handle cover art search button click (on-demand)"""
+        if not self.current_song:
+            return
+
+        artist = self.current_song.get('artist')
+        album = self.current_song.get('album')
+
+        if not artist or not album:
+            QMessageBox.warning(
+                self,
+                "Missing Metadata",
+                "Cannot search for cover: Artist or Album information is missing."
+            )
+            return
+
+        # Disable button during search
+        self.search_cover_button.setEnabled(False)
+        self.search_cover_button.setText("Searching...")
+
+        try:
+            # Check if cover already exists
+            if self.cover_manager.has_cover(artist, album):
+                logger.info(f"Cover already exists for {artist} - {album}")
+
+                # Load existing cover
+                cover_path = self.cover_manager.get_cover_path(artist, album)
+                if cover_path.exists():
+                    pixmap = QPixmap(str(cover_path))
+                    if not pixmap.isNull():
+                        scaled = pixmap.scaled(
+                            100, 100,
+                            Qt.AspectRatioMode.KeepAspectRatio,
+                            Qt.TransformationMode.SmoothTransformation
+                        )
+                        self.album_art_label.setPixmap(scaled)
+
+                        QMessageBox.information(
+                            self,
+                            "Cover Found",
+                            f"Cover art already exists for:\n{artist} - {album}"
+                        )
+                    else:
+                        self.album_art_label.setText("♪")
+                        QMessageBox.warning(
+                            self,
+                            "Invalid Image",
+                            "Cover file exists but is invalid."
+                        )
+                else:
+                    QMessageBox.warning(
+                        self,
+                        "Cover Not Found",
+                        "Cover path exists but file is missing."
+                    )
+            else:
+                # Download new cover
+                logger.info(f"Searching cover for {artist} - {album}")
+
+                success = self.cover_manager.download_cover(artist, album)
+
+                if success:
+                    # Load downloaded cover
+                    cover_path = self.cover_manager.get_cover_path(artist, album)
+                    pixmap = QPixmap(str(cover_path))
+
+                    if not pixmap.isNull():
+                        scaled = pixmap.scaled(
+                            100, 100,
+                            Qt.AspectRatioMode.KeepAspectRatio,
+                            Qt.TransformationMode.SmoothTransformation
+                        )
+                        self.album_art_label.setPixmap(scaled)
+
+                        QMessageBox.information(
+                            self,
+                            "Cover Downloaded",
+                            f"Successfully downloaded cover art for:\n{artist} - {album}"
+                        )
+                        logger.info(f"Cover downloaded and displayed: {cover_path}")
+                    else:
+                        self.album_art_label.setText("♪")
+                        QMessageBox.warning(
+                            self,
+                            "Display Error",
+                            "Cover downloaded but failed to display."
+                        )
+                else:
+                    QMessageBox.warning(
+                        self,
+                        "Cover Not Found",
+                        f"No cover art found for:\n{artist} - {album}\n\n"
+                        f"The album may not be in the Cover Art Archive database."
+                    )
+                    logger.warning(f"No cover found for {artist} - {album}")
+
+        except Exception as e:
+            logger.error(f"Error searching cover: {e}")
+            QMessageBox.critical(
+                self,
+                "Search Error",
+                f"Failed to search for cover art:\n{str(e)}"
+            )
+
+        finally:
+            # Re-enable button
+            self.search_cover_button.setEnabled(True)
+            self.search_cover_button.setText("🔍 Cover")
 
     def _on_slider_pressed(self):
         """Handle progress slider press (start seeking)"""

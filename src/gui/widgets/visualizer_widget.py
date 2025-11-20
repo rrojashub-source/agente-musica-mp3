@@ -9,14 +9,16 @@ Features:
 - Customizable colors and styles
 - Scales to widget size
 - Smooth performance (60 FPS capable)
+- Modern spectrum analyzer with gradient colors
 
 Created: November 13, 2025
+Updated: November 20, 2025 - Modern gradient bars
 """
 import logging
 from typing import List, Optional
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import Qt, QRect, QPoint
-from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath
+from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QLinearGradient
 
 logger = logging.getLogger(__name__)
 
@@ -207,18 +209,24 @@ class VisualizerWidget(QWidget):
 
     def _draw_bars(self, painter: QPainter):
         """
-        Draw waveform as vertical bars
+        Draw waveform as modern spectrum analyzer bars with gradient
+
+        Modern design:
+        - Vertical bars from bottom upwards
+        - Gradient colors: green (low) → cyan (mid) → blue (high) → purple (very high)
+        - Spacing between bars for clean look
+        - Rounded tops for modern aesthetic
 
         Args:
             painter: QPainter instance
         """
         width = self.width()
         height = self.height()
-        center_y = height // 2
 
-        # Number of bars to draw
-        num_bars = min(100, width // 4)  # Max 100 bars, min 4 pixels wide
+        # Number of bars to draw (fewer bars = cleaner look)
+        num_bars = min(60, width // 8)  # Max 60 bars, min 8 pixels wide
         bar_width = width // num_bars
+        bar_spacing = 2  # 2px gap between bars
 
         # Sample waveform data
         num_samples = len(self.waveform_data)
@@ -239,11 +247,60 @@ class VisualizerWidget(QWidget):
             max_amplitude = max(abs(s) for s in samples) if samples else 0.0
 
             # Convert amplitude to bar height
-            bar_height = int(max_amplitude * (height / 2) * 0.9)  # 0.9 for padding
+            # Full height usage (no mirroring)
+            bar_height = int(max_amplitude * height * 0.95)  # 0.95 for small top padding
 
-            # Draw bar centered at center_y
-            rect = QRect(x, center_y - bar_height, bar_width - 2, bar_height * 2)
-            painter.fillRect(rect, self.waveform_color)
+            # Minimum bar height for visibility
+            bar_height = max(bar_height, 3)
+
+            # Calculate bar rectangle (from bottom upwards)
+            bar_rect = QRect(
+                x + bar_spacing // 2,  # Left edge with spacing
+                height - bar_height,    # Top edge (grows upwards)
+                bar_width - bar_spacing,  # Width minus spacing
+                bar_height              # Height
+            )
+
+            # Create gradient based on bar height (intensity)
+            gradient = QLinearGradient(0, height, 0, 0)  # Bottom to top
+
+            # Color scheme: green → cyan → blue → purple
+            # Calculate color based on amplitude intensity
+            intensity = max_amplitude  # 0.0 to 1.0
+
+            if intensity < 0.25:
+                # Low amplitude: Green
+                gradient.setColorAt(0.0, QColor(34, 197, 94))   # Green-500
+                gradient.setColorAt(1.0, QColor(74, 222, 128))  # Green-400 (lighter)
+            elif intensity < 0.50:
+                # Medium-low: Green → Cyan
+                gradient.setColorAt(0.0, QColor(34, 197, 94))   # Green-500
+                gradient.setColorAt(0.5, QColor(20, 184, 166))  # Teal-500
+                gradient.setColorAt(1.0, QColor(45, 212, 191))  # Teal-400
+            elif intensity < 0.75:
+                # Medium-high: Cyan → Blue
+                gradient.setColorAt(0.0, QColor(20, 184, 166))  # Teal-500
+                gradient.setColorAt(0.5, QColor(59, 130, 246))  # Blue-500
+                gradient.setColorAt(1.0, QColor(96, 165, 250))  # Blue-400
+            else:
+                # High amplitude: Blue → Purple
+                gradient.setColorAt(0.0, QColor(59, 130, 246))   # Blue-500
+                gradient.setColorAt(0.5, QColor(139, 92, 246))   # Violet-500
+                gradient.setColorAt(1.0, QColor(167, 139, 250))  # Violet-400
+
+            # Apply gradient and draw bar
+            painter.fillRect(bar_rect, gradient)
+
+            # Optional: Add subtle glow effect for high amplitudes
+            if intensity > 0.7:
+                glow_color = QColor(167, 139, 250, 30)  # Purple with transparency
+                glow_rect = QRect(
+                    bar_rect.x() - 1,
+                    bar_rect.y() - 1,
+                    bar_rect.width() + 2,
+                    bar_rect.height() + 2
+                )
+                painter.fillRect(glow_rect, glow_color)
 
     def _draw_position_indicator(self, painter: QPainter):
         """
