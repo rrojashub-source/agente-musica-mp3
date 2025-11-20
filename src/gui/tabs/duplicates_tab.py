@@ -8,6 +8,7 @@ Purpose: Find and manage duplicate songs in library
 - Safe deletion with confirmation
 
 Created: November 13, 2025
+Updated: November 20, 2025 (UX improvements: visual indicators, dark mode colors)
 """
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
@@ -15,7 +16,7 @@ from PyQt6.QtWidgets import (
     QMessageBox, QProgressBar, QGroupBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QColor, QBrush, QFont
 import logging
 import os
 
@@ -260,17 +261,29 @@ class DuplicatesTab(QWidget):
                 "",
                 ""
             ])
+
+            # CRITICAL: Make bold and expand by default
+            font = group_item.font(0)
+            font.setBold(True)
+            group_item.setFont(0, font)
             group_item.setExpanded(True)
 
-            # Add songs to group
-            for song in songs:
-                song_item = self._create_song_item(song)
+            # Add songs to group (with quality indicator)
+            for idx, song in enumerate(songs):
+                is_best_quality = (idx == 0)  # First song is highest quality
+                song_item = self._create_song_item(song, is_best_quality)
                 group_item.addChild(song_item)
 
             self.results_tree.addTopLevelItem(group_item)
 
-    def _create_song_item(self, song):
-        """Create tree item for a song"""
+    def _create_song_item(self, song, is_best_quality=False):
+        """
+        Create tree item for a song
+
+        Args:
+            song: Song dictionary
+            is_best_quality: True if this is the highest quality song in group
+        """
         title = song.get('title', 'Unknown')
         artist = song.get('artist', 'Unknown')
         bitrate = song.get('bitrate', 0)
@@ -285,67 +298,135 @@ class DuplicatesTab(QWidget):
             except:
                 pass
 
+        # CRITICAL: Add visual indicator for best quality
+        quality_indicator = "⭐ [KEEP]" if is_best_quality else ""
+        details_text = f"{quality_indicator} ID: {song.get('id', 0)}".strip()
+
         song_item = QTreeWidgetItem([
             f"{title} - {artist}",
-            f"ID: {song.get('id', 0)}",
+            details_text,
             f"{bitrate} kbps" if bitrate > 0 else "Unknown",
             f"{size_mb:.1f} MB",
             file_path
         ])
 
-        # Make checkable
+        # Visual styling for best quality
+        if is_best_quality:
+            # Green color for best quality (works in both light/dark themes)
+            font = song_item.font(0)
+            font.setBold(True)
+            song_item.setFont(0, font)
+            song_item.setForeground(0, QBrush(QColor(34, 139, 34)))  # Forest green
+            song_item.setForeground(1, QBrush(QColor(34, 139, 34)))
+
+        # Make checkable (but NOT the best quality by default)
         song_item.setFlags(song_item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
         song_item.setCheckState(0, Qt.CheckState.Unchecked)
 
         # Store song data
         song_item.setData(0, Qt.ItemDataRole.UserRole, song)
+        song_item.setData(0, Qt.ItemDataRole.UserRole + 1, is_best_quality)  # Store quality flag
 
         return song_item
 
     def _select_low_quality(self):
         """Auto-select all duplicates except highest quality"""
+        selected_count = 0
+        kept_count = 0
+
         for i in range(self.results_tree.topLevelItemCount()):
             group_item = self.results_tree.topLevelItem(i)
 
             # Skip first child (highest quality) and check others
             for j in range(group_item.childCount()):
                 child = group_item.child(j)
-                if j == 0:
+                is_best = child.data(0, Qt.ItemDataRole.UserRole + 1)
+
+                if is_best or j == 0:
                     # Keep highest quality (first in list)
                     child.setCheckState(0, Qt.CheckState.Unchecked)
+                    # Visual: Remove any "delete" styling
+                    child.setForeground(2, QBrush(QColor()))  # Reset
+                    child.setForeground(3, QBrush(QColor()))  # Reset
+                    kept_count += 1
                 else:
                     # Select others for deletion
                     child.setCheckState(0, Qt.CheckState.Checked)
+                    # Visual: Red color for selected low quality (works in dark mode)
+                    child.setForeground(2, QBrush(QColor(220, 20, 60)))  # Crimson red
+                    child.setForeground(3, QBrush(QColor(220, 20, 60)))
+                    selected_count += 1
 
-        logger.info("Auto-selected low quality duplicates")
+        # Update status label with clear feedback
+        self.status_label.setText(
+            f"✓ Selected {selected_count} LOW QUALITY songs for deletion "
+            f"(Keeping {kept_count} BEST QUALITY)"
+        )
+
+        logger.info(f"Auto-selected {selected_count} low quality duplicates (keeping {kept_count} best)")
+
+        # Show feedback message box
+        QMessageBox.information(
+            self,
+            "Selection Complete",
+            f"Selected {selected_count} LOW QUALITY songs for deletion.\n\n"
+            f"Keeping {kept_count} BEST QUALITY songs (marked with ⭐ [KEEP]).\n\n"
+            f"Review the selection and click 'Delete Selected' to proceed."
+        )
 
     def _on_delete_clicked(self):
         """Handle delete button click"""
-        # Collect checked items
+        # Collect checked items and count best quality songs
         selected_songs = []
+        selected_best_quality = 0
+        total_best_quality = 0
 
         for i in range(self.results_tree.topLevelItemCount()):
             group_item = self.results_tree.topLevelItem(i)
 
             for j in range(group_item.childCount()):
                 child = group_item.child(j)
+                is_best = child.data(0, Qt.ItemDataRole.UserRole + 1)
+
+                if is_best:
+                    total_best_quality += 1
+
                 if child.checkState(0) == Qt.CheckState.Checked:
                     song_data = child.data(0, Qt.ItemDataRole.UserRole)
                     selected_songs.append(song_data)
+
+                    if is_best:
+                        selected_best_quality += 1
 
         if len(selected_songs) == 0:
             QMessageBox.information(
                 self,
                 "No Selection",
-                "Please select files to delete by checking the checkboxes."
+                "Please select files to delete by checking the checkboxes.\n\n"
+                "TIP: Click 'Select All Low Quality' to auto-select duplicates."
             )
             return
 
-        # Confirmation dialog
+        # WARNING: If user selected best quality songs
+        warning_msg = ""
+        if selected_best_quality > 0:
+            warning_msg = (
+                f"\n\n⚠️ WARNING: You selected {selected_best_quality} BEST QUALITY songs!\n"
+                f"These are marked with ⭐ [KEEP] and should NOT be deleted.\n"
+                f"Are you sure you want to delete them?"
+            )
+
+        # Calculate kept songs
+        kept_count = total_best_quality - selected_best_quality
+
+        # Confirmation dialog with context
         reply = QMessageBox.question(
             self,
             "Confirm Deletion",
-            f"Delete {len(selected_songs)} files?\n\nThis action cannot be undone.",
+            f"Delete {len(selected_songs)} files?\n\n"
+            f"Selected for deletion: {len(selected_songs)} songs\n"
+            f"Keeping: {kept_count} BEST QUALITY songs{warning_msg}\n\n"
+            f"⚠️ This action cannot be undone!",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
