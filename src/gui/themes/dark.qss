@@ -136,6 +136,42 @@ QTreeWidget::item:hover {
     background-color: #2d2d2d;
 }
 
+/* ===== Tree Widget Checkboxes (Duplicates Tab) ===== */
+QTreeWidget::indicator {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #cccccc;  /* Light gray border - visible in dark mode */
+    border-radius: 3px;
+    background-color: #2d2d2d;
+}
+
+QTreeWidget::indicator:hover {
+    border: 2px solid #0078d4;  /* Blue on hover */
+    background-color: #3f3f3f;
+}
+
+QTreeWidget::indicator:checked {
+    background-color: #0078d4;  /* Blue background when checked */
+    border: 2px solid #0078d4;
+    image: url(none);  /* Remove default checkmark */
+}
+
+/* Checkmark symbol for checked state */
+QTreeWidget::indicator:checked {
+    background-color: #0078d4;
+    border: 2px solid #0078d4;
+}
+
+QTreeWidget::indicator:unchecked {
+    background-color: #2d2d2d;
+    border: 2px solid #cccccc;
+}
+
+QTreeWidget::indicator:indeterminate {
+    background-color: #555555;
+    border: 2px solid #cccccc;
+}
+
 /* ===== Buttons ===== */
 QPushButton {
     background-color: #0078d4;
