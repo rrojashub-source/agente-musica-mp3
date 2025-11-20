@@ -12,6 +12,7 @@ Complete library view with integrated audio playback:
 - Graceful error handling for missing files
 
 Created: November 13, 2025
+Updated: November 19, 2025 (Added cover art integration)
 """
 import logging
 from pathlib import Path
@@ -22,6 +23,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor
+
+from core.cover_art_manager import CoverArtManager
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +57,9 @@ class LibraryTab(QWidget):
         self.audio_player = audio_player
         self.now_playing_widget = now_playing_widget
 
+        # Initialize cover art manager
+        self.cover_manager = CoverArtManager()
+
         # State
         self._current_song_id = None
         self._current_song_row = -1
@@ -63,7 +69,7 @@ class LibraryTab(QWidget):
         self._load_library()
         self._connect_signals()
 
-        logger.info("LibraryTab initialized")
+        logger.info("LibraryTab initialized with cover art support")
 
     def _init_ui(self):
         """Initialize UI components"""
@@ -324,6 +330,17 @@ class LibraryTab(QWidget):
                 self.audio_player.play()
                 self.status_label.setText(f"Playing: {song_info.get('title', 'Unknown')}")
                 logger.info(f"Playing: {song_info.get('title', 'Unknown')}")
+
+                # Enrich song_info with album art path if available
+                artist = song_info.get('artist')
+                album = song_info.get('album')
+                if artist and album:
+                    cover_path = self.cover_manager.get_cover_path(artist, album)
+                    if cover_path:
+                        song_info['album_art'] = str(cover_path)
+                        logger.debug(f"Cover found: {cover_path}")
+                    else:
+                        logger.debug(f"No cover found for {artist} - {album}")
 
                 # Update Now Playing widget
                 if self.now_playing_widget:
