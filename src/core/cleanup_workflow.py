@@ -187,12 +187,19 @@ class CleanupWorkflowWorker(QThread):
 
     def _step3_fetch(self):
         """Step 3: Fetch correct metadata from external APIs (with AcoustID fallback)"""
-        for cleaned_song in self.cleaned_songs:
+        total_songs = len(self.cleaned_songs)
+
+        for index, cleaned_song in enumerate(self.cleaned_songs, start=1):
             try:
                 # Use cleaned metadata for search
                 title = cleaned_song['cleaned']['title']
                 artist = cleaned_song['cleaned']['artist']
                 duration = self._get_song_duration(cleaned_song['id'])
+
+                # Emit incremental progress (60% → 80% range)
+                # Calculate percentage: 60 + (index/total * 20)
+                progress_percent = 60 + int((index / total_songs) * 20)
+                self.progress.emit(progress_percent, f"Fetching metadata... ({index}/{total_songs})")
 
                 # Fetch from APIs
                 best_match = self.fetcher.fetch_metadata(
