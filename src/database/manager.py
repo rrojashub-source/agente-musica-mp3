@@ -464,6 +464,66 @@ class DatabaseManager:
             logger.error(f"Failed to delete song {song_id}: {e}")
             return False
 
+    def cleanup_orphans(self) -> dict:
+        """
+        Remove songs from database whose files no longer exist
+
+        Returns:
+            dict: Statistics about cleanup operation
+            {
+                'total_checked': int,
+                'orphans_found': int,
+                'orphans_deleted': int,
+                'errors': [str]
+            }
+        """
+        import os
+
+        stats = {
+            'total_checked': 0,
+            'orphans_found': 0,
+            'orphans_deleted': 0,
+            'errors': []
+        }
+
+        try:
+            # Get all songs from database
+            all_songs = self.get_all_songs()
+            stats['total_checked'] = len(all_songs)
+
+            orphan_ids = []
+
+            # Check each song's file existence
+            for song in all_songs:
+                file_path = song.get('file_path', '')
+                song_id = song.get('id')
+
+                if not file_path or not os.path.exists(file_path):
+                    orphan_ids.append(song_id)
+                    logger.debug(f"Orphan found: ID {song_id} - {file_path}")
+
+            stats['orphans_found'] = len(orphan_ids)
+
+            # Delete orphans
+            for song_id in orphan_ids:
+                try:
+                    if self.delete_song(song_id):
+                        stats['orphans_deleted'] += 1
+                except Exception as e:
+                    stats['errors'].append(f"Failed to delete song {song_id}: {e}")
+
+            logger.info(
+                f"Orphan cleanup: {stats['orphans_deleted']}/{stats['orphans_found']} deleted "
+                f"(checked {stats['total_checked']} songs)"
+            )
+
+            return stats
+
+        except Exception as e:
+            logger.error(f"Orphan cleanup failed: {e}")
+            stats['errors'].append(str(e))
+            return stats
+
     def close(self):
         """Close database connection"""
         if self.conn:

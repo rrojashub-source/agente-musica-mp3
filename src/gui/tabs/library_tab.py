@@ -135,6 +135,14 @@ class LibraryTab(QWidget):
         self.refresh_button.setFixedWidth(100)
         buttons_layout.addWidget(self.refresh_button)
 
+        self.clean_db_button = QPushButton("🧹 Clean Database")
+        self.clean_db_button.setFixedWidth(140)
+        self.clean_db_button.setToolTip(
+            "Remove songs from database whose files no longer exist\n"
+            "(Prevents duplicates when re-importing)"
+        )
+        buttons_layout.addWidget(self.clean_db_button)
+
         buttons_layout.addStretch()
 
         self.status_label = QLabel("No song selected")
@@ -154,6 +162,7 @@ class LibraryTab(QWidget):
         # Buttons
         self.play_button.clicked.connect(self._on_play_button_clicked)
         self.refresh_button.clicked.connect(self._load_library)
+        self.clean_db_button.clicked.connect(self._on_clean_database_clicked)
 
         # Now Playing Widget prev/next/stop buttons
         if self.now_playing_widget:
@@ -659,6 +668,87 @@ class LibraryTab(QWidget):
                 "Delete Failed",
                 f"Failed to delete songs from database:\n{e}"
             )
+
+    def _on_clean_database_clicked(self):
+        """Handle clean database button click"""
+        # Confirmation dialog
+        reply = QMessageBox.question(
+            self,
+            "Clean Database",
+            "This will remove songs from the database whose files no longer exist.\n\n"
+            "This is useful after deleting duplicate files to prevent them from\n"
+            "being re-imported when you scan folders again.\n\n"
+            "⚠️ This operation cannot be undone.\n\n"
+            "Continue?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            # Disable button during cleanup
+            self.clean_db_button.setEnabled(False)
+            self.status_label.setText("Cleaning database...")
+
+            # Execute cleanup
+            stats = self.db_manager.cleanup_orphans()
+
+            # Show results
+            total = stats['total_checked']
+            found = stats['orphans_found']
+            deleted = stats['orphans_deleted']
+            errors = stats['errors']
+
+            if found == 0:
+                QMessageBox.information(
+                    self,
+                    "Database Clean",
+                    f"Database is clean!\n\n"
+                    f"Checked {total} songs, no orphans found."
+                )
+                self.status_label.setText(f"Database clean ({total} songs checked)")
+            elif deleted > 0:
+                error_msg = ""
+                if errors:
+                    error_msg = f"\n\nErrors: {len(errors)}"
+
+                QMessageBox.information(
+                    self,
+                    "Cleanup Complete",
+                    f"Cleaned {deleted} orphan songs from database.\n\n"
+                    f"Checked: {total} songs\n"
+                    f"Found: {found} orphans\n"
+                    f"Deleted: {deleted}{error_msg}"
+                )
+                self.status_label.setText(f"Cleaned {deleted} orphans")
+
+                # Refresh library view
+                self._load_library()
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Cleanup Failed",
+                    f"Found {found} orphans but failed to delete them.\n\n"
+                    f"Errors: {len(errors)}"
+                )
+                self.status_label.setText("Cleanup failed")
+
+            logger.info(f"Database cleanup: {deleted}/{found} deleted")
+
+        except Exception as e:
+            logger.error(f"Cleanup database error: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Cleanup Error",
+                f"Failed to clean database:\n\n{e}"
+            )
+            self.status_label.setText("Cleanup error")
+
+        finally:
+            # Re-enable button
+            self.clean_db_button.setEnabled(True)
 
     def cleanup(self):
         """Cleanup resources"""
