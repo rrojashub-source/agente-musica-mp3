@@ -285,12 +285,23 @@ class DuplicateDetector:
 
         try:
             import acoustid
-            # CRITICAL: Pass fpcalc path explicitly (pyacoustid doesn't auto-detect)
-            duration, fingerprint = acoustid.fingerprint_file(
-                file_path,
-                fpcalc=self.fpcalc_checker.fpcalc_path
-            )
-            return fingerprint
+
+            # CRITICAL: acoustid.fingerprint_file() doesn't accept fpcalc parameter
+            # Instead, it reads from FPCALC environment variable
+            # Set it temporarily for this call
+            old_fpcalc = os.environ.get('FPCALC')
+            os.environ['FPCALC'] = self.fpcalc_checker.fpcalc_path
+
+            try:
+                duration, fingerprint = acoustid.fingerprint_file(file_path)
+                return fingerprint
+            finally:
+                # Restore original environment variable
+                if old_fpcalc is not None:
+                    os.environ['FPCALC'] = old_fpcalc
+                else:
+                    os.environ.pop('FPCALC', None)
+
         except ImportError:
             logger.warning("acoustid not installed - fingerprint detection unavailable")
             return None
