@@ -102,6 +102,11 @@ class LibraryTab(QWidget):
         self.library_table.setSelectionMode(QTableWidget.SelectionMode.ExtendedSelection)  # Multi-selection enabled
         self.library_table.setSortingEnabled(True)
 
+        # CRITICAL: Set row height for proper text visibility when editing
+        # Default height (~25px) cuts off text in inline editor
+        # 35px ensures full text visibility during double-click editing
+        self.library_table.verticalHeader().setDefaultSectionSize(35)
+
         # Context menu (right-click)
         self.library_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.library_table.customContextMenuRequested.connect(self._show_context_menu)
