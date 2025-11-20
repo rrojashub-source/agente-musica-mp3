@@ -7,12 +7,15 @@ Detect duplicate songs using multiple methods:
 - Method 3: File size comparison (quick pre-filter)
 
 Created: November 13, 2025
+Updated: November 19, 2025 (Fixed fpcalc path passing)
 """
 import logging
 from typing import List, Dict, Optional
 from difflib import SequenceMatcher
 from collections import defaultdict
 import os
+
+from utils.fpcalc_checker import FpcalcChecker
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +49,13 @@ class DuplicateDetector:
         """
         self.db = db_manager
         self.similarity_threshold = similarity_threshold
-        logger.info(f"DuplicateDetector initialized (threshold: {similarity_threshold})")
+
+        # Initialize fpcalc checker for audio fingerprinting
+        self.fpcalc_checker = FpcalcChecker()
+        if self.fpcalc_checker.is_available():
+            logger.info(f"DuplicateDetector initialized (threshold: {similarity_threshold}, fpcalc: {self.fpcalc_checker.fpcalc_path})")
+        else:
+            logger.info(f"DuplicateDetector initialized (threshold: {similarity_threshold}, fpcalc: NOT AVAILABLE)")
 
     def scan_library(self, method='metadata') -> List[Dict]:
         """
@@ -264,14 +273,23 @@ class DuplicateDetector:
         Returns:
             Fingerprint string or None if failed
 
-        Note: Requires acoustid library
+        Note: Requires acoustid library and fpcalc binary
         """
         if not os.path.exists(file_path):
             return None
 
+        # Check if fpcalc is available
+        if not self.fpcalc_checker.is_available():
+            logger.warning("fpcalc not found - fingerprint detection unavailable")
+            return None
+
         try:
             import acoustid
-            duration, fingerprint = acoustid.fingerprint_file(file_path)
+            # CRITICAL: Pass fpcalc path explicitly (pyacoustid doesn't auto-detect)
+            duration, fingerprint = acoustid.fingerprint_file(
+                file_path,
+                fpcalc=self.fpcalc_checker.fpcalc_path
+            )
             return fingerprint
         except ImportError:
             logger.warning("acoustid not installed - fingerprint detection unavailable")
