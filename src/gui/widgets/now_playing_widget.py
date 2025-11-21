@@ -186,93 +186,97 @@ class NowPlayingWidget(QWidget):
 
         # ========== Bottom Section: Controls + Volume ==========
         controls_layout = QHBoxLayout()
-        controls_layout.setSpacing(15)  # More spacing between buttons
+        controls_layout.setSpacing(20)  # Canvas-inspired spacing (20px)
 
-        # Playback controls with professional styling
-        # Previous button
+        # Playback controls with Canvas AI-inspired styling
+        # Previous button (Canvas style: 70x70, purple #6c5ce7)
         self.prev_button = QPushButton("⏮")
-        self.prev_button.setFixedSize(50, 50)
+        self.prev_button.setFixedSize(70, 70)
         self.prev_button.setStyleSheet("""
             QPushButton {
-                background-color: #2d2d2d;
+                background-color: #6c5ce7;
                 color: #ffffff;
-                border: 2px solid #3f3f3f;
-                border-radius: 25px;
-                font-size: 18px;
+                border: 3px solid #5b4bc7;
+                border-radius: 35px;
+                font-size: 24px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #3f3f3f;
-                border: 2px solid #0078d4;
+                background-color: #7c6cf7;
+                border: 3px solid #8c7cff;
             }
             QPushButton:pressed {
-                background-color: #1e1e1e;
+                background-color: #5b4bc7;
+                border: 3px solid #4a3ab7;
             }
         """)
         controls_layout.addWidget(self.prev_button)
 
-        # Play/Pause button (larger, more prominent)
+        # Play/Pause button (Canvas style: 80x80, cyan #00d2ff)
         self.play_button = QPushButton("▶")
-        self.play_button.setFixedSize(60, 60)
+        self.play_button.setFixedSize(80, 80)
         self.play_button.setStyleSheet("""
             QPushButton {
-                background-color: #0078d4;
+                background-color: #00d2ff;
                 color: #ffffff;
-                border: none;
-                border-radius: 30px;
-                font-size: 22px;
+                border: 3px solid #00b8e6;
+                border-radius: 40px;
+                font-size: 28px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #1e8ce8;
-                transform: scale(1.05);
+                background-color: #1ee2ff;
+                border: 3px solid #2ef2ff;
             }
             QPushButton:pressed {
-                background-color: #005a9e;
+                background-color: #00b8e6;
+                border: 3px solid #009ecc;
             }
         """)
         controls_layout.addWidget(self.play_button)
 
-        # Stop button
+        # Stop button (Canvas style: 70x70, purple with red hover)
         self.stop_button = QPushButton("⏹")
-        self.stop_button.setFixedSize(50, 50)
+        self.stop_button.setFixedSize(70, 70)
         self.stop_button.setStyleSheet("""
             QPushButton {
-                background-color: #2d2d2d;
+                background-color: #6c5ce7;
                 color: #ffffff;
-                border: 2px solid #3f3f3f;
-                border-radius: 25px;
-                font-size: 18px;
+                border: 3px solid #5b4bc7;
+                border-radius: 35px;
+                font-size: 24px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #3f3f3f;
-                border: 2px solid #dc143c;
+                background-color: #e74c3c;
+                border: 3px solid #ff5c4c;
             }
             QPushButton:pressed {
-                background-color: #1e1e1e;
+                background-color: #c0392b;
+                border: 3px solid #a82919;
             }
         """)
         controls_layout.addWidget(self.stop_button)
 
-        # Next button
+        # Next button (Canvas style: 70x70, purple #6c5ce7)
         self.next_button = QPushButton("⏭")
-        self.next_button.setFixedSize(50, 50)
+        self.next_button.setFixedSize(70, 70)
         self.next_button.setStyleSheet("""
             QPushButton {
-                background-color: #2d2d2d;
+                background-color: #6c5ce7;
                 color: #ffffff;
-                border: 2px solid #3f3f3f;
-                border-radius: 25px;
-                font-size: 18px;
+                border: 3px solid #5b4bc7;
+                border-radius: 35px;
+                font-size: 24px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #3f3f3f;
-                border: 2px solid #0078d4;
+                background-color: #7c6cf7;
+                border: 3px solid #8c7cff;
             }
             QPushButton:pressed {
-                background-color: #1e1e1e;
+                background-color: #5b4bc7;
+                border: 3px solid #4a3ab7;
             }
         """)
         controls_layout.addWidget(self.next_button)
