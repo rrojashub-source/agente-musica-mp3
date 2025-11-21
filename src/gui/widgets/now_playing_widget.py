@@ -197,6 +197,7 @@ class NowPlayingWidget(QWidget):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #6c5ce7, stop:1 #6c5ce7);
                 color: #ffffff;
                 border: none;
+                outline: none;
                 border-radius: 35px;
                 font-size: 24px;
                 font-weight: bold;
@@ -206,6 +207,9 @@ class NowPlayingWidget(QWidget):
             }
             QPushButton:pressed {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #5b4bc7, stop:1 #5b4bc7);
+            }
+            QPushButton:focus {
+                outline: none;
             }
         """)
         controls_layout.addWidget(self.prev_button)
@@ -218,6 +222,7 @@ class NowPlayingWidget(QWidget):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #00d2ff, stop:1 #00d2ff);
                 color: #ffffff;
                 border: none;
+                outline: none;
                 border-radius: 40px;
                 font-size: 28px;
                 font-weight: bold;
@@ -227,6 +232,9 @@ class NowPlayingWidget(QWidget):
             }
             QPushButton:pressed {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #00b8e6, stop:1 #00b8e6);
+            }
+            QPushButton:focus {
+                outline: none;
             }
         """)
         controls_layout.addWidget(self.play_button)
@@ -239,6 +247,7 @@ class NowPlayingWidget(QWidget):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #6c5ce7, stop:1 #6c5ce7);
                 color: #ffffff;
                 border: none;
+                outline: none;
                 border-radius: 35px;
                 font-size: 24px;
                 font-weight: bold;
@@ -248,6 +257,9 @@ class NowPlayingWidget(QWidget):
             }
             QPushButton:pressed {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #5b4bc7, stop:1 #5b4bc7);
+            }
+            QPushButton:focus {
+                outline: none;
             }
         """)
         controls_layout.addWidget(self.stop_button)
@@ -260,6 +272,7 @@ class NowPlayingWidget(QWidget):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #6c5ce7, stop:1 #6c5ce7);
                 color: #ffffff;
                 border: none;
+                outline: none;
                 border-radius: 35px;
                 font-size: 24px;
                 font-weight: bold;
@@ -269,6 +282,9 @@ class NowPlayingWidget(QWidget):
             }
             QPushButton:pressed {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #5b4bc7, stop:1 #5b4bc7);
+            }
+            QPushButton:focus {
+                outline: none;
             }
         """)
         controls_layout.addWidget(self.next_button)
