@@ -160,12 +160,12 @@ class VisualizerWidget(QWidget):
         # Fill background
         painter.fillRect(self.rect(), self.background_color)
 
-        # If no waveform data, display placeholder
-        if not self.waveform_data:
+        # If no data at all, display placeholder
+        if not self.waveform_data and not self.spectrum_data:
             self._draw_placeholder(painter)
             return
 
-        # Draw waveform based on style
+        # Draw visualization based on style
         if self.viz_style == 'waveform':
             self._draw_waveform(painter)
         elif self.viz_style == 'bars':
@@ -191,6 +191,10 @@ class VisualizerWidget(QWidget):
         Args:
             painter: QPainter instance
         """
+        # Check if waveform data exists
+        if not self.waveform_data:
+            return
+
         width = self.width()
         height = self.height()
         center_y = height // 2
@@ -392,11 +396,13 @@ class VisualizerWidget(QWidget):
         painter.drawLine(x, 0, x, height)
 
     def clear(self):
-        """Clear waveform data"""
+        """Clear all visualization data"""
         self.waveform_data = None
+        self.spectrum_data = None
+        self.spectrum_duration = 0.0
         self.position = 0.0
         self.update()
-        logger.debug("Waveform cleared")
+        logger.debug("Visualizer cleared")
 
     def reset(self):
         """Reset to initial state"""
