@@ -10,15 +10,18 @@ Features:
 - Scales to widget size
 - Smooth performance (60 FPS capable)
 - Modern spectrum analyzer with gradient colors
+- Multiple visualization styles with style selector
 
 Created: November 13, 2025
 Updated: November 20, 2025 - Modern gradient bars
+Updated: November 21, 2025 - Multiple styles + selector
 """
 import logging
 from typing import List, Optional
-from PyQt6.QtWidgets import QWidget
-from PyQt6.QtCore import Qt, QRect, QPoint
-from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QLinearGradient
+import math
+from PyQt6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout
+from PyQt6.QtCore import Qt, QRect, QPoint, QSettings
+from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QLinearGradient, QRadialGradient
 
 logger = logging.getLogger(__name__)
 
@@ -64,13 +67,101 @@ class VisualizerWidget(QWidget):
         self.waveform_color: QColor = QColor(0, 150, 255)  # Blue default
         self.position_color: QColor = QColor(255, 0, 0)  # Red position indicator
         self.background_color: QColor = QColor(30, 30, 30)  # Dark background
-        self.viz_style: str = 'waveform'  # 'waveform' or 'bars'
+
+        # Load saved style from settings (default: 'bars')
+        self.settings = QSettings("NEXUS", "MusicManager")
+        self.viz_style: str = self.settings.value("visualizer/style", "bars")
 
         # Widget settings
         self.setMinimumSize(200, 100)
-        # Let theme handle background color
 
-        logger.info("VisualizerWidget initialized")
+        # Create layout with style selector
+        self._init_ui()
+
+        logger.info(f"VisualizerWidget initialized with style: {self.viz_style}")
+
+    def _init_ui(self):
+        """Initialize UI with style selector"""
+        # Main layout
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # Style selector (top-right corner)
+        selector_container = QWidget()
+        selector_layout = QHBoxLayout(selector_container)
+        selector_layout.setContentsMargins(5, 5, 5, 5)
+        selector_layout.addStretch()
+
+        # ComboBox for style selection
+        self.style_selector = QComboBox()
+        self.style_selector.addItems([
+            "Waveform",
+            "Bars (Spectrum)",
+            "Circular (Radial)"
+        ])
+
+        # Set current style
+        style_index = {
+            'waveform': 0,
+            'bars': 1,
+            'circular': 2
+        }.get(self.viz_style, 1)
+        self.style_selector.setCurrentIndex(style_index)
+
+        # Style the combobox
+        self.style_selector.setStyleSheet("""
+            QComboBox {
+                background-color: rgba(50, 50, 50, 200);
+                color: white;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 11px;
+                min-width: 140px;
+            }
+            QComboBox:hover {
+                background-color: rgba(60, 60, 60, 220);
+                border: 1px solid #777;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid white;
+                margin-right: 5px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2a2a2a;
+                color: white;
+                selection-background-color: #0d7377;
+                border: 1px solid #555;
+            }
+        """)
+
+        # Connect change event
+        self.style_selector.currentIndexChanged.connect(self._on_style_changed)
+
+        selector_layout.addWidget(self.style_selector)
+
+        # Add to main layout
+        layout.addWidget(selector_container)
+        layout.addStretch()
+
+    def _on_style_changed(self, index: int):
+        """Handle style selection change"""
+        styles = ['waveform', 'bars', 'circular']
+        new_style = styles[index]
+
+        if new_style != self.viz_style:
+            self.viz_style = new_style
+            # Save preference
+            self.settings.setValue("visualizer/style", new_style)
+            self.update()
+            logger.info(f"Visualizer style changed to: {new_style}")
 
     def set_waveform(self, waveform_data: List[float]):
         """
@@ -138,10 +229,11 @@ class VisualizerWidget(QWidget):
         Set visualization style
 
         Args:
-            style: 'waveform' or 'bars'
+            style: 'waveform', 'bars', or 'circular'
         """
-        if style in ['waveform', 'bars']:
+        if style in ['waveform', 'bars', 'circular']:
             self.viz_style = style
+            self.settings.setValue("visualizer/style", style)
             self.update()  # Trigger repaint
             logger.debug(f"Visualization style set to: {style}")
         else:
@@ -170,6 +262,8 @@ class VisualizerWidget(QWidget):
             self._draw_waveform(painter)
         elif self.viz_style == 'bars':
             self._draw_bars(painter)
+        elif self.viz_style == 'circular':
+            self._draw_circular(painter)
 
         # Draw position indicator
         self._draw_position_indicator(painter)
@@ -315,6 +409,91 @@ class VisualizerWidget(QWidget):
                     bar_rect.height() + 2
                 )
                 painter.fillRect(glow_rect, glow_color)
+
+    def _draw_circular(self, painter: QPainter):
+        """
+        Draw circular/radial spectrum visualizer
+
+        Modern design:
+        - Bars radiate from center in a circle
+        - Same gradient colors as bar style
+        - DYNAMIC: Bars grow/shrink with music rhythm using FFT data
+        - Smooth circular distribution
+
+        Args:
+            painter: QPainter instance
+        """
+        width = self.width()
+        height = self.height()
+
+        # Calculate center and radius
+        center_x = width // 2
+        center_y = height // 2
+        max_radius = min(width, height) // 2 - 20  # 20px margin
+        min_radius = max_radius * 0.2  # Inner circle (20% of max)
+
+        # Number of bars around the circle
+        num_bars = min(60, width // 8)
+        angle_step = 360.0 / num_bars
+
+        # Get bar magnitudes based on current playback position
+        bar_magnitudes = self._get_current_bar_magnitudes(num_bars)
+
+        for i in range(num_bars):
+            # Calculate angle for this bar (starting from top, clockwise)
+            angle = i * angle_step - 90  # -90 to start from top
+            angle_rad = math.radians(angle)
+
+            # Get magnitude for this bar
+            magnitude = bar_magnitudes[i]
+
+            # Calculate bar length based on magnitude
+            bar_length = magnitude * (max_radius - min_radius)
+
+            # Calculate start and end points
+            start_x = center_x + min_radius * math.cos(angle_rad)
+            start_y = center_y + min_radius * math.sin(angle_rad)
+
+            end_x = center_x + (min_radius + bar_length) * math.cos(angle_rad)
+            end_y = center_y + (min_radius + bar_length) * math.sin(angle_rad)
+
+            # Create gradient based on magnitude (same color scheme as bars)
+            intensity = magnitude
+
+            if intensity < 0.25:
+                # Low amplitude: Green
+                color_start = QColor(34, 197, 94)   # Green-500
+                color_end = QColor(74, 222, 128)    # Green-400
+            elif intensity < 0.50:
+                # Medium-low: Green → Cyan
+                color_start = QColor(34, 197, 94)   # Green-500
+                color_end = QColor(20, 184, 166)    # Teal-500
+            elif intensity < 0.75:
+                # Medium-high: Cyan → Blue
+                color_start = QColor(20, 184, 166)  # Teal-500
+                color_end = QColor(59, 130, 246)    # Blue-500
+            else:
+                # High amplitude: Blue → Purple
+                color_start = QColor(59, 130, 246)   # Blue-500
+                color_end = QColor(139, 92, 246)     # Violet-500
+
+            # Create gradient from center to edge
+            gradient = QLinearGradient(start_x, start_y, end_x, end_y)
+            gradient.setColorAt(0.0, color_start)
+            gradient.setColorAt(1.0, color_end)
+
+            # Draw bar with thickness based on magnitude
+            pen_width = max(2, int(3 + magnitude * 2))  # 2-5px width
+            pen = QPen(gradient, pen_width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+            painter.setPen(pen)
+            painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))
+
+            # Optional: Add glow effect for high amplitudes
+            if intensity > 0.7:
+                glow_pen = QPen(QColor(167, 139, 250, 60), pen_width + 2,
+                               Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+                painter.setPen(glow_pen)
+                painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))
 
     def _get_current_bar_magnitudes(self, num_bars: int) -> List[float]:
         """
