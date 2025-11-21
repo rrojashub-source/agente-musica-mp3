@@ -312,7 +312,7 @@ class NowPlayingWidget(QWidget):
     def _init_timer(self):
         """Initialize position update timer"""
         self.position_timer = QTimer(self)
-        self.position_timer.setInterval(100)  # 100ms updates (10 FPS)
+        self.position_timer.setInterval(33)  # 33ms updates (30 FPS for smooth visualizer)
         self.position_timer.timeout.connect(self._update_position)
 
     def _connect_signals(self):
