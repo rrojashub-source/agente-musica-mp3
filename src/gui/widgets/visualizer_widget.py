@@ -50,8 +50,13 @@ class VisualizerWidget(QWidget):
         """
         super().__init__(parent)
 
-        # Waveform data
+        # Waveform data (static)
         self.waveform_data: Optional[List[float]] = None
+
+        # Spectrum data (dynamic - for animated bars)
+        self.spectrum_data: Optional[List[List[float]]] = None  # [time_window][frequency_bar]
+        self.spectrum_duration: float = 0.0  # Duration for spectrum data
+
         self.position: float = 0.0  # Current position (0.0 to 1.0)
         self.duration: float = 0.0  # Total duration in seconds (for position conversion)
 
@@ -93,6 +98,20 @@ class VisualizerWidget(QWidget):
             self.position = 0.0
 
         self.update()  # Trigger repaint
+
+    def set_spectrum(self, spectrum_data: List[List[float]], duration: float):
+        """
+        Set spectrum data for dynamic visualization
+
+        Args:
+            spectrum_data: List of time windows, each containing bar magnitudes
+                          Format: [[bar1, bar2, ...], [bar1, bar2, ...], ...]
+            duration: Total duration in seconds
+        """
+        self.spectrum_data = spectrum_data
+        self.spectrum_duration = duration
+        self.update()  # Trigger repaint
+        logger.debug(f"Spectrum data set: {len(spectrum_data)} windows, {duration:.2f}s")
 
     def set_duration(self, duration: float):
         """
@@ -209,13 +228,13 @@ class VisualizerWidget(QWidget):
 
     def _draw_bars(self, painter: QPainter):
         """
-        Draw waveform as modern spectrum analyzer bars with gradient
+        Draw dynamic spectrum analyzer bars with gradient
 
         Modern design:
         - Vertical bars from bottom upwards
         - Gradient colors: green (low) → cyan (mid) → blue (high) → purple (very high)
         - Spacing between bars for clean look
-        - Rounded tops for modern aesthetic
+        - DYNAMIC: Bars move with music rhythm using FFT data
 
         Args:
             painter: QPainter instance
@@ -228,23 +247,14 @@ class VisualizerWidget(QWidget):
         bar_width = width // num_bars
         bar_spacing = 2  # 2px gap between bars
 
-        # Sample waveform data
-        num_samples = len(self.waveform_data)
-        samples_per_bar = max(1, num_samples // num_bars)
+        # Get bar magnitudes based on current playback position
+        bar_magnitudes = self._get_current_bar_magnitudes(num_bars)
 
         for i in range(num_bars):
             x = i * bar_width
 
-            # Get max amplitude for this bar
-            start_idx = i * samples_per_bar
-            end_idx = min(start_idx + samples_per_bar, num_samples)
-
-            if start_idx >= num_samples:
-                break
-
-            # Max absolute amplitude in this range
-            samples = self.waveform_data[start_idx:end_idx]
-            max_amplitude = max(abs(s) for s in samples) if samples else 0.0
+            # Get magnitude for this bar (from FFT data if available, else waveform)
+            max_amplitude = bar_magnitudes[i]
 
             # Convert amplitude to bar height
             # Full height usage (no mirroring)
@@ -301,6 +311,67 @@ class VisualizerWidget(QWidget):
                     bar_rect.height() + 2
                 )
                 painter.fillRect(glow_rect, glow_color)
+
+    def _get_current_bar_magnitudes(self, num_bars: int) -> List[float]:
+        """
+        Get bar magnitudes for current playback position
+
+        If spectrum data is available (FFT), use dynamic values.
+        Otherwise, fall back to static waveform data.
+
+        Args:
+            num_bars: Number of bars to generate
+
+        Returns:
+            List of magnitudes [0.0, 1.0] for each bar
+        """
+        # If we have dynamic spectrum data, use it!
+        if self.spectrum_data and self.spectrum_duration > 0:
+            # Calculate which time window we're in
+            current_time = self.position  # In seconds
+            time_index = int((current_time / self.spectrum_duration) * len(self.spectrum_data))
+            time_index = max(0, min(time_index, len(self.spectrum_data) - 1))
+
+            # Get bar magnitudes for this time window
+            current_spectrum = self.spectrum_data[time_index]
+
+            # Match number of bars (resample if needed)
+            if len(current_spectrum) == num_bars:
+                return current_spectrum
+            else:
+                # Resample to match num_bars
+                import numpy as np
+                resampled = np.interp(
+                    np.linspace(0, len(current_spectrum) - 1, num_bars),
+                    np.arange(len(current_spectrum)),
+                    current_spectrum
+                )
+                return resampled.tolist()
+
+        # Fallback: Use static waveform data
+        elif self.waveform_data:
+            num_samples = len(self.waveform_data)
+            samples_per_bar = max(1, num_samples // num_bars)
+
+            bar_magnitudes = []
+            for i in range(num_bars):
+                start_idx = i * samples_per_bar
+                end_idx = min(start_idx + samples_per_bar, num_samples)
+
+                if start_idx >= num_samples:
+                    bar_magnitudes.append(0.0)
+                    continue
+
+                # Max absolute amplitude in this range
+                samples = self.waveform_data[start_idx:end_idx]
+                max_amplitude = max(abs(s) for s in samples) if samples else 0.0
+                bar_magnitudes.append(max_amplitude)
+
+            return bar_magnitudes
+
+        # No data available
+        else:
+            return [0.0] * num_bars
 
     def _draw_position_indicator(self, painter: QPainter):
         """

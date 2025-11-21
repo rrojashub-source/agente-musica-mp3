@@ -574,32 +574,48 @@ and are never shared or transmitted outside of official API requests to YouTube 
 
     def _on_song_loaded(self, file_path: str):
         """
-        Handle song loaded event - extract waveform and update visualizer
+        Handle song loaded event - extract spectrum/waveform and update visualizer
 
         Args:
             file_path: Path to audio file
         """
         try:
-            logger.info(f"Extracting waveform for: {Path(file_path).name}")
+            logger.info(f"Extracting audio data for: {Path(file_path).name}")
 
             # Get duration from audio player (already loaded)
             duration = self.audio_player.get_duration() if self.audio_player else 0.0
 
-            # Extract waveform (1000 points is good for visualization)
-            waveform = self.waveform_extractor.extract(file_path, num_points=1000)
+            # Extract spectrum data for dynamic bars (FFT analysis)
+            # This makes bars move with the music rhythm!
+            spectrum_result = self.waveform_extractor.extract_spectrum(
+                file_path,
+                num_bars=60,
+                window_size_ms=50  # 50ms windows for smooth animation
+            )
 
-            if waveform:
-                # Update visualizer with waveform and duration
-                self.visualizer.set_waveform(waveform)
+            if spectrum_result:
+                spectrum_data, spectrum_duration = spectrum_result
+                # Update visualizer with dynamic spectrum data
+                self.visualizer.set_spectrum(spectrum_data, spectrum_duration)
                 self.visualizer.set_duration(duration)
-                logger.info(f"Waveform loaded: {len(waveform)} points, duration: {duration:.2f}s")
+                logger.info(f"Dynamic spectrum loaded: {len(spectrum_data)} windows")
             else:
-                logger.warning(f"Failed to extract waveform from: {file_path}")
-                # Clear visualizer on failure
-                self.visualizer.clear()
+                # Fallback: Extract static waveform if spectrum fails
+                logger.warning("Spectrum extraction failed, using static waveform")
+                waveform = self.waveform_extractor.extract(file_path, num_points=1000)
+
+                if waveform:
+                    # Update visualizer with static waveform
+                    self.visualizer.set_waveform(waveform)
+                    self.visualizer.set_duration(duration)
+                    logger.info(f"Waveform loaded: {len(waveform)} points, duration: {duration:.2f}s")
+                else:
+                    logger.warning(f"Failed to extract any visualization data from: {file_path}")
+                    # Clear visualizer on failure
+                    self.visualizer.clear()
 
         except Exception as e:
-            logger.error(f"Error extracting waveform: {e}")
+            logger.error(f"Error extracting audio data: {e}")
             self.visualizer.clear()
 
     def _check_empty_library(self):
