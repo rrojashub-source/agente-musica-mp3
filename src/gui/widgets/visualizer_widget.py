@@ -68,6 +68,9 @@ class VisualizerWidget(QWidget):
         self.position_color: QColor = QColor(255, 0, 0)  # Red position indicator
         self.background_color: QColor = QColor(30, 30, 30)  # Dark background
 
+        # Brain AI electrical impulses system
+        self.electrical_impulses: List[dict] = []  # Active impulses traveling from center to neurons
+
         # Load saved style from settings (default: 'bars')
         self.settings = QSettings("NEXUS", "MusicManager")
         self.viz_style: str = self.settings.value("visualizer/style", "bars")
@@ -631,24 +634,62 @@ class VisualizerWidget(QWidget):
             ny = center_y + distance * math.sin(angle_rad)
             neurons.append((nx, ny))
 
-        # === 4. PULSATING SYNAPSES (inspired by NEXUS) ===
-        for i, (nx, ny) in enumerate(neurons):
-            # Get magnitude for this neuron (based on angle)
-            neuron_index = int((math.atan2(ny - center_y, nx - center_x) + math.pi) / (2 * math.pi) * num_bars)
-            neuron_index = max(0, min(neuron_index, len(bar_magnitudes) - 1))
-            magnitude = bar_magnitudes[neuron_index]
+        # === 4. ELECTRICAL IMPULSES (traveling from center to neurons) ===
+        # Generate new impulses based on audio magnitude (higher magnitude = more impulses)
+        impulse_spawn_chance = avg_magnitude * 0.3  # 0-30% chance per frame
+        if random.random() < impulse_spawn_chance and len(self.electrical_impulses) < 15:
+            # Pick random neuron to send impulse to
+            target_neuron = random.randint(0, num_neurons - 1)
+            target_x, target_y = neurons[target_neuron]
 
-            # Pulsating opacity (animated with time + phase offset per synapse)
-            pulse_phase = current_time * 3 + i * 0.3  # Different phase per synapse
-            pulse_opacity = 0.3 + math.sin(pulse_phase) * 0.3  # 0.0 - 0.6 range
-            alpha = int((pulse_opacity + magnitude * 0.4) * 255)  # Combine pulse + magnitude
+            # Create new impulse
+            self.electrical_impulses.append({
+                'start_x': center_x,
+                'start_y': center_y,
+                'end_x': target_x,
+                'end_y': target_y,
+                'progress': 0.0,  # 0.0 (at center) to 1.0 (at neuron)
+                'speed': 0.03 + avg_magnitude * 0.05,  # Faster on high magnitude
+                'target_neuron': target_neuron
+            })
 
-            synapse_color = QColor(0, 200, 255, alpha)
+        # Update and draw active impulses
+        impulses_to_remove = []
+        for i, impulse in enumerate(self.electrical_impulses):
+            # Update progress
+            impulse['progress'] += impulse['speed']
 
-            # Draw line from core to neuron
-            pen = QPen(synapse_color, 1, Qt.PenStyle.SolidLine)
-            painter.setPen(pen)
-            painter.drawLine(center_x, center_y, int(nx), int(ny))
+            # Remove if reached destination
+            if impulse['progress'] >= 1.0:
+                impulses_to_remove.append(i)
+                continue
+
+            # Calculate current position (interpolate between start and end)
+            current_x = impulse['start_x'] + (impulse['end_x'] - impulse['start_x']) * impulse['progress']
+            current_y = impulse['start_y'] + (impulse['end_y'] - impulse['start_y']) * impulse['progress']
+
+            # Draw impulse as glowing point with trail
+            # Opacity fades as impulse ages (brightest at start)
+            impulse_opacity = int((1.0 - impulse['progress'] * 0.5) * 255)
+
+            # Draw impulse head (bright cyan)
+            impulse_color = QColor(0, 255, 255, impulse_opacity)
+            impulse_radius = 3 + avg_magnitude * 2  # 3-5 pixels
+
+            # Glow effect around impulse
+            glow_gradient = QRadialGradient(current_x, current_y, impulse_radius * 2)
+            glow_gradient.setColorAt(0.0, impulse_color)
+            glow_gradient.setColorAt(0.5, QColor(0, 200, 255, impulse_opacity // 2))
+            glow_gradient.setColorAt(1.0, QColor(0, 200, 255, 0))
+
+            painter.setBrush(glow_gradient)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(int(current_x - impulse_radius), int(current_y - impulse_radius),
+                               int(impulse_radius * 2), int(impulse_radius * 2))
+
+        # Clean up completed impulses
+        for index in reversed(impulses_to_remove):
+            del self.electrical_impulses[index]
 
         # Draw neuron points (pulsating dots)
         for i, (nx, ny) in enumerate(neurons):
@@ -677,16 +718,23 @@ class VisualizerWidget(QWidget):
             painter.drawEllipse(int(nx - neuron_radius), int(ny - neuron_radius),
                                int(neuron_radius * 2), int(neuron_radius * 2))
 
-            # === 5. ORBITAL RINGS (inspired by NEXUS) ===
-            # Draw orbital ring around VERY active neurons (magnitude > 0.75)
-            # Made more subtle to not hide brilliant center
-            if magnitude > 0.75:
-                ring_radius = neuron_radius * 2.0  # Closer to neuron (was 2.5)
-                ring_width = 1
-                ring_opacity = int(magnitude * 100)  # Reduced opacity (was 200, max 39% instead of 78%)
+            # === 5. ORBITAL RINGS (reactive to impulses) ===
+            # Check if any impulse is arriving at this neuron (progress > 0.85)
+            ring_activation = 0.0
+            for impulse in self.electrical_impulses:
+                if impulse['target_neuron'] == i and impulse['progress'] > 0.85:
+                    # Ring activates when impulse is close (85-100% of travel)
+                    activation_intensity = (impulse['progress'] - 0.85) / 0.15  # 0.0 to 1.0
+                    ring_activation = max(ring_activation, activation_intensity)
 
-                # Ring color matches neuron
-                ring_pen = QPen(QColor(color.red(), color.green(), color.blue(), ring_opacity),
+            # Draw ring only if activated by arriving impulse
+            if ring_activation > 0.0:
+                ring_radius = neuron_radius * 2.5
+                ring_width = 2
+                # Cyan color (matches center), opacity based on activation
+                ring_opacity = int(ring_activation * 255)
+
+                ring_pen = QPen(QColor(0, 255, 255, ring_opacity),  # Bright cyan
                                ring_width, Qt.PenStyle.SolidLine)
                 painter.setPen(ring_pen)
                 painter.setBrush(Qt.BrushStyle.NoBrush)
