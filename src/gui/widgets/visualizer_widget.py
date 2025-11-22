@@ -505,17 +505,21 @@ class VisualizerWidget(QWidget):
         """
         Draw "Brain AI" visualization - inspired by AI brain visualizations in movies
 
-        Features:
-        - Pulsating central sphere (like AI core)
-        - Neural network connections (synapses)
-        - Particles floating around
-        - Reactive to audio (grows/shrinks with beats)
+        Enhanced with ideas from CEREBRO_NEXUS_V3.0.0:
+        - Pulsating central sphere (AI core with breathing effect)
+        - 100+ floating neural particles (distributed in sphere)
+        - Orbital rings around neurons
+        - Pulsating synapses (animated opacity)
+        - Processing waves (expand on audio peaks)
+        - 6-color gradient palette (cyan → blue → purple → magenta → pink → cyan)
+        - Everything reactive to audio in real-time
 
         Args:
             painter: QPainter instance
         """
         import random
         import math
+        import time
 
         width = self.width()
         height = self.height()
@@ -527,9 +531,71 @@ class VisualizerWidget(QWidget):
         bar_magnitudes = self._get_current_bar_magnitudes(num_bars)
         avg_magnitude = sum(bar_magnitudes) / len(bar_magnitudes) if bar_magnitudes else 0.5
 
-        # Pulsating core sphere
-        base_radius = min(width, height) * 0.15  # 15% of smaller dimension
-        pulse_radius = base_radius * (0.8 + avg_magnitude * 0.4)  # Pulsates based on audio
+        # Time-based animation (for breathing and pulsating effects)
+        current_time = time.time()
+        breathe_factor = 1.0 + math.sin(current_time * 0.5) * 0.05  # Slow breathing
+
+        # === 1. FLOATING NEURAL PARTICLES (inspired by NEXUS) ===
+        num_particles = 150
+        particle_base_radius = min(width, height) * 0.35
+        random.seed(42)  # Deterministic positions
+
+        for i in range(num_particles):
+            # Spherical distribution (θ, φ coordinates)
+            theta = random.uniform(0, 2 * math.pi)
+            phi = math.acos(2 * random.random() - 1)
+
+            # Radius with breathing effect
+            particle_radius = particle_base_radius + random.uniform(-20, 20)
+            particle_radius *= breathe_factor  # Apply breathing
+
+            # 3D to 2D projection (simple orthographic)
+            px = center_x + particle_radius * math.sin(phi) * math.cos(theta)
+            py = center_y + particle_radius * math.sin(phi) * math.sin(theta)
+
+            # Particle size varies (1-3 pixels)
+            particle_size = 1 + random.random() * 2
+
+            # Color varies by position (6-color palette)
+            hue_angle = (theta / (2 * math.pi)) * 360
+            if hue_angle < 60:
+                color = QColor(0, 200, 255)  # Cyan
+            elif hue_angle < 120:
+                color = QColor(0, 100, 255)  # Blue
+            elif hue_angle < 180:
+                color = QColor(100, 0, 255)  # Purple
+            elif hue_angle < 240:
+                color = QColor(200, 0, 255)  # Magenta
+            elif hue_angle < 300:
+                color = QColor(255, 0, 150)  # Pink
+            else:
+                color = QColor(0, 255, 200)  # Cyan-green
+
+            # Draw particle with glow
+            painter.setBrush(color)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(int(px - particle_size/2), int(py - particle_size/2),
+                               int(particle_size), int(particle_size))
+
+        # === 2. PROCESSING WAVES (expand on high magnitude) ===
+        if avg_magnitude > 0.7:  # High audio peak
+            wave_scale = 1.0 + (avg_magnitude - 0.7) * 2  # Scale factor
+            wave_radius = base_radius * 2 * wave_scale
+            wave_opacity = int((1.0 - (wave_scale - 1.0) / 2) * 100)  # Fade as expands
+
+            wave_gradient = QRadialGradient(center_x, center_y, wave_radius)
+            wave_gradient.setColorAt(0.0, QColor(0, 200, 255, 0))
+            wave_gradient.setColorAt(0.7, QColor(0, 200, 255, wave_opacity))
+            wave_gradient.setColorAt(1.0, QColor(100, 0, 255, 0))
+
+            painter.setBrush(wave_gradient)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(int(center_x - wave_radius), int(center_y - wave_radius),
+                               int(wave_radius * 2), int(wave_radius * 2))
+
+        # === 3. PULSATING CORE SPHERE (with breathing) ===
+        base_radius = min(width, height) * 0.15
+        pulse_radius = base_radius * (0.8 + avg_magnitude * 0.4) * breathe_factor
 
         # Draw central sphere with radial gradient (AI core)
         gradient = QRadialGradient(center_x, center_y, pulse_radius)
@@ -559,16 +625,19 @@ class VisualizerWidget(QWidget):
             ny = center_y + distance * math.sin(angle_rad)
             neurons.append((nx, ny))
 
-        # Draw synapses (connections between neurons and core)
-        for nx, ny in neurons:
+        # === 4. PULSATING SYNAPSES (inspired by NEXUS) ===
+        for i, (nx, ny) in enumerate(neurons):
             # Get magnitude for this neuron (based on angle)
             neuron_index = int((math.atan2(ny - center_y, nx - center_x) + math.pi) / (2 * math.pi) * num_bars)
             neuron_index = max(0, min(neuron_index, len(bar_magnitudes) - 1))
             magnitude = bar_magnitudes[neuron_index]
 
-            # Synapse line opacity based on magnitude
-            alpha = int(100 + magnitude * 155)  # 100-255
-            synapse_color = QColor(0, 200, 255, alpha)  # Cyan
+            # Pulsating opacity (animated with time + phase offset per synapse)
+            pulse_phase = current_time * 3 + i * 0.3  # Different phase per synapse
+            pulse_opacity = 0.3 + math.sin(pulse_phase) * 0.3  # 0.0 - 0.6 range
+            alpha = int((pulse_opacity + magnitude * 0.4) * 255)  # Combine pulse + magnitude
+
+            synapse_color = QColor(0, 200, 255, alpha)
 
             # Draw line from core to neuron
             pen = QPen(synapse_color, 1, Qt.PenStyle.SolidLine)
@@ -602,7 +671,22 @@ class VisualizerWidget(QWidget):
             painter.drawEllipse(int(nx - neuron_radius), int(ny - neuron_radius),
                                int(neuron_radius * 2), int(neuron_radius * 2))
 
-        # Draw outer glow ring (pulsating)
+            # === 5. ORBITAL RINGS (inspired by NEXUS) ===
+            # Draw orbital ring around active neurons (magnitude > 0.6)
+            if magnitude > 0.6:
+                ring_radius = neuron_radius * 2.5
+                ring_width = 1
+                ring_opacity = int(magnitude * 200)
+
+                # Ring color matches neuron
+                ring_pen = QPen(QColor(color.red(), color.green(), color.blue(), ring_opacity),
+                               ring_width, Qt.PenStyle.SolidLine)
+                painter.setPen(ring_pen)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.drawEllipse(int(nx - ring_radius), int(ny - ring_radius),
+                                   int(ring_radius * 2), int(ring_radius * 2))
+
+        # === 6. OUTER GLOW RING (pulsating) ===
         ring_radius = pulse_radius * 1.5
         ring_gradient = QRadialGradient(center_x, center_y, ring_radius)
         ring_gradient.setColorAt(0.0, QColor(0, 150, 255, 0))
