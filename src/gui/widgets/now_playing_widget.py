@@ -20,14 +20,225 @@ from typing import Optional, Dict
 from pathlib import Path
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QSlider, QFrame, QMessageBox
+    QSlider, QFrame, QMessageBox, QGraphicsDropShadowEffect
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QPointF
+from PyQt6.QtGui import QPixmap, QPainter, QColor, QPen, QBrush, QPolygonF, QPainterPath
 from core.audio_player import PlaybackState
 from core.cover_art_manager import CoverArtManager
 
 logger = logging.getLogger(__name__)
+
+
+class NeonIconButton(QPushButton):
+    """
+    Custom button that draws clean geometric shapes with neon glow effect.
+
+    Supports icons: play, pause, stop, prev, next, shuffle, repeat
+    """
+
+    def __init__(self, icon_type: str, size: int = 40, parent=None):
+        super().__init__(parent)
+        self.icon_type = icon_type
+        self.icon_size = size
+        self.setFixedSize(size, size)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        # Neon colors
+        self.color_cyan = QColor(0, 200, 255)
+        self.color_magenta = QColor(200, 80, 192)
+        self.color_dim = QColor(80, 80, 80)
+
+        # State
+        self._hovered = False
+        self._is_play = True  # For play/pause toggle
+
+        # Transparent background
+        self.setStyleSheet("background: transparent; border: none;")
+
+        # Add glow effect
+        self._setup_glow()
+
+    def _setup_glow(self):
+        """Setup the glow shadow effect"""
+        self.glow = QGraphicsDropShadowEffect(self)
+        self.glow.setBlurRadius(15)
+        self.glow.setColor(self.color_cyan)
+        self.glow.setOffset(0, 0)
+        self.setGraphicsEffect(self.glow)
+        self._update_glow()
+
+    def _update_glow(self):
+        """Update glow based on state"""
+        if self.isChecked() or self._hovered:
+            self.glow.setBlurRadius(20)
+            self.glow.setColor(self.color_cyan)
+        else:
+            self.glow.setBlurRadius(8)
+            self.glow.setColor(QColor(0, 150, 200, 100))
+
+    def enterEvent(self, event):
+        self._hovered = True
+        self._update_glow()
+        self.update()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._hovered = False
+        self._update_glow()
+        self.update()
+        super().leaveEvent(event)
+
+    def set_playing(self, is_playing: bool):
+        """Toggle between play and pause icon"""
+        self._is_play = not is_playing
+        self.update()
+
+    def paintEvent(self, event):
+        """Draw the icon with neon effect"""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Determine color based on state
+        if self.isChecked():
+            color = self.color_cyan
+        elif self._hovered:
+            color = self.color_cyan
+        elif self.icon_type in ['shuffle', 'repeat'] and not self.isChecked():
+            color = self.color_dim
+        else:
+            color = self.color_cyan
+
+        # Setup pen and brush
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(color))
+
+        # Calculate center and scale
+        cx, cy = self.width() / 2, self.height() / 2
+        scale = self.icon_size * 0.35  # Icon takes 70% of button
+
+        # Draw the appropriate icon
+        if self.icon_type == 'play':
+            if self._is_play:
+                self._draw_play(painter, cx, cy, scale)
+            else:
+                self._draw_pause(painter, cx, cy, scale)
+        elif self.icon_type == 'pause':
+            self._draw_pause(painter, cx, cy, scale)
+        elif self.icon_type == 'stop':
+            self._draw_stop(painter, cx, cy, scale)
+        elif self.icon_type == 'prev':
+            self._draw_prev(painter, cx, cy, scale)
+        elif self.icon_type == 'next':
+            self._draw_next(painter, cx, cy, scale)
+        elif self.icon_type == 'shuffle':
+            self._draw_shuffle(painter, cx, cy, scale, color)
+        elif self.icon_type == 'repeat':
+            self._draw_repeat(painter, cx, cy, scale, color)
+
+    def _draw_play(self, painter, cx, cy, scale):
+        """Draw play triangle"""
+        points = [
+            QPointF(cx - scale * 0.5, cy - scale),
+            QPointF(cx - scale * 0.5, cy + scale),
+            QPointF(cx + scale, cy)
+        ]
+        painter.drawPolygon(QPolygonF(points))
+
+    def _draw_pause(self, painter, cx, cy, scale):
+        """Draw pause bars"""
+        bar_width = scale * 0.35
+        gap = scale * 0.25
+        height = scale * 1.6
+
+        # Left bar
+        painter.drawRect(int(cx - gap - bar_width), int(cy - height/2),
+                        int(bar_width), int(height))
+        # Right bar
+        painter.drawRect(int(cx + gap), int(cy - height/2),
+                        int(bar_width), int(height))
+
+    def _draw_stop(self, painter, cx, cy, scale):
+        """Draw stop square"""
+        size = scale * 1.4
+        painter.drawRect(int(cx - size/2), int(cy - size/2), int(size), int(size))
+
+    def _draw_prev(self, painter, cx, cy, scale):
+        """Draw previous icon (bar + triangle)"""
+        # Bar
+        bar_width = scale * 0.25
+        painter.drawRect(int(cx - scale), int(cy - scale * 0.8),
+                        int(bar_width), int(scale * 1.6))
+        # Triangle pointing left
+        points = [
+            QPointF(cx + scale * 0.8, cy - scale * 0.8),
+            QPointF(cx + scale * 0.8, cy + scale * 0.8),
+            QPointF(cx - scale * 0.5, cy)
+        ]
+        painter.drawPolygon(QPolygonF(points))
+
+    def _draw_next(self, painter, cx, cy, scale):
+        """Draw next icon (triangle + bar)"""
+        # Triangle pointing right
+        points = [
+            QPointF(cx - scale * 0.8, cy - scale * 0.8),
+            QPointF(cx - scale * 0.8, cy + scale * 0.8),
+            QPointF(cx + scale * 0.5, cy)
+        ]
+        painter.drawPolygon(QPolygonF(points))
+        # Bar
+        bar_width = scale * 0.25
+        painter.drawRect(int(cx + scale * 0.75), int(cy - scale * 0.8),
+                        int(bar_width), int(scale * 1.6))
+
+    def _draw_shuffle(self, painter, cx, cy, scale, color):
+        """Draw shuffle icon (crossed arrows)"""
+        painter.setPen(QPen(color, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
+        # Two crossing curved paths
+        path1 = QPainterPath()
+        path1.moveTo(cx - scale, cy + scale * 0.5)
+        path1.quadTo(cx, cy - scale * 0.3, cx + scale, cy - scale * 0.5)
+
+        path2 = QPainterPath()
+        path2.moveTo(cx - scale, cy - scale * 0.5)
+        path2.quadTo(cx, cy + scale * 0.3, cx + scale, cy + scale * 0.5)
+
+        painter.drawPath(path1)
+        painter.drawPath(path2)
+
+        # Arrow heads
+        painter.setBrush(QBrush(color))
+        self._draw_small_arrow(painter, cx + scale, cy - scale * 0.5, 0)
+        self._draw_small_arrow(painter, cx + scale, cy + scale * 0.5, 0)
+
+    def _draw_repeat(self, painter, cx, cy, scale, color):
+        """Draw repeat icon (circular arrows)"""
+        painter.setPen(QPen(color, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
+        # Draw arc
+        from PyQt6.QtCore import QRectF
+        rect = QRectF(cx - scale, cy - scale * 0.7, scale * 2, scale * 1.4)
+        painter.drawArc(rect, 30 * 16, 280 * 16)  # Almost full circle
+
+        # Arrow head
+        painter.setBrush(QBrush(color))
+        self._draw_small_arrow(painter, cx + scale * 0.5, cy - scale * 0.7, -60)
+
+    def _draw_small_arrow(self, painter, x, y, angle):
+        """Draw a small arrow head"""
+        import math
+        size = 5
+        rad = math.radians(angle)
+
+        points = [
+            QPointF(x, y),
+            QPointF(x - size * math.cos(rad - 0.5), y - size * math.sin(rad - 0.5)),
+            QPointF(x - size * math.cos(rad + 0.5), y - size * math.sin(rad + 0.5))
+        ]
+        painter.drawPolygon(QPolygonF(points))
 
 
 class NowPlayingWidget(QWidget):
@@ -191,114 +402,40 @@ class NowPlayingWidget(QWidget):
 
         # ========== Bottom Section: Controls + Volume ==========
         controls_layout = QHBoxLayout()
-        controls_layout.setSpacing(15)  # Tighter spacing for neon buttons
+        controls_layout.setSpacing(12)  # Clean spacing for neon buttons
 
-        # === CLEAN NEON ICON STYLES (No background circles) ===
-        # Style for secondary buttons - just the icon with neon color
-        neon_secondary_style = """
-            QPushButton {
-                background: transparent;
-                color: #00c8ff;
-                border: none;
-                font-size: 24px;
-            }
-            QPushButton:hover {
-                color: #00e5ff;
-            }
-            QPushButton:pressed {
-                color: #c850c0;
-            }
-            QPushButton:focus {
-                outline: none;
-            }
-        """
+        # === NEON ICON BUTTONS (Custom drawn geometric shapes with glow) ===
 
-        # Style for primary button (Play/Pause - larger with neon ring)
-        neon_primary_style = """
-            QPushButton {
-                background: transparent;
-                color: #00e5ff;
-                border: 2px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00c8ff, stop:1 #c850c0);
-                border-radius: 30px;
-                font-size: 28px;
-            }
-            QPushButton:hover {
-                color: #ffffff;
-                border: 2px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00e5ff, stop:1 #e066ff);
-            }
-            QPushButton:pressed {
-                color: #c850c0;
-                border: 3px solid #e066ff;
-            }
-            QPushButton:focus {
-                outline: none;
-            }
-        """
-
-        # Style for toggle buttons (Shuffle/Repeat - minimal, glow when active)
-        neon_toggle_style = """
-            QPushButton {
-                background: transparent;
-                color: #555555;
-                border: none;
-                font-size: 18px;
-            }
-            QPushButton:hover {
-                color: #00c8ff;
-            }
-            QPushButton:checked {
-                color: #00e5ff;
-            }
-            QPushButton:checked:hover {
-                color: #ffffff;
-            }
-            QPushButton:focus {
-                outline: none;
-            }
-        """
-
-        # Shuffle button (toggle) - minimal icon
-        self.shuffle_button = QPushButton("🔀")
-        self.shuffle_button.setFixedSize(35, 35)
+        # Shuffle button (toggle)
+        self.shuffle_button = NeonIconButton('shuffle', size=32)
         self.shuffle_button.setCheckable(True)
         self.shuffle_button.setToolTip("Shuffle")
-        self.shuffle_button.setStyleSheet(neon_toggle_style)
         controls_layout.addWidget(self.shuffle_button)
 
-        # Previous button - clean icon only
-        self.prev_button = QPushButton("⏮")
-        self.prev_button.setFixedSize(40, 40)
+        # Previous button
+        self.prev_button = NeonIconButton('prev', size=38)
         self.prev_button.setToolTip("Previous")
-        self.prev_button.setStyleSheet(neon_secondary_style)
         controls_layout.addWidget(self.prev_button)
 
-        # Play/Pause button - only this one has the neon ring
-        self.play_button = QPushButton("▶")
-        self.play_button.setFixedSize(60, 60)
+        # Play/Pause button (larger, primary)
+        self.play_button = NeonIconButton('play', size=55)
         self.play_button.setToolTip("Play/Pause")
-        self.play_button.setStyleSheet(neon_primary_style)
         controls_layout.addWidget(self.play_button)
 
-        # Stop button - clean icon only
-        self.stop_button = QPushButton("⏹")
-        self.stop_button.setFixedSize(40, 40)
+        # Stop button
+        self.stop_button = NeonIconButton('stop', size=38)
         self.stop_button.setToolTip("Stop")
-        self.stop_button.setStyleSheet(neon_secondary_style)
         controls_layout.addWidget(self.stop_button)
 
-        # Next button - clean icon only
-        self.next_button = QPushButton("⏭")
-        self.next_button.setFixedSize(40, 40)
+        # Next button
+        self.next_button = NeonIconButton('next', size=38)
         self.next_button.setToolTip("Next")
-        self.next_button.setStyleSheet(neon_secondary_style)
         controls_layout.addWidget(self.next_button)
 
-        # Repeat button (toggle) - minimal icon
-        self.repeat_button = QPushButton("🔁")
-        self.repeat_button.setFixedSize(35, 35)
+        # Repeat button (toggle)
+        self.repeat_button = NeonIconButton('repeat', size=32)
         self.repeat_button.setCheckable(True)
         self.repeat_button.setToolTip("Repeat (continuous play)")
-        self.repeat_button.setStyleSheet(neon_toggle_style)
         controls_layout.addWidget(self.repeat_button)
 
         controls_layout.addStretch()
@@ -416,7 +553,7 @@ class NowPlayingWidget(QWidget):
 
         if self._is_playing:
             # User wants to start/resume playback
-            self.play_button.setText("⏸")  # Pause icon
+            self.play_button.set_playing(True)  # Show pause icon
             self.position_timer.start()
 
             if self.audio_player:
@@ -430,7 +567,7 @@ class NowPlayingWidget(QWidget):
                     logger.info("Audio playing from beginning")
         else:
             # User wants to pause
-            self.play_button.setText("▶")  # Play icon
+            self.play_button.set_playing(False)  # Show play icon
             self.position_timer.stop()
 
             if self.audio_player:
@@ -444,7 +581,7 @@ class NowPlayingWidget(QWidget):
         """Handle stop button click"""
         self._is_playing = False
         self._is_paused = False  # Clear paused state on stop
-        self.play_button.setText("▶")
+        self.play_button.set_playing(False)  # Show play icon
         self.position_timer.stop()
         self.progress_slider.setValue(0)
         self.current_time_label.setText("0:00")
@@ -636,7 +773,7 @@ class NowPlayingWidget(QWidget):
                 if self._repeat_enabled:
                     # Continuous play mode - emit signal to play next
                     self._is_playing = False
-                    self.play_button.setText("▶")
+                    self.play_button.set_playing(False)  # Show play icon
                     self.position_timer.stop()
                     self.song_ended.emit()  # Signal to play next song
                 else:
@@ -670,10 +807,10 @@ class NowPlayingWidget(QWidget):
         self._is_playing = is_playing
 
         if is_playing:
-            self.play_button.setText("⏸")
+            self.play_button.set_playing(True)  # Show pause icon
             self.position_timer.start()
         else:
-            self.play_button.setText("▶")
+            self.play_button.set_playing(False)  # Show play icon
             self.position_timer.stop()
 
     def _on_shuffle_clicked(self):
