@@ -80,6 +80,9 @@ class VisualizerWidget(QWidget):
 
         logger.info(f"VisualizerWidget initialized with style: {self.viz_style}")
 
+        # Force initial redraw with correct style (fixes bug where saved style doesn't apply on startup)
+        self.update()
+
     def _init_style_selector(self):
         """Initialize floating style selector (no layout to preserve paintEvent)"""
         # ComboBox for style selection (floating widget, not in layout)
@@ -675,11 +678,12 @@ class VisualizerWidget(QWidget):
                                int(neuron_radius * 2), int(neuron_radius * 2))
 
             # === 5. ORBITAL RINGS (inspired by NEXUS) ===
-            # Draw orbital ring around active neurons (magnitude > 0.6)
-            if magnitude > 0.6:
-                ring_radius = neuron_radius * 2.5
+            # Draw orbital ring around VERY active neurons (magnitude > 0.75)
+            # Made more subtle to not hide brilliant center
+            if magnitude > 0.75:
+                ring_radius = neuron_radius * 2.0  # Closer to neuron (was 2.5)
                 ring_width = 1
-                ring_opacity = int(magnitude * 200)
+                ring_opacity = int(magnitude * 100)  # Reduced opacity (was 200, max 39% instead of 78%)
 
                 # Ring color matches neuron
                 ring_pen = QPen(QColor(color.red(), color.green(), color.blue(), ring_opacity),
