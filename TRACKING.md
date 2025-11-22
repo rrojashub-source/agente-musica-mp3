@@ -1715,7 +1715,97 @@ Implement multiple visualization styles with elegant selector to make the visual
 
 ---
 
-**Last Updated:** November 21, 2025 - Session: Multiple Visualizer Styles (Premium Feature) ✅
+### **Session Nov 21, 2025 - Critical Bug Fix: Visualizer Gradient Visibility**
+
+**Duration:** 90 minutes
+**Assigned to:** NEXUS@CLI
+**Phase:** Phase 7 Complete - Enhanced Visualizer (Bug Fix)
+
+**Objective:**
+Fix critical bug where visualizer bars were completely invisible despite all code executing correctly. User reported: "No sigue sin verse" (still not visible).
+
+**Problem Description:**
+- Symptom: Visualizer bars completely invisible (black screen except for position indicator)
+- Logs confirmed: paintEvent() called 30 FPS, spectrum data loaded, _draw_bars() executing
+- All 3 styles affected (Waveform, Bars, Circular)
+- **BUT**: Bars remained invisible visually
+
+**Root Cause Analysis:**
+QLinearGradient was using default **LogicalMode** with absolute pixel coordinates:
+```python
+# BROKEN (LogicalMode default):
+gradient = QLinearGradient(0, height, 0, 0)
+```
+
+Problem: LogicalMode uses absolute pixel coordinates which don't scale properly for dynamic bars with varying heights. Each bar has different height (based on FFT magnitude), so gradient coordinates need to adapt to each individual bar's bounding box.
+
+**Solution Applied:**
+Changed to **ObjectBoundingMode** with relative 0-1 coordinates:
+```python
+# FIXED (ObjectBoundingMode):
+gradient = QLinearGradient(0, 1, 0, 0)  # Bottom (1) to top (0) in relative coordinates
+gradient.setCoordinateMode(QLinearGradient.CoordinateMode.ObjectBoundingMode)
+```
+
+This allows gradients to scale automatically to each individual bar's bounding box, regardless of its height.
+
+**Research Process:**
+1. Added extensive logging to trace execution
+2. Confirmed all code paths working correctly (logs showed drawing)
+3. Searched web: "PyQt6 audio visualizer spectrum bars QPainter gradient not visible"
+4. Found Stack Overflow solution: ObjectBoundingMode for dynamic shapes
+5. Applied fix and committed
+
+**Tasks Completed:**
+1. ✅ Diagnosed invisible bar issue via extensive logging
+2. ✅ Researched QLinearGradient coordinate modes (LogicalMode vs ObjectBoundingMode)
+3. ✅ Applied ObjectBoundingMode fix to _draw_bars() method
+4. ✅ Cleaned up excessive logging (logger.info → logger.debug for paintEvent)
+5. ✅ Removed unused imports (QVBoxLayout, QHBoxLayout)
+6. ✅ Git commit with detailed explanation
+7. ✅ Updated TRACKING.md (this entry)
+
+**Files Modified:**
+- `src/gui/widgets/visualizer_widget.py`
+  - Line 377: Changed gradient initialization to ObjectBoundingMode
+  - Lines 244, 254, 258, 344: Changed logger.info → logger.debug
+  - Removed unused imports
+
+**Git Commit:**
+- Hash: 1defd0e
+- Message: "fix(visualizer): Fix gradient visibility using ObjectBoundingMode"
+- Changes: 1 file, 29 insertions, 24 deletions
+
+**Key Learnings:**
+- Learning 1: QLinearGradient has 2 coordinate modes: LogicalMode (absolute) vs ObjectBoundingMode (relative)
+- Learning 2: Dynamic shapes with varying dimensions require ObjectBoundingMode (0-1 coordinates)
+- Learning 3: ObjectBoundingMode is essential for: bars, dynamic shapes, responsive gradients
+- Learning 4: LogicalMode is OK for: static gradients, fixed-size backgrounds
+- Learning 5: Web research + Stack Overflow crucial for PyQt6 rendering bugs
+
+**Expected Result:**
+- Bars should now be visible with proper gradient colors (green → cyan → blue → purple)
+- Gradients scale correctly to each bar's individual height
+- All 3 styles (Waveform, Bars, Circular) should render correctly
+
+**Status:** ⏳ AWAITING USER TESTING
+- Fix applied and committed
+- Waiting for Ricardo to test with music playback
+- Verification: Bars should be visible with gradients in all 3 styles
+
+**Next Steps:**
+1. ⏳ User testing: Load song and verify bars visible
+2. ⏳ If successful: Remove excessive debug logs (cleanup)
+3. ⏳ If not: Add more diagnostic logging, test with solid colors
+
+**Technical Reference:**
+- Qt Documentation: QGradient::CoordinateMode
+- ObjectBoundingMode: Coordinates relative to bounding box (0.0 to 1.0)
+- LogicalMode: Coordinates relative to device (absolute pixels)
+
+---
+
+**Last Updated:** November 21, 2025 - Session: Critical Bug Fix - Visualizer Gradient Visibility ⏳
 **Maintained by:** Ricardo + NEXUS@CLI
 **Review Frequency:** After each session
 **Format:** Markdown (optimized for Claude Code reading)
