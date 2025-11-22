@@ -193,122 +193,109 @@ class NowPlayingWidget(QWidget):
         controls_layout = QHBoxLayout()
         controls_layout.setSpacing(15)  # Tighter spacing for neon buttons
 
-        # === NEON GLOW BUTTON STYLES ===
-        # Style for secondary buttons (smaller, subtle neon)
+        # === CLEAN NEON ICON STYLES (No background circles) ===
+        # Style for secondary buttons - just the icon with neon color
         neon_secondary_style = """
             QPushButton {
                 background: transparent;
                 color: #00c8ff;
-                border: 2px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00c8ff, stop:1 #c850c0);
-                border-radius: 25px;
-                font-size: 20px;
-                font-weight: bold;
+                border: none;
+                font-size: 24px;
             }
             QPushButton:hover {
-                background: rgba(0, 200, 255, 0.15);
-                border: 2px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00e5ff, stop:1 #e066ff);
                 color: #00e5ff;
             }
             QPushButton:pressed {
-                background: rgba(0, 200, 255, 0.25);
-                border: 3px solid #00e5ff;
+                color: #c850c0;
             }
             QPushButton:focus {
                 outline: none;
             }
         """
 
-        # Style for primary button (Play/Pause - larger, prominent neon glow)
+        # Style for primary button (Play/Pause - larger with neon ring)
         neon_primary_style = """
             QPushButton {
-                background: rgba(0, 200, 255, 0.1);
-                color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00c8ff, stop:1 #c850c0);
-                border: 3px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00c8ff, stop:1 #c850c0);
-                border-radius: 35px;
+                background: transparent;
+                color: #00e5ff;
+                border: 2px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00c8ff, stop:1 #c850c0);
+                border-radius: 30px;
                 font-size: 28px;
-                font-weight: bold;
             }
             QPushButton:hover {
-                background: rgba(0, 200, 255, 0.2);
-                border: 3px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00e5ff, stop:1 #e066ff);
+                color: #ffffff;
+                border: 2px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00e5ff, stop:1 #e066ff);
             }
             QPushButton:pressed {
-                background: rgba(200, 80, 192, 0.3);
-                border: 4px solid #e066ff;
+                color: #c850c0;
+                border: 3px solid #e066ff;
             }
             QPushButton:focus {
                 outline: none;
             }
         """
 
-        # Style for toggle buttons (Shuffle/Repeat - shows active state)
+        # Style for toggle buttons (Shuffle/Repeat - minimal, glow when active)
         neon_toggle_style = """
             QPushButton {
                 background: transparent;
-                color: #666666;
-                border: 2px solid #444444;
-                border-radius: 20px;
-                font-size: 16px;
-                font-weight: bold;
+                color: #555555;
+                border: none;
+                font-size: 18px;
             }
             QPushButton:hover {
-                background: rgba(0, 200, 255, 0.1);
-                border: 2px solid #00c8ff;
                 color: #00c8ff;
             }
             QPushButton:checked {
-                background: rgba(0, 200, 255, 0.2);
-                border: 2px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00c8ff, stop:1 #c850c0);
                 color: #00e5ff;
             }
             QPushButton:checked:hover {
-                background: rgba(0, 200, 255, 0.3);
-                border: 2px solid #00e5ff;
+                color: #ffffff;
             }
             QPushButton:focus {
                 outline: none;
             }
         """
 
-        # Shuffle button (toggle)
+        # Shuffle button (toggle) - minimal icon
         self.shuffle_button = QPushButton("🔀")
-        self.shuffle_button.setFixedSize(40, 40)
+        self.shuffle_button.setFixedSize(35, 35)
         self.shuffle_button.setCheckable(True)
         self.shuffle_button.setToolTip("Shuffle")
         self.shuffle_button.setStyleSheet(neon_toggle_style)
         controls_layout.addWidget(self.shuffle_button)
 
-        # Previous button (secondary neon)
+        # Previous button - clean icon only
         self.prev_button = QPushButton("⏮")
-        self.prev_button.setFixedSize(50, 50)
+        self.prev_button.setFixedSize(40, 40)
         self.prev_button.setToolTip("Previous")
         self.prev_button.setStyleSheet(neon_secondary_style)
         controls_layout.addWidget(self.prev_button)
 
-        # Play/Pause button (primary neon - larger and more prominent)
+        # Play/Pause button - only this one has the neon ring
         self.play_button = QPushButton("▶")
-        self.play_button.setFixedSize(70, 70)
+        self.play_button.setFixedSize(60, 60)
         self.play_button.setToolTip("Play/Pause")
         self.play_button.setStyleSheet(neon_primary_style)
         controls_layout.addWidget(self.play_button)
 
-        # Stop button (secondary neon)
+        # Stop button - clean icon only
         self.stop_button = QPushButton("⏹")
-        self.stop_button.setFixedSize(50, 50)
+        self.stop_button.setFixedSize(40, 40)
         self.stop_button.setToolTip("Stop")
         self.stop_button.setStyleSheet(neon_secondary_style)
         controls_layout.addWidget(self.stop_button)
 
-        # Next button (secondary neon)
+        # Next button - clean icon only
         self.next_button = QPushButton("⏭")
-        self.next_button.setFixedSize(50, 50)
+        self.next_button.setFixedSize(40, 40)
         self.next_button.setToolTip("Next")
         self.next_button.setStyleSheet(neon_secondary_style)
         controls_layout.addWidget(self.next_button)
 
-        # Repeat button (toggle)
+        # Repeat button (toggle) - minimal icon
         self.repeat_button = QPushButton("🔁")
-        self.repeat_button.setFixedSize(40, 40)
+        self.repeat_button.setFixedSize(35, 35)
         self.repeat_button.setCheckable(True)
         self.repeat_button.setToolTip("Repeat (continuous play)")
         self.repeat_button.setStyleSheet(neon_toggle_style)
