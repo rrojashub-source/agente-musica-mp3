@@ -62,6 +62,9 @@ class NowPlayingWidget(QWidget):
     position_changed = pyqtSignal(float)  # Emits current position in seconds
     song_loaded = pyqtSignal(str)  # Emits file_path when new song loaded
     song_metadata_changed = pyqtSignal(dict)  # Emits full song_info (for lyrics, stats, etc.)
+    shuffle_changed = pyqtSignal(bool)  # Emits shuffle state
+    repeat_changed = pyqtSignal(bool)  # Emits repeat state
+    song_ended = pyqtSignal()  # Emits when song finishes (for auto-next)
 
     def __init__(self, audio_player=None):
         """
@@ -76,6 +79,8 @@ class NowPlayingWidget(QWidget):
         self._is_seeking = False  # Prevent position update during seek
         self._is_playing = False
         self._is_paused = False  # Track if we're in paused state
+        self._shuffle_enabled = False  # Shuffle mode
+        self._repeat_enabled = False  # Repeat/continuous play mode
 
         # Initialize cover art manager
         self.cover_manager = CoverArtManager()
@@ -186,108 +191,128 @@ class NowPlayingWidget(QWidget):
 
         # ========== Bottom Section: Controls + Volume ==========
         controls_layout = QHBoxLayout()
-        controls_layout.setSpacing(20)  # Canvas-inspired spacing (20px)
+        controls_layout.setSpacing(15)  # Tighter spacing for neon buttons
 
-        # Playback controls - Canvas flat style with original colors
-        # Previous button (flat purple, like Canvas)
-        self.prev_button = QPushButton("⏮")
-        self.prev_button.setFixedSize(70, 70)
-        self.prev_button.setStyleSheet("""
+        # === NEON GLOW BUTTON STYLES ===
+        # Style for secondary buttons (smaller, subtle neon)
+        neon_secondary_style = """
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #6c5ce7, stop:1 #6c5ce7);
-                color: #ffffff;
-                border: none;
-                outline: none;
-                border-radius: 35px;
-                font-size: 24px;
+                background: transparent;
+                color: #00c8ff;
+                border: 2px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00c8ff, stop:1 #c850c0);
+                border-radius: 25px;
+                font-size: 20px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #7c6cf7, stop:1 #7c6cf7);
+                background: rgba(0, 200, 255, 0.15);
+                border: 2px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00e5ff, stop:1 #e066ff);
+                color: #00e5ff;
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #5b4bc7, stop:1 #5b4bc7);
+                background: rgba(0, 200, 255, 0.25);
+                border: 3px solid #00e5ff;
             }
             QPushButton:focus {
                 outline: none;
             }
-        """)
-        controls_layout.addWidget(self.prev_button)
+        """
 
-        # Play/Pause button (flat cyan, larger, like Canvas)
-        self.play_button = QPushButton("▶")
-        self.play_button.setFixedSize(80, 80)
-        self.play_button.setStyleSheet("""
+        # Style for primary button (Play/Pause - larger, prominent neon glow)
+        neon_primary_style = """
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #00d2ff, stop:1 #00d2ff);
-                color: #ffffff;
-                border: none;
-                outline: none;
-                border-radius: 40px;
+                background: rgba(0, 200, 255, 0.1);
+                color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00c8ff, stop:1 #c850c0);
+                border: 3px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00c8ff, stop:1 #c850c0);
+                border-radius: 35px;
                 font-size: 28px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #1ee2ff, stop:1 #1ee2ff);
+                background: rgba(0, 200, 255, 0.2);
+                border: 3px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00e5ff, stop:1 #e066ff);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #00b8e6, stop:1 #00b8e6);
+                background: rgba(200, 80, 192, 0.3);
+                border: 4px solid #e066ff;
             }
             QPushButton:focus {
                 outline: none;
             }
-        """)
+        """
+
+        # Style for toggle buttons (Shuffle/Repeat - shows active state)
+        neon_toggle_style = """
+            QPushButton {
+                background: transparent;
+                color: #666666;
+                border: 2px solid #444444;
+                border-radius: 20px;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: rgba(0, 200, 255, 0.1);
+                border: 2px solid #00c8ff;
+                color: #00c8ff;
+            }
+            QPushButton:checked {
+                background: rgba(0, 200, 255, 0.2);
+                border: 2px solid qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00c8ff, stop:1 #c850c0);
+                color: #00e5ff;
+            }
+            QPushButton:checked:hover {
+                background: rgba(0, 200, 255, 0.3);
+                border: 2px solid #00e5ff;
+            }
+            QPushButton:focus {
+                outline: none;
+            }
+        """
+
+        # Shuffle button (toggle)
+        self.shuffle_button = QPushButton("🔀")
+        self.shuffle_button.setFixedSize(40, 40)
+        self.shuffle_button.setCheckable(True)
+        self.shuffle_button.setToolTip("Shuffle")
+        self.shuffle_button.setStyleSheet(neon_toggle_style)
+        controls_layout.addWidget(self.shuffle_button)
+
+        # Previous button (secondary neon)
+        self.prev_button = QPushButton("⏮")
+        self.prev_button.setFixedSize(50, 50)
+        self.prev_button.setToolTip("Previous")
+        self.prev_button.setStyleSheet(neon_secondary_style)
+        controls_layout.addWidget(self.prev_button)
+
+        # Play/Pause button (primary neon - larger and more prominent)
+        self.play_button = QPushButton("▶")
+        self.play_button.setFixedSize(70, 70)
+        self.play_button.setToolTip("Play/Pause")
+        self.play_button.setStyleSheet(neon_primary_style)
         controls_layout.addWidget(self.play_button)
 
-        # Stop button (flat purple, like Canvas)
+        # Stop button (secondary neon)
         self.stop_button = QPushButton("⏹")
-        self.stop_button.setFixedSize(70, 70)
-        self.stop_button.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #6c5ce7, stop:1 #6c5ce7);
-                color: #ffffff;
-                border: none;
-                outline: none;
-                border-radius: 35px;
-                font-size: 24px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #7c6cf7, stop:1 #7c6cf7);
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #5b4bc7, stop:1 #5b4bc7);
-            }
-            QPushButton:focus {
-                outline: none;
-            }
-        """)
+        self.stop_button.setFixedSize(50, 50)
+        self.stop_button.setToolTip("Stop")
+        self.stop_button.setStyleSheet(neon_secondary_style)
         controls_layout.addWidget(self.stop_button)
 
-        # Next button (flat purple, like Canvas)
+        # Next button (secondary neon)
         self.next_button = QPushButton("⏭")
-        self.next_button.setFixedSize(70, 70)
-        self.next_button.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #6c5ce7, stop:1 #6c5ce7);
-                color: #ffffff;
-                border: none;
-                outline: none;
-                border-radius: 35px;
-                font-size: 24px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #7c6cf7, stop:1 #7c6cf7);
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:0, stop:0 #5b4bc7, stop:1 #5b4bc7);
-            }
-            QPushButton:focus {
-                outline: none;
-            }
-        """)
+        self.next_button.setFixedSize(50, 50)
+        self.next_button.setToolTip("Next")
+        self.next_button.setStyleSheet(neon_secondary_style)
         controls_layout.addWidget(self.next_button)
+
+        # Repeat button (toggle)
+        self.repeat_button = QPushButton("🔁")
+        self.repeat_button.setFixedSize(40, 40)
+        self.repeat_button.setCheckable(True)
+        self.repeat_button.setToolTip("Repeat (continuous play)")
+        self.repeat_button.setStyleSheet(neon_toggle_style)
+        controls_layout.addWidget(self.repeat_button)
 
         controls_layout.addStretch()
 
@@ -322,6 +347,10 @@ class NowPlayingWidget(QWidget):
         self.stop_button.clicked.connect(self._on_stop_clicked)
         self.prev_button.clicked.connect(self.prev_clicked.emit)
         self.next_button.clicked.connect(self.next_clicked.emit)
+
+        # Shuffle and Repeat toggles
+        self.shuffle_button.clicked.connect(self._on_shuffle_clicked)
+        self.repeat_button.clicked.connect(self._on_repeat_clicked)
 
         # Cover art search
         self.search_cover_button.clicked.connect(self._on_search_cover_clicked)
@@ -616,8 +645,16 @@ class NowPlayingWidget(QWidget):
             # Check if song ended
             if not self.audio_player.is_playing() and self._is_playing:
                 # Song ended
-                self._on_stop_clicked()
                 logger.info("Song ended")
+                if self._repeat_enabled:
+                    # Continuous play mode - emit signal to play next
+                    self._is_playing = False
+                    self.play_button.setText("▶")
+                    self.position_timer.stop()
+                    self.song_ended.emit()  # Signal to play next song
+                else:
+                    # Normal mode - just stop
+                    self._on_stop_clicked()
 
         except Exception as e:
             logger.error(f"Position update error: {e}")
@@ -651,6 +688,26 @@ class NowPlayingWidget(QWidget):
         else:
             self.play_button.setText("▶")
             self.position_timer.stop()
+
+    def _on_shuffle_clicked(self):
+        """Handle shuffle button click"""
+        self._shuffle_enabled = self.shuffle_button.isChecked()
+        self.shuffle_changed.emit(self._shuffle_enabled)
+        logger.info(f"Shuffle {'enabled' if self._shuffle_enabled else 'disabled'}")
+
+    def _on_repeat_clicked(self):
+        """Handle repeat button click"""
+        self._repeat_enabled = self.repeat_button.isChecked()
+        self.repeat_changed.emit(self._repeat_enabled)
+        logger.info(f"Repeat/Continuous play {'enabled' if self._repeat_enabled else 'disabled'}")
+
+    def is_shuffle_enabled(self) -> bool:
+        """Check if shuffle mode is enabled"""
+        return self._shuffle_enabled
+
+    def is_repeat_enabled(self) -> bool:
+        """Check if repeat/continuous play mode is enabled"""
+        return self._repeat_enabled
 
     def cleanup(self):
         """Cleanup resources"""
