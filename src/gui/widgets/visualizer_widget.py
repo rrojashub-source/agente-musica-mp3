@@ -544,7 +544,49 @@ class VisualizerWidget(QWidget):
         # Calculate base radius (used by multiple effects)
         base_radius = min(width, height) * 0.15
 
-        # === 1. PROCESSING WAVES (expand on high magnitude) ===
+        # === 1. FLOATING NEURAL PARTICLES (inspired by NEXUS) ===
+        num_particles = 150
+        particle_base_radius = min(width, height) * 0.35
+        random.seed(42)  # Deterministic positions
+
+        for i in range(num_particles):
+            # Spherical distribution (θ, φ coordinates)
+            theta = random.uniform(0, 2 * math.pi)
+            phi = math.acos(2 * random.random() - 1)
+
+            # Radius with breathing effect
+            particle_radius = particle_base_radius + random.uniform(-20, 20)
+            particle_radius *= breathe_factor  # Apply breathing
+
+            # 3D to 2D projection (simple orthographic)
+            px = center_x + particle_radius * math.sin(phi) * math.cos(theta)
+            py = center_y + particle_radius * math.sin(phi) * math.sin(theta)
+
+            # Particle size varies (1-3 pixels)
+            particle_size = 1 + random.random() * 2
+
+            # Color varies by position (6-color palette)
+            hue_angle = (theta / (2 * math.pi)) * 360
+            if hue_angle < 60:
+                color = QColor(0, 200, 255)  # Cyan
+            elif hue_angle < 120:
+                color = QColor(0, 100, 255)  # Blue
+            elif hue_angle < 180:
+                color = QColor(100, 0, 255)  # Purple
+            elif hue_angle < 240:
+                color = QColor(200, 0, 255)  # Magenta
+            elif hue_angle < 300:
+                color = QColor(255, 0, 150)  # Pink
+            else:
+                color = QColor(0, 255, 200)  # Cyan-green
+
+            # Draw particle with glow
+            painter.setBrush(color)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(int(px - particle_size/2), int(py - particle_size/2),
+                               int(particle_size), int(particle_size))
+
+        # === 2. PROCESSING WAVES (expand on high magnitude) ===
         if avg_magnitude > 0.7:  # High audio peak
             wave_scale = 1.0 + (avg_magnitude - 0.7) * 2  # Scale factor
             wave_radius = base_radius * 2 * wave_scale
@@ -577,7 +619,7 @@ class VisualizerWidget(QWidget):
                            int(pulse_radius * 2), int(pulse_radius * 2))
 
         # Draw "neurons" (points distributed in a circle around the core)
-        num_neurons = 40  # Increased from 20 for more activity (user request)
+        num_neurons = 20
         neuron_distance = min(width, height) * 0.35  # Distance from center
 
         # Generate neuron positions (deterministic based on widget size for consistency)
