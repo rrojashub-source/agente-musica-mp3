@@ -444,9 +444,9 @@ and are never shared or transmitted outside of official API requests to YouTube 
         self.now_playing = NowPlayingWidget(self.audio_player)
         top_layout.addWidget(self.now_playing, stretch=1)
 
-        # Visualizer Widget (right) - Modern spectrum analyzer style
+        # Visualizer Widget (right) - Uses saved style from QSettings
         self.visualizer = VisualizerWidget()
-        self.visualizer.set_style('bars')  # Use modern gradient bars by default
+        # NOTE: Don't call set_style() here - VisualizerWidget loads saved preference from QSettings
         top_layout.addWidget(self.visualizer, stretch=2)
 
         # Connect signals

@@ -232,11 +232,21 @@ class VisualizerWidget(QWidget):
         Set visualization style
 
         Args:
-            style: 'waveform', 'bars', or 'circular'
+            style: 'waveform', 'bars', 'circular', or 'brain_ai'
         """
-        if style in ['waveform', 'bars', 'circular']:
+        valid_styles = ['waveform', 'bars', 'circular', 'brain_ai']
+        if style in valid_styles:
             self.viz_style = style
             self.settings.setValue("visualizer/style", style)
+
+            # Sync selector to match new style (prevent visual desync)
+            if hasattr(self, 'style_selector'):
+                style_index = valid_styles.index(style)
+                # Block signals to prevent recursive calls
+                self.style_selector.blockSignals(True)
+                self.style_selector.setCurrentIndex(style_index)
+                self.style_selector.blockSignals(False)
+
             self.update()  # Trigger repaint
             logger.debug(f"Visualization style set to: {style}")
         else:
@@ -292,19 +302,35 @@ class VisualizerWidget(QWidget):
         """
         Draw waveform as continuous line
 
+        Uses waveform_data if available, otherwise generates from spectrum_data.
+
         Args:
             painter: QPainter instance
         """
-        # Check if waveform data exists
-        if not self.waveform_data:
-            return
-
         width = self.width()
         height = self.height()
         center_y = height // 2
 
+        # Get waveform data (prefer static waveform, fallback to spectrum-derived)
+        waveform_to_draw = None
+
+        if self.waveform_data:
+            waveform_to_draw = self.waveform_data
+        elif self.spectrum_data:
+            # Generate waveform-like data from spectrum (sum all frequency bands per time window)
+            waveform_to_draw = []
+            for window in self.spectrum_data:
+                # Average all frequency bands to get overall amplitude
+                avg_amplitude = sum(window) / len(window) if window else 0.0
+                waveform_to_draw.append(avg_amplitude)
+        else:
+            # No data available
+            painter.setPen(QColor(100, 100, 100))
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "No audio data")
+            return
+
         # Sample waveform data to fit widget width
-        num_samples = len(self.waveform_data)
+        num_samples = len(waveform_to_draw)
         samples_per_pixel = max(1, num_samples // width)
 
         # Create path for waveform
@@ -320,16 +346,16 @@ class VisualizerWidget(QWidget):
                 break
 
             # Average samples in this range
-            samples = self.waveform_data[start_idx:end_idx]
+            samples = waveform_to_draw[start_idx:end_idx]
             avg_amplitude = sum(samples) / len(samples) if samples else 0.0
 
             # Convert amplitude to y coordinate
-            # Amplitude range: [-1.0, 1.0] -> y range: [0, height]
+            # Amplitude range: [0, 1.0] for spectrum, [-1.0, 1.0] for waveform -> y range
             y = center_y - int(avg_amplitude * (height / 2) * 0.9)  # 0.9 for padding
 
             path.lineTo(x, y)
 
-        # Draw waveform path
+        # Draw waveform path with gradient effect
         pen = QPen(self.waveform_color, 2)
         painter.setPen(pen)
         painter.drawPath(path)
