@@ -545,7 +545,7 @@ class VisualizerWidget(QWidget):
         base_radius = min(width, height) * 0.15
 
         # === 1. FLOATING NEURAL PARTICLES (inspired by NEXUS) ===
-        num_particles = 150
+        num_particles = 300  # Increased from 150 (user request: more particles)
         particle_base_radius = min(width, height) * 0.35
         random.seed(42)  # Deterministic positions
 
@@ -618,128 +618,128 @@ class VisualizerWidget(QWidget):
         painter.drawEllipse(int(center_x - pulse_radius), int(center_y - pulse_radius),
                            int(pulse_radius * 2), int(pulse_radius * 2))
 
-        # Draw "neurons" (points distributed in a circle around the core)
-        num_neurons = 20
-        neuron_distance = min(width, height) * 0.35  # Distance from center
-
-        # Generate neuron positions (deterministic based on widget size for consistency)
-        random.seed(42)  # Fixed seed for consistent positions
-        neurons = []
-        for i in range(num_neurons):
-            angle = (i / num_neurons) * 360 + random.uniform(-15, 15)  # Slight randomness
-            angle_rad = math.radians(angle)
-            distance = neuron_distance + random.uniform(-20, 20)
-
-            nx = center_x + distance * math.cos(angle_rad)
-            ny = center_y + distance * math.sin(angle_rad)
-            neurons.append((nx, ny))
-
-        # === 4. ELECTRICAL IMPULSES (traveling from center to neurons) ===
-        # Generate new impulses based on audio magnitude (higher magnitude = more impulses)
-        impulse_spawn_chance = avg_magnitude * 0.3  # 0-30% chance per frame
-        if random.random() < impulse_spawn_chance and len(self.electrical_impulses) < 15:
-            # Pick random neuron to send impulse to
-            target_neuron = random.randint(0, num_neurons - 1)
-            target_x, target_y = neurons[target_neuron]
-
-            # Create new impulse
-            self.electrical_impulses.append({
-                'start_x': center_x,
-                'start_y': center_y,
-                'end_x': target_x,
-                'end_y': target_y,
-                'progress': 0.0,  # 0.0 (at center) to 1.0 (at neuron)
-                'speed': 0.03 + avg_magnitude * 0.05,  # Faster on high magnitude
-                'target_neuron': target_neuron
-            })
-
-        # Update and draw active impulses
-        impulses_to_remove = []
-        for i, impulse in enumerate(self.electrical_impulses):
-            # Update progress
-            impulse['progress'] += impulse['speed']
-
-            # Remove if reached destination
-            if impulse['progress'] >= 1.0:
-                impulses_to_remove.append(i)
-                continue
-
-            # Calculate current position (interpolate between start and end)
-            current_x = impulse['start_x'] + (impulse['end_x'] - impulse['start_x']) * impulse['progress']
-            current_y = impulse['start_y'] + (impulse['end_y'] - impulse['start_y']) * impulse['progress']
-
-            # Draw impulse as glowing point with trail
-            # Opacity fades as impulse ages (brightest at start)
-            impulse_opacity = int((1.0 - impulse['progress'] * 0.5) * 255)
-
-            # Draw impulse head (bright cyan)
-            impulse_color = QColor(0, 255, 255, impulse_opacity)
-            impulse_radius = 3 + avg_magnitude * 2  # 3-5 pixels
-
-            # Glow effect around impulse
-            glow_gradient = QRadialGradient(current_x, current_y, impulse_radius * 2)
-            glow_gradient.setColorAt(0.0, impulse_color)
-            glow_gradient.setColorAt(0.5, QColor(0, 200, 255, impulse_opacity // 2))
-            glow_gradient.setColorAt(1.0, QColor(0, 200, 255, 0))
-
-            painter.setBrush(glow_gradient)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(int(current_x - impulse_radius), int(current_y - impulse_radius),
-                               int(impulse_radius * 2), int(impulse_radius * 2))
-
-        # Clean up completed impulses
-        for index in reversed(impulses_to_remove):
-            del self.electrical_impulses[index]
-
-        # Draw neuron points (pulsating dots)
-        for i, (nx, ny) in enumerate(neurons):
-            # Get magnitude for this neuron
-            neuron_index = int(i / num_neurons * len(bar_magnitudes))
-            neuron_index = min(neuron_index, len(bar_magnitudes) - 1)
-            magnitude = bar_magnitudes[neuron_index]
-
-            # Neuron size based on magnitude
-            neuron_radius = 3 + magnitude * 5  # 3-8 pixels
-
-            # Neuron color (cyan to magenta based on magnitude)
-            if magnitude < 0.5:
-                color = QColor(0, 200, 255)  # Cyan
-            else:
-                color = QColor(255, 0, 200)  # Magenta
-
-            # Draw neuron with glow
-            gradient = QRadialGradient(nx, ny, neuron_radius * 2)
-            gradient.setColorAt(0.0, color)
-            gradient.setColorAt(0.5, QColor(color.red(), color.green(), color.blue(), 150))
-            gradient.setColorAt(1.0, QColor(color.red(), color.green(), color.blue(), 0))
-
-            painter.setBrush(gradient)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(int(nx - neuron_radius), int(ny - neuron_radius),
-                               int(neuron_radius * 2), int(neuron_radius * 2))
-
-            # === 5. ORBITAL RINGS (reactive to impulses) ===
-            # Check if any impulse is arriving at this neuron (progress > 0.85)
-            ring_activation = 0.0
-            for impulse in self.electrical_impulses:
-                if impulse['target_neuron'] == i and impulse['progress'] > 0.85:
-                    # Ring activates when impulse is close (85-100% of travel)
-                    activation_intensity = (impulse['progress'] - 0.85) / 0.15  # 0.0 to 1.0
-                    ring_activation = max(ring_activation, activation_intensity)
-
-            # Draw ring only if activated by arriving impulse
-            if ring_activation > 0.0:
-                ring_radius = neuron_radius * 2.5
-                ring_width = 2
-                # Cyan color (matches center), opacity based on activation
-                ring_opacity = int(ring_activation * 255)
-
-                ring_pen = QPen(QColor(0, 255, 255, ring_opacity),  # Bright cyan
-                               ring_width, Qt.PenStyle.SolidLine)
-                painter.setPen(ring_pen)
-                painter.setBrush(Qt.BrushStyle.NoBrush)
-                painter.drawEllipse(int(nx - ring_radius), int(ny - ring_radius),
-                                   int(ring_radius * 2), int(ring_radius * 2))
+        # COMMENTED OUT:         # Draw "neurons" (points distributed in a circle around the core)
+        # COMMENTED OUT:         num_neurons = 20
+        # COMMENTED OUT:         neuron_distance = min(width, height) * 0.35  # Distance from center
+        # COMMENTED OUT: 
+        # COMMENTED OUT:         # Generate neuron positions (deterministic based on widget size for consistency)
+        # COMMENTED OUT:         random.seed(42)  # Fixed seed for consistent positions
+        # COMMENTED OUT:         neurons = []
+        # COMMENTED OUT:         for i in range(num_neurons):
+        # COMMENTED OUT:             angle = (i / num_neurons) * 360 + random.uniform(-15, 15)  # Slight randomness
+        # COMMENTED OUT:             angle_rad = math.radians(angle)
+        # COMMENTED OUT:             distance = neuron_distance + random.uniform(-20, 20)
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             nx = center_x + distance * math.cos(angle_rad)
+        # COMMENTED OUT:             ny = center_y + distance * math.sin(angle_rad)
+        # COMMENTED OUT:             neurons.append((nx, ny))
+        # COMMENTED OUT: 
+        # COMMENTED OUT:         # === 4. ELECTRICAL IMPULSES (traveling from center to neurons) ===
+        # COMMENTED OUT:         # Generate new impulses based on audio magnitude (higher magnitude = more impulses)
+        # COMMENTED OUT:         impulse_spawn_chance = avg_magnitude * 0.3  # 0-30% chance per frame
+        # COMMENTED OUT:         if random.random() < impulse_spawn_chance and len(self.electrical_impulses) < 15:
+        # COMMENTED OUT:             # Pick random neuron to send impulse to
+        # COMMENTED OUT:             target_neuron = random.randint(0, num_neurons - 1)
+        # COMMENTED OUT:             target_x, target_y = neurons[target_neuron]
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             # Create new impulse
+        # COMMENTED OUT:             self.electrical_impulses.append({
+        # COMMENTED OUT:                 'start_x': center_x,
+        # COMMENTED OUT:                 'start_y': center_y,
+        # COMMENTED OUT:                 'end_x': target_x,
+        # COMMENTED OUT:                 'end_y': target_y,
+        # COMMENTED OUT:                 'progress': 0.0,  # 0.0 (at center) to 1.0 (at neuron)
+        # COMMENTED OUT:                 'speed': 0.03 + avg_magnitude * 0.05,  # Faster on high magnitude
+        # COMMENTED OUT:                 'target_neuron': target_neuron
+        # COMMENTED OUT:             })
+        # COMMENTED OUT: 
+        # COMMENTED OUT:         # Update and draw active impulses
+        # COMMENTED OUT:         impulses_to_remove = []
+        # COMMENTED OUT:         for i, impulse in enumerate(self.electrical_impulses):
+        # COMMENTED OUT:             # Update progress
+        # COMMENTED OUT:             impulse['progress'] += impulse['speed']
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             # Remove if reached destination
+        # COMMENTED OUT:             if impulse['progress'] >= 1.0:
+        # COMMENTED OUT:                 impulses_to_remove.append(i)
+        # COMMENTED OUT:                 continue
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             # Calculate current position (interpolate between start and end)
+        # COMMENTED OUT:             current_x = impulse['start_x'] + (impulse['end_x'] - impulse['start_x']) * impulse['progress']
+        # COMMENTED OUT:             current_y = impulse['start_y'] + (impulse['end_y'] - impulse['start_y']) * impulse['progress']
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             # Draw impulse as glowing point with trail
+        # COMMENTED OUT:             # Opacity fades as impulse ages (brightest at start)
+        # COMMENTED OUT:             impulse_opacity = int((1.0 - impulse['progress'] * 0.5) * 255)
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             # Draw impulse head (bright cyan)
+        # COMMENTED OUT:             impulse_color = QColor(0, 255, 255, impulse_opacity)
+        # COMMENTED OUT:             impulse_radius = 3 + avg_magnitude * 2  # 3-5 pixels
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             # Glow effect around impulse
+        # COMMENTED OUT:             glow_gradient = QRadialGradient(current_x, current_y, impulse_radius * 2)
+        # COMMENTED OUT:             glow_gradient.setColorAt(0.0, impulse_color)
+        # COMMENTED OUT:             glow_gradient.setColorAt(0.5, QColor(0, 200, 255, impulse_opacity // 2))
+        # COMMENTED OUT:             glow_gradient.setColorAt(1.0, QColor(0, 200, 255, 0))
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             painter.setBrush(glow_gradient)
+        # COMMENTED OUT:             painter.setPen(Qt.PenStyle.NoPen)
+        # COMMENTED OUT:             painter.drawEllipse(int(current_x - impulse_radius), int(current_y - impulse_radius),
+        # COMMENTED OUT:                                int(impulse_radius * 2), int(impulse_radius * 2))
+        # COMMENTED OUT: 
+        # COMMENTED OUT:         # Clean up completed impulses
+        # COMMENTED OUT:         for index in reversed(impulses_to_remove):
+        # COMMENTED OUT:             del self.electrical_impulses[index]
+        # COMMENTED OUT: 
+        # COMMENTED OUT:         # Draw neuron points (pulsating dots)
+        # COMMENTED OUT:         for i, (nx, ny) in enumerate(neurons):
+        # COMMENTED OUT:             # Get magnitude for this neuron
+        # COMMENTED OUT:             neuron_index = int(i / num_neurons * len(bar_magnitudes))
+        # COMMENTED OUT:             neuron_index = min(neuron_index, len(bar_magnitudes) - 1)
+        # COMMENTED OUT:             magnitude = bar_magnitudes[neuron_index]
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             # Neuron size based on magnitude
+        # COMMENTED OUT:             neuron_radius = 3 + magnitude * 5  # 3-8 pixels
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             # Neuron color (cyan to magenta based on magnitude)
+        # COMMENTED OUT:             if magnitude < 0.5:
+        # COMMENTED OUT:                 color = QColor(0, 200, 255)  # Cyan
+        # COMMENTED OUT:             else:
+        # COMMENTED OUT:                 color = QColor(255, 0, 200)  # Magenta
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             # Draw neuron with glow
+        # COMMENTED OUT:             gradient = QRadialGradient(nx, ny, neuron_radius * 2)
+        # COMMENTED OUT:             gradient.setColorAt(0.0, color)
+        # COMMENTED OUT:             gradient.setColorAt(0.5, QColor(color.red(), color.green(), color.blue(), 150))
+        # COMMENTED OUT:             gradient.setColorAt(1.0, QColor(color.red(), color.green(), color.blue(), 0))
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             painter.setBrush(gradient)
+        # COMMENTED OUT:             painter.setPen(Qt.PenStyle.NoPen)
+        # COMMENTED OUT:             painter.drawEllipse(int(nx - neuron_radius), int(ny - neuron_radius),
+        # COMMENTED OUT:                                int(neuron_radius * 2), int(neuron_radius * 2))
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             # === 5. ORBITAL RINGS (reactive to impulses) ===
+        # COMMENTED OUT:             # Check if any impulse is arriving at this neuron (progress > 0.85)
+        # COMMENTED OUT:             ring_activation = 0.0
+        # COMMENTED OUT:             for impulse in self.electrical_impulses:
+        # COMMENTED OUT:                 if impulse['target_neuron'] == i and impulse['progress'] > 0.85:
+        # COMMENTED OUT:                     # Ring activates when impulse is close (85-100% of travel)
+        # COMMENTED OUT:                     activation_intensity = (impulse['progress'] - 0.85) / 0.15  # 0.0 to 1.0
+        # COMMENTED OUT:                     ring_activation = max(ring_activation, activation_intensity)
+        # COMMENTED OUT: 
+        # COMMENTED OUT:             # Draw ring only if activated by arriving impulse
+        # COMMENTED OUT:             if ring_activation > 0.0:
+        # COMMENTED OUT:                 ring_radius = neuron_radius * 2.5
+        # COMMENTED OUT:                 ring_width = 2
+        # COMMENTED OUT:                 # Cyan color (matches center), opacity based on activation
+        # COMMENTED OUT:                 ring_opacity = int(ring_activation * 255)
+        # COMMENTED OUT: 
+        # COMMENTED OUT:                 ring_pen = QPen(QColor(0, 255, 255, ring_opacity),  # Bright cyan
+        # COMMENTED OUT:                                ring_width, Qt.PenStyle.SolidLine)
+        # COMMENTED OUT:                 painter.setPen(ring_pen)
+        # COMMENTED OUT:                 painter.setBrush(Qt.BrushStyle.NoBrush)
+        # COMMENTED OUT:                 painter.drawEllipse(int(nx - ring_radius), int(ny - ring_radius),
+        # COMMENTED OUT:                                    int(ring_radius * 2), int(ring_radius * 2))
 
         # === 6. OUTER GLOW RING (pulsating) ===
         ring_radius = pulse_radius * 1.5
