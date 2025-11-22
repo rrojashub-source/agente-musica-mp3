@@ -535,6 +535,9 @@ class VisualizerWidget(QWidget):
         current_time = time.time()
         breathe_factor = 1.0 + math.sin(current_time * 0.5) * 0.05  # Slow breathing
 
+        # Calculate base radius (used by multiple effects)
+        base_radius = min(width, height) * 0.15
+
         # === 1. FLOATING NEURAL PARTICLES (inspired by NEXUS) ===
         num_particles = 150
         particle_base_radius = min(width, height) * 0.35
