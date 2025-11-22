@@ -340,9 +340,6 @@ class VisualizerWidget(QWidget):
         width = self.width()
         height = self.height()
 
-        # Debug logging
-        logger.debug(f"Drawing bars: width={width}, height={height}, has_spectrum={self.spectrum_data is not None}")
-
         # Number of bars to draw (fewer bars = cleaner look)
         num_bars = min(60, width // 8)  # Max 60 bars, min 8 pixels wide
         bar_width = width // num_bars
@@ -516,8 +513,9 @@ class VisualizerWidget(QWidget):
         # If we have dynamic spectrum data, use it!
         if self.spectrum_data and self.spectrum_duration > 0:
             # Calculate which time window we're in
-            current_time = self.position  # In seconds
-            time_index = int((current_time / self.spectrum_duration) * len(self.spectrum_data))
+            # NOTE: self.position is a fraction [0.0, 1.0], not seconds!
+            # Convert to time index directly
+            time_index = int(self.position * len(self.spectrum_data))
             time_index = max(0, min(time_index, len(self.spectrum_data) - 1))
 
             # Get bar magnitudes for this time window
