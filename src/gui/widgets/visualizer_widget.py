@@ -91,19 +91,18 @@ class VisualizerWidget(QWidget):
         # ComboBox for style selection (floating widget, not in layout)
         self.style_selector = QComboBox(self)
         self.style_selector.addItems([
-            "Waveform",
-            "Bars (Spectrum)",
-            "Circular (Radial)",
+            "Bars (Spectrum) 📊",
+            "Circular (Radial) 🔵",
             "Brain AI 🧠"
         ])
 
-        # Set current style
+        # Set current style (waveform removed, migrate to bars)
         style_index = {
-            'waveform': 0,
-            'bars': 1,
-            'circular': 2,
-            'brain_ai': 3
-        }.get(self.viz_style, 1)
+            'waveform': 0,  # Legacy: redirect to bars
+            'bars': 0,
+            'circular': 1,
+            'brain_ai': 2
+        }.get(self.viz_style, 0)
         self.style_selector.setCurrentIndex(style_index)
 
         # Style the combobox
@@ -156,7 +155,7 @@ class VisualizerWidget(QWidget):
 
     def _on_style_changed(self, index: int):
         """Handle style selection change"""
-        styles = ['waveform', 'bars', 'circular', 'brain_ai']
+        styles = ['bars', 'circular', 'brain_ai']  # Waveform removed
         new_style = styles[index]
 
         if new_style != self.viz_style:
@@ -232,9 +231,14 @@ class VisualizerWidget(QWidget):
         Set visualization style
 
         Args:
-            style: 'waveform', 'bars', 'circular', or 'brain_ai'
+            style: 'bars', 'circular', or 'brain_ai'
         """
-        valid_styles = ['waveform', 'bars', 'circular', 'brain_ai']
+        valid_styles = ['bars', 'circular', 'brain_ai']
+
+        # Migrate legacy waveform to bars
+        if style == 'waveform':
+            style = 'bars'
+
         if style in valid_styles:
             self.viz_style = style
             self.settings.setValue("visualizer/style", style)
@@ -275,10 +279,8 @@ class VisualizerWidget(QWidget):
 
         logger.debug(f"Drawing {self.viz_style} visualization")
 
-        # Draw visualization based on style
-        if self.viz_style == 'waveform':
-            self._draw_waveform(painter)
-        elif self.viz_style == 'bars':
+        # Draw visualization based on style (waveform removed, redirects to bars)
+        if self.viz_style == 'waveform' or self.viz_style == 'bars':
             self._draw_bars(painter)
         elif self.viz_style == 'circular':
             self._draw_circular(painter)
@@ -362,17 +364,22 @@ class VisualizerWidget(QWidget):
 
     def _draw_bars(self, painter: QPainter):
         """
-        Draw dynamic spectrum analyzer bars with gradient
+        Draw dynamic spectrum analyzer bars with Brain AI color palette
 
         Modern design:
         - Vertical bars from bottom upwards
-        - Gradient colors: green (low) → cyan (mid) → blue (high) → purple (very high)
+        - Brain AI 6-color palette: cyan → blue → purple → magenta → pink → cyan-green
+        - Colors vary by bar position (rainbow effect across spectrum)
+        - Brightness reacts to audio intensity
         - Spacing between bars for clean look
         - DYNAMIC: Bars move with music rhythm using FFT data
 
         Args:
             painter: QPainter instance
         """
+        import time
+        import math
+
         width = self.width()
         height = self.height()
 
@@ -384,15 +391,28 @@ class VisualizerWidget(QWidget):
         # Get bar magnitudes based on current playback position
         bar_magnitudes = self._get_current_bar_magnitudes(num_bars)
 
+        # Time-based subtle animation (breathing effect like Brain AI)
+        current_time = time.time()
+        breathe_factor = 1.0 + math.sin(current_time * 1.2) * 0.03  # Subtle breathing
+
+        # Brain AI color palette (6 colors)
+        brain_colors = [
+            (0, 200, 255),    # Cyan
+            (0, 100, 255),    # Blue
+            (100, 0, 255),    # Purple
+            (200, 0, 255),    # Magenta
+            (255, 0, 150),    # Pink
+            (0, 255, 200),    # Cyan-green
+        ]
+
         for i in range(num_bars):
             x = i * bar_width
 
             # Get magnitude for this bar (from FFT data if available, else waveform)
             max_amplitude = bar_magnitudes[i]
 
-            # Convert amplitude to bar height
-            # Full height usage (no mirroring)
-            bar_height = int(max_amplitude * height * 0.95)  # 0.95 for small top padding
+            # Convert amplitude to bar height with breathing effect
+            bar_height = int(max_amplitude * height * 0.95 * breathe_factor)
 
             # Minimum bar height for visibility
             bar_height = max(bar_height, 3)
@@ -405,62 +425,68 @@ class VisualizerWidget(QWidget):
                 bar_height              # Height
             )
 
-            # Create gradient based on bar height (intensity)
-            # Use ObjectBoundingMode for proper gradient scaling on each bar
-            gradient = QLinearGradient(0, 1, 0, 0)  # Bottom (1) to top (0) in relative coordinates
+            # Calculate color based on bar position (rainbow across spectrum)
+            position_ratio = i / num_bars  # 0.0 to 1.0
+            color_index = position_ratio * (len(brain_colors) - 1)
+            color_idx_low = int(color_index)
+            color_idx_high = min(color_idx_low + 1, len(brain_colors) - 1)
+            blend = color_index - color_idx_low
+
+            # Interpolate between adjacent colors
+            c1 = brain_colors[color_idx_low]
+            c2 = brain_colors[color_idx_high]
+            r = int(c1[0] + (c2[0] - c1[0]) * blend)
+            g = int(c1[1] + (c2[1] - c1[1]) * blend)
+            b = int(c1[2] + (c2[2] - c1[2]) * blend)
+
+            # Audio-reactive brightness (brighter on peaks)
+            intensity = max_amplitude
+            brightness_boost = int(intensity * 55)  # 0-55 extra brightness
+            r = min(255, r + brightness_boost)
+            g = min(255, g + brightness_boost)
+            b = min(255, b + brightness_boost)
+
+            # Create gradient (darker at bottom, brighter at top)
+            gradient = QLinearGradient(0, 1, 0, 0)
             gradient.setCoordinateMode(QLinearGradient.CoordinateMode.ObjectBoundingMode)
 
-            # Color scheme: green → cyan → blue → purple
-            # Calculate color based on amplitude intensity
-            intensity = max_amplitude  # 0.0 to 1.0
-
-            if intensity < 0.25:
-                # Low amplitude: Green
-                gradient.setColorAt(0.0, QColor(34, 197, 94))   # Green-500
-                gradient.setColorAt(1.0, QColor(74, 222, 128))  # Green-400 (lighter)
-            elif intensity < 0.50:
-                # Medium-low: Green → Cyan
-                gradient.setColorAt(0.0, QColor(34, 197, 94))   # Green-500
-                gradient.setColorAt(0.5, QColor(20, 184, 166))  # Teal-500
-                gradient.setColorAt(1.0, QColor(45, 212, 191))  # Teal-400
-            elif intensity < 0.75:
-                # Medium-high: Cyan → Blue
-                gradient.setColorAt(0.0, QColor(20, 184, 166))  # Teal-500
-                gradient.setColorAt(0.5, QColor(59, 130, 246))  # Blue-500
-                gradient.setColorAt(1.0, QColor(96, 165, 250))  # Blue-400
-            else:
-                # High amplitude: Blue → Purple
-                gradient.setColorAt(0.0, QColor(59, 130, 246))   # Blue-500
-                gradient.setColorAt(0.5, QColor(139, 92, 246))   # Violet-500
-                gradient.setColorAt(1.0, QColor(167, 139, 250))  # Violet-400
+            # Bottom: darker version, Top: full color
+            dark_factor = 0.6
+            gradient.setColorAt(0.0, QColor(int(r * dark_factor), int(g * dark_factor), int(b * dark_factor)))
+            gradient.setColorAt(0.5, QColor(r, g, b))
+            gradient.setColorAt(1.0, QColor(min(255, r + 30), min(255, g + 30), min(255, b + 30)))
 
             # Apply gradient and draw bar
             painter.fillRect(bar_rect, gradient)
 
-            # Optional: Add subtle glow effect for high amplitudes
-            if intensity > 0.7:
-                glow_color = QColor(167, 139, 250, 30)  # Purple with transparency
+            # Glow effect for high amplitudes
+            if intensity > 0.6:
+                glow_alpha = int((intensity - 0.6) * 100)  # 0-40 alpha
+                glow_color = QColor(r, g, b, glow_alpha)
                 glow_rect = QRect(
-                    bar_rect.x() - 1,
-                    bar_rect.y() - 1,
-                    bar_rect.width() + 2,
-                    bar_rect.height() + 2
+                    bar_rect.x() - 2,
+                    bar_rect.y() - 2,
+                    bar_rect.width() + 4,
+                    bar_rect.height() + 4
                 )
                 painter.fillRect(glow_rect, glow_color)
 
     def _draw_circular(self, painter: QPainter):
         """
-        Draw circular/radial spectrum visualizer
+        Draw circular/radial spectrum visualizer with Brain AI color palette
 
         Modern design:
         - Bars radiate from center in a circle
-        - Same gradient colors as bar style
+        - Brain AI 6-color palette: colors vary by angle (rainbow around circle)
+        - Brightness reacts to audio intensity
         - DYNAMIC: Bars grow/shrink with music rhythm using FFT data
-        - Smooth circular distribution
+        - Smooth circular distribution with breathing effect
 
         Args:
             painter: QPainter instance
         """
+        import time
+
         width = self.width()
         height = self.height()
 
@@ -477,6 +503,20 @@ class VisualizerWidget(QWidget):
         # Get bar magnitudes based on current playback position
         bar_magnitudes = self._get_current_bar_magnitudes(num_bars)
 
+        # Time-based subtle animation (breathing effect like Brain AI)
+        current_time = time.time()
+        breathe_factor = 1.0 + math.sin(current_time * 1.2) * 0.05  # Subtle breathing
+
+        # Brain AI color palette (6 colors)
+        brain_colors = [
+            (0, 200, 255),    # Cyan
+            (0, 100, 255),    # Blue
+            (100, 0, 255),    # Purple
+            (200, 0, 255),    # Magenta
+            (255, 0, 150),    # Pink
+            (0, 255, 200),    # Cyan-green
+        ]
+
         for i in range(num_bars):
             # Calculate angle for this bar (starting from top, clockwise)
             angle = i * angle_step - 90  # -90 to start from top
@@ -485,8 +525,8 @@ class VisualizerWidget(QWidget):
             # Get magnitude for this bar
             magnitude = bar_magnitudes[i]
 
-            # Calculate bar length based on magnitude
-            bar_length = magnitude * (max_radius - min_radius)
+            # Calculate bar length based on magnitude with breathing effect
+            bar_length = magnitude * (max_radius - min_radius) * breathe_factor
 
             # Calculate start and end points
             start_x = center_x + min_radius * math.cos(angle_rad)
@@ -495,27 +535,32 @@ class VisualizerWidget(QWidget):
             end_x = center_x + (min_radius + bar_length) * math.cos(angle_rad)
             end_y = center_y + (min_radius + bar_length) * math.sin(angle_rad)
 
-            # Create gradient based on magnitude (same color scheme as bars)
+            # Calculate color based on angle (rainbow around the circle)
+            position_ratio = i / num_bars  # 0.0 to 1.0
+            color_index = position_ratio * (len(brain_colors) - 1)
+            color_idx_low = int(color_index)
+            color_idx_high = min(color_idx_low + 1, len(brain_colors) - 1)
+            blend = color_index - color_idx_low
+
+            # Interpolate between adjacent colors
+            c1 = brain_colors[color_idx_low]
+            c2 = brain_colors[color_idx_high]
+            r = int(c1[0] + (c2[0] - c1[0]) * blend)
+            g = int(c1[1] + (c2[1] - c1[1]) * blend)
+            b = int(c1[2] + (c2[2] - c1[2]) * blend)
+
+            # Audio-reactive brightness (brighter on peaks)
             intensity = magnitude
+            brightness_boost = int(intensity * 55)  # 0-55 extra brightness
+            r = min(255, r + brightness_boost)
+            g = min(255, g + brightness_boost)
+            b = min(255, b + brightness_boost)
 
-            if intensity < 0.25:
-                # Low amplitude: Green
-                color_start = QColor(34, 197, 94)   # Green-500
-                color_end = QColor(74, 222, 128)    # Green-400
-            elif intensity < 0.50:
-                # Medium-low: Green → Cyan
-                color_start = QColor(34, 197, 94)   # Green-500
-                color_end = QColor(20, 184, 166)    # Teal-500
-            elif intensity < 0.75:
-                # Medium-high: Cyan → Blue
-                color_start = QColor(20, 184, 166)  # Teal-500
-                color_end = QColor(59, 130, 246)    # Blue-500
-            else:
-                # High amplitude: Blue → Purple
-                color_start = QColor(59, 130, 246)   # Blue-500
-                color_end = QColor(139, 92, 246)     # Violet-500
+            # Create gradient from center (darker) to edge (brighter)
+            dark_factor = 0.6
+            color_start = QColor(int(r * dark_factor), int(g * dark_factor), int(b * dark_factor))
+            color_end = QColor(r, g, b)
 
-            # Create gradient from center to edge
             gradient = QLinearGradient(start_x, start_y, end_x, end_y)
             gradient.setColorAt(0.0, color_start)
             gradient.setColorAt(1.0, color_end)
@@ -526,9 +571,10 @@ class VisualizerWidget(QWidget):
             painter.setPen(pen)
             painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))
 
-            # Optional: Add glow effect for high amplitudes
-            if intensity > 0.7:
-                glow_pen = QPen(QColor(167, 139, 250, 60), pen_width + 2,
+            # Glow effect for high amplitudes
+            if intensity > 0.6:
+                glow_alpha = int((intensity - 0.6) * 150)  # 0-60 alpha
+                glow_pen = QPen(QColor(r, g, b, glow_alpha), pen_width + 3,
                                Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
                 painter.setPen(glow_pen)
                 painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))

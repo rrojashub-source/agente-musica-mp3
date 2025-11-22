@@ -126,9 +126,17 @@ class TestVisualizerWidget(unittest.TestCase):
         self.assertTrue(hasattr(self.widget, 'viz_style'))
         self.assertEqual(self.widget.viz_style, 'bars')
 
-        # Set style to 'waveform'
+        # Set style to 'circular'
+        self.widget.set_style('circular')
+        self.assertEqual(self.widget.viz_style, 'circular')
+
+        # Set style to 'brain_ai'
+        self.widget.set_style('brain_ai')
+        self.assertEqual(self.widget.viz_style, 'brain_ai')
+
+        # Legacy: 'waveform' should redirect to 'bars'
         self.widget.set_style('waveform')
-        self.assertEqual(self.widget.viz_style, 'waveform')
+        self.assertEqual(self.widget.viz_style, 'bars')  # Migrated to bars
 
     def test_07_widget_scales_to_window(self):
         """Test widget scales waveform to window size"""
