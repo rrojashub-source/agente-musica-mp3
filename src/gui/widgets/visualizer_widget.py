@@ -539,13 +539,14 @@ class VisualizerWidget(QWidget):
 
         # Time-based animation (for breathing and pulsating effects)
         current_time = time.time()
-        breathe_factor = 1.0 + math.sin(current_time * 0.5) * 0.05  # Slow breathing
+        # UPGRADED: Faster breathing (1.2 Hz ≈ 72 BPM), more amplitude (0.08)
+        breathe_factor = 1.0 + math.sin(current_time * 1.2) * 0.08
 
         # Calculate base radius (used by multiple effects)
         base_radius = min(width, height) * 0.15
 
-        # === 1. FLOATING NEURAL PARTICLES (inspired by NEXUS) ===
-        num_particles = 300  # Increased from 150 (user request: more particles)
+        # === 1. FLOATING NEURAL PARTICLES (ENHANCED - AUDIO REACTIVE) ===
+        num_particles = 500  # Increased from 300 for denser galaxy effect
         particle_base_radius = min(width, height) * 0.35
         random.seed(42)  # Deterministic positions
 
@@ -554,31 +555,48 @@ class VisualizerWidget(QWidget):
             theta = random.uniform(0, 2 * math.pi)
             phi = math.acos(2 * random.random() - 1)
 
-            # Radius with breathing effect
+            # INDIVIDUAL BREATHING: Each particle has its own breathing speed
+            # 20% fast, 60% normal, 20% slow (more organic movement)
+            if i < num_particles * 0.2:
+                individual_breathe = 1.0 + math.sin(current_time * 2.0 + i * 0.1) * 0.08  # Fast
+            elif i < num_particles * 0.8:
+                individual_breathe = 1.0 + math.sin(current_time * 1.2 + i * 0.1) * 0.08  # Normal
+            else:
+                individual_breathe = 1.0 + math.sin(current_time * 0.6 + i * 0.1) * 0.08  # Slow
+
+            # Radius with individual breathing effect
             particle_radius = particle_base_radius + random.uniform(-20, 20)
-            particle_radius *= breathe_factor  # Apply breathing
+            particle_radius *= individual_breathe
 
             # 3D to 2D projection (simple orthographic)
             px = center_x + particle_radius * math.sin(phi) * math.cos(theta)
             py = center_y + particle_radius * math.sin(phi) * math.sin(theta)
 
-            # Particle size varies (1-3 pixels)
-            particle_size = 1 + random.random() * 2
+            # AUDIO REACTIVE SIZE: Particles grow on audio peaks
+            base_size = 1 + random.random() * 2  # Base: 1-3 pixels
+            audio_boost = avg_magnitude * 3  # Boost: 0-3 pixels on peaks
+            particle_size = base_size + audio_boost  # Final: 1-6 pixels
 
-            # Color varies by position (6-color palette)
+            # AUDIO REACTIVE BRIGHTNESS: Brighter on peaks
+            brightness_boost = int(avg_magnitude * 100)  # 0-100 extra alpha
+
+            # Color varies by position (6-color palette with audio reactive brightness)
             hue_angle = (theta / (2 * math.pi)) * 360
+            base_alpha = 200 + brightness_boost  # 200-300 range
+            base_alpha = min(base_alpha, 255)  # Cap at 255
+
             if hue_angle < 60:
-                color = QColor(0, 200, 255)  # Cyan
+                color = QColor(0, 200, 255, base_alpha)  # Cyan
             elif hue_angle < 120:
-                color = QColor(0, 100, 255)  # Blue
+                color = QColor(0, 100, 255, base_alpha)  # Blue
             elif hue_angle < 180:
-                color = QColor(100, 0, 255)  # Purple
+                color = QColor(100, 0, 255, base_alpha)  # Purple
             elif hue_angle < 240:
-                color = QColor(200, 0, 255)  # Magenta
+                color = QColor(200, 0, 255, base_alpha)  # Magenta
             elif hue_angle < 300:
-                color = QColor(255, 0, 150)  # Pink
+                color = QColor(255, 0, 150, base_alpha)  # Pink
             else:
-                color = QColor(0, 255, 200)  # Cyan-green
+                color = QColor(0, 255, 200, base_alpha)  # Cyan-green
 
             # Draw particle with glow
             painter.setBrush(color)
@@ -602,16 +620,21 @@ class VisualizerWidget(QWidget):
             painter.drawEllipse(int(center_x - wave_radius), int(center_y - wave_radius),
                                int(wave_radius * 2), int(wave_radius * 2))
 
-        # === 3. PULSATING CORE SPHERE (with breathing) ===
+        # === 3. PULSATING CORE SPHERE (DRAMATIC - Audio Reactive) ===
         base_radius = min(width, height) * 0.15
-        pulse_radius = base_radius * (0.8 + avg_magnitude * 0.4) * breathe_factor
+        # UPGRADED: More dramatic pulsing (0.7-1.5x range vs old 0.8-1.2x)
+        pulse_radius = base_radius * (0.7 + avg_magnitude * 0.8) * breathe_factor
+
+        # AUDIO REACTIVE COLORS: Brighter and more saturated on peaks
+        center_brightness = int(200 + avg_magnitude * 55)  # 200-255
+        mid_brightness = int(150 + avg_magnitude * 50)     # 150-200
 
         # Draw central sphere with radial gradient (AI core)
         gradient = QRadialGradient(center_x, center_y, pulse_radius)
-        gradient.setColorAt(0.0, QColor(0, 200, 255, 255))   # Bright cyan center
-        gradient.setColorAt(0.3, QColor(0, 150, 255, 200))   # Blue
-        gradient.setColorAt(0.6, QColor(100, 0, 255, 150))   # Purple
-        gradient.setColorAt(1.0, QColor(100, 0, 255, 0))     # Fade to transparent
+        gradient.setColorAt(0.0, QColor(0, 200, 255, center_brightness))  # Bright cyan (reactive)
+        gradient.setColorAt(0.3, QColor(0, 150, 255, mid_brightness))     # Blue (reactive)
+        gradient.setColorAt(0.6, QColor(100, 0, 255, 150))                # Purple
+        gradient.setColorAt(1.0, QColor(100, 0, 255, 0))                  # Fade to transparent
 
         painter.setBrush(gradient)
         painter.setPen(Qt.PenStyle.NoPen)
