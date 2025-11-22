@@ -87,14 +87,16 @@ class VisualizerWidget(QWidget):
         self.style_selector.addItems([
             "Waveform",
             "Bars (Spectrum)",
-            "Circular (Radial)"
+            "Circular (Radial)",
+            "Brain AI 🧠"
         ])
 
         # Set current style
         style_index = {
             'waveform': 0,
             'bars': 1,
-            'circular': 2
+            'circular': 2,
+            'brain_ai': 3
         }.get(self.viz_style, 1)
         self.style_selector.setCurrentIndex(style_index)
 
@@ -148,7 +150,7 @@ class VisualizerWidget(QWidget):
 
     def _on_style_changed(self, index: int):
         """Handle style selection change"""
-        styles = ['waveform', 'bars', 'circular']
+        styles = ['waveform', 'bars', 'circular', 'brain_ai']
         new_style = styles[index]
 
         if new_style != self.viz_style:
@@ -264,6 +266,8 @@ class VisualizerWidget(QWidget):
             self._draw_bars(painter)
         elif self.viz_style == 'circular':
             self._draw_circular(painter)
+        elif self.viz_style == 'brain_ai':
+            self._draw_brain_ai(painter)
 
         # Draw position indicator
         self._draw_position_indicator(painter)
@@ -496,6 +500,119 @@ class VisualizerWidget(QWidget):
                                Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
                 painter.setPen(glow_pen)
                 painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))
+
+    def _draw_brain_ai(self, painter: QPainter):
+        """
+        Draw "Brain AI" visualization - inspired by AI brain visualizations in movies
+
+        Features:
+        - Pulsating central sphere (like AI core)
+        - Neural network connections (synapses)
+        - Particles floating around
+        - Reactive to audio (grows/shrinks with beats)
+
+        Args:
+            painter: QPainter instance
+        """
+        import random
+        import math
+
+        width = self.width()
+        height = self.height()
+        center_x = width // 2
+        center_y = height // 2
+
+        # Get average magnitude from current spectrum (for pulsation)
+        num_bars = 30
+        bar_magnitudes = self._get_current_bar_magnitudes(num_bars)
+        avg_magnitude = sum(bar_magnitudes) / len(bar_magnitudes) if bar_magnitudes else 0.5
+
+        # Pulsating core sphere
+        base_radius = min(width, height) * 0.15  # 15% of smaller dimension
+        pulse_radius = base_radius * (0.8 + avg_magnitude * 0.4)  # Pulsates based on audio
+
+        # Draw central sphere with radial gradient (AI core)
+        gradient = QRadialGradient(center_x, center_y, pulse_radius)
+        gradient.setColorAt(0.0, QColor(0, 200, 255, 255))   # Bright cyan center
+        gradient.setColorAt(0.3, QColor(0, 150, 255, 200))   # Blue
+        gradient.setColorAt(0.6, QColor(100, 0, 255, 150))   # Purple
+        gradient.setColorAt(1.0, QColor(100, 0, 255, 0))     # Fade to transparent
+
+        painter.setBrush(gradient)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(int(center_x - pulse_radius), int(center_y - pulse_radius),
+                           int(pulse_radius * 2), int(pulse_radius * 2))
+
+        # Draw "neurons" (points distributed in a circle around the core)
+        num_neurons = 20
+        neuron_distance = min(width, height) * 0.35  # Distance from center
+
+        # Generate neuron positions (deterministic based on widget size for consistency)
+        random.seed(42)  # Fixed seed for consistent positions
+        neurons = []
+        for i in range(num_neurons):
+            angle = (i / num_neurons) * 360 + random.uniform(-15, 15)  # Slight randomness
+            angle_rad = math.radians(angle)
+            distance = neuron_distance + random.uniform(-20, 20)
+
+            nx = center_x + distance * math.cos(angle_rad)
+            ny = center_y + distance * math.sin(angle_rad)
+            neurons.append((nx, ny))
+
+        # Draw synapses (connections between neurons and core)
+        for nx, ny in neurons:
+            # Get magnitude for this neuron (based on angle)
+            neuron_index = int((math.atan2(ny - center_y, nx - center_x) + math.pi) / (2 * math.pi) * num_bars)
+            neuron_index = max(0, min(neuron_index, len(bar_magnitudes) - 1))
+            magnitude = bar_magnitudes[neuron_index]
+
+            # Synapse line opacity based on magnitude
+            alpha = int(100 + magnitude * 155)  # 100-255
+            synapse_color = QColor(0, 200, 255, alpha)  # Cyan
+
+            # Draw line from core to neuron
+            pen = QPen(synapse_color, 1, Qt.PenStyle.SolidLine)
+            painter.setPen(pen)
+            painter.drawLine(center_x, center_y, int(nx), int(ny))
+
+        # Draw neuron points (pulsating dots)
+        for i, (nx, ny) in enumerate(neurons):
+            # Get magnitude for this neuron
+            neuron_index = int(i / num_neurons * len(bar_magnitudes))
+            neuron_index = min(neuron_index, len(bar_magnitudes) - 1)
+            magnitude = bar_magnitudes[neuron_index]
+
+            # Neuron size based on magnitude
+            neuron_radius = 3 + magnitude * 5  # 3-8 pixels
+
+            # Neuron color (cyan to magenta based on magnitude)
+            if magnitude < 0.5:
+                color = QColor(0, 200, 255)  # Cyan
+            else:
+                color = QColor(255, 0, 200)  # Magenta
+
+            # Draw neuron with glow
+            gradient = QRadialGradient(nx, ny, neuron_radius * 2)
+            gradient.setColorAt(0.0, color)
+            gradient.setColorAt(0.5, QColor(color.red(), color.green(), color.blue(), 150))
+            gradient.setColorAt(1.0, QColor(color.red(), color.green(), color.blue(), 0))
+
+            painter.setBrush(gradient)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(int(nx - neuron_radius), int(ny - neuron_radius),
+                               int(neuron_radius * 2), int(neuron_radius * 2))
+
+        # Draw outer glow ring (pulsating)
+        ring_radius = pulse_radius * 1.5
+        ring_gradient = QRadialGradient(center_x, center_y, ring_radius)
+        ring_gradient.setColorAt(0.0, QColor(0, 150, 255, 0))
+        ring_gradient.setColorAt(0.7, QColor(0, 200, 255, 50))
+        ring_gradient.setColorAt(1.0, QColor(100, 0, 255, 0))
+
+        painter.setBrush(ring_gradient)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(int(center_x - ring_radius), int(center_y - ring_radius),
+                           int(ring_radius * 2), int(ring_radius * 2))
 
     def _get_current_bar_magnitudes(self, num_bars: int) -> List[float]:
         """
