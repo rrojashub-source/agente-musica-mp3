@@ -19,7 +19,7 @@ Updated: November 21, 2025 - Multiple styles + selector
 import logging
 from typing import List, Optional
 import math
-from PyQt6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QHBoxLayout
+from PyQt6.QtWidgets import QWidget, QComboBox
 from PyQt6.QtCore import Qt, QRect, QPoint, QSettings
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QLinearGradient, QRadialGradient
 
@@ -75,26 +75,15 @@ class VisualizerWidget(QWidget):
         # Widget settings
         self.setMinimumSize(200, 100)
 
-        # Create layout with style selector
-        self._init_ui()
+        # Create style selector as floating widget (NO layout to preserve paintEvent)
+        self._init_style_selector()
 
         logger.info(f"VisualizerWidget initialized with style: {self.viz_style}")
 
-    def _init_ui(self):
-        """Initialize UI with style selector"""
-        # Main layout
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        # Style selector (top-right corner)
-        selector_container = QWidget()
-        selector_layout = QHBoxLayout(selector_container)
-        selector_layout.setContentsMargins(5, 5, 5, 5)
-        selector_layout.addStretch()
-
-        # ComboBox for style selection
-        self.style_selector = QComboBox()
+    def _init_style_selector(self):
+        """Initialize floating style selector (no layout to preserve paintEvent)"""
+        # ComboBox for style selection (floating widget, not in layout)
+        self.style_selector = QComboBox(self)
         self.style_selector.addItems([
             "Waveform",
             "Bars (Spectrum)",
@@ -142,14 +131,20 @@ class VisualizerWidget(QWidget):
             }
         """)
 
+        # Position in top-right corner (will be updated in resizeEvent)
+        self.style_selector.move(10, 10)
+
         # Connect change event
         self.style_selector.currentIndexChanged.connect(self._on_style_changed)
 
-        selector_layout.addWidget(self.style_selector)
-
-        # Add to main layout
-        layout.addWidget(selector_container)
-        layout.addStretch()
+    def resizeEvent(self, event):
+        """Reposition selector on resize"""
+        if hasattr(self, 'style_selector'):
+            # Position in top-right corner with 10px margin
+            x = self.width() - self.style_selector.width() - 10
+            y = 10
+            self.style_selector.move(x, y)
+        super().resizeEvent(event)
 
     def _on_style_changed(self, index: int):
         """Handle style selection change"""
@@ -246,6 +241,8 @@ class VisualizerWidget(QWidget):
         Args:
             event: QPaintEvent
         """
+        logger.debug(f"paintEvent called: style={self.viz_style}, has_waveform={self.waveform_data is not None}, has_spectrum={self.spectrum_data is not None}")
+
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -254,8 +251,11 @@ class VisualizerWidget(QWidget):
 
         # If no data at all, display placeholder
         if not self.waveform_data and not self.spectrum_data:
+            logger.debug("No data - showing placeholder")
             self._draw_placeholder(painter)
             return
+
+        logger.debug(f"Drawing {self.viz_style} visualization")
 
         # Draw visualization based on style
         if self.viz_style == 'waveform':
@@ -340,6 +340,9 @@ class VisualizerWidget(QWidget):
         width = self.width()
         height = self.height()
 
+        # Debug logging
+        logger.debug(f"Drawing bars: width={width}, height={height}, has_spectrum={self.spectrum_data is not None}")
+
         # Number of bars to draw (fewer bars = cleaner look)
         num_bars = min(60, width // 8)  # Max 60 bars, min 8 pixels wide
         bar_width = width // num_bars
@@ -370,7 +373,9 @@ class VisualizerWidget(QWidget):
             )
 
             # Create gradient based on bar height (intensity)
-            gradient = QLinearGradient(0, height, 0, 0)  # Bottom to top
+            # Use ObjectBoundingMode for proper gradient scaling on each bar
+            gradient = QLinearGradient(0, 1, 0, 0)  # Bottom (1) to top (0) in relative coordinates
+            gradient.setCoordinateMode(QLinearGradient.CoordinateMode.ObjectBoundingMode)
 
             # Color scheme: green → cyan → blue → purple
             # Calculate color based on amplitude intensity
