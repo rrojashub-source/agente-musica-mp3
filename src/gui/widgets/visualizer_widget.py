@@ -572,10 +572,10 @@ class VisualizerWidget(QWidget):
             px = center_x + particle_radius * math.sin(phi) * math.cos(theta)
             py = center_y + particle_radius * math.sin(phi) * math.sin(theta)
 
-            # AUDIO REACTIVE SIZE: Particles grow on audio peaks
+            # AUDIO REACTIVE SIZE: Particles grow subtly on audio peaks
             base_size = 1 + random.random() * 2  # Base: 1-3 pixels
-            audio_boost = avg_magnitude * 3  # Boost: 0-3 pixels on peaks
-            particle_size = base_size + audio_boost  # Final: 1-6 pixels
+            audio_boost = avg_magnitude * 1  # Boost: 0-1 pixel on peaks (subtle, won't hide center)
+            particle_size = base_size + audio_boost  # Final: 1-4 pixels
 
             # AUDIO REACTIVE BRIGHTNESS: Brighter on peaks
             brightness_boost = int(avg_magnitude * 100)  # 0-100 extra alpha
