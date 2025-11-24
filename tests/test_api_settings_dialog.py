@@ -47,20 +47,22 @@ class TestAPISettingsDialog(unittest.TestCase):
             self.fail("APISettingsDialog not found - implement src/gui/dialogs/api_settings_dialog.py")
 
         self.assertIsNotNone(self.dialog)
-        self.assertEqual(self.dialog.windowTitle(), "API Settings")
+        # Bilingual title
+        self.assertIn("API Settings", self.dialog.windowTitle())
 
     def test_02_dialog_has_tabs(self):
-        """Test dialog has tabs for YouTube, Spotify, Genius"""
+        """Test dialog has tabs for YouTube, Spotify, Genius, AcoustID"""
         if self.dialog is None:
             self.skipTest("Dialog not implemented yet")
 
         self.assertTrue(hasattr(self.dialog, 'tab_widget'), "Dialog missing tab_widget")
-        self.assertEqual(self.dialog.tab_widget.count(), 3, "Expected 3 tabs (YouTube, Spotify, Genius)")
+        self.assertEqual(self.dialog.tab_widget.count(), 4, "Expected 4 tabs (YouTube, Spotify, Genius, AcoustID)")
 
-        # Verify tab names
-        tab_names = [self.dialog.tab_widget.tabText(i) for i in range(3)]
+        # Verify tab names contain expected APIs
+        tab_names = " ".join([self.dialog.tab_widget.tabText(i) for i in range(4)])
         self.assertIn("YouTube", tab_names)
         self.assertIn("Spotify", tab_names)
+        self.assertIn("AcoustID", tab_names)
 
     def test_03_youtube_tab_has_input_field(self):
         """Test YouTube tab has API key input field"""
@@ -71,8 +73,9 @@ class TestAPISettingsDialog(unittest.TestCase):
         self.assertTrue(hasattr(youtube_tab, 'api_key_input'), "YouTube tab missing api_key_input")
         self.assertIsNotNone(youtube_tab.api_key_input)
 
-        # Verify input field properties
-        self.assertEqual(youtube_tab.api_key_input.placeholderText(), "Paste your YouTube API key here")
+        # Verify input field has placeholder (bilingual)
+        placeholder = youtube_tab.api_key_input.placeholderText()
+        self.assertIn("YouTube", placeholder)
 
     def test_04_validate_button_exists(self):
         """Test Validate button exists"""
@@ -81,7 +84,8 @@ class TestAPISettingsDialog(unittest.TestCase):
 
         youtube_tab = self.dialog.youtube_tab
         self.assertTrue(hasattr(youtube_tab, 'validate_button'), "YouTube tab missing validate_button")
-        self.assertEqual(youtube_tab.validate_button.text(), "Validate")
+        # Bilingual button text
+        self.assertIn("Validate", youtube_tab.validate_button.text())
 
     def test_05_status_label_exists(self):
         """Test status label for showing validation result"""
@@ -98,7 +102,8 @@ class TestAPISettingsDialog(unittest.TestCase):
             self.skipTest("Dialog not implemented yet")
 
         self.assertTrue(hasattr(self.dialog, 'save_button'), "Dialog missing save_button")
-        self.assertEqual(self.dialog.save_button.text(), "Save & Close")
+        # Bilingual button text
+        self.assertIn("Save", self.dialog.save_button.text())
 
     # ========== FUNCTIONAL TESTS ==========
 
@@ -158,7 +163,9 @@ class TestAPISettingsDialog(unittest.TestCase):
         with patch('keyring.set_password') as mock_set:
             # Enter keys
             self.dialog.youtube_tab.api_key_input.setText("youtube_key_123")
-            self.dialog.spotify_tab.api_key_input.setText("spotify_client_id_456")
+            # SpotifyTabWidget uses client_id_input and client_secret_input
+            self.dialog.spotify_tab.client_id_input.setText("a" * 32)  # 32 alphanumeric chars
+            self.dialog.spotify_tab.client_secret_input.setText("b" * 32)
 
             # Click save
             QTest.mouseClick(self.dialog.save_button, Qt.MouseButton.LeftButton)

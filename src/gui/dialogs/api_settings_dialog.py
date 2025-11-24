@@ -60,25 +60,25 @@ class APITabWidget(QWidget):
         self._load_existing_key()
 
     def _setup_ui(self):
-        """Setup UI components"""
+        """Setup UI components - Bilingual (ES/EN)"""
         layout = QVBoxLayout()
 
         # API Key input group
-        input_group = QGroupBox(f"{self.api_name} API Configuration")
+        input_group = QGroupBox(f"Configuración de {self.api_name} / {self.api_name} Configuration")
         input_layout = QVBoxLayout()
 
         # API Key input field
         self.api_key_input = QLineEdit()
-        self.api_key_input.setPlaceholderText(f"Paste your {self.api_name} API key here")
+        self.api_key_input.setPlaceholderText(f"Pega tu clave de {self.api_name} aquí / Paste your {self.api_name} API key here")
         self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
-        input_layout.addWidget(QLabel(f"{self.api_name} API Key:"))
+        input_layout.addWidget(QLabel(f"Clave API de {self.api_name} / {self.api_name} API Key:"))
         input_layout.addWidget(self.api_key_input)
 
         # Buttons
         button_layout = QHBoxLayout()
-        self.validate_button = QPushButton("Validate")
+        self.validate_button = QPushButton("Validar / Validate")
         self.validate_button.clicked.connect(self._on_validate_clicked)
-        self.clear_button = QPushButton("Clear")
+        self.clear_button = QPushButton("Limpiar / Clear")
         self.clear_button.clicked.connect(self.api_key_input.clear)
         button_layout.addWidget(self.validate_button)
         button_layout.addWidget(self.clear_button)
@@ -100,60 +100,60 @@ class APITabWidget(QWidget):
         self.status_label.setProperty("class", "secondary")  # Use theme color
         layout.addWidget(self.status_label)
 
-        # Instructions (detailed guide)
+        # Instructions (detailed guide) - Bilingual
         if self.api_name == "YouTube":
             instructions_text = """
-<b>📺 How to get YouTube API key:</b>
+<b>📺 Cómo obtener clave de YouTube / How to get YouTube API key:</b>
 <ol style="margin-left: -20px;">
-<li>Go to <a href="https://console.cloud.google.com/">Google Cloud Console</a></li>
-<li>Create a new project (or select existing)</li>
-<li>Enable "YouTube Data API v3"</li>
-<li>Go to "Credentials" → "Create Credentials" → "API Key"</li>
-<li>Copy the API key and paste it above</li>
-<li>Click "Validate" to test (makes a real API call)</li>
+<li>Ir a / Go to <a href="https://console.cloud.google.com/">Google Cloud Console</a></li>
+<li>Crear proyecto nuevo (o seleccionar existente) / Create new project (or select existing)</li>
+<li>Activar "YouTube Data API v3" / Enable "YouTube Data API v3"</li>
+<li>Ir a "Credentials" → "Create Credentials" → "API Key"</li>
+<li>Copiar la clave y pegarla arriba / Copy the API key and paste it above</li>
+<li>Clic en "Validar" para probar / Click "Validate" to test</li>
 </ol>
-<p><b>💡 Tip:</b> Free tier provides 10,000 units/day (≈ 100 searches)</p>
-<p><small>For detailed instructions, see Help → API Setup Guide (F1)</small></p>
+<p><b>💡 Consejo / Tip:</b> Nivel gratis = 10,000 unidades/día (≈ 100 búsquedas) / Free tier = 10,000 units/day (≈ 100 searches)</p>
+<p><small>Para instrucciones detalladas: Ayuda → Guía API (F2) / For detailed instructions: Help → API Guide (F2)</small></p>
             """
         elif self.api_name == "Genius":
             instructions_text = """
-<b>🎤 How to get Genius API token:</b>
+<b>🎤 Cómo obtener token de Genius / How to get Genius API token:</b>
 <ol style="margin-left: -20px;">
-<li>Go to <a href="https://genius.com/api-clients">Genius API Clients</a></li>
-<li>Log in with your Genius account</li>
-<li>Create a new API client</li>
-<li>Copy the "Client Access Token"</li>
-<li>Paste it above and click "Validate"</li>
+<li>Ir a / Go to <a href="https://genius.com/api-clients">Genius API Clients</a></li>
+<li>Iniciar sesión con tu cuenta Genius / Log in with your Genius account</li>
+<li>Crear nuevo cliente API / Create a new API client</li>
+<li>Copiar "Client Access Token" / Copy the "Client Access Token"</li>
+<li>Pegarlo arriba y clic en "Validar" / Paste it above and click "Validate"</li>
 </ol>
-<p><b>💡 Tip:</b> Free tier provides unlimited lyrics searches</p>
-<p><small>For detailed instructions, see Help → API Setup Guide (F1)</small></p>
+<p><b>💡 Consejo / Tip:</b> Nivel gratis = búsquedas de letras ilimitadas / Free tier = unlimited lyrics searches</p>
+<p><small>Para instrucciones detalladas: Ayuda → Guía API (F2) / For detailed instructions: Help → API Guide (F2)</small></p>
             """
         elif self.api_name == "AcoustID":
             instructions_text = """
-<b>🎵 How to get AcoustID API key:</b>
+<b>🎵 Cómo obtener clave de AcoustID / How to get AcoustID API key:</b>
 <ol style="margin-left: -20px;">
-<li>Go to <a href="https://acoustid.org/new-application">AcoustID New Application</a></li>
-<li>Register or log in with your account</li>
-<li>Fill in:
+<li>Ir a / Go to <a href="https://acoustid.org/new-application">AcoustID New Application</a></li>
+<li>Registrarse o iniciar sesión / Register or log in</li>
+<li>Completar / Fill in:
     <ul>
     <li>Application Name: "NEXUS Music Manager"</li>
     <li>Version: "2.0"</li>
-    <li>Description: "Personal music library manager with audio fingerprinting"</li>
+    <li>Description: "Personal music library manager"</li>
     </ul>
 </li>
-<li>Submit the form</li>
-<li>Copy your API key (typically 8+ alphanumeric characters, may include hyphens)</li>
-<li>Paste it above and click "Validate"</li>
+<li>Enviar formulario / Submit the form</li>
+<li>Copiar tu clave API (8+ caracteres) / Copy your API key (8+ characters)</li>
+<li>Pegarla arriba y clic en "Validar" / Paste it above and click "Validate"</li>
 </ol>
-<p><b>💡 What is AcoustID?</b> Audio fingerprinting service that identifies songs by their acoustic signature (similar to Shazam). Useful for songs with missing/corrupted metadata.</p>
-<p><b>⚠️ Prerequisite:</b> Requires fpcalc.exe (Chromaprint) in tools/ folder. See Metadata Wizard tab for download instructions.</p>
-<p><small>For detailed instructions, see Help → API Setup Guide (F1)</small></p>
+<p><b>💡 ¿Qué es AcoustID? / What is AcoustID?</b> Servicio de huellas de audio que identifica canciones por su firma acústica (similar a Shazam). / Audio fingerprinting service that identifies songs by their acoustic signature (similar to Shazam).</p>
+<p><b>⚠️ Requisito / Prerequisite:</b> Requiere fpcalc.exe (Chromaprint) en carpeta tools/. / Requires fpcalc.exe (Chromaprint) in tools/ folder.</p>
+<p><small>Para instrucciones detalladas: Ayuda → Guía API (F2) / For detailed instructions: Help → API Guide (F2)</small></p>
             """
         else:
             instructions_text = f"""
-<b>How to get {self.api_name} API key:</b><br>
-Click 'Validate' to test your key with a real API call.
-<p><small>For detailed instructions, see Help → API Setup Guide (F1)</small></p>
+<b>Cómo obtener clave de {self.api_name} / How to get {self.api_name} API key:</b><br>
+Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
+<p><small>Para instrucciones detalladas: Ayuda → Guía API (F2) / For detailed instructions: Help → API Guide (F2)</small></p>
             """
 
         instructions = QLabel(instructions_text)
@@ -177,21 +177,21 @@ Click 'Validate' to test your key with a real API call.
             key = keyring.get_password(self.service_name, f"{self.api_name.lower()}_api_key")
             if key:
                 self.api_key_input.setText(key)
-                self.status_label.setText("✅ Existing key loaded from secure storage")
+                self.status_label.setText("✅ Clave existente cargada / Existing key loaded")
                 logger.info(f"{self.api_name} key loaded from keyring")
         except Exception as e:
             logger.debug(f"No existing key for {self.api_name}: {e}")
-            self.status_label.setText("ℹ️ No existing key found. Please enter your API key above.")
+            self.status_label.setText("ℹ️ No hay clave guardada. Ingresa tu clave arriba. / No existing key. Please enter your API key above.")
 
     def _on_validate_clicked(self):
         """Validate API key by making test request"""
         api_key = self.api_key_input.text().strip()
 
         if not api_key:
-            self.status_label.setText("❌ Please enter an API key")
+            self.status_label.setText("❌ Por favor ingresa una clave / Please enter an API key")
             return
 
-        self.status_label.setText("⏳ Validating...")
+        self.status_label.setText("⏳ Validando... / Validating...")
         self.validate_button.setEnabled(False)
         QApplication.processEvents()  # Update UI
 
@@ -206,7 +206,7 @@ Click 'Validate' to test your key with a real API call.
             elif self.api_name == "AcoustID":
                 self._validate_acoustid(api_key)
         except Exception as e:
-            self.status_label.setText(f"❌ Invalid: {str(e)}")
+            self.status_label.setText(f"❌ Inválida / Invalid: {str(e)}")
             logger.error(f"{self.api_name} validation failed: {e}")
         finally:
             self.validate_button.setEnabled(True)
@@ -229,17 +229,17 @@ Click 'Validate' to test your key with a real API call.
             results = yt.search("test", max_results=1)
 
             if results:
-                self.status_label.setText("✅ Valid - YouTube API working!")
+                self.status_label.setText("✅ Válida - YouTube API funcionando! / Valid - YouTube API working!")
                 logger.info("YouTube API key validated successfully")
             else:
-                raise Exception("No results returned (API may be quota-limited)")
+                raise Exception("Sin resultados (posible límite de cuota) / No results (API may be quota-limited)")
 
         except ImportError:
             # Fallback: Just validate format
             if len(api_key) >= 30:
-                self.status_label.setText("✅ Valid - YouTube API key format correct")
+                self.status_label.setText("✅ Válida - Formato de clave correcto / Valid - API key format correct")
             else:
-                raise Exception("API key too short (expected 30+ characters)")
+                raise Exception("Clave muy corta (esperado 30+ caracteres) / API key too short (expected 30+ characters)")
 
     def _validate_spotify(self, client_id: str):
         """
@@ -256,10 +256,10 @@ Click 'Validate' to test your key with a real API call.
         """
         # Spotify Client ID is 32 alphanumeric characters
         if len(client_id) == 32 and client_id.isalnum():
-            self.status_label.setText("✅ Valid - Spotify Client ID format correct")
+            self.status_label.setText("✅ Válida - Formato de Client ID correcto / Valid - Client ID format correct")
             logger.info("Spotify Client ID format validated")
         else:
-            raise Exception("Invalid format (expected 32 alphanumeric characters)")
+            raise Exception("Formato inválido (esperado 32 caracteres alfanuméricos) / Invalid format (expected 32 alphanumeric characters)")
 
     def _validate_genius(self, api_key: str):
         """
@@ -273,10 +273,10 @@ Click 'Validate' to test your key with a real API call.
         """
         # Basic format validation
         if len(api_key) >= 20:
-            self.status_label.setText("✅ Valid - Genius token format correct")
+            self.status_label.setText("✅ Válida - Formato de token correcto / Valid - Token format correct")
             logger.info("Genius token format validated")
         else:
-            raise Exception("Token too short (expected 20+ characters)")
+            raise Exception("Token muy corto (esperado 20+ caracteres) / Token too short (expected 20+ characters)")
 
     def _validate_acoustid(self, api_key: str):
         """
@@ -294,10 +294,10 @@ Click 'Validate' to test your key with a real API call.
         cleaned_key = api_key.replace('-', '').replace('_', '')
 
         if len(cleaned_key) >= 8 and cleaned_key.isalnum():
-            self.status_label.setText("✅ Valid - AcoustID API key format correct")
+            self.status_label.setText("✅ Válida - Formato de clave correcto / Valid - API key format correct")
             logger.info("AcoustID API key format validated")
         else:
-            raise Exception(f"Invalid format (expected 8+ alphanumeric characters, got {len(cleaned_key)} valid chars)")
+            raise Exception(f"Formato inválido (esperado 8+ caracteres, tienes {len(cleaned_key)}) / Invalid format (expected 8+ chars, got {len(cleaned_key)})")
 
     def get_api_key(self) -> str:
         """
@@ -321,32 +321,32 @@ class SpotifyTabWidget(QWidget):
         self._load_existing_keys()
 
     def _setup_ui(self):
-        """Setup UI with Client ID + Client Secret fields"""
+        """Setup UI with Client ID + Client Secret fields - Bilingual (ES/EN)"""
         layout = QVBoxLayout()
 
         # Spotify credentials group
-        input_group = QGroupBox("Spotify API Configuration")
+        input_group = QGroupBox("Configuración de Spotify / Spotify Configuration")
         input_layout = QVBoxLayout()
 
         # Client ID field
         self.client_id_input = QLineEdit()
-        self.client_id_input.setPlaceholderText("Paste your Spotify Client ID here")
+        self.client_id_input.setPlaceholderText("Pega tu Client ID aquí / Paste your Spotify Client ID here")
         self.client_id_input.setEchoMode(QLineEdit.EchoMode.Password)
         input_layout.addWidget(QLabel("Spotify Client ID:"))
         input_layout.addWidget(self.client_id_input)
 
         # Client Secret field
         self.client_secret_input = QLineEdit()
-        self.client_secret_input.setPlaceholderText("Paste your Spotify Client Secret here")
+        self.client_secret_input.setPlaceholderText("Pega tu Client Secret aquí / Paste your Spotify Client Secret here")
         self.client_secret_input.setEchoMode(QLineEdit.EchoMode.Password)
         input_layout.addWidget(QLabel("Spotify Client Secret:"))
         input_layout.addWidget(self.client_secret_input)
 
         # Buttons
         button_layout = QHBoxLayout()
-        self.validate_button = QPushButton("Validate")
+        self.validate_button = QPushButton("Validar / Validate")
         self.validate_button.clicked.connect(self._on_validate_clicked)
-        self.clear_button = QPushButton("Clear Both")
+        self.clear_button = QPushButton("Limpiar ambos / Clear Both")
         self.clear_button.clicked.connect(self._clear_fields)
         button_layout.addWidget(self.validate_button)
         button_layout.addWidget(self.clear_button)
@@ -368,28 +368,28 @@ class SpotifyTabWidget(QWidget):
         self.status_label.setProperty("class", "secondary")  # Use theme color
         layout.addWidget(self.status_label)
 
-        # Instructions (detailed guide)
+        # Instructions (detailed guide) - Bilingual
         instructions_text = """
-<b>🎵 How to get Spotify credentials:</b>
+<b>🎵 Cómo obtener credenciales de Spotify / How to get Spotify credentials:</b>
 <ol style="margin-left: -20px;">
-<li>Go to <a href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</a></li>
-<li>Log in with your Spotify account (free account works)</li>
-<li>Click "Create App"</li>
-<li>Fill in:
+<li>Ir a / Go to <a href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</a></li>
+<li>Iniciar sesión con tu cuenta Spotify (cuenta gratis funciona) / Log in with your Spotify account (free account works)</li>
+<li>Clic en "Create App" / Click "Create App"</li>
+<li>Completar / Fill in:
     <ul>
     <li>App Name: "NEXUS Music Manager"</li>
     <li>App Description: "Personal music library"</li>
     <li>Redirect URI: http://localhost:8888/callback</li>
-    <li>Check "Web API"</li>
+    <li>Marcar "Web API" / Check "Web API"</li>
     </ul>
 </li>
-<li>Click "Settings" on your new app</li>
-<li>Copy "Client ID" and paste above</li>
-<li>Click "View client secret" and copy "Client Secret"</li>
-<li>Click "Validate" to test both credentials</li>
+<li>Clic en "Settings" en tu nueva app / Click "Settings" on your new app</li>
+<li>Copiar "Client ID" y pegar arriba / Copy "Client ID" and paste above</li>
+<li>Clic en "View client secret" y copiar / Click "View client secret" and copy</li>
+<li>Clic en "Validar" para probar / Click "Validate" to test</li>
 </ol>
-<p><b>💡 Tip:</b> Free tier provides unlimited searches (rate limited)</p>
-<p><small>For detailed instructions, see Help → API Setup Guide (F1)</small></p>
+<p><b>💡 Consejo / Tip:</b> Nivel gratis = búsquedas ilimitadas (con límite de velocidad) / Free tier = unlimited searches (rate limited)</p>
+<p><small>Para instrucciones detalladas: Ayuda → Guía API (F2) / For detailed instructions: Help → API Guide (F2)</small></p>
         """
 
         instructions = QLabel(instructions_text)
@@ -419,15 +419,15 @@ class SpotifyTabWidget(QWidget):
                 self.client_secret_input.setText(client_secret)
 
             if client_id and client_secret:
-                self.status_label.setText("✅ Existing credentials loaded from secure storage")
+                self.status_label.setText("✅ Credenciales cargadas / Existing credentials loaded")
                 logger.info("Spotify credentials loaded from keyring")
             elif client_id or client_secret:
-                self.status_label.setText("⚠️ Partial credentials found. Please enter both Client ID and Secret.")
+                self.status_label.setText("⚠️ Credenciales parciales. Ingresa ambos. / Partial credentials. Please enter both.")
             else:
-                self.status_label.setText("ℹ️ No existing credentials. Please enter both above.")
+                self.status_label.setText("ℹ️ Sin credenciales. Ingresa ambas arriba. / No credentials. Please enter both above.")
         except Exception as e:
             logger.debug(f"No existing Spotify credentials: {e}")
-            self.status_label.setText("ℹ️ No existing credentials found. Please enter both above.")
+            self.status_label.setText("ℹ️ Sin credenciales. Ingresa ambas arriba. / No credentials. Please enter both above.")
 
     def _clear_fields(self):
         """Clear both input fields"""
@@ -440,10 +440,10 @@ class SpotifyTabWidget(QWidget):
         client_secret = self.client_secret_input.text().strip()
 
         if not client_id or not client_secret:
-            self.status_label.setText("❌ Please enter both Client ID and Client Secret")
+            self.status_label.setText("❌ Por favor ingresa ambos Client ID y Secret / Please enter both Client ID and Secret")
             return
 
-        self.status_label.setText("⏳ Validating...")
+        self.status_label.setText("⏳ Validando... / Validating...")
         self.validate_button.setEnabled(False)
         QApplication.processEvents()
 
@@ -456,22 +456,22 @@ class SpotifyTabWidget(QWidget):
             results = spotify.search_tracks("test", limit=1)
 
             if results:
-                self.status_label.setText("✅ Valid - Spotify API working!")
+                self.status_label.setText("✅ Válidas - Spotify API funcionando! / Valid - Spotify API working!")
                 logger.info("Spotify credentials validated successfully")
             else:
-                raise Exception("No results returned")
+                raise Exception("Sin resultados / No results returned")
 
         except ImportError:
             # Fallback: Just validate format
             if len(client_id) == 32 and client_id.isalnum():
                 if len(client_secret) == 32 and client_secret.isalnum():
-                    self.status_label.setText("✅ Valid - Credentials format correct")
+                    self.status_label.setText("✅ Válidas - Formato correcto / Valid - Format correct")
                 else:
-                    self.status_label.setText("❌ Invalid Client Secret format")
+                    self.status_label.setText("❌ Formato de Client Secret inválido / Invalid Client Secret format")
             else:
-                self.status_label.setText("❌ Invalid Client ID format")
+                self.status_label.setText("❌ Formato de Client ID inválido / Invalid Client ID format")
         except Exception as e:
-            self.status_label.setText(f"❌ Invalid: {str(e)}")
+            self.status_label.setText(f"❌ Inválidas / Invalid: {str(e)}")
             logger.error(f"Spotify validation failed: {e}")
         finally:
             self.validate_button.setEnabled(True)
@@ -507,22 +507,22 @@ class APISettingsDialog(QDialog):
 
     def __init__(self, parent=None):
         """
-        Initialize API Settings Dialog
+        Initialize API Settings Dialog - Bilingual (ES/EN)
 
         Args:
             parent: Parent widget (optional)
         """
         super().__init__(parent)
-        self.setWindowTitle("API Settings")
-        self.setMinimumSize(600, 500)
+        self.setWindowTitle("Configuración de API / API Settings")
+        self.setMinimumSize(650, 550)
         self._setup_ui()
 
     def _setup_ui(self):
-        """Setup dialog UI"""
+        """Setup dialog UI - Bilingual (ES/EN)"""
         layout = QVBoxLayout()
 
         # Header
-        header = QLabel("<h2>API Configuration</h2>")
+        header = QLabel("<h2>🔑 Configuración de API / API Configuration</h2>")
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(header)
 
@@ -535,27 +535,27 @@ class APISettingsDialog(QDialog):
         self.genius_tab = APITabWidget("Genius")
         self.acoustid_tab = APITabWidget("AcoustID")  # Audio fingerprinting
 
-        self.tab_widget.addTab(self.youtube_tab, "YouTube")
-        self.tab_widget.addTab(self.spotify_tab, "Spotify")
-        self.tab_widget.addTab(self.genius_tab, "Genius (Optional)")
-        self.tab_widget.addTab(self.acoustid_tab, "AcoustID (Fingerprinting)")
+        self.tab_widget.addTab(self.youtube_tab, "📺 YouTube")
+        self.tab_widget.addTab(self.spotify_tab, "🎵 Spotify")
+        self.tab_widget.addTab(self.genius_tab, "🎤 Genius (Letras/Lyrics)")
+        self.tab_widget.addTab(self.acoustid_tab, "🎧 AcoustID (Huellas/Fingerprint)")
 
         layout.addWidget(self.tab_widget)
 
-        # Bottom buttons
+        # Bottom buttons - Bilingual
         button_layout = QHBoxLayout()
 
         # Help button
-        help_button = QPushButton("Help")
+        help_button = QPushButton("Ayuda / Help")
         help_button.clicked.connect(self._on_help_clicked)
 
         # Save button
-        self.save_button = QPushButton("Save & Close")
+        self.save_button = QPushButton("Guardar y Cerrar / Save & Close")
         self.save_button.clicked.connect(self._on_save_clicked)
         self.save_button.setDefault(True)
 
         # Cancel button
-        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button = QPushButton("Cancelar / Cancel")
         self.cancel_button.clicked.connect(self.reject)
 
         button_layout.addWidget(help_button)
@@ -567,34 +567,40 @@ class APISettingsDialog(QDialog):
         self.setLayout(layout)
 
     def _on_help_clicked(self):
-        """Show help dialog with instructions"""
+        """Show help dialog with instructions - Bilingual (ES/EN)"""
         from PyQt6.QtWidgets import QMessageBox
 
         help_text = """
-<h3>How to Get API Keys:</h3>
+<h3>Cómo obtener claves de API / How to Get API Keys:</h3>
 
 <b>YouTube Data API v3:</b><br>
-1. Go to: <a href="https://console.cloud.google.com">console.cloud.google.com</a><br>
-2. Create a new project<br>
-3. Enable "YouTube Data API v3"<br>
-4. Create credentials → API Key<br>
-5. Copy the key and paste above<br>
+1. Ir a / Go to: <a href="https://console.cloud.google.com">console.cloud.google.com</a><br>
+2. Crear proyecto / Create a project<br>
+3. Activar "YouTube Data API v3" / Enable "YouTube Data API v3"<br>
+4. Crear credenciales → API Key / Create credentials → API Key<br>
+5. Copiar y pegar arriba / Copy and paste above<br>
 <br>
 
 <b>Spotify Web API:</b><br>
-1. Go to: <a href="https://developer.spotify.com/dashboard">developer.spotify.com/dashboard</a><br>
-2. Create an app<br>
-3. Copy Client ID and paste above<br>
+1. Ir a / Go to: <a href="https://developer.spotify.com/dashboard">developer.spotify.com/dashboard</a><br>
+2. Crear una app / Create an app<br>
+3. Copiar Client ID y Client Secret / Copy Client ID and Client Secret<br>
 <br>
 
-<b>Genius API (Optional):</b><br>
-1. Go to: <a href="https://genius.com/api-clients">genius.com/api-clients</a><br>
-2. Create an API client<br>
-3. Copy Access Token and paste above<br>
+<b>Genius API (Opcional / Optional):</b><br>
+1. Ir a / Go to: <a href="https://genius.com/api-clients">genius.com/api-clients</a><br>
+2. Crear cliente API / Create an API client<br>
+3. Copiar Access Token / Copy Access Token<br>
+<br>
+
+<b>AcoustID (Opcional / Optional):</b><br>
+1. Ir a / Go to: <a href="https://acoustid.org/new-application">acoustid.org/new-application</a><br>
+2. Registrar aplicación / Register application<br>
+3. Copiar API Key / Copy API Key<br>
         """
 
         msg = QMessageBox(self)
-        msg.setWindowTitle("API Keys Help")
+        msg.setWindowTitle("Ayuda de API / API Help")
         msg.setTextFormat(Qt.TextFormat.RichText)
         msg.setText(help_text)
         msg.setIcon(QMessageBox.Icon.Information)
@@ -624,7 +630,8 @@ class APISettingsDialog(QDialog):
                 from PyQt6.QtWidgets import QMessageBox
                 QMessageBox.warning(
                     self,
-                    "Incomplete Spotify Credentials",
+                    "Credenciales Spotify Incompletas / Incomplete Spotify Credentials",
+                    "Por favor ingresa ambos Client ID y Client Secret, o deja ambos vacíos.\n\n"
                     "Please enter both Spotify Client ID and Client Secret, or leave both empty."
                 )
 
@@ -651,7 +658,8 @@ class APISettingsDialog(QDialog):
                 from PyQt6.QtWidgets import QMessageBox
                 QMessageBox.warning(
                     self,
-                    "No Keys Entered",
+                    "Sin Claves / No Keys Entered",
+                    "Por favor ingresa al menos una clave API antes de guardar.\n\n"
                     "Please enter at least one API key before saving."
                 )
 
@@ -660,8 +668,10 @@ class APISettingsDialog(QDialog):
             from PyQt6.QtWidgets import QMessageBox
             QMessageBox.critical(
                 self,
-                "Error Saving Keys",
-                f"Failed to save API keys:\n{str(e)}\n\nPlease check system keyring access."
+                "Error al Guardar / Error Saving Keys",
+                f"No se pudo guardar las claves API:\n{str(e)}\n\n"
+                f"Verifica el acceso al keyring del sistema.\n\n"
+                f"Failed to save API keys. Please check system keyring access."
             )
 
 
