@@ -27,20 +27,21 @@ class ShortcutsDialog(QDialog):
         self._init_ui()
 
     def _init_ui(self):
-        """Initialize UI components"""
-        self.setWindowTitle("Keyboard Shortcuts")
-        self.setMinimumSize(600, 450)
+        """Initialize UI components - Bilingual (ES/EN)"""
+        self.setWindowTitle("Atajos de Teclado / Keyboard Shortcuts")
+        self.setMinimumSize(650, 500)
 
         layout = QVBoxLayout()
 
         # Header
-        header = QLabel("<h2>⌨️ Keyboard Shortcuts</h2>")
+        header = QLabel("<h2>⌨️ Atajos de Teclado / Keyboard Shortcuts</h2>")
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(header)
 
         # Description
         desc = QLabel(
-            "Use these keyboard shortcuts to navigate and control NEXUS Music Manager quickly."
+            "🇪🇸 Usa estos atajos para navegar y controlar NEXUS rápidamente.<br>"
+            "🇬🇧 Use these shortcuts to navigate and control NEXUS quickly."
         )
         desc.setWordWrap(True)
         desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -49,7 +50,7 @@ class ShortcutsDialog(QDialog):
         # Shortcuts table
         table = QTableWidget()
         table.setColumnCount(2)
-        table.setHorizontalHeaderLabels(["Shortcut", "Action"])
+        table.setHorizontalHeaderLabels(["Atajo / Shortcut", "Acción / Action"])
         table.setRowCount(len(self.shortcuts_list))
 
         for i, (key, action) in enumerate(self.shortcuts_list):
@@ -84,8 +85,8 @@ class ShortcutsDialog(QDialog):
         layout.addWidget(table)
 
         # Close button
-        close_btn = QPushButton("Close")
-        close_btn.setFixedWidth(100)
+        close_btn = QPushButton("Cerrar / Close")
+        close_btn.setFixedWidth(120)
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 

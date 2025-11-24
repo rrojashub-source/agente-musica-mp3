@@ -305,41 +305,45 @@ class MusicPlayerApp(QMainWindow):
         logger.info(f"User toggled theme to: {new_theme}")
 
     def _show_about(self):
-        """Show about dialog"""
+        """Show about dialog - Bilingual (ES/EN)"""
         from PyQt6.QtWidgets import QMessageBox
 
         about_text = """
 <h2>NEXUS Music Manager</h2>
-<p><b>Version:</b> 2.0 (Production)</p>
-<p><b>Phases:</b> 1-7 Complete</p>
+<p><b>Versión / Version:</b> 2.0 (Production)</p>
+<p><b>Fases / Phases:</b> 1-7 Complete</p>
 <br>
-<p>Modern music player with library management, search & download,
+<p><b>🇪🇸 Español:</b> Reproductor de música moderno con gestión de biblioteca,
+búsqueda y descarga, reproducción de audio, listas de reproducción y visualizador.</p>
+<p><b>🇬🇧 English:</b> Modern music player with library management, search & download,
 audio playback, playlists, and visualizer.</p>
 <br>
-<p><b>Features:</b></p>
+<p><b>Características / Features:</b></p>
 <ul>
-<li>Library Management (10,000+ songs)</li>
-<li>Search & Download (YouTube + Spotify)</li>
-<li>Duplicate Detection</li>
-<li>Auto-Organize Folders</li>
-<li>Batch Rename</li>
-<li>Music Player with Visualizer</li>
-<li>Playlist Management</li>
+<li>📚 Gestión de Biblioteca / Library Management (10,000+ songs)</li>
+<li>🔍 Búsqueda y Descarga / Search & Download (YouTube + Spotify)</li>
+<li>🔄 Detección de Duplicados / Duplicate Detection</li>
+<li>📁 Auto-Organizar / Auto-Organize Folders</li>
+<li>✏️ Renombrar en Lote / Batch Rename</li>
+<li>🎵 Reproductor con Visualizador / Music Player with Visualizer</li>
+<li>📋 Gestión de Playlists / Playlist Management</li>
+<li>📀 Vista de Álbumes / Album Grid View</li>
+<li>🎯 Recomendaciones / Song Recommendations</li>
 </ul>
 <br>
-<p><small>Built with Python, PyQt6, yt-dlp, and pygame</small></p>
+<p><small>Construido con / Built with: Python, PyQt6, yt-dlp, pygame</small></p>
         """
 
-        QMessageBox.about(self, "About NEXUS Music Manager", about_text)
+        QMessageBox.about(self, "Acerca de / About - NEXUS Music Manager", about_text)
 
     def _show_api_guide(self):
-        """Show API setup guide"""
+        """Show API setup guide - Bilingual (ES/EN)"""
         from PyQt6.QtWidgets import QMessageBox, QTextBrowser, QDialog, QVBoxLayout, QPushButton
 
         # Create custom dialog
         dialog = QDialog(self)
-        dialog.setWindowTitle("API Setup Guide")
-        dialog.setMinimumSize(700, 600)
+        dialog.setWindowTitle("Guía de API / API Setup Guide")
+        dialog.setMinimumSize(750, 650)
 
         layout = QVBoxLayout(dialog)
 
@@ -347,130 +351,109 @@ audio playback, playlists, and visualizer.</p>
         text_browser = QTextBrowser()
         text_browser.setOpenExternalLinks(True)
         text_browser.setHtml("""
-<h2>🔑 API Setup Guide</h2>
+<h2>🔑 Guía de Configuración de API / API Setup Guide</h2>
 
-<p>NEXUS Music Manager uses API keys to search and download music from YouTube and Spotify.
+<p>🇪🇸 NEXUS usa claves API para buscar y descargar música de YouTube y Spotify.
+Sigue los pasos para obtener tus claves gratuitas.</p>
+<p>🇬🇧 NEXUS uses API keys to search and download music from YouTube and Spotify.
 Follow the steps below to obtain your free API keys.</p>
 
 <hr>
 
 <h3>📺 YouTube Data API v3</h3>
 
-<p><b>Step 1:</b> Go to <a href="https://console.cloud.google.com/">Google Cloud Console</a></p>
-<p><b>Step 2:</b> Create a new project (or select existing)</p>
-<p><b>Step 3:</b> Enable "YouTube Data API v3":</p>
+<p><b>Paso 1 / Step 1:</b> Ir a / Go to <a href="https://console.cloud.google.com/">Google Cloud Console</a></p>
+<p><b>Paso 2 / Step 2:</b> Crear proyecto nuevo / Create a new project</p>
+<p><b>Paso 3 / Step 3:</b> Habilitar "YouTube Data API v3" / Enable "YouTube Data API v3":</p>
 <ul>
 <li>Click "Enable APIs and Services"</li>
-<li>Search for "YouTube Data API v3"</li>
+<li>Buscar / Search "YouTube Data API v3"</li>
 <li>Click "Enable"</li>
 </ul>
-<p><b>Step 4:</b> Create credentials:</p>
+<p><b>Paso 4 / Step 4:</b> Crear credenciales / Create credentials:</p>
 <ul>
-<li>Go to "Credentials" tab</li>
+<li>Ir a / Go to "Credentials" tab</li>
 <li>Click "Create Credentials" → "API Key"</li>
-<li>Copy your API key</li>
-<li>(Optional) Restrict key to "YouTube Data API v3" only</li>
+<li>Copiar tu clave / Copy your API key</li>
 </ul>
 
-<p><b>💡 Quota:</b> Free tier provides 10,000 units/day (≈ 100 searches)</p>
+<p><b>💡 Cuota / Quota:</b> 10,000 unidades/día gratis / 10,000 units/day free (≈ 100 búsquedas/searches)</p>
 
 <hr>
 
 <h3>🎵 Spotify Web API</h3>
 
-<p><b>Step 1:</b> Go to <a href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</a></p>
-<p><b>Step 2:</b> Log in with your Spotify account (free account works)</p>
-<p><b>Step 3:</b> Create an app:</p>
+<p><b>Paso 1 / Step 1:</b> Ir a / Go to <a href="https://developer.spotify.com/dashboard">Spotify Developer Dashboard</a></p>
+<p><b>Paso 2 / Step 2:</b> Iniciar sesión / Log in (cuenta gratis funciona / free account works)</p>
+<p><b>Paso 3 / Step 3:</b> Crear una app / Create an app:</p>
 <ul>
 <li>Click "Create App"</li>
-<li>App Name: "NEXUS Music Manager" (or any name)</li>
-<li>App Description: "Personal music library manager"</li>
-<li>Redirect URI: Leave default or use "http://localhost:8888/callback"</li>
-<li>Check "Web API" checkbox</li>
-<li>Accept terms and click "Create"</li>
+<li>App Name: "NEXUS Music Manager"</li>
+<li>Redirect URI: "http://localhost:8888/callback"</li>
+<li>Marcar / Check "Web API"</li>
+<li>Aceptar términos / Accept terms → "Create"</li>
 </ul>
-<p><b>Step 4:</b> Get credentials:</p>
+<p><b>Paso 4 / Step 4:</b> Obtener credenciales / Get credentials:</p>
 <ul>
-<li>Click "Settings" on your app</li>
-<li>Copy "Client ID"</li>
-<li>Click "View client secret" and copy "Client Secret"</li>
+<li>Click "Settings"</li>
+<li>Copiar / Copy "Client ID"</li>
+<li>Click "View client secret" → Copiar / Copy "Client Secret"</li>
 </ul>
 
-<p><b>💡 Quota:</b> Free tier provides unlimited searches (rate limited)</p>
+<p><b>💡 Cuota / Quota:</b> Búsquedas ilimitadas / Unlimited searches (con límite de velocidad / rate limited)</p>
 
 <hr>
 
-<h3>💾 Saving Your Keys</h3>
+<h3>💾 Guardar tus Claves / Saving Your Keys</h3>
 
-<p><b>Method 1: API Settings Dialog (Recommended)</b></p>
+<p><b>Método Recomendado / Recommended Method:</b></p>
 <ul>
-<li>Go to <b>Settings → API Configuration</b> (or press <b>Ctrl+K</b>)</li>
-<li>Paste your keys in the respective tabs</li>
-<li>Click "Test" to verify each API</li>
-<li>Click "Save" to store securely in your OS keyring</li>
-</ul>
-
-<p><b>Method 2: Environment Variables</b></p>
-<pre style="background-color: #f0f0f0; padding: 10px;">
-export YOUTUBE_API_KEY="your_youtube_key_here"
-export SPOTIFY_CLIENT_ID="your_spotify_id_here"
-export SPOTIFY_CLIENT_SECRET="your_spotify_secret_here"
-</pre>
-
-<p><b>Method 3: .env File</b></p>
-<ul>
-<li>Create a file named <code>.env</code> in the project root</li>
-<li>Copy from <code>.env.example</code> and fill in your keys</li>
+<li>Ir a / Go to <b>Configuración → Configuración de API</b> (o presiona / or press <b>Ctrl+K</b>)</li>
+<li>Pegar tus claves / Paste your keys</li>
+<li>Click "Test" para verificar / to verify</li>
+<li>Click "Guardar / Save"</li>
 </ul>
 
 <hr>
 
-<h3>✅ Testing Your Setup</h3>
+<h3>✅ Probar tu Configuración / Testing Your Setup</h3>
 
-<p>After saving your keys:</p>
 <ol>
-<li>Restart the application</li>
-<li>Go to <b>Search & Download</b> tab</li>
-<li>Try searching for an artist or song</li>
-<li>Both YouTube and Spotify results should appear</li>
+<li>Reiniciar la aplicación / Restart the application</li>
+<li>Ir a pestaña / Go to tab <b>🔍 Buscar / Search</b></li>
+<li>Buscar un artista o canción / Search for an artist or song</li>
+<li>Deberían aparecer resultados de YouTube y Spotify / Both YouTube and Spotify results should appear</li>
 </ol>
 
 <hr>
 
-<h3>❓ Troubleshooting</h3>
+<h3>❓ Solución de Problemas / Troubleshooting</h3>
 
-<p><b>Error: "Missing API credentials"</b></p>
+<p><b>Error: "Missing API credentials" / "Faltan credenciales"</b></p>
 <ul>
-<li>Check that all three keys are saved correctly</li>
-<li>Restart the application</li>
-<li>Try opening Settings → API Configuration and click "Test"</li>
+<li>Verificar que las claves estén guardadas / Check that keys are saved</li>
+<li>Reiniciar la aplicación / Restart the application</li>
+<li>Ir a Configuración → API y click "Test"</li>
 </ul>
 
-<p><b>Error: "API quota exceeded"</b></p>
+<p><b>Error: "API quota exceeded" / "Cuota excedida"</b></p>
 <ul>
-<li>YouTube: Wait 24 hours for quota reset</li>
-<li>Spotify: Wait a few minutes and try again</li>
-</ul>
-
-<p><b>Need Help?</b></p>
-<ul>
-<li>Check logs in console for detailed error messages</li>
-<li>Verify your keys are correct (no extra spaces)</li>
-<li>Ensure APIs are enabled in respective dashboards</li>
+<li>YouTube: Esperar 24 horas / Wait 24 hours</li>
+<li>Spotify: Esperar unos minutos / Wait a few minutes</li>
 </ul>
 
 <hr>
 
 <p style="color: #666;"><small>
-<b>Note:</b> Your API keys are stored securely in your operating system's credential manager
-and are never shared or transmitted outside of official API requests to YouTube and Spotify.
+<b>🔒 Seguridad / Security:</b> Tus claves se guardan de forma segura en el gestor de credenciales de tu sistema operativo.
+Your API keys are stored securely in your OS credential manager.
 </small></p>
         """)
 
         layout.addWidget(text_browser)
 
         # Close button
-        close_button = QPushButton("Close")
+        close_button = QPushButton("Cerrar / Close")
         close_button.clicked.connect(dialog.accept)
         layout.addWidget(close_button)
 

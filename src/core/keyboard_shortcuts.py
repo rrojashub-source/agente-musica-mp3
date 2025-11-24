@@ -211,28 +211,31 @@ class KeyboardShortcutManager(QObject):
 
     def get_shortcuts(self):
         """
-        Get list of all shortcuts for display in help dialog
+        Get list of all shortcuts for display in help dialog - Bilingual (ES/EN)
 
         Returns:
             list: List of tuples (key_combination, description)
         """
         shortcuts_list = [
-            # Playback controls
-            ("Space", "Play/Pause"),
-            ("← (Left)", "Seek Backward 5s"),
-            ("→ (Right)", "Seek Forward 5s"),
-            ("↑ (Up)", "Volume +10%"),
-            ("↓ (Down)", "Volume -10%"),
-            ("M", "Mute/Unmute"),
+            # Playback controls / Controles de reproducción
+            ("Space / Espacio", "Reproducir/Pausar / Play/Pause"),
+            ("← (Left / Izq)", "Retroceder 5s / Seek Backward 5s"),
+            ("→ (Right / Der)", "Avanzar 5s / Seek Forward 5s"),
+            ("↑ (Up / Arriba)", "Volumen +10% / Volume +10%"),
+            ("↓ (Down / Abajo)", "Volumen -10% / Volume -10%"),
+            ("M", "Silenciar / Mute"),
 
-            # Navigation
-            ("Ctrl+F", "Focus Search"),
-            ("Ctrl+L", "Library Tab"),
-            ("Ctrl+D", "Queue Tab"),
+            # Navigation / Navegación
+            ("Ctrl+F", "Ir a Búsqueda / Focus Search"),
+            ("Ctrl+L", "Pestaña Biblioteca / Library Tab"),
+            ("Ctrl+D", "Pestaña Cola / Queue Tab"),
 
-            # Application (existing)
-            ("Ctrl+T", "Toggle Theme"),
-            ("Ctrl+Q", "Quit"),
+            # Application / Aplicación
+            ("Ctrl+T", "Cambiar Tema / Toggle Theme"),
+            ("Ctrl+K", "Configurar API / API Settings"),
+            ("F1", "Atajos de Teclado / Keyboard Shortcuts"),
+            ("F2", "Guía de API / API Guide"),
+            ("Ctrl+Q", "Salir / Quit"),
         ]
 
         return shortcuts_list
