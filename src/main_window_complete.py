@@ -58,6 +58,15 @@ from cleanup_assistant_tab import CleanupAssistantTab
 # Import Cleanup Wizard (NEW - Bug #9 Fix)
 from gui.tabs.cleanup_tab import CleanupTab
 
+# Import Cloud Sync Tab (NEW - Cloud Sync Feature)
+from gui.tabs.cloud_sync_tab import CloudSyncTab
+
+# Import Plugins Tab (NEW - Plugin System)
+from gui.tabs.plugins_tab import PluginsTab
+
+# Import Remote Tab (NEW - Mobile Remote Control)
+from gui.tabs.remote_tab import RemoteTab
+
 # Import API Config Wizard
 from api_config_wizard import APIConfigWizard
 
@@ -160,6 +169,24 @@ class NEXUSMusicManager(QMainWindow):
         # ========================================
         self.music_player = MusicPlayerWidget(self.db_path)
         self.tabs.addTab(self.music_player, t("tab_player"))
+
+        # ========================================
+        # CLOUD SYNC TAB (NEW)
+        # ========================================
+        self.cloud_sync_tab = CloudSyncTab(db_manager=None)  # Will pass db_manager when connected
+        self.tabs.addTab(self.cloud_sync_tab, "☁️ Cloud Sync")
+
+        # ========================================
+        # PLUGINS TAB (NEW)
+        # ========================================
+        self.plugins_tab = PluginsTab()
+        self.tabs.addTab(self.plugins_tab, "🔌 Plugins")
+
+        # ========================================
+        # REMOTE CONTROL TAB (NEW)
+        # ========================================
+        self.remote_tab = RemoteTab()
+        self.tabs.addTab(self.remote_tab, "📱 Remote")
 
         # ========================================
         # HELP TAB

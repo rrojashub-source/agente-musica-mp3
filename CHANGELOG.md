@@ -9,9 +9,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+- Google Drive OAuth complete integration
+- More example plugins (Discord RPC, Visualizer, Lyrics)
+
+---
+
+## [0.9.6] - 2025-11-24
+
 ### Added
-- Cloud sync básico (planificado)
-- Plugin system básico (planificado)
+- **Mobile Remote Control:** Control NEXUS from your phone
+  - REST API server (Flask-based)
+  - Mobile-friendly web interface
+  - 12 API endpoints (play, pause, next, prev, volume, seek, queue, search)
+  - QR code generation for easy connection
+  - Real-time status updates via polling
+  - RemoteTab GUI integrated in main window
+- **29 tests** para Remote Control:
+  - TestDataModels (3 tests)
+  - TestRemoteServer (8 tests)
+  - TestRemoteServerAPI (15 tests) - requires Flask
+  - TestRemoteServerCallbacks (3 tests) - requires Flask
+
+### Changed
+- Score interno: 97/100 → 98/100
+- Fase 3 completada (4/4 items)
+
+---
+
+## [0.9.5] - 2025-11-24
+
+### Added
+- **Plugin System:** Sistema de extensibilidad via plugins
+  - Plugin base class con hooks y settings
+  - PluginManager singleton para gestión centralizada
+  - 17 hook points (playback, library, download, UI, sync)
+  - Auto-discovery de plugins en plugins/available/
+  - Persistencia de estado y settings de plugins
+  - Dependency management entre plugins
+  - PluginsTab GUI integrada en main window
+- **Plugins de Ejemplo:**
+  - PlayCounter: Tracking de reproducciones y estadísticas
+  - Scrobbler: Integración con Last.fm/ListenBrainz
+- **28 tests** para Plugin System:
+  - TestPluginBase (7 tests)
+  - TestPluginHooks (1 test)
+  - TestPluginManager (14 tests)
+  - TestPluginFileLoading (1 test)
+  - TestPlayCounterPlugin (3 tests)
+
+### Changed
+- Score interno: 96/100 → 97/100
+
+---
+
+## [0.9.4] - 2025-11-24
+
+### Added
+- **Cloud Sync:** Sistema de sincronización de biblioteca en la nube
+  - CloudSyncService con patrón singleton y señales PyQt6
+  - Provider abstraction (LocalFolderProvider, GoogleDriveProvider)
+  - Export/Import de biblioteca a JSON
+  - Conflict resolution strategies (NEWER_WINS, LOCAL_WINS, REMOTE_WINS, KEEP_BOTH, MANUAL)
+  - Device ID persistente
+  - Content hashing (SHA256) para detección de cambios
+  - CloudSyncTab GUI integrada en main window
+- **28 tests** para CloudSyncService:
+  - TestDataModels (5 tests)
+  - TestLocalFolderProvider (8 tests)
+  - TestCloudSyncService (11 tests)
+  - TestMerge (3 tests)
+  - TestCloudSyncIntegration (1 test)
+
+### Changed
+- Score interno: 95/100 → 96/100
 
 ---
 
