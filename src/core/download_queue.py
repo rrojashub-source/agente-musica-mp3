@@ -525,10 +525,10 @@ class DownloadQueue(QObject):
         # Create worker
         worker = DownloadWorker(item['video_url'], str(output_path))
 
-        # Connect signals
-        worker.progress.connect(lambda p: self.update_progress(item_id, p))
-        worker.finished.connect(lambda meta: self.mark_completed(item_id, meta))
-        worker.error.connect(lambda err: self._mark_failed(item_id, err))
+        # Connect signals (use default argument to capture item_id by value, not reference)
+        worker.progress.connect(lambda p, id=item_id: self.update_progress(id, p))
+        worker.finished.connect(lambda meta, id=item_id: self.mark_completed(id, meta))
+        worker.error.connect(lambda err, id=item_id: self._mark_failed(id, err))
 
         # Store worker
         self._workers[item_id] = worker

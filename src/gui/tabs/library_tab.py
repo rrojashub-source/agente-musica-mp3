@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QHeaderView, QMessageBox, QMenu
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor
 
 from core.cover_art_manager import CoverArtManager
@@ -41,7 +41,13 @@ class LibraryTab(QWidget):
     - Currently playing highlight
     - Auto-play next on end
     - Integration with AudioPlayer and NowPlayingWidget
+
+    Signals:
+    - playback_started: Emitted when playback starts from library
     """
+
+    # Signals
+    playback_started = pyqtSignal()  # Emitted when a song starts playing from library
 
     def __init__(self, db_manager, audio_player=None, now_playing_widget=None):
         """
@@ -101,6 +107,18 @@ class LibraryTab(QWidget):
         self.library_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.library_table.setSelectionMode(QTableWidget.SelectionMode.ExtendedSelection)  # Multi-selection enabled
         self.library_table.setSortingEnabled(True)
+
+        # Neon selection style - works with both dark and light themes
+        # Only style selection colors, let theme handle backgrounds
+        self.library_table.setStyleSheet("""
+            QTableWidget::item:selected {
+                background-color: rgba(0, 180, 230, 0.4);
+                color: #006080;
+            }
+            QTableWidget::item:hover:!selected {
+                background-color: rgba(0, 180, 230, 0.15);
+            }
+        """)
 
         # CRITICAL: Set row height for proper text visibility when editing
         # Default height (~25px) cuts off text in inline editor
@@ -170,9 +188,12 @@ class LibraryTab(QWidget):
         self.clean_db_button.clicked.connect(self._on_clean_database_clicked)
 
         # Now Playing Widget prev/next/stop buttons
+        # NOTE: prev_clicked, next_clicked and song_ended are now handled by main.py
+        # to support both library and playlist playback sources
         if self.now_playing_widget:
-            self.now_playing_widget.prev_clicked.connect(self._on_prev_clicked)
-            self.now_playing_widget.next_clicked.connect(self._on_next_clicked)
+            # self.now_playing_widget.prev_clicked.connect(self._on_prev_clicked)  # Handled by main.py
+            # self.now_playing_widget.next_clicked.connect(self._on_next_clicked)  # Handled by main.py
+            # self.now_playing_widget.song_ended.connect(self._on_song_ended)  # Handled by main.py
             self.now_playing_widget.stop_clicked.connect(self._on_stop_clicked)
 
     def _load_library(self):
@@ -361,6 +382,9 @@ class LibraryTab(QWidget):
                     self.now_playing_widget.load_song(song_info)
                     self.now_playing_widget.set_playing(True)
 
+                # Emit signal so main.py can track playback source
+                self.playback_started.emit()
+
                 # Start monitoring for song end
                 self._start_end_of_song_monitor()
             else:
@@ -375,6 +399,17 @@ class LibraryTab(QWidget):
             logger.warning("No audio player available")
             self.status_label.setText("Error: No audio player")
 
+    def _on_song_ended(self):
+        """Handle song ended signal from NowPlayingWidget"""
+        logger.info("Song ended signal received")
+        self._user_stopped = False  # Reset flag
+
+        # Check if shuffle is enabled
+        if self.now_playing_widget and self.now_playing_widget.is_shuffle_enabled():
+            self._play_random_song()
+        else:
+            self._play_next_song()
+
     def _play_next_song(self):
         """Play next song in library"""
         if self._current_song_row < 0:
@@ -387,6 +422,25 @@ class LibraryTab(QWidget):
         else:
             logger.info("End of library reached")
             self.status_label.setText("End of library")
+
+    def _play_random_song(self):
+        """Play a random song from the library (shuffle mode)"""
+        import random
+
+        row_count = self.library_table.rowCount()
+        if row_count <= 1:
+            logger.info("Not enough songs for shuffle")
+            return
+
+        # Pick a random row different from current
+        available_rows = [r for r in range(row_count) if r != self._current_song_row]
+        if available_rows:
+            next_row = random.choice(available_rows)
+            self._play_song_at_row(next_row)
+            logger.info(f"Shuffle: playing random song at row {next_row}")
+        else:
+            logger.info("No songs available for shuffle")
+            self.status_label.setText("No songs available")
 
     def _play_previous_song(self):
         """Play previous song in library"""
@@ -411,21 +465,11 @@ class LibraryTab(QWidget):
         self._end_monitor_timer.start()
 
     def _check_song_ended(self):
-        """Check if current song has ended"""
-        if not self.audio_player:
-            return
-
-        # Import PlaybackState for state checking
-        from core.audio_player import PlaybackState
-
-        # If not playing and NOT paused and NOT manually stopped, then song ended
-        # (Don't auto-play next if user paused or stopped)
-        if not self.audio_player.is_playing() and self._current_song_id:
-            current_state = self.audio_player.get_state()
-            if current_state != PlaybackState.PAUSED and not self._user_stopped:
-                logger.info("Song ended naturally, playing next")
-                self._end_monitor_timer.stop()
-                self._play_next_song()
+        """Check if current song has ended (legacy monitor - now handled by NowPlayingWidget)"""
+        # This method is kept for backward compatibility but the main
+        # song ended logic is now handled by NowPlayingWidget.song_ended signal
+        # which triggers _on_song_ended in this class
+        pass
 
     def _highlight_playing_song(self, row: int):
         """
@@ -436,6 +480,10 @@ class LibraryTab(QWidget):
         """
         from PyQt6.QtGui import QBrush
 
+        # Colors that work in both dark and light themes
+        highlight_bg = QColor(0, 160, 200, 100)  # Semi-transparent cyan
+        highlight_text = QColor(0, 80, 120)  # Dark cyan text (readable in both themes)
+
         # Clear previous highlight (reset to default)
         for r in range(self.library_table.rowCount()):
             for c in range(self.library_table.columnCount()):
@@ -443,15 +491,14 @@ class LibraryTab(QWidget):
                 if item:
                     # Reset to default (let theme handle it)
                     item.setData(Qt.ItemDataRole.BackgroundRole, None)
+                    item.setData(Qt.ItemDataRole.ForegroundRole, None)
 
-        # Highlight current row with theme-aware color
-        palette = self.library_table.palette()
-        highlight_color = palette.color(palette.ColorRole.Highlight)
-
+        # Highlight current row
         for c in range(self.library_table.columnCount()):
             item = self.library_table.item(row, c)
             if item:
-                item.setBackground(highlight_color)
+                item.setBackground(highlight_bg)
+                item.setForeground(highlight_text)
 
     def _format_duration(self, seconds: float) -> str:
         """

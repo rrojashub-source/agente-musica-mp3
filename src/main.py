@@ -102,6 +102,14 @@ class MusicPlayerApp(QMainWindow):
         self.playlist_manager = PlaylistManager(self.db_manager)
         logger.info("Playlist manager initialized")
 
+        # Playback source tracking
+        # 'library' = playing from Library tab
+        # 'playlist' = playing from Playlist widget
+        self._playback_source = None
+        self._current_playlist_id = None
+        self._current_playlist_songs = []
+        self._current_playlist_index = -1
+
         # Initialize waveform extractor
         self.waveform_extractor = WaveformExtractor()
         logger.info("Waveform extractor initialized")
@@ -455,25 +463,18 @@ and are never shared or transmitted outside of official API requests to YouTube 
         )
         self.now_playing.song_loaded.connect(self._on_song_loaded)
 
+        # Connect prev/next signals (centralized handling for library + playlist)
+        self.now_playing.prev_clicked.connect(self._on_global_prev_clicked)
+        self.now_playing.next_clicked.connect(self._on_global_next_clicked)
+        self.now_playing.song_ended.connect(self._on_global_song_ended)
+
         return top_widget
 
     def _create_middle_section(self):
-        """Create middle section with tabs and playlist panel"""
-        # Horizontal splitter (main content | playlist panel)
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-
-        # Left: Tab widget with all features
+        """Create middle section with tabs (including Playlist tab)"""
+        # Just return the tab widget - Playlist is now a tab, not a separate panel
         tab_widget = self._create_tab_widget()
-        splitter.addWidget(tab_widget)
-
-        # Right: Playlist panel (Phase 7)
-        self.playlist_widget = PlaylistWidget(self.playlist_manager, self.db_manager)
-        splitter.addWidget(self.playlist_widget)
-
-        # Set initial sizes (70% tabs, 30% playlist)
-        splitter.setSizes([1000, 400])
-
-        return splitter
+        return tab_widget
 
     def _create_tab_widget(self):
         """Create tab widget with all features"""
@@ -501,6 +502,8 @@ and are never shared or transmitted outside of official API requests to YouTube 
                 self.now_playing
             )
             self.tabs.addTab(self.library_tab, "🎵 Library")
+            # Connect playback_started to track source
+            self.library_tab.playback_started.connect(self._on_library_playback_started)
             logger.info("Library tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Library tab: {e}")
@@ -569,6 +572,17 @@ and are never shared or transmitted outside of official API requests to YouTube 
         except Exception as e:
             logger.error(f"Failed to load Cleanup Wizard tab: {e}")
             self.tabs.addTab(QWidget(), "✨ Metadata Wizard (Error)")
+
+        # Tab 10: Playlist (Playlist management)
+        try:
+            self.playlist_widget = PlaylistWidget(self.playlist_manager, self.db_manager)
+            self.tabs.addTab(self.playlist_widget, "🎵 Playlist")
+            # Connect playlist play signal
+            self.playlist_widget.play_song_requested.connect(self._play_song_from_playlist)
+            logger.info("Playlist tab loaded")
+        except Exception as e:
+            logger.error(f"Failed to load Playlist tab: {e}")
+            self.tabs.addTab(QWidget(), "🎵 Playlist (Error)")
 
         return self.tabs
 
@@ -720,6 +734,154 @@ and are never shared or transmitted outside of official API requests to YouTube 
         # Use the widget's play/pause method directly
         self.now_playing._on_play_clicked()
         logger.debug("Shortcut: Play/Pause toggled")
+
+    def _play_song_from_playlist(self, song_info: dict):
+        """Play song from playlist widget"""
+        try:
+            file_path = song_info.get('file_path')
+            if not file_path:
+                logger.error("Song has no file path")
+                return
+
+            # Check if file exists
+            from pathlib import Path
+            if not Path(file_path).exists():
+                logger.error(f"File not found: {file_path}")
+                QMessageBox.warning(self, "File Not Found", f"The music file could not be found:\n{file_path}")
+                return
+
+            # Load and play
+            success = self.audio_player.load(file_path)
+            if success:
+                self.audio_player.play()
+                self.now_playing.load_song(song_info)
+                self.now_playing.set_playing(True)
+
+                # Track playback source as playlist
+                self._playback_source = 'playlist'
+                self._current_playlist_id = self.playlist_widget.current_playlist_id
+
+                # Get current playlist songs and find index
+                if self._current_playlist_id:
+                    self._current_playlist_songs = self.playlist_manager.get_playlist_songs(
+                        self._current_playlist_id
+                    )
+                    # Find current song index
+                    song_id = song_info.get('id')
+                    for i, s in enumerate(self._current_playlist_songs):
+                        if s.get('id') == song_id:
+                            self._current_playlist_index = i
+                            break
+
+                    # Highlight the playing song in playlist widget
+                    if song_id and hasattr(self, 'playlist_widget'):
+                        self.playlist_widget.highlight_playing_song(song_id)
+
+                logger.info(f"Playing from playlist: {song_info.get('title', 'Unknown')} "
+                           f"(index {self._current_playlist_index}/{len(self._current_playlist_songs)})")
+            else:
+                logger.error(f"Failed to load: {file_path}")
+
+        except Exception as e:
+            logger.error(f"Error playing song from playlist: {e}")
+
+    def _play_next_from_playlist(self):
+        """Play next song in current playlist"""
+        if not self._current_playlist_songs:
+            logger.warning("No playlist songs loaded")
+            return
+
+        # Move to next index
+        next_index = self._current_playlist_index + 1
+
+        # Check if we reached the end
+        if next_index >= len(self._current_playlist_songs):
+            logger.info("Reached end of playlist")
+            self.statusBar.showMessage("End of playlist", 2000)
+            return
+
+        # Get next song
+        next_song = self._current_playlist_songs[next_index]
+        song_info = self.db_manager.get_song_by_id(next_song['id'])
+
+        if song_info:
+            self._current_playlist_index = next_index
+            self._play_song_from_playlist(song_info)
+            logger.info(f"Playing next in playlist: {song_info.get('title')}")
+        else:
+            logger.error(f"Song not found: {next_song['id']}")
+
+    def _play_prev_from_playlist(self):
+        """Play previous song in current playlist"""
+        if not self._current_playlist_songs:
+            logger.warning("No playlist songs loaded")
+            return
+
+        # Move to previous index
+        prev_index = self._current_playlist_index - 1
+
+        # Check if we're at the beginning
+        if prev_index < 0:
+            logger.info("Already at beginning of playlist")
+            self.statusBar.showMessage("Beginning of playlist", 2000)
+            return
+
+        # Get previous song
+        prev_song = self._current_playlist_songs[prev_index]
+        song_info = self.db_manager.get_song_by_id(prev_song['id'])
+
+        if song_info:
+            self._current_playlist_index = prev_index
+            self._play_song_from_playlist(song_info)
+            logger.info(f"Playing previous in playlist: {song_info.get('title')}")
+        else:
+            logger.error(f"Song not found: {prev_song['id']}")
+
+    def _on_global_next_clicked(self):
+        """Handle next button click - route to correct source"""
+        if self._playback_source == 'playlist':
+            logger.info("Next clicked (playlist mode)")
+            self._play_next_from_playlist()
+        else:
+            # Delegate to library tab
+            logger.info("Next clicked (library mode)")
+            if hasattr(self, 'library_tab'):
+                self.library_tab._on_next_clicked()
+
+    def _on_global_prev_clicked(self):
+        """Handle prev button click - route to correct source"""
+        if self._playback_source == 'playlist':
+            logger.info("Prev clicked (playlist mode)")
+            self._play_prev_from_playlist()
+        else:
+            # Delegate to library tab
+            logger.info("Prev clicked (library mode)")
+            if hasattr(self, 'library_tab'):
+                self.library_tab._on_prev_clicked()
+
+    def _on_global_song_ended(self):
+        """Handle song ended - route to correct source for auto-play"""
+        if self._playback_source == 'playlist':
+            logger.info("Song ended (playlist mode) - auto-playing next")
+            self._play_next_from_playlist()
+        else:
+            # Delegate to library tab
+            logger.info("Song ended (library mode)")
+            if hasattr(self, 'library_tab'):
+                self.library_tab._on_song_ended()
+
+    def _on_library_playback_started(self):
+        """Handle playback started from library - update source tracking"""
+        self._playback_source = 'library'
+        self._current_playlist_id = None
+        self._current_playlist_songs = []
+        self._current_playlist_index = -1
+
+        # Clear playlist highlight since we're now playing from library
+        if hasattr(self, 'playlist_widget'):
+            self.playlist_widget.clear_playing_highlight()
+
+        logger.info("Playback source set to: library")
 
     def _handle_seek_backward(self, seconds):
         """Handle Left arrow - Seek backward"""

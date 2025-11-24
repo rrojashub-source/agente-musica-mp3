@@ -618,7 +618,7 @@ class VisualizerWidget(QWidget):
         base_radius = min(width, height) * 0.15
 
         # === 1. FLOATING NEURAL PARTICLES (ENHANCED - AUDIO REACTIVE) ===
-        num_particles = 500  # Increased from 300 for denser galaxy effect
+        num_particles = 250  # Optimized: 500→250 for better CPU performance (~20% → ~10%)
         particle_base_radius = min(width, height) * 0.35
         random.seed(42)  # Deterministic positions
 

@@ -68,14 +68,39 @@ class NeonIconButton(QPushButton):
         self.setGraphicsEffect(self.glow)
         self._update_glow()
 
+        # Update glow when toggled (for checkable buttons)
+        self.toggled.connect(self._on_toggled)
+
+    def _on_toggled(self, checked):
+        """Update glow when toggle state changes"""
+        self._update_glow()
+        self.update()
+
     def _update_glow(self):
         """Update glow based on state"""
-        if self.isChecked() or self._hovered:
-            self.glow.setBlurRadius(20)
-            self.glow.setColor(self.color_cyan)
+        is_toggle = self.icon_type in ['shuffle', 'repeat', 'repeat_one', 'continue']
+
+        if is_toggle:
+            if self.isChecked():
+                # Active toggle: strong magenta glow
+                self.glow.setBlurRadius(25)
+                self.glow.setColor(self.color_magenta)
+            elif self._hovered:
+                # Hover: cyan glow
+                self.glow.setBlurRadius(15)
+                self.glow.setColor(self.color_cyan)
+            else:
+                # Inactive: minimal glow
+                self.glow.setBlurRadius(5)
+                self.glow.setColor(QColor(80, 80, 80, 50))
         else:
-            self.glow.setBlurRadius(8)
-            self.glow.setColor(QColor(0, 150, 200, 100))
+            # Regular buttons
+            if self._hovered:
+                self.glow.setBlurRadius(20)
+                self.glow.setColor(self.color_cyan)
+            else:
+                self.glow.setBlurRadius(10)
+                self.glow.setColor(QColor(0, 150, 200, 100))
 
     def enterEvent(self, event):
         self._hovered = True
@@ -100,14 +125,25 @@ class NeonIconButton(QPushButton):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # Determine color based on state
-        if self.isChecked():
-            color = self.color_cyan
-        elif self._hovered:
-            color = self.color_cyan
-        elif self.icon_type in ['shuffle', 'repeat'] and not self.isChecked():
-            color = self.color_dim
+        # Toggle buttons (repeat_one, continue, shuffle) show different colors for active/inactive
+        is_toggle = self.icon_type in ['shuffle', 'repeat', 'repeat_one', 'continue']
+
+        if is_toggle:
+            if self.isChecked():
+                # Active: bright magenta with glow
+                color = self.color_magenta
+            elif self._hovered:
+                # Hover: cyan
+                color = self.color_cyan
+            else:
+                # Inactive: dim gray
+                color = self.color_dim
         else:
-            color = self.color_cyan
+            # Regular buttons (play, stop, prev, next): always cyan
+            if self._hovered:
+                color = QColor(100, 220, 255)  # Brighter cyan on hover
+            else:
+                color = self.color_cyan
 
         # Setup pen and brush
         painter.setPen(Qt.PenStyle.NoPen)
@@ -135,6 +171,10 @@ class NeonIconButton(QPushButton):
             self._draw_shuffle(painter, cx, cy, scale, color)
         elif self.icon_type == 'repeat':
             self._draw_repeat(painter, cx, cy, scale, color)
+        elif self.icon_type == 'repeat_one':
+            self._draw_repeat_one(painter, cx, cy, scale, color)
+        elif self.icon_type == 'continue':
+            self._draw_continue(painter, cx, cy, scale, color)
 
     def _draw_play(self, painter, cx, cy, scale):
         """Draw play triangle"""
@@ -240,6 +280,52 @@ class NeonIconButton(QPushButton):
         ]
         painter.drawPolygon(QPolygonF(points))
 
+    def _draw_repeat_one(self, painter, cx, cy, scale, color):
+        """Draw repeat one icon (circular arrow with '1')"""
+        painter.setPen(QPen(color, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
+        # Draw arc (same as repeat)
+        from PyQt6.QtCore import QRectF
+        rect = QRectF(cx - scale, cy - scale * 0.7, scale * 2, scale * 1.4)
+        painter.drawArc(rect, 30 * 16, 280 * 16)
+
+        # Arrow head
+        painter.setBrush(QBrush(color))
+        self._draw_small_arrow(painter, cx + scale * 0.5, cy - scale * 0.7, -60)
+
+        # Draw "1" in center
+        from PyQt6.QtGui import QFont
+        painter.setFont(QFont("Arial", int(scale * 0.9), QFont.Weight.Bold))
+        painter.setPen(QPen(color))
+        painter.drawText(int(cx - scale * 0.2), int(cy + scale * 0.35), "1")
+
+    def _draw_continue(self, painter, cx, cy, scale, color):
+        """Draw continue/auto-play icon (double arrow >>|)"""
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(color))
+
+        # First triangle (pointing right)
+        points1 = [
+            QPointF(cx - scale * 0.9, cy - scale * 0.7),
+            QPointF(cx - scale * 0.9, cy + scale * 0.7),
+            QPointF(cx - scale * 0.1, cy)
+        ]
+        painter.drawPolygon(QPolygonF(points1))
+
+        # Second triangle (pointing right)
+        points2 = [
+            QPointF(cx - scale * 0.1, cy - scale * 0.7),
+            QPointF(cx - scale * 0.1, cy + scale * 0.7),
+            QPointF(cx + scale * 0.7, cy)
+        ]
+        painter.drawPolygon(QPolygonF(points2))
+
+        # Bar at end
+        bar_width = scale * 0.2
+        painter.drawRect(int(cx + scale * 0.75), int(cy - scale * 0.7),
+                        int(bar_width), int(scale * 1.4))
+
 
 class NowPlayingWidget(QWidget):
     """
@@ -274,8 +360,10 @@ class NowPlayingWidget(QWidget):
     song_loaded = pyqtSignal(str)  # Emits file_path when new song loaded
     song_metadata_changed = pyqtSignal(dict)  # Emits full song_info (for lyrics, stats, etc.)
     shuffle_changed = pyqtSignal(bool)  # Emits shuffle state
-    repeat_changed = pyqtSignal(bool)  # Emits repeat state
+    continue_changed = pyqtSignal(bool)  # Emits continue/auto-play state
+    repeat_one_changed = pyqtSignal(bool)  # Emits repeat one song state
     song_ended = pyqtSignal()  # Emits when song finishes (for auto-next)
+    repeat_song = pyqtSignal()  # Emits when song should repeat (for repeat one mode)
 
     def __init__(self, audio_player=None):
         """
@@ -290,8 +378,9 @@ class NowPlayingWidget(QWidget):
         self._is_seeking = False  # Prevent position update during seek
         self._is_playing = False
         self._is_paused = False  # Track if we're in paused state
-        self._shuffle_enabled = False  # Shuffle mode
-        self._repeat_enabled = False  # Repeat/continuous play mode
+        self._shuffle_enabled = False  # Shuffle mode (random order)
+        self._continue_enabled = False  # Continue/auto-play mode (play next song)
+        self._repeat_one_enabled = False  # Repeat one song mode
 
         # Initialize cover art manager
         self.cover_manager = CoverArtManager()
@@ -383,6 +472,43 @@ class NowPlayingWidget(QWidget):
         self.progress_slider.setMaximum(1000)  # Use 1000 steps for smooth seeking
         self.progress_slider.setValue(0)
         self.progress_slider.setEnabled(False)  # Disabled until song loaded
+
+        # Apply neon cyan style to progress slider (works in both themes)
+        self.progress_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #888888;
+                height: 6px;
+                background: #cccccc;
+                border-radius: 3px;
+            }
+            QSlider::sub-page:horizontal {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #00a0cc, stop:1 #a040a0);
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                background: #00a0cc;
+                border: 2px solid #008099;
+                width: 12px;
+                height: 12px;
+                margin: -4px 0;
+                border-radius: 7px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #00c8ff;
+                border: 2px solid #00a0cc;
+            }
+            QSlider::groove:horizontal:disabled {
+                background: #aaaaaa;
+            }
+            QSlider::sub-page:horizontal:disabled {
+                background: #888888;
+            }
+            QSlider::handle:horizontal:disabled {
+                background: #999999;
+                border: 2px solid #888888;
+            }
+        """)
         progress_layout.addWidget(self.progress_slider)
 
         # Time labels
@@ -406,11 +532,11 @@ class NowPlayingWidget(QWidget):
 
         # === NEON ICON BUTTONS (Custom drawn geometric shapes with glow) ===
 
-        # Shuffle button (toggle)
-        self.shuffle_button = NeonIconButton('shuffle', size=32)
-        self.shuffle_button.setCheckable(True)
-        self.shuffle_button.setToolTip("Shuffle")
-        controls_layout.addWidget(self.shuffle_button)
+        # Repeat One button (toggle) - repeat same song
+        self.repeat_one_button = NeonIconButton('repeat_one', size=32)
+        self.repeat_one_button.setCheckable(True)
+        self.repeat_one_button.setToolTip("Repeat One (loop same song)")
+        controls_layout.addWidget(self.repeat_one_button)
 
         # Previous button
         self.prev_button = NeonIconButton('prev', size=38)
@@ -432,11 +558,18 @@ class NowPlayingWidget(QWidget):
         self.next_button.setToolTip("Next")
         controls_layout.addWidget(self.next_button)
 
-        # Repeat button (toggle)
-        self.repeat_button = NeonIconButton('repeat', size=32)
-        self.repeat_button.setCheckable(True)
-        self.repeat_button.setToolTip("Repeat (continuous play)")
-        controls_layout.addWidget(self.repeat_button)
+        # Continue button (toggle) - auto-play next song
+        self.continue_button = NeonIconButton('continue', size=32)
+        self.continue_button.setCheckable(True)
+        self.continue_button.setToolTip("Continue (auto-play next)")
+        controls_layout.addWidget(self.continue_button)
+
+        # Shuffle button (toggle) - random order (only with Continue)
+        self.shuffle_button = NeonIconButton('shuffle', size=32)
+        self.shuffle_button.setCheckable(True)
+        self.shuffle_button.setToolTip("Shuffle (random order)")
+        self.shuffle_button.setEnabled(False)  # Disabled until Continue is on
+        controls_layout.addWidget(self.shuffle_button)
 
         controls_layout.addStretch()
 
@@ -449,6 +582,33 @@ class NowPlayingWidget(QWidget):
         self.volume_slider.setMaximum(100)
         self.volume_slider.setValue(75)  # Default 75%
         self.volume_slider.setFixedWidth(100)
+
+        # Apply neon cyan style to volume slider (works in both themes)
+        self.volume_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #888888;
+                height: 6px;
+                background: #cccccc;
+                border-radius: 3px;
+            }
+            QSlider::sub-page:horizontal {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #00a0cc, stop:1 #a040a0);
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                background: #00a0cc;
+                border: 2px solid #008099;
+                width: 14px;
+                height: 14px;
+                margin: -5px 0;
+                border-radius: 8px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #00c8ff;
+                border: 2px solid #00a0cc;
+            }
+        """)
         controls_layout.addWidget(self.volume_slider)
 
         self.volume_label_value = QLabel("75%")
@@ -472,9 +632,10 @@ class NowPlayingWidget(QWidget):
         self.prev_button.clicked.connect(self.prev_clicked.emit)
         self.next_button.clicked.connect(self.next_clicked.emit)
 
-        # Shuffle and Repeat toggles
+        # Playback mode toggles
+        self.repeat_one_button.clicked.connect(self._on_repeat_one_clicked)
+        self.continue_button.clicked.connect(self._on_continue_clicked)
         self.shuffle_button.clicked.connect(self._on_shuffle_clicked)
-        self.repeat_button.clicked.connect(self._on_repeat_clicked)
 
         # Cover art search
         self.search_cover_button.clicked.connect(self._on_search_cover_clicked)
@@ -770,12 +931,22 @@ class NowPlayingWidget(QWidget):
             if not self.audio_player.is_playing() and self._is_playing:
                 # Song ended
                 logger.info("Song ended")
-                if self._repeat_enabled:
-                    # Continuous play mode - emit signal to play next
+
+                if self._repeat_one_enabled:
+                    # Repeat One mode - replay same song from beginning
+                    logger.info("Repeat One: replaying same song")
+                    self.audio_player.seek(0)
+                    self.audio_player.play()
+                    self.repeat_song.emit()
+
+                elif self._continue_enabled:
+                    # Continue mode - emit signal to play next song
+                    logger.info("Continue mode: playing next song")
                     self._is_playing = False
-                    self.play_button.set_playing(False)  # Show play icon
+                    self.play_button.set_playing(False)
                     self.position_timer.stop()
                     self.song_ended.emit()  # Signal to play next song
+
                 else:
                     # Normal mode - just stop
                     self._on_stop_clicked()
@@ -813,27 +984,113 @@ class NowPlayingWidget(QWidget):
             self.play_button.set_playing(False)  # Show play icon
             self.position_timer.stop()
 
+    def _on_repeat_one_clicked(self):
+        """Handle repeat one button click"""
+        self._repeat_one_enabled = self.repeat_one_button.isChecked()
+
+        if self._repeat_one_enabled:
+            # Repeat One is exclusive - disable Continue and Shuffle
+            self._continue_enabled = False
+            self._shuffle_enabled = False
+            self.continue_button.setChecked(False)
+            self.shuffle_button.setChecked(False)
+            self.shuffle_button.setEnabled(False)
+            self.continue_button.setEnabled(False)
+        else:
+            # Re-enable Continue button
+            self.continue_button.setEnabled(True)
+
+        self.repeat_one_changed.emit(self._repeat_one_enabled)
+        logger.info(f"Repeat One {'enabled' if self._repeat_one_enabled else 'disabled'}")
+
+    def _on_continue_clicked(self):
+        """Handle continue button click"""
+        self._continue_enabled = self.continue_button.isChecked()
+
+        if self._continue_enabled:
+            # Continue is exclusive with Repeat One
+            self._repeat_one_enabled = False
+            self.repeat_one_button.setChecked(False)
+            self.repeat_one_button.setEnabled(False)
+            # Enable shuffle option
+            self.shuffle_button.setEnabled(True)
+        else:
+            # Disable shuffle and re-enable Repeat One
+            self._shuffle_enabled = False
+            self.shuffle_button.setChecked(False)
+            self.shuffle_button.setEnabled(False)
+            self.repeat_one_button.setEnabled(True)
+
+        self.continue_changed.emit(self._continue_enabled)
+        logger.info(f"Continue (auto-play) {'enabled' if self._continue_enabled else 'disabled'}")
+
     def _on_shuffle_clicked(self):
         """Handle shuffle button click"""
         self._shuffle_enabled = self.shuffle_button.isChecked()
         self.shuffle_changed.emit(self._shuffle_enabled)
         logger.info(f"Shuffle {'enabled' if self._shuffle_enabled else 'disabled'}")
 
-    def _on_repeat_clicked(self):
-        """Handle repeat button click"""
-        self._repeat_enabled = self.repeat_button.isChecked()
-        self.repeat_changed.emit(self._repeat_enabled)
-        logger.info(f"Repeat/Continuous play {'enabled' if self._repeat_enabled else 'disabled'}")
-
     def is_shuffle_enabled(self) -> bool:
         """Check if shuffle mode is enabled"""
         return self._shuffle_enabled
 
-    def is_repeat_enabled(self) -> bool:
-        """Check if repeat/continuous play mode is enabled"""
-        return self._repeat_enabled
+    def is_continue_enabled(self) -> bool:
+        """Check if continue/auto-play mode is enabled"""
+        return self._continue_enabled
+
+    def is_repeat_one_enabled(self) -> bool:
+        """Check if repeat one song mode is enabled"""
+        return self._repeat_one_enabled
 
     def cleanup(self):
         """Cleanup resources"""
         self.position_timer.stop()
         logger.info("NowPlayingWidget cleaned up")
+
+    def clear(self):
+        """
+        Clear widget state and reset to initial display.
+
+        Used when:
+        - User deletes the currently playing song
+        - User clears the library
+        - Need to reset playback state
+
+        Resets:
+        - All state variables
+        - All UI elements to default
+        - Stops audio player and timer
+        """
+        # Stop playback
+        if self.audio_player:
+            self.audio_player.stop()
+
+        # Stop timer
+        self.position_timer.stop()
+
+        # Reset state variables
+        self.current_song = None
+        self._is_playing = False
+        self._is_paused = False
+        self._is_seeking = False
+
+        # Reset UI - Song info
+        self.title_label.setText("No song playing")
+        self.artist_label.setText("Artist")
+        self.album_label.setText("Album")
+
+        # Reset UI - Album art
+        self.album_art_label.setText("♪")
+        self.album_art_label.setPixmap(QPixmap())  # Clear any loaded pixmap
+
+        # Reset UI - Progress
+        self.progress_slider.setValue(0)
+        self.progress_slider.setEnabled(False)
+        self.current_time_label.setText("0:00")
+        self.total_time_label.setText("0:00")
+
+        # Reset UI - Buttons
+        self.play_button.set_playing(False)  # Show play icon
+        self.search_cover_button.setEnabled(False)
+
+        logger.info("NowPlayingWidget cleared")

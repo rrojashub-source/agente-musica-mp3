@@ -1,10 +1,13 @@
 """
 NEXUS Music Manager - Database Manager
 High-performance SQLite manager with WAL mode and FTS5
+
+Thread-safety: Uses threading.local() for per-thread connections
 """
 
 import sqlite3
 import logging
+import threading
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
@@ -16,66 +19,78 @@ class DatabaseManager:
     High-performance SQLite manager for music library
 
     Features:
+    - Thread-safe: Each thread gets its own connection via threading.local()
     - WAL mode for concurrent reads (2-3x faster writes)
     - FTS5 for millisecond search
     - Auto-migration system
     - Foreign key enforcement
+
+    Thread-safety:
+    - Uses threading.local() for per-thread connections
+    - Each thread automatically gets its own SQLite connection
+    - Safe for use with PyQt6 QThread workers
+    - All connections tracked and closed on cleanup
     """
 
     def __init__(self, db_path: str = "music_library.db"):
-        """Initialize database manager with optimized connection"""
+        """Initialize database manager with thread-safe connections"""
         self.db_path = Path(db_path)
-        self.conn: Optional[sqlite3.Connection] = None
-        self._setup_database()
+        self._local = threading.local()  # Thread-local storage for connections
+        self._connections = []  # Track all connections for cleanup
+        self._lock = threading.Lock()  # Lock for connection tracking
 
-    def _setup_database(self):
-        """Setup database with performance optimizations"""
         # Create database directory if needed
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Connect with optimized settings
-        self.conn = sqlite3.connect(
+        # Setup initial connection (main thread) and run migrations
+        self._setup_database()
+
+    @property
+    def conn(self) -> sqlite3.Connection:
+        """
+        Get thread-local database connection.
+
+        Each thread gets its own connection for thread-safety.
+        Connections are created on first access per thread.
+        """
+        if not hasattr(self._local, 'conn') or self._local.conn is None:
+            self._local.conn = self._create_connection()
+            # Track connection for cleanup
+            with self._lock:
+                self._connections.append(self._local.conn)
+            logger.debug(f"Created new connection for thread {threading.current_thread().name}")
+        return self._local.conn
+
+    def _create_connection(self) -> sqlite3.Connection:
+        """Create a new optimized SQLite connection"""
+        conn = sqlite3.connect(
             str(self.db_path),
-            check_same_thread=False,  # Allow multi-threading
-            timeout=30.0  # 30 second timeout
+            timeout=30.0,  # 30 second timeout
+            check_same_thread=True  # Enforce thread safety
         )
+        conn.row_factory = sqlite3.Row
 
-        # Return rows as dictionaries
-        self.conn.row_factory = sqlite3.Row
+        # Apply performance optimizations to this connection
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA journal_mode = WAL")
+        cursor.execute("PRAGMA synchronous = NORMAL")
+        cursor.execute("PRAGMA cache_size = -64000")
+        cursor.execute("PRAGMA mmap_size = 30000000000")
+        cursor.execute("PRAGMA temp_store = MEMORY")
+        cursor.execute("PRAGMA foreign_keys = ON")
+        conn.commit()
 
-        # Apply performance optimizations
-        self._apply_performance_pragmas()
+        return conn
 
-        # Run migrations
+    def _setup_database(self):
+        """Setup database with performance optimizations"""
+        # Use conn property to create connection for main thread
+        _ = self.conn
+
+        # Run migrations (only needed once)
         self._run_migrations()
 
-        logger.info(f"Database initialized: {self.db_path}")
-
-    def _apply_performance_pragmas(self):
-        """Apply performance optimizations"""
-        cursor = self.conn.cursor()
-
-        # WAL mode: 2-3x faster writes + concurrent reads
-        cursor.execute("PRAGMA journal_mode = WAL")
-
-        # Balance durability and speed
-        cursor.execute("PRAGMA synchronous = NORMAL")
-
-        # 64MB cache
-        cursor.execute("PRAGMA cache_size = -64000")
-
-        # Memory-mapped I/O
-        cursor.execute("PRAGMA mmap_size = 30000000000")  # 30GB
-
-        # Temp tables in memory
-        cursor.execute("PRAGMA temp_store = MEMORY")
-
-        # Enable foreign keys
-        cursor.execute("PRAGMA foreign_keys = ON")
-
-        self.conn.commit()
-
-        logger.info("Performance PRAGMAs applied (WAL mode, 64MB cache)")
+        logger.info(f"Database initialized (thread-safe): {self.db_path}")
 
     def _run_migrations(self):
         """Run SQL migrations from migrations/ folder"""
@@ -525,10 +540,22 @@ class DatabaseManager:
             return stats
 
     def close(self):
-        """Close database connection"""
-        if self.conn:
-            self.conn.close()
-            logger.info("Database connection closed")
+        """Close all database connections (thread-safe cleanup)"""
+        with self._lock:
+            closed_count = 0
+            for conn in self._connections:
+                try:
+                    conn.close()
+                    closed_count += 1
+                except Exception as e:
+                    logger.warning(f"Error closing connection: {e}")
+            self._connections.clear()
+
+        # Clear thread-local connection
+        if hasattr(self._local, 'conn'):
+            self._local.conn = None
+
+        logger.info(f"Database connections closed ({closed_count} total)")
 
     def __enter__(self):
         """Context manager entry"""
