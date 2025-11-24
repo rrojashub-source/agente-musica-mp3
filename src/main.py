@@ -75,6 +75,7 @@ from gui.widgets.playlist_widget import PlaylistWidget
 from gui.widgets.queue_widget import QueueWidget
 from gui.widgets.visualizer_widget import VisualizerWidget
 from gui.widgets.album_grid_widget import AlbumGridWidget
+from gui.widgets.recommendations_widget import RecommendationsWidget
 
 
 class MusicPlayerApp(QMainWindow):
@@ -476,7 +477,7 @@ and are never shared or transmitted outside of official API requests to YouTube 
         dialog.exec()
 
     def _create_top_section(self):
-        """Create top section with Now Playing + Visualizer"""
+        """Create top section with Now Playing + Visualizer + Recommendations"""
         # Horizontal layout
         top_widget = QWidget()
         top_layout = QHBoxLayout(top_widget)
@@ -484,18 +485,27 @@ and are never shared or transmitted outside of official API requests to YouTube 
 
         # Now Playing Widget (left)
         self.now_playing = NowPlayingWidget(self.audio_player)
-        top_layout.addWidget(self.now_playing, stretch=1)
+        top_layout.addWidget(self.now_playing, stretch=2)
 
-        # Visualizer Widget (right) - Uses saved style from QSettings
+        # Visualizer Widget (center) - Uses saved style from QSettings
         self.visualizer = VisualizerWidget()
         # NOTE: Don't call set_style() here - VisualizerWidget loads saved preference from QSettings
-        top_layout.addWidget(self.visualizer, stretch=2)
+        top_layout.addWidget(self.visualizer, stretch=3)
+
+        # Recommendations Widget (right)
+        self.recommendations_widget = RecommendationsWidget(self.db_manager)
+        self.recommendations_widget.setMaximumWidth(280)
+        self.recommendations_widget.song_selected.connect(self._play_recommended_song)
+        top_layout.addWidget(self.recommendations_widget, stretch=1)
 
         # Connect signals
         self.now_playing.position_changed.connect(
             lambda pos: self.visualizer.set_position(pos)
         )
         self.now_playing.song_loaded.connect(self._on_song_loaded)
+
+        # Connect song metadata changes to recommendations
+        self.now_playing.song_metadata_changed.connect(self._update_recommendations)
 
         # Connect prev/next signals (centralized handling for library + playlist)
         self.now_playing.prev_clicked.connect(self._on_global_prev_clicked)
@@ -945,6 +955,48 @@ and are never shared or transmitted outside of official API requests to YouTube 
 
             self.statusBar.showMessage(f"Showing album: {album_name}", 3000)
             logger.info(f"Album selected: {album_name} by {artist_name}")
+
+    def _update_recommendations(self, song_data: dict):
+        """Update recommendations based on current song"""
+        if hasattr(self, 'recommendations_widget'):
+            self.recommendations_widget.set_current_song(song_data)
+
+    def _play_recommended_song(self, song_data: dict):
+        """Play a song selected from recommendations"""
+        try:
+            file_path = song_data.get('file_path')
+            if not file_path:
+                logger.error("Recommended song has no file path")
+                return
+
+            from pathlib import Path
+            if not Path(file_path).exists():
+                logger.error(f"File not found: {file_path}")
+                QMessageBox.warning(
+                    self, "File Not Found",
+                    f"The music file could not be found:\n{file_path}"
+                )
+                return
+
+            # Load and play
+            success = self.audio_player.load(file_path)
+            if success:
+                self.audio_player.play()
+                self.now_playing.load_song(song_data)
+                self.now_playing.set_playing(True)
+
+                # Update playback source to library
+                self._playback_source = 'library'
+
+                logger.info(f"Playing recommended: {song_data.get('title')}")
+                self.statusBar.showMessage(
+                    f"Playing recommendation: {song_data.get('title')}", 3000
+                )
+            else:
+                logger.error(f"Failed to load: {file_path}")
+
+        except Exception as e:
+            logger.error(f"Error playing recommended song: {e}")
 
     def _handle_seek_backward(self, seconds):
         """Handle Left arrow - Seek backward"""
