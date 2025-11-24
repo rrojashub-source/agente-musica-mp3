@@ -10,12 +10,16 @@ Features:
 - Volume control (0.0-1.0)
 - Position and duration tracking
 - Playback state management
+- Gapless playback (queue next track)
+- End-of-track callbacks
 
 Created: November 13, 2025
+Updated: November 24, 2025 - Added gapless playback support
 """
 import logging
 import os
-from typing import Optional
+import threading
+from typing import Optional, Callable, List
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -65,12 +69,25 @@ class AudioPlayer:
         self._paused_position = 0.0  # Track position when paused
         self._start_offset = 0.0  # Track where playback started (for seek)
 
+        # Gapless playback support
+        self._queued_file = None  # Next track queued for gapless playback
+        self._queued_duration = 0.0
+        self._gapless_enabled = True
+        self._on_track_end_callbacks: List[Callable[[str], None]] = []
+        self._end_event_timer = None
+        self._crossfade_ms = 0  # Crossfade duration (0 = gapless, no crossfade)
+
         # Initialize pygame.mixer
         try:
             import pygame
             pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
             self._pygame = pygame
-            logger.info("AudioPlayer initialized with pygame.mixer")
+
+            # Set up end-of-track event
+            self._MUSIC_END_EVENT = pygame.USEREVENT + 1
+            pygame.mixer.music.set_endevent(self._MUSIC_END_EVENT)
+
+            logger.info("AudioPlayer initialized with pygame.mixer (gapless enabled)")
         except ImportError:
             logger.error("pygame not installed - audio playback unavailable")
             self._pygame = None
@@ -307,6 +324,9 @@ class AudioPlayer:
 
     def cleanup(self):
         """Cleanup resources"""
+        if self._end_event_timer:
+            self._end_event_timer.cancel()
+
         if self._pygame:
             try:
                 self._pygame.mixer.music.stop()
@@ -314,3 +334,210 @@ class AudioPlayer:
                 logger.info("AudioPlayer cleaned up")
             except Exception as e:
                 logger.error(f"Cleanup error: {e}")
+
+    # ==========================================
+    # Gapless Playback Methods
+    # ==========================================
+
+    def queue_next(self, file_path: str) -> bool:
+        """
+        Queue next track for gapless playback
+
+        The queued track will start immediately when the current track ends,
+        providing seamless transitions between songs.
+
+        Args:
+            file_path: Path to the next MP3 file
+
+        Returns:
+            True if queued successfully, False otherwise
+
+        Example:
+            player.load("song1.mp3")
+            player.play()
+            player.queue_next("song2.mp3")  # Will play seamlessly after song1
+        """
+        if not self._pygame:
+            logger.error("pygame not available")
+            return False
+
+        if not os.path.exists(file_path):
+            logger.error(f"Queue file not found: {file_path}")
+            return False
+
+        if not self._gapless_enabled:
+            logger.warning("Gapless playback is disabled")
+            return False
+
+        try:
+            # Queue the next track using pygame's built-in queue
+            self._pygame.mixer.music.queue(file_path)
+            self._queued_file = file_path
+
+            # Pre-calculate duration for the queued file
+            try:
+                from mutagen.mp3 import MP3
+                audio = MP3(file_path)
+                self._queued_duration = audio.info.length
+            except Exception as e:
+                logger.warning(f"Failed to get queued track duration: {e}")
+                self._queued_duration = 0.0
+
+            logger.info(f"Queued for gapless: {file_path}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to queue {file_path}: {e}")
+            return False
+
+    def clear_queue(self):
+        """Clear the queued next track"""
+        self._queued_file = None
+        self._queued_duration = 0.0
+        logger.debug("Queue cleared")
+
+    def get_queued_file(self) -> Optional[str]:
+        """
+        Get the currently queued file path
+
+        Returns:
+            Path to queued file, or None if no file queued
+        """
+        return self._queued_file
+
+    def set_gapless_enabled(self, enabled: bool):
+        """
+        Enable or disable gapless playback
+
+        Args:
+            enabled: True to enable, False to disable
+        """
+        self._gapless_enabled = enabled
+        logger.info(f"Gapless playback: {'enabled' if enabled else 'disabled'}")
+
+    def is_gapless_enabled(self) -> bool:
+        """Check if gapless playback is enabled"""
+        return self._gapless_enabled
+
+    def set_crossfade(self, duration_ms: int):
+        """
+        Set crossfade duration between tracks
+
+        Args:
+            duration_ms: Crossfade duration in milliseconds (0 = no crossfade)
+
+        Note: Crossfade is a future feature - currently only gapless (0ms) is supported
+        """
+        self._crossfade_ms = max(0, duration_ms)
+        logger.info(f"Crossfade set to {self._crossfade_ms}ms")
+
+    def get_crossfade(self) -> int:
+        """Get current crossfade duration in milliseconds"""
+        return self._crossfade_ms
+
+    # ==========================================
+    # Track End Event Handling
+    # ==========================================
+
+    def on_track_end(self, callback: Callable[[str], None]):
+        """
+        Register callback for track end event
+
+        The callback receives the path of the track that just ended.
+        Use this to implement playlist advancement, shuffle, etc.
+
+        Args:
+            callback: Function to call when track ends. Receives file_path as argument.
+
+        Example:
+            def handle_track_end(file_path):
+                print(f"Track ended: {file_path}")
+                # Load next track from playlist
+
+            player.on_track_end(handle_track_end)
+        """
+        if callback not in self._on_track_end_callbacks:
+            self._on_track_end_callbacks.append(callback)
+            logger.debug(f"Track end callback registered (total: {len(self._on_track_end_callbacks)})")
+
+    def remove_track_end_callback(self, callback: Callable[[str], None]):
+        """Remove a track end callback"""
+        if callback in self._on_track_end_callbacks:
+            self._on_track_end_callbacks.remove(callback)
+            logger.debug("Track end callback removed")
+
+    def check_track_end(self) -> bool:
+        """
+        Check if track has ended and handle transition
+
+        This should be called periodically (e.g., from a timer) to detect
+        when the current track ends and trigger callbacks.
+
+        Returns:
+            True if track ended, False otherwise
+        """
+        if not self._pygame:
+            return False
+
+        # Check if music stopped playing
+        if self._state == PlaybackState.PLAYING and not self._pygame.mixer.music.get_busy():
+            ended_file = self._current_file
+
+            # If there's a queued track, it's now playing
+            if self._queued_file:
+                logger.info(f"Gapless transition: {self._queued_file}")
+                self._current_file = self._queued_file
+                self._duration = self._queued_duration
+                self._queued_file = None
+                self._queued_duration = 0.0
+                self._start_time = self._pygame.time.get_ticks() / 1000.0
+                self._start_offset = 0.0
+            else:
+                # No queued track - playback stopped
+                self._state = PlaybackState.STOPPED
+                logger.info(f"Track ended: {ended_file}")
+
+            # Notify callbacks
+            self._notify_track_end(ended_file)
+            return True
+
+        return False
+
+    def _notify_track_end(self, file_path: str):
+        """Notify all registered callbacks that track ended"""
+        for callback in self._on_track_end_callbacks:
+            try:
+                callback(file_path)
+            except Exception as e:
+                logger.error(f"Track end callback error: {e}")
+
+    def start_end_detection(self, interval_ms: int = 100):
+        """
+        Start automatic track end detection
+
+        Args:
+            interval_ms: Check interval in milliseconds (default: 100ms)
+        """
+        def check_loop():
+            if self._state == PlaybackState.PLAYING:
+                self.check_track_end()
+
+            # Schedule next check
+            if self._pygame and self._state != PlaybackState.STOPPED:
+                self._end_event_timer = threading.Timer(
+                    interval_ms / 1000.0,
+                    check_loop
+                )
+                self._end_event_timer.daemon = True
+                self._end_event_timer.start()
+
+        # Start the loop
+        check_loop()
+        logger.debug(f"Track end detection started (interval: {interval_ms}ms)")
+
+    def stop_end_detection(self):
+        """Stop automatic track end detection"""
+        if self._end_event_timer:
+            self._end_event_timer.cancel()
+            self._end_event_timer = None
+            logger.debug("Track end detection stopped")
