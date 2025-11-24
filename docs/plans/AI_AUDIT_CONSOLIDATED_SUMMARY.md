@@ -149,8 +149,8 @@ Se realizaron 9 auditorías independientes usando diferentes AIs (GPT-4, Claude,
 ### Arquitectura
 | Recomendación | Esfuerzo | Status |
 |---------------|----------|--------|
-| Service layer | 16h | ⏳ Pendiente |
-| Dataclasses dominio | 8h | ⏳ Pendiente |
+| Service layer | 16h | ✅ Implementado 24 Nov 2025 |
+| Dataclasses dominio | 8h | ✅ Implementado 24 Nov 2025 (Song, LibraryStats, DownloadItem, NowPlaying) |
 | Renombrar phaseX | 2h | ⏳ Pendiente |
 | Interfaces/adapters | 8h | ⏳ Pendiente |
 

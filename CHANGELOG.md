@@ -31,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Score interno: 92/100 → 95/100
 
+### Refactored
+- **Service Layer Architecture:** Nueva capa de servicios para separar lógica de negocio
+  - LibraryService: Gestión de biblioteca con signals PyQt6
+  - DownloadService: Gestión de descargas con auto-import
+  - PlayerService: Control de reproducción con gapless support
+  - Domain models: Song, LibraryStats, DownloadItem, NowPlaying (dataclasses)
+
 ### Tests
 - 15 tests para rate_limiter.py
 - 14 tests para gapless_playback.py
@@ -43,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - SmartPlaylist (4 tests)
   - RateLimiter (3 tests)
   - FullIntegration (3 tests)
+- **32 tests Service Layer** (LibraryService, DownloadService, PlayerService)
 
 ---
 
