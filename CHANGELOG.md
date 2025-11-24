@@ -35,6 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 15 tests para rate_limiter.py
 - 14 tests para gapless_playback.py
 - 23 tests para smart_playlist.py
+- **29 tests E2E GUI** con pytest-qt:
+  - LibraryTab (4 tests)
+  - SearchTab (5 tests)
+  - QueueWidget (5 tests)
+  - Player (5 tests)
+  - SmartPlaylist (4 tests)
+  - RateLimiter (3 tests)
+  - FullIntegration (3 tests)
 
 ---
 

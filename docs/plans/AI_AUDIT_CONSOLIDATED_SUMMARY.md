@@ -117,13 +117,13 @@ Se realizaron 9 auditorías independientes usando diferentes AIs (GPT-4, Claude,
 | Dependency scanning (pip audit) | 2h | ✅ Implementado 24 Nov 2025 |
 | Rate limiting APIs | 4h | ✅ Implementado 24 Nov 2025 |
 
-### Testing (Cobertura: ~30%)
+### Testing (Cobertura: ~45%)
 | Recomendación | Esfuerzo | Status |
 |---------------|----------|--------|
 | Tests integración download | 8h | ⏳ Pendiente |
 | Tests integración DB | 4h | ⏳ Pendiente |
-| Tests E2E UI (pytest-qt) | 16h | ⏳ Pendiente |
-| Mocks para APIs externas | 4h | ⏳ Pendiente |
+| Tests E2E UI (pytest-qt) | 16h | ✅ Implementado 24 Nov 2025 (29 tests) |
+| Mocks para APIs externas | 4h | ✅ Implementado 24 Nov 2025 |
 | CI/CD con GitHub Actions | 4h | ✅ Implementado 24 Nov 2025 |
 
 ### Documentación (Score: 45/100 → 75/100)
@@ -237,13 +237,14 @@ Se realizaron 9 auditorías independientes usando diferentes AIs (GPT-4, Claude,
 12. ✅ **NUEVO:** Smart Playlists (playlists automáticas por reglas)
 13. ✅ **NUEVO:** CHANGELOG.md (historial de versiones)
 14. ✅ **NUEVO:** TROUBLESHOOTING.md (guía de solución de problemas)
+15. ✅ **NUEVO:** Tests E2E GUI con pytest-qt (29 tests)
 
 ### Próximos pasos recomendados:
-1. **Tests E2E** - El gap más grande ahora
-2. **Service layer** - Para mejorar mantenibilidad
-3. **Cloud sync** - Diferenciador competitivo
+1. **Service layer** - Para mejorar mantenibilidad
+2. **Cloud sync** - Diferenciador competitivo
+3. **Plugin system** - Extensibilidad
 
-**Estado:** Fase 1 completada. Fase 2 casi completa (3/5). Fase 3 iniciada (1/4).
+**Estado:** Fase 1 completada. Fase 2 casi completa (4/5). Fase 3 iniciada (1/4).
 
 ---
 

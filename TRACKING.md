@@ -25,6 +25,43 @@
 
 ## 🗓️ Session History
 
+### **Session 3 (Nov 24, 2025) - E2E GUI Tests**
+
+**Duration:** ~30 minutes
+**Assigned to:** NEXUS@CLI (Autonomous Mode)
+**Purpose:** Add comprehensive E2E tests using pytest-qt
+
+#### **COMPLETED:**
+
+| Task | Status | Files Created/Modified |
+|------|--------|----------------------|
+| pytest-qt setup | ✅ DONE | `tests/test_e2e_gui.py` |
+| E2E test coverage | ✅ DONE | 29 tests across 7 test classes |
+
+#### **New Files Created:**
+- `tests/test_e2e_gui.py` - Comprehensive E2E GUI tests (495 lines)
+
+#### **E2E Test Coverage:**
+
+| Component | Tests | Coverage |
+|-----------|-------|----------|
+| LibraryTab | 4 | load songs, filter, skeleton, drag&drop |
+| SearchTab | 5 | search box, results, YouTube, Spotify flows |
+| QueueWidget | 5 | display, pause/resume, cancel, clear, progress |
+| Player | 5 | init, gapless, queue, callbacks, crossfade |
+| SmartPlaylist | 4 | create, genre, most played, save/load |
+| RateLimiter | 3 | singleton, YouTube/Spotify integration |
+| FullIntegration | 3 | module imports validation |
+
+#### **Test Results:**
+- **New tests:** 80 passing (rate_limiter, gapless, smart_playlist, e2e_gui)
+- **E2E tests:** 28 passed, 1 skipped (pygame unavailable in WSL)
+
+#### **Git Commits:**
+- `aae6dd3` - test(e2e): Add comprehensive E2E GUI tests with pytest-qt
+
+---
+
 ### **Session 2 (Nov 24, 2025) - Rate Limiting, Gapless & Smart Playlists**
 
 **Duration:** ~2 hours
