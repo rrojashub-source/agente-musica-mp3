@@ -316,18 +316,16 @@ class AlbumGridWidget(QWidget):
                 ORDER BY album ASC
             """
 
-            connection = self.db_manager._get_connection()
-            cursor = connection.cursor()
-            cursor.execute(query)
-            rows = cursor.fetchall()
+            # Use public fetch_all method instead of private _get_connection
+            rows = self.db_manager.fetch_all(query)
 
             albums = []
             for row in rows:
                 albums.append({
-                    'album': row[0],
-                    'artist': row[1],
-                    'song_count': row[2],
-                    'sample_file': row[3],
+                    'album': row['album'] if isinstance(row, dict) else row[0],
+                    'artist': row['artist'] if isinstance(row, dict) else row[1],
+                    'song_count': row['song_count'] if isinstance(row, dict) else row[2],
+                    'sample_file': row['sample_file'] if isinstance(row, dict) else row[3],
                     'cover_path': None  # Will be loaded dynamically
                 })
 
