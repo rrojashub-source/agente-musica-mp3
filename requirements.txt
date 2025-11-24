@@ -56,9 +56,20 @@ numpy>=1.24.0
 # Lyrics API (Genius)
 lyricsgenius>=3.0.1
 
-# Web scraping for lyrics (legacy)
+# Web scraping for lyrics (fallback)
 beautifulsoup4>=4.12.0
 requests>=2.31.0
+
+# ========================================
+# Plugin Dependencies
+# ========================================
+# Discord Rich Presence (discord_rpc plugin)
+pypresence>=4.3.0
+
+# Flask for remote control API (remote_server)
+flask>=3.0.0
+flask-cors>=4.0.0
+qrcode>=7.4.0  # QR code generation for mobile connection
 
 # ========================================
 # General Utilities
