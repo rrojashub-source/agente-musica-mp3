@@ -157,6 +157,118 @@ class TestInputSanitizer(unittest.TestCase):
         self.assertTrue(result.endswith(".mp3"))
 
 
+    # ========== PATH VALIDATION TESTS ==========
+
+    def test_11_validate_path_blocks_traversal(self):
+        """Test path validation blocks directory traversal"""
+        try:
+            from src.utils.input_sanitizer import validate_path
+        except ImportError:
+            self.skipTest("validate_path not implemented")
+
+        # Attempt to escape base directory
+        is_valid, result = validate_path("../../../etc/passwd", "/home/user/music")
+        self.assertFalse(is_valid)
+        self.assertIn("escapes", result.lower())
+
+    def test_12_validate_path_allows_valid_paths(self):
+        """Test path validation allows valid subdirectories"""
+        try:
+            from src.utils.input_sanitizer import validate_path
+        except ImportError:
+            self.skipTest("validate_path not implemented")
+
+        import tempfile
+        import os
+
+        # Create a temp directory structure
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subdir = os.path.join(tmpdir, "music")
+            os.makedirs(subdir)
+
+            is_valid, result = validate_path("music", tmpdir)
+            self.assertTrue(is_valid)
+
+    def test_13_validate_path_empty_input(self):
+        """Test path validation handles empty input"""
+        try:
+            from src.utils.input_sanitizer import validate_path
+        except ImportError:
+            self.skipTest("validate_path not implemented")
+
+        is_valid, result = validate_path("", "/home/user")
+        self.assertFalse(is_valid)
+
+    # ========== URL VALIDATION TESTS ==========
+
+    def test_14_sanitize_url_blocks_file_scheme(self):
+        """Test URL validation blocks file:// scheme"""
+        try:
+            from src.utils.input_sanitizer import sanitize_url
+        except ImportError:
+            self.skipTest("sanitize_url not implemented")
+
+        is_valid, result = sanitize_url("file:///etc/passwd")
+        self.assertFalse(is_valid)
+        self.assertIn("scheme", result.lower())
+
+    def test_15_sanitize_url_allows_https(self):
+        """Test URL validation allows https://"""
+        try:
+            from src.utils.input_sanitizer import sanitize_url
+        except ImportError:
+            self.skipTest("sanitize_url not implemented")
+
+        is_valid, result = sanitize_url("https://youtube.com/watch?v=abc123")
+        self.assertTrue(is_valid)
+
+    def test_16_sanitize_url_domain_restriction(self):
+        """Test URL validation enforces domain restrictions"""
+        try:
+            from src.utils.input_sanitizer import sanitize_url
+        except ImportError:
+            self.skipTest("sanitize_url not implemented")
+
+        # Should allow youtube.com
+        is_valid, _ = sanitize_url("https://youtube.com/watch", ["youtube.com"])
+        self.assertTrue(is_valid)
+
+        # Should block evil.com
+        is_valid, _ = sanitize_url("https://evil.com/malware", ["youtube.com"])
+        self.assertFalse(is_valid)
+
+    # ========== METADATA SANITIZATION TESTS ==========
+
+    def test_17_sanitize_metadata_removes_html(self):
+        """Test metadata sanitization removes HTML tags"""
+        try:
+            from src.utils.input_sanitizer import sanitize_metadata
+        except ImportError:
+            self.skipTest("sanitize_metadata not implemented")
+
+        metadata = {"title": "<script>alert('xss')</script>Test", "artist": "Artist"}
+        result = sanitize_metadata(metadata)
+
+        self.assertNotIn("<script>", result["title"])
+        self.assertNotIn("</script>", result["title"])
+        self.assertIn("Test", result["title"])
+
+    def test_18_sanitize_metadata_handles_nested(self):
+        """Test metadata sanitization handles nested structures"""
+        try:
+            from src.utils.input_sanitizer import sanitize_metadata
+        except ImportError:
+            self.skipTest("sanitize_metadata not implemented")
+
+        metadata = {
+            "title": "Song",
+            "album": {"name": "<b>Album</b>", "year": 2024}
+        }
+        result = sanitize_metadata(metadata)
+
+        self.assertNotIn("<b>", result["album"]["name"])
+
+
 if __name__ == "__main__":
     # Run tests
     unittest.main(verbosity=2)

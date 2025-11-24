@@ -1,0 +1,159 @@
+## 8. GPT-4 - Seguridad
+He revisado el repositorio Agente‑Musica‑MP3 (GitHub: rrojashub‑source/agente‑musica‑mp3) y aquí tienes una auditoría de seguridad centrada en los criterios solicitados, usando el marco del OWASP Top 10 como referencia. Al final incluyo una puntuación tentativa de seguridad.
+
+1. Vulnerabilidades de inyección (SQL, comandos)
+
+Observaciones:
+
+El proyecto usa una base de datos SQLite (según README: fase2_database/nexus_music.db) y un módulo database_manager.py. No encontré de forma rápida código donde se construyan dinámicamente consultas SQL sin parametrizar o concatenar directamente datos del usuario.
+
+No hay indicación clara de uso de SQL Alchemy u otro ORM; puede haber riesgo si se construyen strings SQL manualmente.
+
+No parece haber interfaz de cliente‑servidor que reciba comandos de usuario que luego sean ejecutados como shell/comando externo (al menos no evidente).
+
+Sin embargo, dado que el proyecto permite “importar música”, “auto‐organizar”, “descargar de YouTube”, etc., existe un riesgo: por ejemplo, si el nombre de archivo, URL o metadatos son manipulados, podrían generar inyección de comandos en la descarga/ffmpeg/yt‑dl o al renombrar archivos.
+
+Áreas de mejora / recomendaciones:
+
+Verificar que todas las consultas SQL utilicen parámetros (no concatenación de strings) y que no haya posibilidad de que metadatos del usuario se usen directamente en la consulta.
+
+Revisar las funciones que invocan procesos externos (por ejemplo ffmpeg, yt‑dl) para comprobar que los argumentos están correctamente validados o escapados, y no se permiten inyecciones de shell.
+
+Añadir pruebas de fuzzing para nombres de fichero, rutas e input de metadatos para verificar que no se ejecuta nada inesperado.
+
+Evaluación OWASP ↔ Inyección (A03 2021 “Injection”):
+El riesgo no es claramente explotado, pero está presente por diseño (uso de DB local y procesos externos). Le asignaría un riesgo medio‑alto si no se controla.
+
+2. Manejo de credenciales / API keys
+
+Observaciones:
+
+El proyecto incluye un archivo .env.example. Esto indica que se propone el uso de variables de entorno para API keys.
+
+En el README se menciona: “Configure API keys: Tools → Configure API Keys” y que el proyecto usa las API de yt‑dl/YouTube, spotipy (Spotify) y Genius API (Lyrics). 
+GitHub
+
+No encontré en el repositorio un archivo con claves visibles, lo cual es bueno.
+
+No está claro si las API keys se almacenan cifradas, o si se validan los permisos mínimos necesarios, o si se exponen en logs o UI.
+
+Áreas de mejora / recomendaciones:
+
+Asegurarse de que las API keys no quedan en el repositorio (ni por accidentales commits).
+
+Documentar el uso de variables de entorno o archivo de configuración que esté fuera del control de versiones.
+
+Considerar cifrado ligero o al menos no exponer claves en logs o en la UI (por ejemplo un wizard donde se pegue la clave pero no se muestre en texto plano).
+
+Minimizar permisos de las claves (principio de menor privilegio) y documentar cómo revocarlas/rotarlas.
+
+Evaluación OWASP ↔ A02 “Broken Authentication” / A09 “Security Logging & Monitoring”:
+El manejo parece básico pero aceptable; se observa conciencia. Le daría un riesgo más bien medio‑bajo, aunque mejorarable.
+
+3. Validación de entradas (Input Validation)
+
+Observaciones:
+
+El proyecto tiene UI (PyQt6) donde el usuario introduce términos de búsqueda, rutas, selecciona archivos, quizá introduce nombres, metadatos.
+
+No encontré evidencia de una capa de validación robusta (por ejemplo sanitización de entradas de búsqueda, rutas de archivo, nombres de metadatos).
+
+Dado que se trabaja con nombres de fichero, rutas de directorio, URLs de video, existe riesgo de que entradas maliciosas provoquen comportamiento no deseado (path traversal, inyección de caracteres, URLs manipuladas).
+
+En el módulo de descarga/playlist podría haber urls mal formadas o con payloads.
+
+Áreas de mejora / recomendaciones:
+
+Validar todas las rutas de archivo que el usuario pueda proporcionar (asegurar que están dentro de directorios permitidos, no contienen “../”, etc.).
+
+Validar strings de búsqueda que se pasen a APIs externas (asegurar tamaño razonable, caracteres permitidos).
+
+Al renombrar archivos (batch rename) asegurarse de que el template no permita caracteres peligrosos para el sistema de archivos.
+
+Añadir sanitización de metadatos extraídos de fuentes externas (YouTube, Spotify, Genius) antes de escribirlos en DB o sistema de ficheros.
+
+Evaluación OWASP ↔ A05 “Security Misconfiguration” / A10 “Server‑Side Request Forgery”:
+Aquí el riesgo es medio‑alto por la variedad de inputs que el usuario puede controlar. No encontré controles fuertes documentados.
+
+4. Dependencias con vulnerabilidades conocidas
+
+Observaciones:
+
+En el fichero requirements.txt (según listado) están listadas dependencias. Sin embargo, no he encontrado en este análisis rápido un escaneo de vulnerabilidades (por ejemplo con safety, pip audit, Dependabot).
+
+Dependencias mencionadas en README: PyQt6, SQLite, FFmpeg, yt‑dl, Spotipy, BeautifulSoup4. Algunas de estas pueden contener vulnerabilidades conocidas (por ejemplo BeautifulSoup si se usa con lxml sin cuidado).
+
+No encontré documentación para actualización de dependencias o dependencia lock‑file.
+
+Áreas de mejora / recomendaciones:
+
+Realizar escaneo automático de vulnerabilidades de dependencias (por ejemplo pip audit, safety, GitHub‑Dependabot).
+
+Mantener un fichero de bloqueo (requirements‑lock.txt o Pipfile.lock) para asegurar versiones conocidas seguras.
+
+Documentar actualización periódica de dependencias y monitorear CVE relevantes.
+
+Verificar que las dependencias externas que invocan descarga/ejecución (yt‑dl, ffmpeg) estén actualizadas y configuradas de forma segura.
+
+Evaluación OWASP ↔ A06 “Vulnerable and Outdated Components”:
+Aquí se observa un riesgo real (dependencias externas, poca visibilidad de actualizaciones). Le asignaría riesgo medio‑alto.
+
+5. Exposición de datos sensibles
+
+Observaciones:
+
+El proyecto maneja una base de datos local que contiene metadatos de música, rutas de archivo, posiblemente historial de descargas, claves de API (aunque estas se configuran externamente).
+
+No encontré una ruta de autenticación o servidor remoto, sino que parece ejecutarse como aplicación de escritorio local, lo que reduce la superficie de exposición remota.
+
+Sin embargo, ¿qué sucede si alguien comparte la base de datos, o el directorio contiene información personal (listas, historial)? No hay mención explícita de cifrado de la base de datos o del acceso restringido a la app.
+
+No encontré archivos de configuración que contengan claves expuestas en el repositorio, lo cual es bueno.
+
+Áreas de mejora / recomendaciones:
+
+Asegurarse de que la base de datos local esté protegida (por ejemplo permisos de fichero correctos, ubicación fuera de directorios públicos).
+
+Si el proyecto en el futuro añade sincronización en la nube (como menciona “Cloud sync (Google Drive, Dropbox)”), revisar que la transmisión y almacenamiento remotos usen cifrado.
+
+No incluir API keys en logs o en archivos compartidos.
+
+Considerar almacenamiento de credenciales con permisos mínimos y acceso restringido.
+
+Evaluación OWASP ↔ A03 “Sensitive Data Exposure”:
+El riesgo es medio; la app es local y menor superficie de ataque remoto, pero el manejo de datos sensibles no está claramente definido. Podría mejorarse.
+
+Conclusión & puntuación
+
+En resumen, el proyecto tiene una base razonable, pero hay varias áreas que requieren atención para que cumpla con buenas prácticas de seguridad siguiendo OWASP Top 10.
+
+Puntuación tentativa: 55/100
+
+Justificación:
+
+Inyección: riesgo existente → −10 puntos (sobre 20)
+
+Manejo credenciales: relativamente bien → −5 puntos (sobre 15)
+
+Validación de entradas: mediana → −8 puntos (sobre 15)
+
+Dependencias vulnerables: riesgo notable → −9 puntos (sobre 15)
+
+Exposición datos sensibles: riesgo moderado → −8 puntos (sobre 15)
+
+Buenas prácticas generales/documentación: bastante completa → +5 puntos (bonus)
+Total = 100 − (10+5+8+9+8) +5 = 55
+
+Prioridades de mitigación
+
+Añadir validación rigurosa de todas las entradas del usuario (rutas, metadatos, plantillas, URLs).
+
+Verificar y asegurar que las consultas SQL estén parametrizadas y no permitan inyección.
+
+Implementar escaneo automático de dependencias/vulnerabilidades y mantener versiones seguras.
+
+Asegurar que las API keys y otros secretos no estén expuestos ni almacenados en texto plano o en repositorio.
+
+Garantizar protección adecuada de la base de datos local y prepararse para futuras funciones de sincronización remota con cifrado.
+
+Si lo deseas, puedo ejecutar un análisis más profundo (automatizado) sobre el requirements.txt y el código para encontrar vulnerabilidades concretas con identificadores CVE y dar un informe de remediación detallado. ¿Te parece bien?

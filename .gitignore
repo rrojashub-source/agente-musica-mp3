@@ -93,6 +93,8 @@ MANIFEST
 # PyInstaller
 *.manifest
 *.spec
+# Exception: Keep our PyInstaller config
+!nexus_music.spec
 
 # Unit test / coverage reports
 htmlcov/

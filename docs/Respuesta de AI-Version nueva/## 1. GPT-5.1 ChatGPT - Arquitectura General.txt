@@ -1,0 +1,512 @@
+## 1. GPT-5.1 / ChatGPT - Arquitectura General
+
+Te respondo directo: con lo que se ve en GitHub, esto está bastante por encima de un “proyecto hobby”, pero aún se nota como un monolito PyQt grande en fase pre-producto.
+
+⚠️ Importante: por limitaciones de este entorno no puedo abrir los .py, solo lo que aparece en el README y la estructura de carpetas. Así que lo de “code smells”/seguridad es necesariamente inferido a partir de cómo suelen quedar estos proyectos y de tu propio README.
+
+El README describe:
+
+App PyQt6 con main_window_complete.py como “Main application”
+GitHub
+
+Módulos separados por fases: phase2_database/, phase3_integration/, phase4_search_download/, phase5_management_tools/, phase6_player_lyrics/
+GitHub
+
+DB SQLite + FTS5, lazy loading, 10k+ canciones, cola de descargas concurrente, YouTube + Spotify + Genius + MusicBrainz, FFmpeg, yt-dlp, Spotipy, BeautifulSoup4, etc.
+GitHub
++1
+
+Repo con data/, docs/, src/, tests/, tools/, .env.example, scripts .bat, etc.
+GitHub
+
+Con eso, vamos por partes.
+
+1. Arquitectura general
+Lo bueno
+
+Capas funcionales claras por dominio
+Separar en fases/directorios:
+
+phase2_database/ → capa de acceso a datos (database_manager.py, nexus_music.db)
+
+phase3_integration/ → gestión de biblioteca (music_model_sqlite.py)
+
+phase4_search_download/ → búsqueda/descarga (search_tab.py, download_queue.py, playlist_downloader.py)
+
+phase5_management_tools/ → duplicados, auto-organizar, batch rename
+
+phase6_player_lyrics/ → reproductor y letras (music_player.py, lyrics_fetcher.py)
+GitHub
+
+Eso está muy bien: no es un solo archivo de 10k líneas, sino un conjunto de módulos por feature.
+
+Cross-cutting bien aislados
+
+translations.py → i18n
+
+api_config_wizard.py → configuración de APIs
+
+album_artwork_loader.py, visual_utils.py, help_tab.py → infraestructura alrededor de la UI
+GitHub
+
+Buen síntoma de que estás pensando en reutilización y separación de responsabilidades.
+
+Arquitectura orientada a features
+Más que un puro “layered architecture”, estás yendo a algo tipo “feature modules + core”, lo cual para una app de escritorio con PyQt tiene sentido.
+
+Lo mejorable (a nivel arquitecto)
+
+Monolito de GUI
+main_window_complete.py como “Main application” en un proyecto de ~10k LOC y 30+ módulos huele a:
+
+Mucha lógica de negocio metida en slots de PyQt (signal/slot hell).
+
+El MainWindow conoce demasiado de cada fase (DB, descargas, management, player).
+
+👉 A nivel senior, te diría que el mayor problema potencial aquí es acoplamiento fuerte entre UI y dominio.
+
+Falta de “service layer” explícita
+Desde la estructura, no se ve un conjunto de servicios tipo:
+
+library_service.py
+
+download_service.py
+
+playlist_service.py
+
+lyrics_service.py
+
+Lo ideal:
+
+La GUI habla solo con servicios (interfaces claras).
+
+Los servicios hablan con database_manager, download_queue, APIs externas, etc.
+
+Así puedes testear lógica sin levantar PyQt, y algún día cambiar PyQt6 → otra cosa sin reescribir todo.
+
+Nombres “phaseX_” como deuda histórica
+Para documentación interna está bien, pero a nivel producto final:
+
+phase2_database/ → core/db/
+
+phase3_integration/ → features/library/
+
+phase4_search_download/ → features/search_download/
+etc.
+
+Ahora mismo se nota el histórico de experimentos y spikes.
+
+Sin rastro de puertos/adapters o interfaces “limpias”
+Con la integración de YouTube/Spotify/Genius/FFmpeg/yt-dlp, sería ideal tener algo como:
+
+interfaces/media_search_provider.py
+
+adapters/youtube_search.py, spotify_search.py
+
+interfaces/downloader.py con implementación en yt-dlp, etc.
+
+Eso te permitiría:
+
+Cambiar proveedor sin tocar la UI.
+
+Simular / mockear en tests.
+
+2. Estructura de carpetas
+Puntos fuertes
+
+Top-level “serio”:
+data/, docs/, src/, tests/, tools/, .env.example, requirements.txt, setup.py, scripts .bat para entry points.
+GitHub
++1
+
+Eso es muy parecido a un proyecto comercial Python bien organizado.
+
+Documentación por fase
+
+phase3_integration/README.md
+
+phase4_search_download/API_KEYS_CONFIG.md
+
+phase5_management_tools/README.md
+
+phase6_player_lyrics/README.md
+GitHub
++1
+
+Gran punto: cada sub-módulo explain-itself.
+
+Separación de tests
+Hay carpeta tests/ + pytest.ini, que indica intención de testear.
+GitHub
+
+Debilidades / mejoras
+
+¿Paquete instalable único?
+Desde el README, la estructura “lógica” es:
+
+AGENTE_MUSICA_MP3/
+  main_window_complete.py
+  translations.py
+  ...
+  phase2_database/
+  ...
+
+
+Pero en el repo real también tienes src/, tools/, scripts/ en raíz.
+GitHub
++1
+
+Para algo “pre-comercial” yo esperaría:
+
+src/
+  nexus_music_manager/   # paquete raíz
+    __init__.py
+    app.py               # entrypoint / factory
+    ui/
+    core/
+    features/
+scripts/
+tests/
+
+
+Ahora mismo da un poco la sensación de dos mundos:
+
+el “mundo legacy AGENTE_MUSICA_MP3/phaseX”
+
+el “mundo moderno src/ + tasks/ + tools/”
+
+Scripts .bat en raíz
+No es grave, pero para empaquetar/producir:
+
+mejor usar console_scripts en setup.py o pyproject.toml.
+
+y dejar .bat solo como atajo para dev/usuarios Windows.
+
+3. Calidad del código (code smells inferidos)
+
+Sin ver el código tengo que ir a patrones típicos que se dan con esta arquitectura:
+
+Smells muy probables
+
+MainWindow “dios”
+
+main_window_complete.py manejando:
+
+navegación de pestañas
+
+detalles de DB
+
+arranque de descargas
+
+actualización de progreso
+
+control del reproductor
+Eso escala mal: cualquier cambio toca este archivo.
+
+Lógica de negocio en callbacks de UI
+
+Slots de botones que:
+
+construyen queries SQL
+
+crean rutas del sistema de ficheros
+
+llaman directamente a descargas
+En vez de delegar en servicios.
+
+Acoplamiento entre fases
+Aunque haya carpetas phase4_*, etc., es muy probable que:
+
+search_tab.py conozca detalles de download_queue.py y database_manager.py.
+
+music_player.py toque directamente el modelo de la biblioteca en lugar de un PlaybackService.
+
+Falta de tipos y contratos claros
+A menos que explícitamente uses type hints y mypy, es típico ver:
+
+diccionarios “mágicos” para representar canciones
+
+tuplas posicionales
+vs. dataclasses tipo Track, Album, Artist, Playlist.
+
+Código orientado a “scripts” dentro de módulos de core
+La presencia de scripts como check_dbs.py, clean_db.py, import_music.bat, clean_unknown_metadata.sql sugiere que hay lógica administrativa repartida por el repo.
+GitHub
+
+Mejor: un módulo maintenance/ y comandos bien definidos.
+
+4. Seguridad
+
+Aquí sí que voy a ser especialmente paranoico, porque tocas:
+
+APIs externas (YouTube, Spotify, Genius, MusicBrainz)
+GitHub
++1
+
+Descarga de contenido remoto (yt-dlp, BeautifulSoup4)
+GitHub
+
+Ejecución de FFmpeg
+GitHub
+
+Riesgos típicos a revisar en tu código
+
+Gestión de API keys
+
+Dices que hay api_keys_config.txt y un wizard para configurar claves.
+GitHub
+
+Puntos a vigilar:
+
+Que ese archivo no se suba al repo (gitignore estricto).
+
+Que no se logueen claves ni tokens.
+
+Que la ruta del archivo no sea manipulable por el usuario de forma peligrosa.
+
+Uso de FFmpeg / yt-dlp
+
+Asegúrate de:
+
+No construir comandos shell con shell=True mezclando rutas/nombres de archivo introducidos por el usuario.
+
+Limitarte a listas tipo subprocess.run(["ffmpeg", "-i", input_path, ...]).
+
+Si parseas URL de usuario, sanitiza y valida.
+
+Rutas de archivos y path traversal
+
+Al “auto-organizar” (auto_organize.py) y al descargar playlists:
+
+Normaliza rutas (Path.resolve()).
+
+Quita secuencias .. y caracteres raros de nombres de artista/álbum/canción antes de crear carpetas.
+
+No permitas que una playlist con nombres raros “escape” de tu carpeta base.
+
+SQLite & inyección
+
+Si generas filtros de búsqueda dinámicos para FTS5:
+
+Asegúrate de usar parámetros en el cursor, no string concatenation.
+
+Ten cuidado con órdenes ORDER BY y nombres de columnas: si alguno proviene de la UI hay riesgo.
+
+Parsing de HTML con BeautifulSoup4
+
+Es relativamente safe, pero:
+
+Maneja encoding/errores.
+
+No evalúes nada proveniente del HTML (ni eval, ni exec).
+
+Logs
+
+Con tantas integraciones, el típico error es:
+
+Volcar responses enteras de APIs a logs (incluyendo tokens).
+
+Asegúrate de ofuscar claves en cualquier log de error.
+
+5. Performance (potenciales bottlenecks)
+
+Tu README afirma:
+
+10,000+ canciones con FTS5, carga <1s, búsqueda <100ms.
+GitHub
+
+Cola de descargas concurrente (3 simultáneas).
+GitHub
+
+Eso suena muy razonable. Aun así, los puntos típicos donde se rompe el rendimiento en apps PyQt como esta:
+
+Trabajos pesados en el hilo de UI
+
+Escaneo de duplicados, fingerprint de audio, lectura de metadatos, descarga de carátulas…
+
+Si cualquiera de esos se ejecuta en el main thread:
+
+UI congelada.
+
+Lo suyo:
+
+QThread / QThreadPool + QRunnable para:
+
+descarga
+
+fingerprint
+
+análisis de bitrate
+
+carga de imágenes
+
+Carga de imágenes (album art)
+
+album_artwork_loader.py probablemente carga imágenes desde disco o web.
+
+Cosas a verificar:
+
+Cache de thumbnails (no recargar a 512x512 cada vez que haces scroll).
+
+Redimensionar en background.
+
+Evitar bloques de I/O en el hilo principal.
+
+Diseño del acceso a SQLite
+
+Bien que uses índices e FTS5.
+GitHub
+
+Peligros:
+
+Abrir/cerrar conexiones por cada operación.
+
+Bloqueos si haces writes desde varios threads sin un diseño claro (un único “DB worker thread” es lo más sano).
+
+Descargas concurrentes
+
+3 descargas simultáneas está bien, pero:
+
+¿qué pasa si el user dispara 300 elementos en cola?
+
+¿hay backpressure / límites en la UI para evitar saturar disco/CPU?
+
+¿se persiste el estado de la cola para que no se pierda trabajo en crashes?
+
+Gestión de listas grandes en la GUI
+
+Para 10k canciones:
+
+usar QAbstractTableModel + QTableView con lazy loading está bien (parece que vas por ahí con music_model_sqlite.py).
+GitHub
+
+Solo confirmaría que:
+
+no estés construyendo widgets por fila (delegates custom pesados sin necesidad).
+
+no estés reasignando modelos completos en cada filtro.
+
+Puntuación global (honesta con la info disponible)
+
+Dado todo lo anterior, y asumiendo que el código está “típicamente bien” para lo que describes:
+
+Arquitectura & modularización: 80/100
+
+Estructura de repo & docs: 85/100
+
+Calidad interna del código (asumida por señales): 70/100
+
+Seguridad (sin revisión de código): 65/100
+
+Performance (diseño + claims de README): 80/100
+
+👉 Puntuación global: ~76/100
+Para ser un proyecto personal/pre-comercial está muy bien, pero le falta una ronda seria de “enterprise hardening”.
+
+Lista de mejoras prioritarias (en orden sugerido)
+
+Dividir el MainWindow en capas limpias
+
+Extraer servicios:
+
+LibraryService, DownloadService, PlayerService, DuplicateService, etc.
+
+Mantener el código PyQt limitado a:
+
+wiring de señales
+
+binding de datos
+
+layout de UI
+
+Normalizar estructura de paquete
+
+Pasar a algo tipo:
+
+src/nexus_music_manager/core/...
+
+src/nexus_music_manager/features/...
+
+src/nexus_music_manager/ui/...
+
+Eliminar nombres phaseX_ del código (dejarlo solo en docs si quieres historial).
+
+Definir un modelo de dominio explícito
+
+Clases (dataclasses):
+
+Track, Album, Artist, Playlist, DownloadTask.
+
+Usar estas clases en todo:
+
+DB layer → mapea a objetos de dominio.
+
+UI → trabaja con modelos tipados, no dicts sueltos.
+
+Diseñar un patrón claro para SQLite + threads
+
+Un solo “DB worker thread” que procese una cola de operaciones.
+
+Nada de usar la misma conexión desde múltiples threads sin control.
+
+API tipo:
+
+db.execute(query, params) -> future/resultado
+
+db.run_in_background(...) para tareas masivas.
+
+Seguridad & configuración de APIs
+
+
+
+Asegurar que:
+
+claves solo se leen de .env o archivos fuera del repo.
+
+api_keys_config.txt está ignorado por git.
+
+comandos FFmpeg/yt-dlp no usan shell=True.
+
+sanitizas rutas de archivos.
+
+Background workers bien unificados
+
+Unificar:
+
+descargas
+
+escaneo de duplicados
+
+análisis de calidad
+
+Bajo un componente tipo TaskManager:
+
+límite de hilos
+
+cola priorizada
+
+cancelación y reintentos.
+
+Tests serios en el core
+
+Dado que ya tienes tests/ + pytest:
+
+tests para database_manager.py, download_queue.py, duplicates_detector.py, auto_organize.py, music_player.py (sin UI).
+
+Objetivo: que puedas refactorizar sin miedo.
+
+Observabilidad interna
+
+Logger central:
+
+niveles DEBUG/INFO/WARN/ERROR
+
+logs de:
+
+operaciones de DB
+
+colas de descargas
+
+llamadas a APIs externas (sin secretos)
+
+Si quieres, en un siguiente paso podemos hacer algo más quirúrgico: tú me pegas, por ejemplo, el código de main_window_complete.py y download_queue.py, y te hago un review línea a línea con refactors concretos.

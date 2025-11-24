@@ -1,0 +1,505 @@
+## 2. Claude (claude.ai) - Code Review Detallado
+
+Ricardo, he intentado acceder a los archivos específicos que mencionaste (src/database/manager.py, src/core/download_queue.py, etc.) pero el repositorio que encontré tiene una estructura diferente.
+Basándome en el README, el proyecto actual parece tener estos archivos principales:
+
+agente_musica.py - Motor principal de descarga
+agente_final.py - Agente de búsqueda automática
+Archivos .bat para Windows
+
+La estructura que mencionaste (src/database/, src/gui/, etc.) no aparece en el repositorio público.
+Posibles opciones:
+1️⃣ Si tienes una versión local más avanzada:
+Podrías compartir esos archivos específicos directamente para que pueda hacer el code review exhaustivo que pides.
+2️⃣ Si quieres que revise el proyecto actual:
+Puedo analizar la estructura existente y sugerir cómo refactorizar hacia la arquitectura que mencionaste.
+3️⃣ Si quieres un análisis general:
+Puedo darte un code review basado en patrones comunes de problemas en proyectos de descarga de YouTube con las áreas que mencionaste:
+
+🔍 Code Review General (problemas típicos en este tipo de proyectos)
+Basándome en proyectos similares de descarga de música, aquí están los problemas críticos que probablemente existan:
+1. RACE CONDITIONS - Thread Safety en Database
+Problema típico en manager.py:
+python# ❌ MAL - Sin thread-safety
+class DatabaseManager:
+    def __init__(self):
+        self.conn = sqlite3.connect('music.db')
+        self.cursor = self.conn.cursor()
+    
+    def add_song(self, song_data):
+        # Múltiples threads pueden causar database locked
+        self.cursor.execute("INSERT INTO songs VALUES (?, ?)", song_data)
+        self.conn.commit()
+✅ FIX con thread-safety:
+pythonimport sqlite3
+import threading
+from contextlib import contextmanager
+
+class DatabaseManager:
+    def __init__(self, db_path='music.db'):
+        self.db_path = db_path
+        self._local = threading.local()
+        self._lock = threading.Lock()
+        self._init_db()
+    
+    def _get_connection(self):
+        """Conexión por thread (thread-local storage)"""
+        if not hasattr(self._local, 'conn'):
+            self._local.conn = sqlite3.connect(
+                self.db_path,
+                check_same_thread=False,
+                timeout=30.0  # Evita database locked
+            )
+            self._local.conn.row_factory = sqlite3.Row
+        return self._local.conn
+    
+    @contextmanager
+    def get_cursor(self):
+        """Context manager thread-safe"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            yield cursor
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            cursor.close()
+    
+    def add_song(self, song_data):
+        """Inserción thread-safe con retry logic"""
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                with self.get_cursor() as cursor:
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO songs 
+                        (id, title, artist, url, status, created_at)
+                        VALUES (?, ?, ?, ?, ?, datetime('now'))
+                    """, song_data)
+                return True
+            except sqlite3.OperationalError as e:
+                if 'locked' in str(e) and attempt < max_retries - 1:
+                    time.sleep(0.1 * (attempt + 1))  # Exponential backoff
+                    continue
+                raise
+        return False
+    
+    def cleanup_connections(self):
+        """Limpia conexiones thread-local"""
+        if hasattr(self._local, 'conn'):
+            self._local.conn.close()
+            delattr(self._local, 'conn')
+
+2. CONCURRENCIA - Download Queue
+Problema en download_queue.py:
+python# ❌ MAL - Sin límite de concurrencia, memory leak potencial
+import threading
+
+class DownloadQueue:
+    def __init__(self):
+        self.queue = []
+        
+    def process_downloads(self, songs):
+        for song in songs:
+            thread = threading.Thread(target=self.download, args=(song,))
+            thread.start()  # Sin límite de threads!
+✅ FIX con ThreadPoolExecutor y gestión de recursos:
+pythonfrom concurrent.futures import ThreadPoolExecutor, as_completed
+from queue import Queue, Empty
+import threading
+import logging
+from typing import List, Dict, Callable
+from dataclasses import dataclass
+from enum import Enum
+
+class DownloadStatus(Enum):
+    PENDING = "pending"
+    DOWNLOADING = "downloading"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+@dataclass
+class DownloadTask:
+    id: str
+    url: str
+    title: str
+    artist: str
+    callback: Callable = None
+    priority: int = 0
+    retries: int = 0
+    max_retries: int = 3
+
+class DownloadQueue:
+    def __init__(self, max_workers=4, max_queue_size=100):
+        self.max_workers = max_workers
+        self.max_queue_size = max_queue_size
+        
+        self._queue = Queue(maxsize=max_queue_size)
+        self._active_downloads = {}
+        self._completed = {}
+        self._failed = {}
+        
+        self._executor = None
+        self._shutdown_event = threading.Event()
+        self._lock = threading.RLock()
+        
+        self.logger = logging.getLogger(__name__)
+    
+    def start(self):
+        """Inicia el procesamiento de la cola"""
+        if self._executor is not None:
+            return
+        
+        self._executor = ThreadPoolExecutor(
+            max_workers=self.max_workers,
+            thread_name_prefix="download_worker"
+        )
+        self._shutdown_event.clear()
+        
+        # Thread para procesar la cola
+        self._processor_thread = threading.Thread(
+            target=self._process_queue,
+            name="queue_processor",
+            daemon=True
+        )
+        self._processor_thread.start()
+    
+    def add_task(self, task: DownloadTask, block=True, timeout=None):
+        """Añade tarea a la cola con backpressure"""
+        try:
+            self._queue.put(task, block=block, timeout=timeout)
+            self.logger.info(f"Task added: {task.title}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to add task: {e}")
+            return False
+    
+    def _process_queue(self):
+        """Procesa tareas de la cola"""
+        futures = {}
+        
+        try:
+            while not self._shutdown_event.is_set():
+                # Controla el número de descargas activas
+                while len(futures) < self.max_workers:
+                    try:
+                        task = self._queue.get(timeout=1.0)
+                        future = self._executor.submit(self._download_task, task)
+                        futures[future] = task
+                    except Empty:
+                        break
+                
+                # Procesa tareas completadas
+                if futures:
+                    done, _ = concurrent.futures.wait(
+                        futures.keys(),
+                        timeout=1.0,
+                        return_when=concurrent.futures.FIRST_COMPLETED
+                    )
+                    
+                    for future in done:
+                        task = futures.pop(future)
+                        try:
+                            result = future.result()
+                            self._handle_completion(task, result)
+                        except Exception as e:
+                            self._handle_error(task, e)
+        
+        finally:
+            # Cleanup
+            for future in futures:
+                future.cancel()
+    
+    def _download_task(self, task: DownloadTask) -> Dict:
+        """Descarga una tarea individual"""
+        task_id = task.id
+        
+        with self._lock:
+            self._active_downloads[task_id] = {
+                'task': task,
+                'status': DownloadStatus.DOWNLOADING,
+                'progress': 0
+            }
+        
+        try:
+            # Aquí va tu lógica de descarga con yt-dlp
+            result = self._perform_download(task)
+            
+            with self._lock:
+                del self._active_downloads[task_id]
+                self._completed[task_id] = result
+            
+            if task.callback:
+                task.callback(task, result)
+            
+            return result
+            
+        except Exception as e:
+            # Retry logic
+            if task.retries < task.max_retries:
+                task.retries += 1
+                self.logger.warning(
+                    f"Retry {task.retries}/{task.max_retries} for {task.title}"
+                )
+                self._queue.put(task)  # Re-encolar
+                raise
+            
+            with self._lock:
+                if task_id in self._active_downloads:
+                    del self._active_downloads[task_id]
+                self._failed[task_id] = {
+                    'task': task,
+                    'error': str(e)
+                }
+            
+            raise
+    
+    def _perform_download(self, task: DownloadTask) -> Dict:
+        """Lógica real de descarga"""
+        import yt_dlp
+        
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'outtmpl': f'downloads/{task.artist}/{task.title}.%(ext)s',
+            'progress_hooks': [lambda d: self._progress_hook(task.id, d)],
+            'quiet': True,
+            'no_warnings': True,
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(task.url, download=True)
+            return {
+                'title': info.get('title'),
+                'duration': info.get('duration'),
+                'filepath': ydl.prepare_filename(info)
+            }
+    
+    def _progress_hook(self, task_id: str, progress_data: Dict):
+        """Actualiza progreso"""
+        with self._lock:
+            if task_id in self._active_downloads:
+                status = progress_data.get('status')
+                if status == 'downloading':
+                    downloaded = progress_data.get('downloaded_bytes', 0)
+                    total = progress_data.get('total_bytes', 1)
+                    self._active_downloads[task_id]['progress'] = (
+                        downloaded / total * 100
+                    )
+    
+    def get_status(self) -> Dict:
+        """Estado actual de la cola"""
+        with self._lock:
+            return {
+                'queue_size': self._queue.qsize(),
+                'active': len(self._active_downloads),
+                'completed': len(self._completed),
+                'failed': len(self._failed),
+                'active_downloads': list(self._active_downloads.values())
+            }
+    
+    def shutdown(self, wait=True, timeout=30):
+        """Apaga la cola limpiamente"""
+        self.logger.info("Shutting down download queue...")
+        
+        self._shutdown_event.set()
+        
+        if self._processor_thread:
+            self._processor_thread.join(timeout=timeout)
+        
+        if self._executor:
+            self._executor.shutdown(wait=wait, timeout=timeout)
+            self._executor = None
+        
+        self.logger.info("Download queue shutdown complete")
+    
+    def __enter__(self):
+        self.start()
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.shutdown()
+
+3. PERFORMANCE - Visualizer Widget
+Problema en visualizer_widget.py:
+python# ❌ MAL - Actualiza UI en cada frame sin throttling
+class VisualizerWidget(QWidget):
+    def update_waveform(self, audio_data):
+        # Se llama 60 veces por segundo!
+        self.repaint()  # Bloquea el thread principal
+✅ FIX con throttling y offscreen rendering:
+pythonfrom PyQt6.QtWidgets import QWidget
+from PyQt6.QtCore import QTimer, pyqtSignal, QThread
+from PyQt6.QtGui import QPainter, QPixmap
+import numpy as np
+from collections import deque
+import time
+
+class VisualizerWidget(QWidget):
+    update_requested = pyqtSignal(np.ndarray)
+    
+    def __init__(self, parent=None, fps=30):
+        super().__init__(parent)
+        
+        self.fps = fps
+        self.frame_time = 1000 // fps  # ms por frame
+        
+        # Buffer circular para datos de audio
+        self.max_samples = 1024
+        self.audio_buffer = deque(maxlen=self.max_samples)
+        
+        # Offscreen rendering
+        self.pixmap = QPixmap(self.size())
+        self.pixmap.fill(Qt.GlobalColor.black)
+        
+        # Throttling
+        self.last_update = 0
+        self.pending_data = None
+        
+        # Timer para updates controlados
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self._scheduled_update)
+        self.update_timer.start(self.frame_time)
+        
+        # Worker thread para procesamiento pesado
+        self.processor = AudioProcessor()
+        self.processor.processed.connect(self._on_data_processed)
+        self.processor.start()
+    
+    def update_waveform(self, audio_data: np.ndarray):
+        """
+        Throttled update - solo acepta datos si ha pasado suficiente tiempo
+        """
+        current_time = time.time() * 1000  # ms
+        
+        if current_time - self.last_update < self.frame_time:
+            # Guarda para el próximo frame
+            self.pending_data = audio_data
+            return
+        
+        self.last_update = current_time
+        
+        # Procesa en worker thread
+        self.processor.process(audio_data)
+    
+    def _on_data_processed(self, processed_data):
+        """Recibe datos procesados del worker thread"""
+        self.audio_buffer.extend(processed_data)
+        self.update()
+    
+    def _scheduled_update(self):
+        """Update programado a FPS constante"""
+        if self.pending_data is not None:
+            self.processor.process(self.pending_data)
+            self.pending_data = None
+    
+    def paintEvent(self, event):
+        """Renderiza usando el pixmap precalculado"""
+        painter = QPainter(self)
+        
+        # Double buffering - dibuja en pixmap primero
+        pixmap_painter = QPainter(self.pixmap)
+        pixmap_painter.fillRect(
+            self.pixmap.rect(),
+            Qt.GlobalColor.black
+        )
+        
+        # Dibuja waveform optimizado
+        if self.audio_buffer:
+            self._draw_waveform_optimized(pixmap_painter)
+        
+        pixmap_painter.end()
+        
+        # Copia el pixmap al widget
+        painter.drawPixmap(0, 0, self.pixmap)
+    
+    def _draw_waveform_optimized(self, painter):
+        """Dibuja waveform con renderizado optimizado"""
+        width = self.width()
+        height = self.height()
+        center_y = height // 2
+        
+        # Downsample si hay demasiados puntos
+        data = list(self.audio_buffer)
+        if len(data) > width:
+            step = len(data) // width
+            data = data[::step]
+        
+        # Usa QPolygon para dibujar todo de una vez
+        from PyQt6.QtGui import QPolygon
+        from PyQt6.QtCore import QPoint
+        
+        points = []
+        x_step = width / len(data) if data else 1
+        
+        for i, value in enumerate(data):
+            x = int(i * x_step)
+            y = int(center_y + (value * center_y))
+            points.append(QPoint(x, y))
+        
+        if points:
+            painter.setPen(Qt.GlobalColor.green)
+            polygon = QPolygon(points)
+            painter.drawPolyline(polygon)
+    
+    def resizeEvent(self, event):
+        """Recrea el pixmap cuando cambia el tamaño"""
+        super().resizeEvent(event)
+        self.pixmap = QPixmap(event.size())
+        self.pixmap.fill(Qt.GlobalColor.black)
+    
+    def cleanup(self):
+        """Limpia recursos"""
+        self.update_timer.stop()
+        self.processor.stop()
+        self.processor.wait()
+
+
+class AudioProcessor(QThread):
+    """Worker thread para procesamiento de audio"""
+    processed = pyqtSignal(np.ndarray)
+    
+    def __init__(self):
+        super().__init__()
+        self.queue = deque(maxlen=10)
+        self.running = True
+    
+    def process(self, data):
+        """Añade datos a la cola de procesamiento"""
+        self.queue.append(data)
+    
+    def run(self):
+        """Procesa datos en background"""
+        while self.running:
+            if self.queue:
+                data = self.queue.popleft()
+                
+                # Procesamiento pesado aquí (FFT, normalización, etc.)
+                processed = self._process_audio(data)
+                
+                self.processed.emit(processed)
+            else:
+                self.msleep(10)  # Yield CPU
+    
+    def _process_audio(self, data: np.ndarray) -> np.ndarray:
+        """Procesamiento real del audio"""
+        # Normalización
+        if data.max() > 0:
+            data = data / data.max()
+        
+        # Downsampling si es necesario
+        if len(data) > 1024:
+            data = data[::len(data)//1024]
+        
+        return data
+    
+    def stop(self):
+        """Detiene el thread"""
+        self.running = False

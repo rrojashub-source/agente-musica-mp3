@@ -1,0 +1,111 @@
+## 4. Perplexity - Competencia y Mercado
+
+1. Principales competidores (actuales - 2025)
+Los music managers más reconocidos y usados en 2025 incluyen:
+
+MusicBee: El favorito en Windows por su facilidad, velocidad y personalización.​
+
+foobar2000: Enfatiza la flexibilidad, personalización extrema y soporte para formatos avanzados.​
+
+AIMP
+
+MediaMonkey
+
+Clementine
+
+iTunes (aún usado por público Apple)
+
+Roon (premium audiophile)
+
+Helium Music Manager
+
+Pi Music Player, Audify, Audials (más orientados a móvil e interfaces sencillas)​
+
+2. Features que tienen los competidores y que el proyecto NO incluye (según documentación adjunta y mercado)
+Features comunes en competidores avanzados:
+
+Visualizaciones de audio avanzadas (plugins, efectos, modo karaoke, visual bars, integración con WinAmp, BassBox)​
+
+Soporte multiplataforma completo: apps nativas en Android/iOS + sincronización en la nube** (Roon, Pi Music, MediaMonkey, Plex)​
+
+Auto DJ & generación inteligente de listas (playlist generator)​
+
+Integración completa con streaming directo (Groove Music, SoundCloud, web radio, Subsonic, etc.)​
+
+Extensiones/plugins: sistema abierto para agregar funciones de terceros (Skins, Discord, UPnP, DLNA, estadísticas más profundas, integración con Last.fm, etc.)​
+
+Transcodificación avanzada y compatibilidad con formatos profesionales (APE, SACD, AAC, DTS, DVD-Audio, etc.)​
+
+Control remoto vía app dedicada o integración Smart Home​
+
+Soporte para CD/DVD/BluRay ripping & burning (muy usado por oldschool collectors)​
+
+Gestión multiusuario/sincronización familiar (modo compartido, cuentas, backup)​
+
+Integración con sistemas de gestión para DJs/producción (EngineDJ, Serato, Rekordbox, etc.)​
+
+3. Modelos de precio (¿Freemium?)
+MusicBee, foobar2000, AIMP: 100% gratuitos para usuarios normales.​
+
+MediaMonkey: Freemium (gratis con funciones limitadas, versión paga para extras - $30 USD aprox.).
+
+Roon: Solo modelo premium ($10–$15 USD/mes).
+
+Plex/Pi Music: Modelo freemium, requiere Plex Pass para desbloquear gestión avanzada y streaming.​
+
+Audials: Gratuito en PC, con apps móviles pagas.
+
+Otros (TuneUp, WideAngle, iMusic, etc.): suelen tener prueba gratuita y versión limitada; full version paga.​
+
+4. Diferenciadores posibles del proyecto
+Las ventajas de Nexus Music Manager sobre competidores, según lo que ya incluye y la documentación, serían:
+
+Descarga automática desde YouTube/Spotify (con cola y playlists, usando APIs oficiales y yt-dlp — pocos managers ofrecen esto bien integrado en 2025).​
+
+Gestión de metadatos e integración con MusicBrainz/Genius (auto-metadata y auto-lyrics, actual y sin limitaciones de terceros).​
+
+Detección de duplicados multimétodo (metadata, fingerprint, filesize) — más avanzado que solo “tags”.​
+
+Organización de carpetas masiva y flexible con plantillas personalizables.
+
+Actual interfaz moderna PyQt6 y multi-idioma nativo (español-inglés instantáneo, raro en apps similares).​
+
+Sistema de ayuda interactiva en la app, con documentación clara.
+
+Instalación “casi portable” y fácil integración en Windows/Linux/Mac (scripts incluidos, no requiere dependencias de terceros complicadas).
+
+Enfoque en velocidad (10000+ canciones, búsqueda instantánea FTS5).
+
+5. Features recomendados para hacerlo competitivo (acción directa)
+App móvil y sincronización en nube (Google Drive, Dropbox)​
+
+Modo karaoke/visualizador avanzado (sincronización de letras, barras animadas, efectos)
+
+Gestión y migración multiplataforma (Android/iOS/Web) y transferencia de playlists entre servicios​
+
+Integración con streaming directo (web radios, SoundCloud, Groove Music)
+
+Sistema de plugins/extensiones abierto: para comunidad de terceros (skinning, stats, integración social)
+
+Control remoto desde móvil, Smart Home, Discord (plugins o APIs abiertas)
+
+Transcodificación para formatos premium y auto-tagging para coleccionistas
+
+Modo colaborativo/multiusuario (familiar o grupo)
+
+Reporte de estadísticas tipo profesional (usabilidad, listening patterns, recomendaciones AI)
+
+Automatización avanzada AI: recomendaciones dinámicas, playlist auto-expansiva, mood/genre matching​
+
+Integración con ecosistemas DJ/pro audio (Serato, EngineDJ, Rekordbox)
+
+Resumen Actionable
+Música managers más fuertes (gratuitos): MusicBee, foobar2000, AIMP, MediaMonkey, Roon.
+
+Diferenciador actual: Descarga automatizada YouTube/Spotify + gestión avanzada de duplicados/metadatos + interfaz moderna PyQt6 + ayuda interactiva.
+
+Para mayor competitividad: Priorizar desarrollo de app móvil/nube, modo visual/karaoke, migración multiplataforma, plugin system y controles remotos.
+
+Modelo de negocio: Mantener gratis, explorar freemium por funciones de sincronización, plugins premium o AI-powered recommendations.
+
+Siguiente paso: Validar integración en ecosistemas actuales (Android/iOS, DJ), abrir a comunidad plugins/extensiones y presentar comparativas directas vs. MusicBee/foobar2000 para captar usuarios avanzados.

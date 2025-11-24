@@ -1,0 +1,85 @@
+## 7. Cualquier AI - Revisión Rápida General - Copilto
+### Plan de acción priorizado para llevar el proyecto a versión vendible
+
+#### Resumen ejecutivo
+Aquí tienes un roadmap accionable, priorizado por impacto inmediato en seguridad legal, estabilidad y usabilidad. Cada ítem incluye qué cambiar, cómo implementarlo y una estimación de esfuerzo orientativa.
+
+---
+
+### Prioridades críticas (hacer primero)
+
+1. Controles legales y consentimiento de uso
+- Qué: Añadir comprobación de licencia por pista y aviso/confirmación explícita antes de descargar contenido que no tenga licencia permisiva.
+- Cómo: Consultar API de MusicBrainz/Discogs para obtener información de licencia; si no hay licencia clara, mostrar prompt y registrar consentimiento en un log. Implementar flag --force para usuarios avanzados.
+- Est. esfuerzo: 6–10 h.
+
+2. Manejo robusto de errores y reintentos
+- Qué: Reintentos con backoff exponencial, manejo de códigos HTTP 4xx/5xx, timeouts configurables, y límites de reintentos por recurso.
+- Cómo: Envolver llamadas a yt-dlp/requests en una capa de retry con jitter; centralizar políticas en config.yaml.
+- Est. esfuerzo: 4–8 h.
+
+3. Tests automáticos y CI
+- Qué: Añadir suite de tests básicos (unit + integración leve) y pipeline CI (GitHub Actions) para lint, tests y build.
+- Cómo: Pytest para unidades; mocks para llamadas externas; flujo GH Actions que corre en PR. Incluir check de flake8/black.
+- Est. esfuerzo: 6–12 h.
+
+4. Documentación técnica mínima
+- Qué: README técnico con arquitectura, flujo de datos, contratos de módulos, y guía de contribución; ejemplo de config y comandos comunes.
+- Cómo: Crear secciones: Overview, Arquitectura, Configuración, Ejecución, Desarrollo, Seguridad Legal.
+- Est. esfuerzo: 3–5 h.
+
+5. Portabilidad multiplataforma
+- Qué: Reducir dependencia de .bat; ofrecer entrypoint Python y scripts shell; proporcionar builds/instalador para Windows como opción.
+- Cómo: Usar argparse y setup.cfg/pyproject; crear scripts en ./bin para bash/zsh y un wrapper .bat opcional generado por setuptools.
+- Est. esfuerzo: 4–8 h.
+
+6. Logging y telemetría local
+- Qué: Logging estructurado (JSON opcional), niveles configurables, archivo de auditoría con acciones de descarga y consentimientos.
+- Cómo: Configurar logging estándar con RotatingFileHandler; exportar log path en config.
+- Est. esfuerzo: 2–4 h.
+
+---
+
+### Mejoras de alto impacto (siguientes)
+
+1. Enriquecimiento de metadatos ID3
+- Implementar escritura completa de tags (cover art, ISRC, licencia, fuente).
+
+2. Verificación y deduplicación de archivos
+- Evitar descargas repetidas; usar hash + base de datos ligera (SQLite).
+
+3. Interfaz de configuración y UI mínima
+- Añadir modo TUI (text UI) con prompts claros o dashboard web liviano para colas.
+
+4. Paquetes y releases
+- Crear release automatizado, empaquetado wheel, y ejecutables con PyInstaller para Windows.
+
+5. Políticas de rate-limiting y respeto a TOS
+- Implementar delays configurables por dominio y opción de modo "polite" para no sobrecargar fuentes.
+
+6. Seguridad y sandboxing
+- Ejecutar procesos externos con límites (timeout, recursos) y validación de entradas del usuario.
+
+Est. esfuerzo total para estas mejoras: 20–40 h.
+
+---
+
+### Checklist inmediato para un PR (lista accionable)
+- [ ] Añadir config.yaml con defaults y documentación inline.
+- [ ] Crear módulo legal_check.py que consulte MusicBrainz y decida permiso de descarga.
+- [ ] Implementar retry wrapper retry_utils.py usado por todas las llamadas de red.
+- [ ] Añadir tests para retry logic, parsing de metadatos y flujo principal (pytest + vcrpy o respx).
+- [ ] Configurar GitHub Actions: lint, test, build.
+- [ ] Actualizar README con sección “Risk & License handling”.
+- [ ] Reemplazar scripts .bat por entrypoint en pyproject.toml; mantener .bat como shim si es necesario.
+
+---
+
+### Estimación de esfuerzo total aproximada
+- Mínimo viable (prioridades críticas + PR checklist): 25–45 horas.
+- Versión vendible (incluye mejoras de alto impacto): 50–120 horas.
+
+---
+
+### Recomendación final
+Empieza por un PR que implemente: legal_check + retry wrapper + CI básico + README técnico. Eso mejora sustancialmente la seguridad y la confianza del usuario en poco tiempo. Después implementa portabilidad, logging y tests de integración. Con esos pasos el proyecto pasará de una utilidad experimental a una herramienta confiable y comercializable.
