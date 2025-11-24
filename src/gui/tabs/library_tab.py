@@ -10,19 +10,20 @@ Complete library view with integrated audio playback:
 - Integration with AudioPlayer and NowPlayingWidget
 - Auto-play next song on end
 - Graceful error handling for missing files
+- Skeleton loading animation during data load
 
 Created: November 13, 2025
-Updated: November 19, 2025 (Added cover art integration)
+Updated: November 23, 2025 (Added skeleton loading)
 """
 import logging
 from pathlib import Path
 from typing import Optional, Dict
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
-    QPushButton, QLabel, QHeaderView, QMessageBox, QMenu
+    QPushButton, QLabel, QHeaderView, QMessageBox, QMenu, QApplication
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl
-from PyQt6.QtGui import QColor, QDragEnterEvent, QDropEvent
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl, QThread, pyqtSlot
+from PyQt6.QtGui import QColor, QDragEnterEvent, QDropEvent, QBrush
 
 from core.cover_art_manager import CoverArtManager
 
@@ -199,16 +200,41 @@ class LibraryTab(QWidget):
             # self.now_playing_widget.song_ended.connect(self._on_song_ended)  # Handled by main.py
             self.now_playing_widget.stop_clicked.connect(self._on_stop_clicked)
 
+    def _show_skeleton_loading(self, num_rows: int = 10):
+        """Show skeleton loading placeholders"""
+        self.library_table.setSortingEnabled(False)
+        self.library_table.setRowCount(0)
+
+        skeleton_color = QColor(128, 128, 128, 80)  # Semi-transparent gray
+
+        for i in range(num_rows):
+            row = self.library_table.rowCount()
+            self.library_table.insertRow(row)
+
+            # Create placeholder items with skeleton style
+            placeholders = ["Loading...", "...", "...", "...", "...", "..."]
+            for col, text in enumerate(placeholders):
+                item = QTableWidgetItem(text)
+                item.setForeground(QBrush(skeleton_color))
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                self.library_table.setItem(row, col, item)
+
+        self.status_label.setText("⏳ Cargando biblioteca... / Loading library...")
+        QApplication.processEvents()
+
     def _load_library(self):
-        """Load songs from database into table"""
+        """Load songs from database into table with skeleton loading"""
         try:
+            # Show skeleton loading first
+            self._show_skeleton_loading(8)
+
             # Get all songs from database
             songs = self.db_manager.get_all_songs()
 
             # Disable sorting while populating
             self.library_table.setSortingEnabled(False)
 
-            # Clear table
+            # Clear skeleton and load real data
             self.library_table.setRowCount(0)
 
             # Populate table

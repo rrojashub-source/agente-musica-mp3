@@ -191,9 +191,10 @@ class QueueWidget(QWidget):
         artist = metadata.get('artist', 'Unknown')
         self.table.setItem(row_index, 1, QTableWidgetItem(artist))
 
-        # Progress bar
+        # Progress bar (enhanced with status-aware styling)
         progress = item.get('progress', 0)
-        progress_bar = self._create_progress_bar(progress)
+        status = item.get('status', 'pending')
+        progress_bar = self._create_progress_bar(progress, status)
         self.table.setCellWidget(row_index, 2, progress_bar)
 
         # Status
@@ -204,21 +205,54 @@ class QueueWidget(QWidget):
         action_widget = self._create_action_buttons(item_id, status)
         self.table.setCellWidget(row_index, 4, action_widget)
 
-    def _create_progress_bar(self, progress: int) -> QProgressBar:
+    def _create_progress_bar(self, progress: int, status: str = 'pending') -> QProgressBar:
         """
-        Create progress bar widget
+        Create enhanced progress bar widget with status-aware styling
 
         Args:
             progress (int): Progress percentage (0-100)
+            status (str): Download status for styling
 
         Returns:
-            QProgressBar: Progress bar widget
+            QProgressBar: Enhanced progress bar widget
         """
         progress_bar = QProgressBar()
         progress_bar.setRange(0, 100)
         progress_bar.setValue(progress)
         progress_bar.setTextVisible(True)
-        progress_bar.setFormat(f"{progress}%")
+
+        # Status-aware format and styling
+        if status == 'completed':
+            progress_bar.setFormat("✅ Completado / Done")
+            progress_bar.setStyleSheet("""
+                QProgressBar { border: 1px solid #4CAF50; border-radius: 3px; }
+                QProgressBar::chunk { background-color: #4CAF50; }
+            """)
+        elif status == 'failed':
+            progress_bar.setFormat("❌ Error")
+            progress_bar.setStyleSheet("""
+                QProgressBar { border: 1px solid #f44336; border-radius: 3px; }
+                QProgressBar::chunk { background-color: #f44336; }
+            """)
+        elif status == 'paused':
+            progress_bar.setFormat(f"⏸ {progress}% Pausado / Paused")
+            progress_bar.setStyleSheet("""
+                QProgressBar { border: 1px solid #ff9800; border-radius: 3px; }
+                QProgressBar::chunk { background-color: #ff9800; }
+            """)
+        elif status == 'downloading':
+            progress_bar.setFormat(f"⬇️ {progress}%")
+            progress_bar.setStyleSheet("""
+                QProgressBar { border: 1px solid #2196F3; border-radius: 3px; }
+                QProgressBar::chunk { background-color: #2196F3; }
+            """)
+        else:  # pending
+            progress_bar.setFormat("⏳ En cola / Queued")
+            progress_bar.setStyleSheet("""
+                QProgressBar { border: 1px solid #9e9e9e; border-radius: 3px; }
+                QProgressBar::chunk { background-color: #9e9e9e; }
+            """)
+
         return progress_bar
 
     def _create_action_buttons(self, item_id: str, status: str) -> QWidget:
