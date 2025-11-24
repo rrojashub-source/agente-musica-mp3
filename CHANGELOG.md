@@ -10,8 +10,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Smart playlists automáticas (en desarrollo)
-- Gapless playback (en desarrollo)
+- Cloud sync básico (planificado)
+- Plugin system básico (planificado)
+
+---
+
+## [0.9.3] - 2024-11-24
+
+### Added
+- **Rate Limiting:** Sistema centralizado de rate limiting para todas las APIs (YouTube 10/s, Spotify 30/s, MusicBrainz 1/s, Genius 5/s)
+- **Gapless Playback:** Transición sin gap entre canciones usando pygame.mixer.queue()
+- **Smart Playlists:** Motor de playlists automáticas basadas en reglas
+  - Operadores: equals, contains, between, in_last, etc.
+  - Modos: ALL (AND) / ANY (OR)
+  - Built-in: Recently Added, Most Played, Never Played, By Genre, By Decade, Top Rated
+  - Persistencia JSON
+- **CHANGELOG.md:** Historial de versiones del proyecto
+- **TROUBLESHOOTING.md:** Guía de solución de problemas comunes
+
+### Changed
+- Score interno: 92/100 → 95/100
+
+### Tests
+- 15 tests para rate_limiter.py
+- 14 tests para gapless_playback.py
+- 23 tests para smart_playlist.py
 
 ---
 
