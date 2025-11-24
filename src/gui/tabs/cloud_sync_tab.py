@@ -114,14 +114,38 @@ class CloudSyncTab(QWidget):
         self.gdrive_widget = QWidget()
         gdrive_layout = QVBoxLayout(self.gdrive_widget)
         gdrive_layout.setContentsMargins(0, 10, 0, 0)
-        gdrive_label = QLabel("🔐 Google Drive requires OAuth authentication")
-        gdrive_label.setStyleSheet("color: #666;")
-        self.gdrive_auth_btn = QPushButton("🔑 Authenticate with Google")
-        self.gdrive_auth_btn.clicked.connect(self._authenticate_google)
+
+        # Info about Google Drive setup
+        gdrive_info = QLabel(
+            "🔐 Google Drive requires OAuth 2.0 authentication.\n"
+            "You need a credentials.json file from Google Cloud Console."
+        )
+        gdrive_info.setStyleSheet("color: #666;")
+        gdrive_layout.addWidget(gdrive_info)
+
+        # Credentials file selector
+        creds_row = QHBoxLayout()
+        creds_label = QLabel("Credentials File:")
+        self.gdrive_creds_input = QLineEdit()
+        self.gdrive_creds_input.setPlaceholderText("Path to credentials.json from Google Cloud Console")
+        self.gdrive_browse_btn = QPushButton("📁 Browse")
+        self.gdrive_browse_btn.clicked.connect(self._browse_credentials)
+        creds_row.addWidget(creds_label)
+        creds_row.addWidget(self.gdrive_creds_input, 1)
+        creds_row.addWidget(self.gdrive_browse_btn)
+        gdrive_layout.addLayout(creds_row)
+
+        # Setup guide link
+        setup_btn = QPushButton("📖 How to Get Credentials")
+        setup_btn.clicked.connect(self._show_gdrive_setup_guide)
+        setup_btn.setStyleSheet("color: #2196F3;")
+        gdrive_layout.addWidget(setup_btn)
+
+        # Auth status
         self.gdrive_status = QLabel("Status: Not authenticated")
-        gdrive_layout.addWidget(gdrive_label)
-        gdrive_layout.addWidget(self.gdrive_auth_btn)
+        self.gdrive_status.setStyleSheet("font-weight: bold;")
         gdrive_layout.addWidget(self.gdrive_status)
+
         self.gdrive_widget.hide()
         provider_layout.addWidget(self.gdrive_widget)
 
@@ -316,17 +340,61 @@ class CloudSyncTab(QWidget):
         if folder:
             self.folder_input.setText(folder)
 
-    def _authenticate_google(self):
-        """Authenticate with Google Drive"""
-        QMessageBox.information(
+    def _browse_credentials(self):
+        """Browse for Google Drive credentials.json file"""
+        file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Google Drive Authentication",
-            "Google Drive OAuth authentication will open in your browser.\n\n"
-            "This feature requires setting up Google Cloud credentials.\n"
-            "See docs/cloud_sync_setup.md for instructions."
+            "Select Google Drive Credentials",
+            str(Path.home()),
+            "JSON Files (*.json)"
         )
-        # TODO: Implement actual OAuth flow
-        self._log("Google Drive authentication not yet implemented")
+        if file_path:
+            self.gdrive_creds_input.setText(file_path)
+            self._log(f"Credentials file selected: {file_path}")
+
+    def _show_gdrive_setup_guide(self):
+        """Show Google Drive setup guide"""
+        guide_text = """
+<h3>🔐 Google Drive Setup Guide</h3>
+
+<p><b>Step 1: Create a Google Cloud Project</b></p>
+<ol>
+<li>Go to <a href="https://console.cloud.google.com/">Google Cloud Console</a></li>
+<li>Create a new project or select existing one</li>
+<li>Enable the <b>Google Drive API</b> in APIs & Services</li>
+</ol>
+
+<p><b>Step 2: Create OAuth Credentials</b></p>
+<ol>
+<li>Go to APIs & Services → Credentials</li>
+<li>Click "Create Credentials" → "OAuth client ID"</li>
+<li>Select "Desktop app" as application type</li>
+<li>Download the JSON file (credentials.json)</li>
+</ol>
+
+<p><b>Step 3: Configure OAuth Consent Screen</b></p>
+<ol>
+<li>Go to OAuth consent screen</li>
+<li>Add your email as a test user</li>
+<li>Set app name to "NEXUS Music Manager"</li>
+</ol>
+
+<p><b>Step 4: First Authentication</b></p>
+<ol>
+<li>Select your credentials.json file above</li>
+<li>Click "Connect Provider"</li>
+<li>A browser window will open for authentication</li>
+<li>Grant access to your Google Drive</li>
+</ol>
+
+<p><i>Note: The token will be saved locally for future use.</i></p>
+"""
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Google Drive Setup Guide")
+        msg.setTextFormat(Qt.TextFormat.RichText)
+        msg.setText(guide_text)
+        msg.setIcon(QMessageBox.Icon.Information)
+        msg.exec()
 
     def _connect_provider(self):
         """Connect to selected provider"""
@@ -350,18 +418,58 @@ class CloudSyncTab(QWidget):
                     self._log("Failed to connect to local folder")
                     QMessageBox.warning(self, "Error", "Failed to connect to folder")
         else:  # Google Drive
-            self.provider = GoogleDriveProvider()
-            if self.sync_service.set_provider(self.provider):
+            creds_file = self.gdrive_creds_input.text().strip()
+            if not creds_file:
+                QMessageBox.warning(
+                    self,
+                    "Credentials Required",
+                    "Please select a credentials.json file from Google Cloud Console.\n\n"
+                    "Click 'How to Get Credentials' for setup instructions."
+                )
+                return
+
+            if not Path(creds_file).exists():
+                QMessageBox.warning(self, "Error", f"Credentials file not found: {creds_file}")
+                return
+
+            self.provider = GoogleDriveProvider(creds_file)
+            self.sync_service.set_provider(self.provider)
+
+            # Show progress
+            self._log("Authenticating with Google Drive...")
+            self.gdrive_status.setText("Status: Authenticating...")
+            self.gdrive_status.setStyleSheet("font-weight: bold; color: #FF9800;")
+
+            try:
                 if self.sync_service.connect():
                     self._update_connection_status(True)
-                    self._log("Connected to Google Drive")
+                    self.gdrive_status.setText("Status: ✅ Connected")
+                    self.gdrive_status.setStyleSheet("font-weight: bold; color: #4CAF50;")
+                    self._log("Connected to Google Drive successfully!")
+                    QMessageBox.information(
+                        self,
+                        "Success",
+                        "Connected to Google Drive!\n\n"
+                        "Your library will sync to the 'NEXUS_Music_Sync' folder."
+                    )
                 else:
-                    self._log("Google Drive authentication required")
+                    self.gdrive_status.setText("Status: ❌ Authentication failed")
+                    self.gdrive_status.setStyleSheet("font-weight: bold; color: #f44336;")
+                    self._log("Google Drive authentication failed")
                     QMessageBox.warning(
                         self,
-                        "Authentication Required",
-                        "Please authenticate with Google Drive first"
+                        "Authentication Failed",
+                        "Could not authenticate with Google Drive.\n\n"
+                        "Make sure you have:\n"
+                        "1. Valid credentials.json file\n"
+                        "2. Google Drive API enabled\n"
+                        "3. Your email added as test user"
                     )
+            except Exception as e:
+                self.gdrive_status.setText("Status: ❌ Error")
+                self.gdrive_status.setStyleSheet("font-weight: bold; color: #f44336;")
+                self._log(f"Google Drive error: {e}")
+                QMessageBox.warning(self, "Error", str(e))
 
     def _update_connection_status(self, connected: bool):
         """Update connection status display"""
