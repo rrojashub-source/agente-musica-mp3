@@ -74,6 +74,7 @@ from gui.widgets.now_playing_widget import NowPlayingWidget
 from gui.widgets.playlist_widget import PlaylistWidget
 from gui.widgets.queue_widget import QueueWidget
 from gui.widgets.visualizer_widget import VisualizerWidget
+from gui.widgets.album_grid_widget import AlbumGridWidget
 
 
 class MusicPlayerApp(QMainWindow):
@@ -542,7 +543,18 @@ and are never shared or transmitted outside of official API requests to YouTube 
             logger.error(f"Failed to load Library tab: {e}")
             self.tabs.addTab(QWidget(), tr("tab_library") + " (Error)")
 
-        # Tab 3: Lyrics (View lyrics while listening)
+        # Tab 3: Albums (Visual album grid with covers)
+        try:
+            self.albums_widget = AlbumGridWidget(self.db_manager)
+            self.tabs.addTab(self.albums_widget, tr("tab_albums"))
+            # Connect album selection to filter library
+            self.albums_widget.album_selected.connect(self._on_album_selected)
+            logger.info("Albums tab loaded")
+        except Exception as e:
+            logger.error(f"Failed to load Albums tab: {e}")
+            self.tabs.addTab(QWidget(), tr("tab_albums") + " (Error)")
+
+        # Tab 4: Lyrics (View lyrics while listening)
         try:
             self.lyrics_tab = LyricsTab(self.genius_client)
             self.tabs.addTab(self.lyrics_tab, tr("tab_lyrics"))
@@ -915,6 +927,24 @@ and are never shared or transmitted outside of official API requests to YouTube 
             self.playlist_widget.clear_playing_highlight()
 
         logger.info("Playback source set to: library")
+
+    def _on_album_selected(self, album_data: dict):
+        """Handle album selection from grid - switch to library and filter"""
+        album_name = album_data.get('album', '')
+        artist_name = album_data.get('artist', '')
+
+        # Switch to library tab
+        if hasattr(self, 'library_tab') and hasattr(self, 'tabs'):
+            self.tabs.setCurrentWidget(self.library_tab)
+
+            # Apply filter if library tab has search functionality
+            if hasattr(self.library_tab, 'search_input'):
+                # Search by album name
+                self.library_tab.search_input.setText(album_name)
+                self.library_tab.search_input.returnPressed.emit()
+
+            self.statusBar.showMessage(f"Showing album: {album_name}", 3000)
+            logger.info(f"Album selected: {album_name} by {artist_name}")
 
     def _handle_seek_backward(self, seconds):
         """Handle Left arrow - Seek backward"""

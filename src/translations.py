@@ -41,6 +41,7 @@ TRANSLATIONS = {
         # === Tab Names ===
         "tab_import": "📥 Importar",
         "tab_library": "🎵 Biblioteca",
+        "tab_albums": "📀 Álbumes",
         "tab_lyrics": "📝 Letras",
         "tab_search": "🔍 Buscar",
         "tab_queue": "📥 Cola",
@@ -235,6 +236,7 @@ TRANSLATIONS = {
         # === Tab Names ===
         "tab_import": "📥 Import",
         "tab_library": "🎵 Library",
+        "tab_albums": "📀 Albums",
         "tab_lyrics": "📝 Lyrics",
         "tab_search": "🔍 Search",
         "tab_queue": "📥 Queue",
