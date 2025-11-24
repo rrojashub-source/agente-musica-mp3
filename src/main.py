@@ -8,6 +8,7 @@ playlists, visualizer, and management tools.
 Project: AGENTE_MUSICA_MP3_001
 Version: 2.0 (Production)
 Phases: 1-7 Complete
+Multi-language: Español (es), English (en)
 """
 
 import sys
@@ -20,6 +21,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Multi-language translation system
+from translations import tr, set_language, get_language, LANGUAGES
 
 try:
     from PyQt6.QtWidgets import (
@@ -77,7 +81,7 @@ class MusicPlayerApp(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("NEXUS Music Manager - Complete Edition")
+        self.setWindowTitle(tr("app_title"))
         self.setGeometry(100, 100, 1400, 900)
 
         # Initialize database
@@ -202,39 +206,48 @@ class MusicPlayerApp(QMainWindow):
         menubar = self.menuBar()
 
         # File menu
-        file_menu = menubar.addMenu("&File")
+        file_menu = menubar.addMenu(tr("menu_file"))
 
         # Exit action
-        exit_action = file_menu.addAction("E&xit")
+        exit_action = file_menu.addAction(tr("menu_exit"))
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
 
         # Settings menu
-        settings_menu = menubar.addMenu("&Settings")
+        settings_menu = menubar.addMenu(tr("menu_settings"))
 
         # API Settings action
-        api_settings_action = settings_menu.addAction("&API Configuration...")
+        api_settings_action = settings_menu.addAction(tr("menu_api_config"))
         api_settings_action.setShortcut("Ctrl+K")
         api_settings_action.triggered.connect(self._show_api_settings)
 
+        # Language submenu
+        language_menu = settings_menu.addMenu(tr("menu_language"))
+        for lang_code, lang_name in LANGUAGES.items():
+            lang_action = language_menu.addAction(lang_name)
+            lang_action.setCheckable(True)
+            lang_action.setChecked(lang_code == get_language())
+            # Use lambda with default argument to capture lang_code
+            lang_action.triggered.connect(lambda checked, lc=lang_code: self._change_language(lc))
+
         # View menu
-        view_menu = menubar.addMenu("&View")
+        view_menu = menubar.addMenu(tr("menu_view"))
 
         # Toggle Dark/Light Theme action
-        theme_action = view_menu.addAction("Toggle &Dark/Light Theme")
+        theme_action = view_menu.addAction(tr("menu_toggle_theme"))
         theme_action.setShortcut("Ctrl+T")
         theme_action.triggered.connect(self._toggle_theme)
 
         # Help menu
-        help_menu = menubar.addMenu("&Help")
+        help_menu = menubar.addMenu(tr("menu_help"))
 
         # Keyboard Shortcuts action (F1)
-        shortcuts_action = help_menu.addAction("&Keyboard Shortcuts")
+        shortcuts_action = help_menu.addAction(tr("menu_shortcuts"))
         shortcuts_action.setShortcut("F1")
         shortcuts_action.triggered.connect(self._show_shortcuts_dialog)
 
         # API Setup Guide action (F2)
-        api_guide_action = help_menu.addAction("&API Setup Guide")
+        api_guide_action = help_menu.addAction(tr("menu_api_guide"))
         api_guide_action.setShortcut("F2")
         api_guide_action.triggered.connect(self._show_api_guide)
 
@@ -242,7 +255,7 @@ class MusicPlayerApp(QMainWindow):
         help_menu.addSeparator()
 
         # About action
-        about_action = help_menu.addAction("&About")
+        about_action = help_menu.addAction(tr("menu_about"))
         about_action.triggered.connect(self._show_about)
 
     def _show_api_settings(self):
@@ -257,6 +270,26 @@ class MusicPlayerApp(QMainWindow):
         else:
             logger.info("API settings dialog cancelled")
 
+    def _change_language(self, lang_code: str):
+        """Change application language"""
+        from PyQt6.QtCore import QSettings
+
+        if set_language(lang_code):
+            # Save preference
+            settings = QSettings("NEXUS", "MusicManager")
+            settings.setValue("language", lang_code)
+
+            # Show message that restart is needed
+            QMessageBox.information(
+                self,
+                tr("language_changed_title"),
+                tr("language_changed_message")
+            )
+
+            logger.info(f"Language changed to: {lang_code}")
+        else:
+            logger.error(f"Invalid language code: {lang_code}")
+
     def _toggle_theme(self):
         """Toggle between dark and light themes"""
         new_theme = self.theme_manager.toggle_theme()
@@ -265,7 +298,7 @@ class MusicPlayerApp(QMainWindow):
         theme_display = new_theme.capitalize()
 
         # Show status message
-        self.statusBar.showMessage(f"Switched to {theme_display} theme", 2000)
+        self.statusBar.showMessage(tr("status_theme_switched", theme=theme_display), 2000)
 
         logger.info(f"User toggled theme to: {new_theme}")
 
@@ -488,11 +521,11 @@ and are never shared or transmitted outside of official API requests to YouTube 
         # Tab 1: Import Library (Workflow: Import first)
         try:
             self.import_tab = ImportTab(self.db_manager)
-            self.tabs.addTab(self.import_tab, "📥 Import Library")
+            self.tabs.addTab(self.import_tab, tr("tab_import"))
             logger.info("Import tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Import tab: {e}")
-            self.tabs.addTab(QWidget(), "📥 Import (Error)")
+            self.tabs.addTab(QWidget(), tr("tab_import") + " (Error)")
 
         # Tab 2: Library (Main library view)
         try:
@@ -501,36 +534,36 @@ and are never shared or transmitted outside of official API requests to YouTube 
                 self.audio_player,
                 self.now_playing
             )
-            self.tabs.addTab(self.library_tab, "🎵 Library")
+            self.tabs.addTab(self.library_tab, tr("tab_library"))
             # Connect playback_started to track source
             self.library_tab.playback_started.connect(self._on_library_playback_started)
             logger.info("Library tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Library tab: {e}")
-            self.tabs.addTab(QWidget(), "🎵 Library (Error)")
+            self.tabs.addTab(QWidget(), tr("tab_library") + " (Error)")
 
         # Tab 3: Lyrics (View lyrics while listening)
         try:
             self.lyrics_tab = LyricsTab(self.genius_client)
-            self.tabs.addTab(self.lyrics_tab, "📝 Lyrics")
+            self.tabs.addTab(self.lyrics_tab, tr("tab_lyrics"))
             logger.info("Lyrics tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Lyrics tab: {e}")
-            self.tabs.addTab(QWidget(), "📝 Lyrics (Error)")
+            self.tabs.addTab(QWidget(), tr("tab_lyrics") + " (Error)")
 
         # Tab 4: Search & Download (Find new music)
         try:
             self.search_tab = SearchTab(self.download_queue)
-            self.tabs.addTab(self.search_tab, "🔍 Search & Download")
+            self.tabs.addTab(self.search_tab, tr("tab_search"))
             logger.info("Search tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Search tab: {e}")
-            self.tabs.addTab(QWidget(), "🔍 Search (Error)")
+            self.tabs.addTab(QWidget(), tr("tab_search") + " (Error)")
 
         # Tab 5: Queue (Download queue)
         try:
             self.queue_widget = QueueWidget(self.download_queue)
-            self.tabs.addTab(self.queue_widget, "📥 Queue")
+            self.tabs.addTab(self.queue_widget, tr("tab_queue"))
             logger.info("Queue tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Queue tab: {e}")
@@ -538,51 +571,51 @@ and are never shared or transmitted outside of official API requests to YouTube 
         # Tab 6: Duplicates (Find duplicate files)
         try:
             self.duplicates_tab = DuplicatesTab(self.db_manager)
-            self.tabs.addTab(self.duplicates_tab, "🔍 Duplicates")
+            self.tabs.addTab(self.duplicates_tab, tr("tab_duplicates"))
             logger.info("Duplicates tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Duplicates tab: {e}")
-            self.tabs.addTab(QWidget(), "🔍 Duplicates (Error)")
+            self.tabs.addTab(QWidget(), tr("tab_duplicates") + " (Error)")
 
         # Tab 7: Rename (Rename files)
         try:
             self.rename_tab = RenameTab(self.db_manager)
-            self.tabs.addTab(self.rename_tab, "✏️ Rename")
+            self.tabs.addTab(self.rename_tab, tr("tab_rename"))
             logger.info("Rename tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Rename tab: {e}")
-            self.tabs.addTab(QWidget(), "✏️ Rename (Error)")
+            self.tabs.addTab(QWidget(), tr("tab_rename") + " (Error)")
 
         # Tab 8: Organize (Organize library)
         try:
             self.organize_tab = OrganizeTab(self.db_manager)
-            self.tabs.addTab(self.organize_tab, "📁 Organize")
+            self.tabs.addTab(self.organize_tab, tr("tab_organize"))
             logger.info("Organize tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Organize tab: {e}")
-            self.tabs.addTab(QWidget(), "📁 Organize (Error)")
+            self.tabs.addTab(QWidget(), tr("tab_organize") + " (Error)")
 
         # Tab 9: Cleanup Wizard (Metadata cleanup)
         try:
             # Get db_path from db_manager
             db_path = self.db_manager.db_path if hasattr(self.db_manager, 'db_path') else 'music_library.db'
             self.cleanup_tab = CleanupTab(db_path)
-            self.tabs.addTab(self.cleanup_tab, "✨ Metadata Wizard")
+            self.tabs.addTab(self.cleanup_tab, tr("tab_cleanup"))
             logger.info("Cleanup Wizard tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Cleanup Wizard tab: {e}")
-            self.tabs.addTab(QWidget(), "✨ Metadata Wizard (Error)")
+            self.tabs.addTab(QWidget(), tr("tab_cleanup") + " (Error)")
 
         # Tab 10: Playlist (Playlist management)
         try:
             self.playlist_widget = PlaylistWidget(self.playlist_manager, self.db_manager)
-            self.tabs.addTab(self.playlist_widget, "🎵 Playlist")
+            self.tabs.addTab(self.playlist_widget, tr("tab_playlist"))
             # Connect playlist play signal
             self.playlist_widget.play_song_requested.connect(self._play_song_from_playlist)
             logger.info("Playlist tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Playlist tab: {e}")
-            self.tabs.addTab(QWidget(), "🎵 Playlist (Error)")
+            self.tabs.addTab(QWidget(), tr("tab_playlist") + " (Error)")
 
         return self.tabs
 
@@ -1038,6 +1071,13 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("NEXUS Music Manager")
     app.setOrganizationName("NEXUS")
+
+    # Load saved language preference
+    from PyQt6.QtCore import QSettings
+    settings = QSettings("NEXUS", "MusicManager")
+    saved_language = settings.value("language", "es")  # Default: Spanish
+    set_language(saved_language)
+    logger.info(f"Language loaded: {saved_language}")
 
     # Set dark theme (optional)
     app.setStyle("Fusion")
