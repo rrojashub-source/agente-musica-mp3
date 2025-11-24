@@ -21,8 +21,8 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QHeaderView, QMessageBox, QMenu
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl
+from PyQt6.QtGui import QColor, QDragEnterEvent, QDropEvent
 
 from core.cover_art_manager import CoverArtManager
 
@@ -75,7 +75,10 @@ class LibraryTab(QWidget):
         self._load_library()
         self._connect_signals()
 
-        logger.info("LibraryTab initialized with cover art support")
+        # Enable drag & drop for MP3 files
+        self.setAcceptDrops(True)
+
+        logger.info("LibraryTab initialized with cover art and drag & drop support")
 
     def _init_ui(self):
         """Initialize UI components"""
@@ -801,6 +804,122 @@ class LibraryTab(QWidget):
         finally:
             # Re-enable button
             self.clean_db_button.setEnabled(True)
+
+    # ==================== Drag & Drop Support ====================
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        """Handle drag enter - accept audio files"""
+        if event.mimeData().hasUrls():
+            # Check if any URL is an audio file
+            for url in event.mimeData().urls():
+                file_path = url.toLocalFile()
+                if file_path and self._is_audio_file(file_path):
+                    event.acceptProposedAction()
+                    return
+        event.ignore()
+
+    def dragMoveEvent(self, event):
+        """Handle drag move event"""
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event: QDropEvent):
+        """Handle file drop - import audio files to library"""
+        if not event.mimeData().hasUrls():
+            event.ignore()
+            return
+
+        audio_files = []
+        for url in event.mimeData().urls():
+            file_path = url.toLocalFile()
+            if file_path and self._is_audio_file(file_path):
+                audio_files.append(file_path)
+
+        if not audio_files:
+            event.ignore()
+            return
+
+        event.acceptProposedAction()
+
+        # Import the dropped files
+        self._import_dropped_files(audio_files)
+
+    def _is_audio_file(self, file_path: str) -> bool:
+        """Check if file is a supported audio format"""
+        supported_extensions = {'.mp3', '.m4a', '.flac', '.wav', '.ogg', '.aac', '.wma'}
+        return Path(file_path).suffix.lower() in supported_extensions
+
+    def _import_dropped_files(self, file_paths: list):
+        """Import dropped audio files to the library"""
+        from core.metadata_tagger import MetadataTagger
+
+        imported = 0
+        duplicates = 0
+        errors = 0
+
+        tagger = MetadataTagger()
+
+        for file_path in file_paths:
+            try:
+                # Check if already in database
+                if self.db_manager.song_exists_by_file_path(file_path):
+                    duplicates += 1
+                    logger.debug(f"Skipping duplicate: {file_path}")
+                    continue
+
+                # Extract metadata
+                metadata = tagger.read_metadata(file_path)
+
+                # Prepare song data
+                song_data = {
+                    'file_path': file_path,
+                    'title': metadata.get('title') or Path(file_path).stem,
+                    'artist': metadata.get('artist') or 'Unknown Artist',
+                    'album': metadata.get('album') or 'Unknown Album',
+                    'genre': metadata.get('genre') or '',
+                    'year': metadata.get('year'),
+                    'duration': metadata.get('duration') or 0,
+                    'bitrate': metadata.get('bitrate') or 0,
+                }
+
+                # Add to database
+                self.db_manager.add_song(song_data)
+                imported += 1
+                logger.info(f"Imported: {song_data['title']} - {song_data['artist']}")
+
+            except Exception as e:
+                errors += 1
+                logger.error(f"Error importing {file_path}: {e}")
+
+        # Refresh library view
+        if imported > 0:
+            self._load_library()
+
+        # Show summary
+        msg_parts = []
+        if imported > 0:
+            msg_parts.append(f"Imported: {imported}")
+        if duplicates > 0:
+            msg_parts.append(f"Duplicates skipped: {duplicates}")
+        if errors > 0:
+            msg_parts.append(f"Errors: {errors}")
+
+        summary = ", ".join(msg_parts) if msg_parts else "No files imported"
+        self.status_label.setText(f"Drop: {summary}")
+
+        if imported > 0 or duplicates > 0 or errors > 0:
+            QMessageBox.information(
+                self,
+                "Drag & Drop Import",
+                f"Dropped {len(file_paths)} files:\n\n"
+                f"✅ Imported: {imported}\n"
+                f"⏭️ Duplicates skipped: {duplicates}\n"
+                f"❌ Errors: {errors}"
+            )
+
+        logger.info(f"Drag & drop import: {imported} imported, {duplicates} duplicates, {errors} errors")
 
     def cleanup(self):
         """Cleanup resources"""
