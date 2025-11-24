@@ -19,6 +19,7 @@ from time import sleep
 import logging
 import hashlib
 from utils.input_sanitizer import sanitize_query
+from utils.rate_limiter import RateLimiter
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -91,6 +92,9 @@ class YouTubeSearcher:
         # Make API request with retry logic
         for attempt in range(self._retry_attempts):
             try:
+                # Apply rate limiting before API call
+                RateLimiter.get_instance().wait('youtube')
+
                 # Make API request
                 response = self._make_api_request(query, max_results)
 

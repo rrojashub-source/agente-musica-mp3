@@ -14,6 +14,7 @@ Created: November 17, 2025
 """
 import logging
 from typing import Optional
+from utils.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,9 @@ class GeniusClient:
 
         # Search Genius API
         try:
+            # Apply rate limiting before API call
+            RateLimiter.get_instance().wait('genius')
+
             logger.info(f"Searching Genius for: {title} - {artist}")
             song = self.genius.search_song(title, artist)
 

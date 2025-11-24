@@ -21,6 +21,7 @@ import logging
 from time import sleep
 import hashlib
 from utils.input_sanitizer import sanitize_query
+from utils.rate_limiter import RateLimiter
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -111,6 +112,9 @@ class SpotifySearcher:
         # Retry logic
         for attempt in range(self._retry_attempts):
             try:
+                # Apply rate limiting before API call
+                RateLimiter.get_instance().wait('spotify')
+
                 # Make API request
                 results = self.sp.search(q=query, type='track', limit=limit)
 
@@ -179,6 +183,9 @@ class SpotifySearcher:
         # Retry logic
         for attempt in range(self._retry_attempts):
             try:
+                # Apply rate limiting before API call
+                RateLimiter.get_instance().wait('spotify')
+
                 # Make API request
                 results = self.sp.search(q=query, type='album', limit=limit)
 
@@ -247,6 +254,9 @@ class SpotifySearcher:
         # Retry logic
         for attempt in range(self._retry_attempts):
             try:
+                # Apply rate limiting before API call
+                RateLimiter.get_instance().wait('spotify')
+
                 # Make API request
                 results = self.sp.search(q=query, type='artist', limit=limit)
 

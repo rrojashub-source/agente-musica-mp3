@@ -15,6 +15,7 @@ import logging
 import time
 from typing import List, Dict, Optional
 from pathlib import Path
+from utils.rate_limiter import RateLimiter
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -208,19 +209,10 @@ class MusicBrainzClient:
     def _enforce_rate_limit(self):
         """
         Enforce rate limit (1 request/second for MusicBrainz)
+        Uses centralized RateLimiter for consistent behavior across all APIs
         """
         if not self._rate_limiter:
             return
 
-        # Calculate time since last request
-        current_time = time.time()
-        time_since_last = current_time - self._last_request_time
-
-        # If less than 1 second, wait
-        if time_since_last < 1.0:
-            wait_time = 1.0 - time_since_last
-            logger.debug(f"Rate limiting: waiting {wait_time:.2f}s")
-            time.sleep(wait_time)
-
-        # Update last request time
-        self._last_request_time = time.time()
+        # Use centralized rate limiter (MusicBrainz: 1 req/s)
+        RateLimiter.get_instance().wait('musicbrainz')
