@@ -10,8 +10,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned
-- Google Drive OAuth complete integration
-- More example plugins (Discord RPC, Visualizer, Lyrics)
+- Visualizer plugin (connect to existing visualizer)
+- Auto-DJ plugin (smart transitions)
+
+---
+
+## [0.9.7] - 2025-11-24
+
+### Added
+- **Google Drive OAuth:** Complete OAuth 2.0 flow support
+  - Credentials file browser in CloudSyncTab
+  - Step-by-step setup guide dialog
+  - Connection status indicators with colors
+  - 9 new tests for GoogleDriveProvider (mocked)
+
+- **Discord RPC Plugin:** Show currently playing in Discord status
+  - Display song title, artist, album
+  - Show elapsed time (configurable)
+  - Auto-reconnect when Discord restarts
+  - Requires: `pip install pypresence`
+
+- **Lyrics Plugin:** Fetch and display song lyrics
+  - Genius API support (with API key)
+  - AZLyrics fallback (web scraping)
+  - Local cache with MD5 keys
+  - Save .lrc files alongside MP3
+  - Requires: `pip install lyricsgenius beautifulsoup4`
+
+### Tests
+- 21 new plugin tests (Discord RPC + Lyrics)
+- 9 GoogleDriveProvider tests
+
+### Changed
+- Total plugins: 4 (PlayCounter, Scrobbler, Discord RPC, Lyrics)
 
 ---
 
