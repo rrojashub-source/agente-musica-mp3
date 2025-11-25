@@ -57,7 +57,29 @@ class RemoteTab(QWidget):
         info_label.setStyleSheet("color: #666;")
         layout.addWidget(info_label)
 
-        # Server Control
+        # QR Code (LARGE, CENTERED, TOP)
+        qr_container = QHBoxLayout()
+        qr_container.addStretch()
+
+        qr_frame = QFrame()
+        qr_frame.setFixedSize(300, 300)  # Increased from 200x200
+        qr_frame.setStyleSheet("background: white; border-radius: 10px; border: 2px solid #555;")
+        qr_layout = QVBoxLayout(qr_frame)
+
+        self.qr_label = QLabel("QR Code")
+        self.qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.qr_label.setStyleSheet("color: #666; font-size: 14px;")
+        qr_layout.addWidget(self.qr_label)
+
+        qr_container.addWidget(qr_frame)
+        qr_container.addStretch()
+        layout.addLayout(qr_container)
+
+        # Server and Connection in single row
+        controls_row = QHBoxLayout()
+        controls_row.setSpacing(20)
+
+        # Server Control (LEFT)
         server_group = QGroupBox("Server")
         server_layout = QVBoxLayout()
 
@@ -101,52 +123,34 @@ class RemoteTab(QWidget):
         """)
         self.stop_btn.clicked.connect(self._stop_server)
         btn_row.addWidget(self.stop_btn)
-        btn_row.addStretch()
 
         server_layout.addLayout(btn_row)
         server_group.setLayout(server_layout)
-        layout.addWidget(server_group)
+        controls_row.addWidget(server_group)
 
-        # Connection Info
+        # Connection Info (RIGHT)
         conn_group = QGroupBox("Connection")
-        conn_layout = QHBoxLayout()
-
-        # QR Code
-        qr_frame = QFrame()
-        qr_frame.setFixedSize(200, 200)
-        qr_frame.setStyleSheet("background: white; border-radius: 10px;")
-        qr_layout = QVBoxLayout(qr_frame)
-
-        self.qr_label = QLabel("QR Code")
-        self.qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.qr_label.setStyleSheet("color: #666;")
-        qr_layout.addWidget(self.qr_label)
-
-        conn_layout.addWidget(qr_frame)
-
-        # URL and status
-        info_layout = QVBoxLayout()
+        conn_layout = QVBoxLayout()
 
         self.url_label = QLabel("URL: Not running")
-        self.url_label.setFont(QFont("Consolas", 12))
+        self.url_label.setFont(QFont("Consolas", 11))
         self.url_label.setStyleSheet("padding: 10px; background: #333; border-radius: 5px;")
         self.url_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        info_layout.addWidget(self.url_label)
+        conn_layout.addWidget(self.url_label)
 
         self.open_btn = QPushButton("🌐 Open in Browser")
         self.open_btn.setEnabled(False)
         self.open_btn.clicked.connect(self._open_in_browser)
-        info_layout.addWidget(self.open_btn)
+        conn_layout.addWidget(self.open_btn)
 
         self.status_label = QLabel("⚪ Server stopped")
         self.status_label.setStyleSheet("font-weight: bold; padding: 10px;")
-        info_layout.addWidget(self.status_label)
-
-        info_layout.addStretch()
-        conn_layout.addLayout(info_layout)
+        conn_layout.addWidget(self.status_label)
 
         conn_group.setLayout(conn_layout)
-        layout.addWidget(conn_group)
+        controls_row.addWidget(conn_group)
+
+        layout.addLayout(controls_row)
 
         # Activity Log
         log_group = QGroupBox("Activity Log")
