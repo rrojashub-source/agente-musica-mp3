@@ -25,6 +25,52 @@
 
 ## 🗓️ Session History
 
+### **Session 8 (Nov 25, 2025) - Phase 3 Tabs Integration Fix**
+
+**Duration:** ~30 minutes
+**Assigned to:** NEXUS@CLI
+**Purpose:** Integrate Phase 3 tabs into main window (were implemented but not visible)
+
+#### **PROBLEM IDENTIFIED:**
+- User reported tabs ☁️ Cloud Sync, 🔌 Plugins, 📱 Remote not visible in GUI
+- Tabs were fully implemented with tests (Session 5-7)
+- Issue: Tabs added to `main_window_complete.py` but NOT to `main.py` (actual entry point)
+- LAUNCH_NEXUS_MUSIC.bat executes `src/main.py`, not `main_window_complete.py`
+
+#### **COMPLETED:**
+
+| Task | Status | Details |
+|------|--------|---------|
+| Fix Albums tab database access | ✅ DONE | Changed `_get_connection()` to `fetch_all()` |
+| Fix Albums tab cover extraction | ✅ DONE | Added mutagen-based `_extract_cover_from_file()` |
+| Add missing dependencies | ✅ DONE | pypresence, flask, flask-cors, qrcode to requirements.txt |
+| Integrate Cloud Sync tab | ✅ DONE | Added to main.py line 628-635 |
+| Integrate Plugins tab | ✅ DONE | Added to main.py line 637-644 |
+| Integrate Remote Control tab | ✅ DONE | Added to main.py line 646-653 |
+
+#### **Changes Made:**
+```python
+# Added imports (line 71-73):
+from gui.tabs.cloud_sync_tab import CloudSyncTab
+from gui.tabs.plugins_tab import PluginsTab
+from gui.tabs.remote_tab import RemoteTab
+
+# Added tabs to tab widget (line 628-653):
+# Tab 11: ☁️ Cloud Sync
+# Tab 12: 🔌 Plugins
+# Tab 13: 📱 Remote
+```
+
+#### **User Can Now Access:**
+- ☁️ **Cloud Sync** - Google Drive OAuth, Local Folder sync, conflict resolution
+- 🔌 **Plugins** - Discord RPC, Lyrics, PlayCounter, Scrobbler (4 plugins ready)
+- 📱 **Remote** - Mobile remote control via QR code, 12 API endpoints
+
+#### **Commits:**
+- `26bc832` - feat(gui): Add Cloud Sync, Plugins, and Remote Control tabs to main window
+
+---
+
 ### **Session 7 (Nov 24, 2025) - Mobile Remote Control**
 
 **Duration:** ~1 hour
