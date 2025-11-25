@@ -68,6 +68,9 @@ from gui.tabs.duplicates_tab import DuplicatesTab
 from gui.tabs.organize_tab import OrganizeTab
 from gui.tabs.rename_tab import RenameTab
 from gui.tabs.cleanup_tab import CleanupTab
+from gui.tabs.cloud_sync_tab import CloudSyncTab
+from gui.tabs.plugins_tab import PluginsTab
+from gui.tabs.remote_tab import RemoteTab
 
 # Import GUI widgets
 from gui.widgets.now_playing_widget import NowPlayingWidget
@@ -621,6 +624,33 @@ Your API keys are stored securely in your OS credential manager.
         except Exception as e:
             logger.error(f"Failed to load Playlist tab: {e}")
             self.tabs.addTab(QWidget(), tr("tab_playlist") + " (Error)")
+
+        # Tab 11: Cloud Sync (NEW - Phase 3)
+        try:
+            self.cloud_sync_tab = CloudSyncTab(db_manager=self.db_manager)
+            self.tabs.addTab(self.cloud_sync_tab, "☁️ Cloud Sync")
+            logger.info("Cloud Sync tab loaded")
+        except Exception as e:
+            logger.error(f"Failed to load Cloud Sync tab: {e}")
+            self.tabs.addTab(QWidget(), "☁️ Cloud Sync (Error)")
+
+        # Tab 12: Plugins (NEW - Phase 3)
+        try:
+            self.plugins_tab = PluginsTab()
+            self.tabs.addTab(self.plugins_tab, "🔌 Plugins")
+            logger.info("Plugins tab loaded")
+        except Exception as e:
+            logger.error(f"Failed to load Plugins tab: {e}")
+            self.tabs.addTab(QWidget(), "🔌 Plugins (Error)")
+
+        # Tab 13: Remote Control (NEW - Phase 3)
+        try:
+            self.remote_tab = RemoteTab()
+            self.tabs.addTab(self.remote_tab, "📱 Remote")
+            logger.info("Remote Control tab loaded")
+        except Exception as e:
+            logger.error(f"Failed to load Remote Control tab: {e}")
+            self.tabs.addTab(QWidget(), "📱 Remote (Error)")
 
         return self.tabs
 
