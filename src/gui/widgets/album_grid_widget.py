@@ -101,18 +101,23 @@ class AlbumCard(QFrame):
 
     def _load_cover(self):
         """Load cover art for the album"""
-        cover_path = self.album_data.get('cover_path')
-
         pixmap = None
 
-        # Try to load from path
-        if cover_path and Path(cover_path).exists():
-            pixmap = QPixmap(cover_path)
-        else:
-            # Try to get from cover manager using a sample file
+        # Try to get cover from cover manager
+        artist = self.album_data.get('artist', 'Unknown Artist')
+        album = self.album_data.get('album', 'Unknown Album')
+
+        # Check if cover exists in cache
+        if self.cover_manager.has_cover(artist, album):
+            cover_path = self.cover_manager.get_cover_path(artist, album)
+            if cover_path.exists():
+                pixmap = QPixmap(str(cover_path))
+
+        # If no cached cover, try to extract from sample file
+        if not pixmap or pixmap.isNull():
             sample_file = self.album_data.get('sample_file')
-            if sample_file:
-                pixmap = self.cover_manager.get_cover_art(sample_file)
+            if sample_file and Path(sample_file).exists():
+                pixmap = self._extract_cover_from_file(sample_file)
 
         # Apply pixmap or default
         if pixmap and not pixmap.isNull():
@@ -125,6 +130,41 @@ class AlbumCard(QFrame):
         else:
             # Default album art
             self._set_default_cover()
+
+    def _extract_cover_from_file(self, file_path: str) -> Optional[QPixmap]:
+        """Extract cover art from audio file using mutagen"""
+        try:
+            from mutagen import File
+            from mutagen.id3 import ID3, APIC
+            from mutagen.mp4 import MP4Cover
+
+            audio = File(file_path)
+            if audio is None:
+                return None
+
+            # Handle MP3 (ID3 tags)
+            if hasattr(audio, 'tags') and audio.tags:
+                for tag in audio.tags.values():
+                    if isinstance(tag, APIC):
+                        # APIC frame contains the image
+                        image_data = tag.data
+                        image = QImage()
+                        if image.loadFromData(image_data):
+                            return QPixmap.fromImage(image)
+
+            # Handle M4A/MP4
+            if isinstance(audio, type(audio)) and hasattr(audio, 'get'):
+                covers = audio.get('covr', [])
+                if covers:
+                    image_data = bytes(covers[0])
+                    image = QImage()
+                    if image.loadFromData(image_data):
+                        return QPixmap.fromImage(image)
+
+        except Exception as e:
+            logger.debug(f"Failed to extract cover from {file_path}: {e}")
+
+        return None
 
     def _set_default_cover(self):
         """Set default album cover (gradient placeholder)"""
