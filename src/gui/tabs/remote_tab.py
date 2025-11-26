@@ -42,8 +42,8 @@ class RemoteTab(QWidget):
     def _init_ui(self):
         """Initialize user interface"""
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(15)
-        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)  # Reduced from 15 to 10
+        main_layout.setContentsMargins(10, 5, 10, 10)  # Reduced top margin from 10 to 5
 
         # Header
         header = QLabel("📱 Remote Control")
@@ -59,7 +59,7 @@ class RemoteTab(QWidget):
         instructions.setStyleSheet("color: #888; font-size: 11px; padding: 5px 0;")
         main_layout.addWidget(instructions)
 
-        main_layout.addSpacing(10)
+        main_layout.addSpacing(5)  # Reduced from 10 to 5
 
         # === ROW 1: QR CODE (CENTERED) ===
         qr_row = QHBoxLayout()
@@ -80,7 +80,7 @@ class RemoteTab(QWidget):
         qr_row.addStretch()
         main_layout.addLayout(qr_row)
 
-        main_layout.addSpacing(15)
+        main_layout.addSpacing(10)  # Reduced from 15 to 10
 
         # === ROW 2: SERVER + CONNECTION (SIDE BY SIDE) ===
         controls_row = QHBoxLayout()
