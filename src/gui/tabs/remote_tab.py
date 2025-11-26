@@ -42,101 +42,99 @@ class RemoteTab(QWidget):
     def _init_ui(self):
         """Initialize user interface"""
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(10)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
         # Header
         header = QLabel("📱 Remote Control")
-        header.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px;")
+        header.setStyleSheet("font-size: 18px; font-weight: bold;")
         main_layout.addWidget(header)
 
         # Info
-        info = QLabel("Scan the QR code or enter the URL in your mobile browser.")
-        info.setStyleSheet("color: #888; padding: 0 10px;")
+        info = QLabel("Scan the QR code with your phone to control playback remotely.")
+        info.setStyleSheet("color: #888;")
         main_layout.addWidget(info)
 
-        # === QR CODE (CENTERED, LARGE) ===
+        main_layout.addSpacing(10)
+
+        # === ROW 1: QR CODE (CENTERED) ===
         qr_row = QHBoxLayout()
-        qr_row.addStretch(1)
+        qr_row.addStretch()
 
         qr_frame = QFrame()
-        qr_frame.setFixedSize(300, 300)
-        qr_frame.setStyleSheet("background: white; border: 2px solid #555; border-radius: 8px;")
-        qr_frame_layout = QVBoxLayout(qr_frame)
-        qr_frame_layout.setContentsMargins(0, 0, 0, 0)
+        qr_frame.setFixedSize(280, 280)
+        qr_frame.setStyleSheet("background: white; border: 2px solid #666; border-radius: 6px;")
+        qr_layout = QVBoxLayout(qr_frame)
+        qr_layout.setContentsMargins(0, 0, 0, 0)
 
         self.qr_label = QLabel("QR Code")
         self.qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.qr_label.setStyleSheet("color: #666;")
-        qr_frame_layout.addWidget(self.qr_label)
+        self.qr_label.setStyleSheet("color: #999;")
+        qr_layout.addWidget(self.qr_label)
 
         qr_row.addWidget(qr_frame)
-        qr_row.addStretch(1)
+        qr_row.addStretch()
         main_layout.addLayout(qr_row)
 
-        main_layout.addSpacing(20)
+        main_layout.addSpacing(15)
 
-        # === CONTROLS ROW (Server LEFT | Connection RIGHT) ===
-        controls = QHBoxLayout()
-        controls.setSpacing(15)
+        # === ROW 2: SERVER + CONNECTION (SIDE BY SIDE) ===
+        controls_row = QHBoxLayout()
+        controls_row.setSpacing(20)
 
-        # --- SERVER (LEFT) ---
-        server_box = QGroupBox("Server")
-        server_box.setMinimumWidth(350)
-        server_layout = QVBoxLayout()
+        # SERVER (LEFT SIDE)
+        server_group = QGroupBox("Server")
+        server_layout = QVBoxLayout(server_group)
 
-        # Port
-        port_layout = QHBoxLayout()
-        port_layout.addWidget(QLabel("Port:"))
+        port_row = QHBoxLayout()
+        port_row.addWidget(QLabel("Port:"))
         self.port_spin = QSpinBox()
         self.port_spin.setRange(1024, 65535)
         self.port_spin.setValue(8080)
-        self.port_spin.setFixedWidth(100)
-        port_layout.addWidget(self.port_spin)
-        port_layout.addStretch()
-        server_layout.addLayout(port_layout)
+        self.port_spin.setFixedWidth(80)
+        port_row.addWidget(self.port_spin)
+        port_row.addStretch()
+        server_layout.addLayout(port_row)
 
-        # Buttons
-        buttons = QHBoxLayout()
+        btn_row = QHBoxLayout()
         self.start_btn = QPushButton("▶ Start")
-        self.start_btn.setStyleSheet("background: #4CAF50; color: white; padding: 8px 15px; font-weight: bold;")
+        self.start_btn.setFixedHeight(35)
+        self.start_btn.setStyleSheet("background: #4CAF50; color: white; font-weight: bold;")
         self.start_btn.clicked.connect(self._start_server)
-        buttons.addWidget(self.start_btn)
+        btn_row.addWidget(self.start_btn)
 
         self.stop_btn = QPushButton("⏹ Stop")
+        self.stop_btn.setFixedHeight(35)
         self.stop_btn.setEnabled(False)
-        self.stop_btn.setStyleSheet("background: #f44336; color: white; padding: 8px 15px; font-weight: bold;")
+        self.stop_btn.setStyleSheet("background: #f44336; color: white; font-weight: bold;")
         self.stop_btn.clicked.connect(self._stop_server)
-        buttons.addWidget(self.stop_btn)
-        buttons.addStretch()
-        server_layout.addLayout(buttons)
+        btn_row.addWidget(self.stop_btn)
+        server_layout.addLayout(btn_row)
 
-        server_box.setLayout(server_layout)
-        controls.addWidget(server_box, 1)
+        controls_row.addWidget(server_group)
 
-        # --- CONNECTION (RIGHT) ---
-        conn_box = QGroupBox("Connection")
-        conn_box.setMinimumWidth(400)
-        conn_layout = QVBoxLayout()
+        # CONNECTION (RIGHT SIDE)
+        conn_group = QGroupBox("Connection")
+        conn_layout = QVBoxLayout(conn_group)
 
         self.url_label = QLabel("URL: Not running")
-        self.url_label.setStyleSheet("background: #2d2d2d; padding: 10px; border-radius: 4px; font-family: monospace;")
+        self.url_label.setStyleSheet("background: #2d2d2d; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 10px;")
         self.url_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         conn_layout.addWidget(self.url_label)
 
         self.open_btn = QPushButton("🌐 Open in Browser")
+        self.open_btn.setFixedHeight(35)
         self.open_btn.setEnabled(False)
         self.open_btn.clicked.connect(self._open_in_browser)
-        self.open_btn.setStyleSheet("padding: 8px;")
         conn_layout.addWidget(self.open_btn)
 
         self.status_label = QLabel("⚪ Server stopped")
-        self.status_label.setStyleSheet("font-weight: bold; padding: 5px;")
+        self.status_label.setStyleSheet("font-weight: bold;")
         conn_layout.addWidget(self.status_label)
 
-        conn_box.setLayout(conn_layout)
-        controls.addWidget(conn_box, 1)
+        controls_row.addWidget(conn_group)
 
-        main_layout.addLayout(controls)
+        main_layout.addLayout(controls_row)
 
         # Activity Log
         log_group = QGroupBox("Activity Log")
