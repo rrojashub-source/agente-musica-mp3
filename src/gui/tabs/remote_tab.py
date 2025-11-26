@@ -50,10 +50,14 @@ class RemoteTab(QWidget):
         header.setStyleSheet("font-size: 18px; font-weight: bold;")
         main_layout.addWidget(header)
 
-        # Info
-        info = QLabel("Scan the QR code with your phone to control playback remotely.")
-        info.setStyleSheet("color: #888;")
-        main_layout.addWidget(info)
+        # Instructions (moved from bottom)
+        instructions = QLabel(
+            "1. Click 'Start' to enable remote control\n"
+            "2. Make sure your phone is on the same WiFi network\n"
+            "3. Scan the QR code or enter the URL in your mobile browser"
+        )
+        instructions.setStyleSheet("color: #888; font-size: 11px; padding: 5px 0;")
+        main_layout.addWidget(instructions)
 
         main_layout.addSpacing(10)
 
@@ -138,30 +142,15 @@ class RemoteTab(QWidget):
 
         # Activity Log
         log_group = QGroupBox("Activity Log")
-        log_layout = QVBoxLayout()
+        log_layout = QVBoxLayout(log_group)
 
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.log_text.setMaximumHeight(100)
+        self.log_text.setFixedHeight(80)  # Fixed height to prevent pushing content
         self.log_text.setStyleSheet("font-family: monospace; font-size: 10px; background: #1e1e1e;")
         log_layout.addWidget(self.log_text)
 
-        log_group.setLayout(log_layout)
         main_layout.addWidget(log_group)
-
-        # Instructions
-        instr_group = QGroupBox("Instructions")
-        instr_layout = QVBoxLayout()
-        instr_text = QLabel(
-            "1. Click 'Start' to enable remote control\n"
-            "2. Make sure your phone is on the same WiFi network\n"
-            "3. Scan the QR code or enter the URL in mobile browser"
-        )
-        instr_text.setStyleSheet("color: #888; font-size: 11px;")
-        instr_layout.addWidget(instr_text)
-        instr_group.setLayout(instr_layout)
-        main_layout.addWidget(instr_group)
-
         main_layout.addStretch()
 
     def _init_server(self):
