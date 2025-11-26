@@ -41,116 +41,102 @@ class RemoteTab(QWidget):
 
     def _init_ui(self):
         """Initialize user interface"""
-        layout = QVBoxLayout()
-        layout.setSpacing(15)
+        main_layout = QVBoxLayout(self)
+        main_layout.setSpacing(10)
 
         # Header
-        header_label = QLabel("📱 Remote Control")
-        header_label.setStyleSheet("font-size: 18px; font-weight: bold;")
-        layout.addWidget(header_label)
+        header = QLabel("📱 Remote Control")
+        header.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px;")
+        main_layout.addWidget(header)
 
         # Info
-        info_label = QLabel(
-            "Control NEXUS Music Manager from your phone or tablet.\n"
-            "Scan the QR code or enter the URL in your mobile browser."
-        )
-        info_label.setStyleSheet("color: #666;")
-        layout.addWidget(info_label)
+        info = QLabel("Scan the QR code or enter the URL in your mobile browser.")
+        info.setStyleSheet("color: #888; padding: 0 10px;")
+        main_layout.addWidget(info)
 
-        # QR Code (LARGE, CENTERED, TOP)
-        qr_container = QHBoxLayout()
-        qr_container.addStretch()
+        # === QR CODE (CENTERED, LARGE) ===
+        qr_row = QHBoxLayout()
+        qr_row.addStretch(1)
 
         qr_frame = QFrame()
-        qr_frame.setFixedSize(300, 300)  # Increased from 200x200
-        qr_frame.setStyleSheet("background: white; border-radius: 10px; border: 2px solid #555;")
-        qr_layout = QVBoxLayout(qr_frame)
+        qr_frame.setFixedSize(300, 300)
+        qr_frame.setStyleSheet("background: white; border: 2px solid #555; border-radius: 8px;")
+        qr_frame_layout = QVBoxLayout(qr_frame)
+        qr_frame_layout.setContentsMargins(0, 0, 0, 0)
 
         self.qr_label = QLabel("QR Code")
         self.qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.qr_label.setStyleSheet("color: #666; font-size: 14px;")
-        qr_layout.addWidget(self.qr_label)
+        self.qr_label.setStyleSheet("color: #666;")
+        qr_frame_layout.addWidget(self.qr_label)
 
-        qr_container.addWidget(qr_frame)
-        qr_container.addStretch()
-        layout.addLayout(qr_container)
+        qr_row.addWidget(qr_frame)
+        qr_row.addStretch(1)
+        main_layout.addLayout(qr_row)
 
-        # Server and Connection in single row
-        controls_row = QHBoxLayout()
-        controls_row.setSpacing(20)
+        main_layout.addSpacing(20)
 
-        # Server Control (LEFT)
-        server_group = QGroupBox("Server")
+        # === CONTROLS ROW (Server LEFT | Connection RIGHT) ===
+        controls = QHBoxLayout()
+        controls.setSpacing(15)
+
+        # --- SERVER (LEFT) ---
+        server_box = QGroupBox("Server")
+        server_box.setMinimumWidth(350)
         server_layout = QVBoxLayout()
 
-        # Port selection
-        port_row = QHBoxLayout()
-        port_label = QLabel("Port:")
+        # Port
+        port_layout = QHBoxLayout()
+        port_layout.addWidget(QLabel("Port:"))
         self.port_spin = QSpinBox()
         self.port_spin.setRange(1024, 65535)
         self.port_spin.setValue(8080)
-        port_row.addWidget(port_label)
-        port_row.addWidget(self.port_spin)
-        port_row.addStretch()
-        server_layout.addLayout(port_row)
+        self.port_spin.setFixedWidth(100)
+        port_layout.addWidget(self.port_spin)
+        port_layout.addStretch()
+        server_layout.addLayout(port_layout)
 
-        # Start/Stop buttons
-        btn_row = QHBoxLayout()
-        self.start_btn = QPushButton("▶️ Start Server")
-        self.start_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                padding: 10px 20px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background-color: #45a049; }
-        """)
+        # Buttons
+        buttons = QHBoxLayout()
+        self.start_btn = QPushButton("▶ Start")
+        self.start_btn.setStyleSheet("background: #4CAF50; color: white; padding: 8px 15px; font-weight: bold;")
         self.start_btn.clicked.connect(self._start_server)
-        btn_row.addWidget(self.start_btn)
+        buttons.addWidget(self.start_btn)
 
-        self.stop_btn = QPushButton("⏹️ Stop Server")
+        self.stop_btn = QPushButton("⏹ Stop")
         self.stop_btn.setEnabled(False)
-        self.stop_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #f44336;
-                color: white;
-                padding: 10px 20px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background-color: #da190b; }
-            QPushButton:disabled { background-color: #ccc; }
-        """)
+        self.stop_btn.setStyleSheet("background: #f44336; color: white; padding: 8px 15px; font-weight: bold;")
         self.stop_btn.clicked.connect(self._stop_server)
-        btn_row.addWidget(self.stop_btn)
+        buttons.addWidget(self.stop_btn)
+        buttons.addStretch()
+        server_layout.addLayout(buttons)
 
-        server_layout.addLayout(btn_row)
-        server_group.setLayout(server_layout)
-        controls_row.addWidget(server_group)
+        server_box.setLayout(server_layout)
+        controls.addWidget(server_box, 1)
 
-        # Connection Info (RIGHT)
-        conn_group = QGroupBox("Connection")
+        # --- CONNECTION (RIGHT) ---
+        conn_box = QGroupBox("Connection")
+        conn_box.setMinimumWidth(400)
         conn_layout = QVBoxLayout()
 
         self.url_label = QLabel("URL: Not running")
-        self.url_label.setFont(QFont("Consolas", 11))
-        self.url_label.setStyleSheet("padding: 10px; background: #333; border-radius: 5px;")
+        self.url_label.setStyleSheet("background: #2d2d2d; padding: 10px; border-radius: 4px; font-family: monospace;")
         self.url_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         conn_layout.addWidget(self.url_label)
 
         self.open_btn = QPushButton("🌐 Open in Browser")
         self.open_btn.setEnabled(False)
         self.open_btn.clicked.connect(self._open_in_browser)
+        self.open_btn.setStyleSheet("padding: 8px;")
         conn_layout.addWidget(self.open_btn)
 
         self.status_label = QLabel("⚪ Server stopped")
-        self.status_label.setStyleSheet("font-weight: bold; padding: 10px;")
+        self.status_label.setStyleSheet("font-weight: bold; padding: 5px;")
         conn_layout.addWidget(self.status_label)
 
-        conn_group.setLayout(conn_layout)
-        controls_row.addWidget(conn_group)
+        conn_box.setLayout(conn_layout)
+        controls.addWidget(conn_box, 1)
 
-        layout.addLayout(controls_row)
+        main_layout.addLayout(controls)
 
         # Activity Log
         log_group = QGroupBox("Activity Log")
@@ -158,30 +144,27 @@ class RemoteTab(QWidget):
 
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.log_text.setMaximumHeight(120)
-        self.log_text.setStyleSheet("font-family: monospace; font-size: 11px;")
+        self.log_text.setMaximumHeight(100)
+        self.log_text.setStyleSheet("font-family: monospace; font-size: 10px; background: #1e1e1e;")
         log_layout.addWidget(self.log_text)
 
         log_group.setLayout(log_layout)
-        layout.addWidget(log_group)
+        main_layout.addWidget(log_group)
 
         # Instructions
         instr_group = QGroupBox("Instructions")
         instr_layout = QVBoxLayout()
         instr_text = QLabel(
-            "1. Click 'Start Server' to enable remote control\n"
+            "1. Click 'Start' to enable remote control\n"
             "2. Make sure your phone is on the same WiFi network\n"
-            "3. Scan the QR code with your phone camera, or\n"
-            "4. Enter the URL in your mobile browser\n"
-            "5. Use the mobile interface to control playback"
+            "3. Scan the QR code or enter the URL in mobile browser"
         )
-        instr_text.setStyleSheet("color: #888;")
+        instr_text.setStyleSheet("color: #888; font-size: 11px;")
         instr_layout.addWidget(instr_text)
         instr_group.setLayout(instr_layout)
-        layout.addWidget(instr_group)
+        main_layout.addWidget(instr_group)
 
-        layout.addStretch()
-        self.setLayout(layout)
+        main_layout.addStretch()
 
     def _init_server(self):
         """Initialize remote server"""
