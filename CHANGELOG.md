@@ -12,6 +12,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned
 - Visualizer plugin (connect to existing visualizer)
 - Auto-DJ plugin (smart transitions)
+- Packaging (.exe) - PyInstaller build
+
+---
+
+## [0.9.8] - 2025-11-28
+
+### Added
+- **Remote Control Integration:** Full player connection
+  - Qt signals for thread-safe command execution
+  - "Now Playing" sync to mobile (title, artist, progress)
+  - Bidirectional volume slider sync
+  - All buttons working (prev, play/pause, next, volume)
+
+- **Play Counter Statistics Panel:** View plugin data in PluginsTab
+  - Total plays, unique songs, average per song
+  - Top 5 most played songs list
+  - Dynamic display when plugin selected
+
+- **Multi-language Extended:** 3 new tabs translated
+  - Cloud Sync Tab (ES/EN)
+  - Plugins Tab (ES/EN)
+  - Remote Tab (ES/EN)
+  - Tab names use tr() translation system
+
+### Fixed
+- CloudSyncService: Added `device_id` property (was private `_device_id`)
+- Remote commands: Thread-safe via `command_received` signal
+- Volume label: Updates correctly when changed from mobile
+
+### Removed
+- **Lyrics Plugin:** Removed as redundant (LyricsTab with GeniusClient handles lyrics)
+
+### Changed
+- Total plugins: 3 (PlayCounter, Scrobbler, Discord RPC)
 
 ---
 
@@ -30,19 +64,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-reconnect when Discord restarts
   - Requires: `pip install pypresence`
 
-- **Lyrics Plugin:** Fetch and display song lyrics
+- **Lyrics Plugin:** Fetch and display song lyrics *(Removed in 0.9.8 - redundant with LyricsTab)*
   - Genius API support (with API key)
   - AZLyrics fallback (web scraping)
   - Local cache with MD5 keys
   - Save .lrc files alongside MP3
-  - Requires: `pip install lyricsgenius beautifulsoup4`
 
 ### Tests
-- 21 new plugin tests (Discord RPC + Lyrics)
+- 12 new plugin tests (Discord RPC)
 - 9 GoogleDriveProvider tests
 
 ### Changed
-- Total plugins: 4 (PlayCounter, Scrobbler, Discord RPC, Lyrics)
+- Total plugins: 4 → 3 (PlayCounter, Scrobbler, Discord RPC)
 
 ---
 

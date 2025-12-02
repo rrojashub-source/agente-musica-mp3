@@ -309,11 +309,17 @@ class RemoteServer(QObject if HAS_QT else object):
 
     def _execute_callback(self, name: str, *args):
         """Execute registered callback"""
+        logger.debug(f"Executing callback '{name}', registered: {name in self._callbacks}, all callbacks: {list(self._callbacks.keys())}")
         if name in self._callbacks:
             try:
-                return self._callbacks[name](*args)
+                logger.info(f"Calling callback '{name}' with args: {args}")
+                result = self._callbacks[name](*args)
+                logger.info(f"Callback '{name}' executed successfully")
+                return result
             except Exception as e:
                 logger.error(f"Callback error [{name}]: {e}")
+        else:
+            logger.warning(f"No callback registered for '{name}'")
         return None
 
     # ==========================================
@@ -323,6 +329,7 @@ class RemoteServer(QObject if HAS_QT else object):
     def register_callback(self, name: str, callback: Callable) -> None:
         """Register a callback for remote commands"""
         self._callbacks[name] = callback
+        logger.info(f"Registered callback '{name}', total callbacks: {list(self._callbacks.keys())}")
 
     def update_now_playing(self, info: NowPlayingInfo) -> None:
         """Update current playback info"""

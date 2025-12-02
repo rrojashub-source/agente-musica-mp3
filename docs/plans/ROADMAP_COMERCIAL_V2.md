@@ -1,9 +1,10 @@
 # NEXUS Music Manager - Roadmap Comercial V2.0
 
 **Fecha:** 23 Noviembre 2025
-**Score Actual:** 85/100 ✅ (objetivo alcanzado)
-**Score Objetivo:** 85/100 (mínimo para venta)
-**Status:** CRÍTICOS e IMPORTANTES completados
+**Actualizado:** 28 Noviembre 2025
+**Score Actual:** 98/100 ✅ (objetivo superado)
+**Score Objetivo:** 85/100 (mínimo para venta) - SUPERADO
+**Status:** Todas las mejoras completadas, solo falta Packaging (.exe)
 
 ---
 
@@ -58,20 +59,20 @@
 
 ## 🌍 NUEVAS FEATURES (Fase Comercial)
 
-### 9. Versión en Español (i18n)
-- **Prioridad:** ALTA (mercado objetivo)
+### 9. ✅ Versión en Español (i18n) - COMPLETADO
+- **Status:** ✅ DONE (Nov 23-28, 2025)
 - **Descripción:** Soporte multiidioma (Español + English)
 - **Implementación:**
-  - Framework: Qt Linguist o gettext
-  - Archivos: `translations/es.ts`, `translations/en.ts`
-  - UI: Selector de idioma en Settings
-- **Esfuerzo:** 2-3 días
-- **Alcance:**
-  - Todos los textos de UI
-  - Mensajes de error
-  - Diálogos
-  - Tooltips
-  - Help/About
+  - Sistema propio en `translations.py` con diccionarios ES/EN
+  - Función `tr("key")` para obtener traducciones
+  - Selector de idioma en Settings (persistente via QSettings)
+- **Alcance completado:**
+  - ✅ Todos los textos de UI (200+ claves)
+  - ✅ Mensajes de error
+  - ✅ Todos los diálogos
+  - ✅ Tooltips
+  - ✅ Help/About
+  - ✅ Cloud Sync, Plugins, Remote tabs (Nov 28)
 
 ### 10. Recomendaciones de Canciones Similares
 - **Prioridad:** ALTA (feature premium)
@@ -142,19 +143,20 @@
 |------|-------|--------|
 | Inicial | 72/100 | ✅ Superado |
 | Post-Críticos | 80/100 | ✅ Completado |
-| Post-Importantes | 85/100 | ✅ **ACTUAL** |
-| Post-i18n | 88/100 | 🎯 Pendiente |
-| Post-Recomendaciones | 92/100 | 🎯 Pendiente |
+| Post-Importantes | 85/100 | ✅ Completado |
+| Post-i18n | 88/100 | ✅ Completado |
+| Post-Recomendaciones | 92/100 | ✅ Completado |
+| Post-Phase 3 Features | 98/100 | ✅ **ACTUAL** |
 
 ### Checklist "Ready for Sale":
 - [x] LICENSE presente (MIT) ✅
-- [ ] .exe funciona sin Python instalado ⏳
-- [ ] Instalador profesional (NSIS) ⏳
+- [ ] .exe funciona sin Python instalado ⏳ **ÚLTIMO PASO**
+- [ ] Instalador profesional (NSIS) ⏳ (opcional)
 - [x] 0 crashes en testing de 1 hora ✅
 - [x] CPU < 10% en idle ✅ (optimizado)
-- [ ] Soporte español completo ⏳
+- [x] Soporte español completo ✅ (Nov 28)
 - [x] Documentación de usuario ✅
-- [ ] About dialog con versión/créditos ⏳
+- [x] About dialog con versión/créditos ✅
 
 ---
 
@@ -192,5 +194,5 @@
 
 ---
 
-**Última Actualización:** 23 Noviembre 2025
-**Próxima Revisión:** Después de completar Semana 1
+**Última Actualización:** 28 Noviembre 2025
+**Próxima Revisión:** Cuando se complete el Packaging (.exe)

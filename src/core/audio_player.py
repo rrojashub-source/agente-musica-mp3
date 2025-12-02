@@ -296,6 +296,21 @@ class AudioPlayer:
         except Exception as e:
             logger.error(f"Failed to set volume: {e}")
 
+    def get_volume(self) -> float:
+        """
+        Get current volume level
+
+        Returns:
+            Volume level (0.0 - 1.0)
+        """
+        if not self._pygame:
+            return 1.0
+
+        try:
+            return self._pygame.mixer.music.get_volume()
+        except Exception:
+            return 1.0
+
     def is_playing(self) -> bool:
         """
         Check if audio is currently playing

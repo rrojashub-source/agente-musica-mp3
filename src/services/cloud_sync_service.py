@@ -282,50 +282,126 @@ class LocalFolderProvider(CloudProvider):
 
 class GoogleDriveProvider(CloudProvider):
     """
-    Google Drive sync provider
-    Requires google-api-python-client and oauth2client
+    Google Drive sync provider with OAuth credentials.
+    User-friendly flow: just click "Connect" and authorize in browser.
+
+    Requires: pip install google-api-python-client google-auth-oauthlib
+
+    Credentials loaded from ~/.nexus_music/cloud/gdrive_credentials.json
     """
 
+    _SCOPES = ['https://www.googleapis.com/auth/drive.file']
+
+    @classmethod
+    def _load_client_config(cls) -> dict:
+        """Load OAuth credentials from config file"""
+        import json
+        config_path = Path.home() / ".nexus_music" / "cloud" / "gdrive_credentials.json"
+
+        if config_path.exists():
+            try:
+                with open(config_path) as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Failed to load credentials: {e}")
+
+        # Return empty config - will fail gracefully
+        return {}
+
     def __init__(self, credentials_file: str = None):
-        self._credentials_file = credentials_file
+        """
+        Initialize Google Drive provider.
+
+        Args:
+            credentials_file: Deprecated, kept for backwards compatibility.
+                             Now uses embedded credentials.
+        """
         self._service = None
         self._connected = False
         self._folder_id = None
+        self._user_email = None
+
+        # Token stored in user's home directory
+        self._token_dir = Path.home() / ".nexus_music" / "cloud"
+        self._token_dir.mkdir(parents=True, exist_ok=True)
+        self._token_path = self._token_dir / "google_drive_token.json"
+
+    @property
+    def is_authenticated(self) -> bool:
+        """Check if user has already authorized the app"""
+        return self._token_path.exists()
+
+    @property
+    def user_email(self) -> Optional[str]:
+        """Get connected user's email"""
+        return self._user_email
 
     def connect(self) -> bool:
-        """Connect to Google Drive"""
+        """
+        Connect to Google Drive.
+        Opens browser for authorization if needed.
+        """
         try:
             from googleapiclient.discovery import build
             from google.oauth2.credentials import Credentials
             from google_auth_oauthlib.flow import InstalledAppFlow
 
-            SCOPES = ['https://www.googleapis.com/auth/drive.file']
-
             creds = None
-            token_path = Path(self._credentials_file).parent / 'token.json'
 
-            if token_path.exists():
-                creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
+            # Try to load existing token
+            if self._token_path.exists():
+                try:
+                    creds = Credentials.from_authorized_user_file(
+                        str(self._token_path), self._SCOPES
+                    )
+                except Exception as e:
+                    logger.warning(f"Invalid token file, will re-authenticate: {e}")
+                    creds = None
 
+            # Refresh or get new credentials
             if not creds or not creds.valid:
                 if creds and creds.expired and creds.refresh_token:
-                    from google.auth.transport.requests import Request
-                    creds.refresh(Request())
-                else:
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        self._credentials_file, SCOPES)
-                    creds = flow.run_local_server(port=0)
+                    try:
+                        from google.auth.transport.requests import Request
+                        creds.refresh(Request())
+                        logger.info("Google Drive token refreshed")
+                    except Exception as e:
+                        logger.warning(f"Token refresh failed, re-authenticating: {e}")
+                        creds = None
 
-                with open(token_path, 'w') as token:
+                if not creds:
+                    # Load credentials from config file
+                    client_config = self._load_client_config()
+                    if not client_config:
+                        logger.error("No Google Drive credentials found. Please configure gdrive_credentials.json")
+                        return False
+
+                    # Start OAuth flow - opens browser automatically
+                    flow = InstalledAppFlow.from_client_config(
+                        client_config, self._SCOPES
+                    )
+                    creds = flow.run_local_server(
+                        port=0,
+                        prompt='consent',
+                        success_message='¡Conexión exitosa! Puedes cerrar esta ventana y volver a NEXUS Music Manager.'
+                    )
+                    logger.info("Google Drive authorization completed")
+
+                # Save token for future use
+                with open(self._token_path, 'w') as token:
                     token.write(creds.to_json())
 
+            # Build service
             self._service = build('drive', 'v3', credentials=creds)
             self._connected = True
+
+            # Get user info
+            self._get_user_info()
 
             # Create or find NEXUS_Music_Sync folder
             self._ensure_sync_folder()
 
-            logger.info("Connected to Google Drive")
+            logger.info(f"Connected to Google Drive as {self._user_email}")
             return True
 
         except ImportError:
@@ -334,6 +410,23 @@ class GoogleDriveProvider(CloudProvider):
         except Exception as e:
             logger.error(f"Failed to connect to Google Drive: {e}")
             return False
+
+    def _get_user_info(self):
+        """Get authenticated user's email"""
+        try:
+            about = self._service.about().get(fields="user").execute()
+            self._user_email = about.get('user', {}).get('emailAddress', 'Unknown')
+        except Exception as e:
+            logger.debug(f"Could not get user info: {e}")
+            self._user_email = "Connected"
+
+    def logout(self):
+        """Logout and remove saved token"""
+        self.disconnect()
+        if self._token_path.exists():
+            self._token_path.unlink()
+            logger.info("Google Drive token removed")
+        self._user_email = None
 
     def _ensure_sync_folder(self):
         """Create or find sync folder in Drive"""
@@ -560,6 +653,11 @@ class CloudSyncService(QObject):
         device_id = f"{platform.node()}_{uuid.uuid4().hex[:8]}"
         device_file.write_text(device_id)
         return device_id
+
+    @property
+    def device_id(self) -> str:
+        """Public property to access device ID"""
+        return self._device_id
 
     def _load_state(self):
         """Load sync state from disk"""

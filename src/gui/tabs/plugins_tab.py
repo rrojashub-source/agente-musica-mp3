@@ -16,6 +16,7 @@ import logging
 from typing import Optional, Dict, Any
 
 from plugins import PluginManager, Plugin
+from translations import tr
 
 logger = logging.getLogger(__name__)
 
@@ -147,26 +148,23 @@ class PluginsTab(QWidget):
         layout.setSpacing(15)
 
         # Header
-        header_label = QLabel("🔌 Plugins")
+        header_label = QLabel(tr("plugins_title"))
         header_label.setStyleSheet("font-size: 18px; font-weight: bold;")
         layout.addWidget(header_label)
 
         # Info
-        info_label = QLabel(
-            "Extend NEXUS Music Manager with plugins.\n"
-            "Enable or disable plugins to customize your experience."
-        )
+        info_label = QLabel(tr("plugins_info"))
         info_label.setStyleSheet("color: #666;")
         layout.addWidget(info_label)
 
         # Plugins table
-        table_group = QGroupBox("Available Plugins")
+        table_group = QGroupBox(tr("plugins_installed"))
         table_layout = QVBoxLayout()
 
         self.plugins_table = QTableWidget()
         self.plugins_table.setColumnCount(5)
         self.plugins_table.setHorizontalHeaderLabels([
-            "Status", "Name", "Version", "Author", "Description"
+            tr("plugins_status"), tr("plugins_name"), tr("plugins_version"), "Author", tr("plugins_description")
         ])
         self.plugins_table.horizontalHeader().setSectionResizeMode(
             4, QHeaderView.ResizeMode.Stretch
@@ -187,17 +185,17 @@ class PluginsTab(QWidget):
         # Action buttons
         actions_layout = QHBoxLayout()
 
-        self.enable_btn = QPushButton("✅ Enable")
+        self.enable_btn = QPushButton("✅ " + tr("plugins_enable"))
         self.enable_btn.setEnabled(False)
         self.enable_btn.clicked.connect(self._enable_selected)
         actions_layout.addWidget(self.enable_btn)
 
-        self.disable_btn = QPushButton("⏸️ Disable")
+        self.disable_btn = QPushButton("⏸️ " + tr("plugins_disable"))
         self.disable_btn.setEnabled(False)
         self.disable_btn.clicked.connect(self._disable_selected)
         actions_layout.addWidget(self.disable_btn)
 
-        self.settings_btn = QPushButton("⚙️ Settings")
+        self.settings_btn = QPushButton("⚙️ " + tr("plugins_settings"))
         self.settings_btn.setEnabled(False)
         self.settings_btn.clicked.connect(self._open_settings)
         actions_layout.addWidget(self.settings_btn)
@@ -210,7 +208,7 @@ class PluginsTab(QWidget):
         layout.addLayout(actions_layout)
 
         # Details panel
-        details_group = QGroupBox("Plugin Details")
+        details_group = QGroupBox(tr("plugins_settings"))
         details_layout = QVBoxLayout()
 
         self.details_text = QTextEdit()
@@ -329,6 +327,29 @@ class PluginsTab(QWidget):
                 f"Dependencies: {', '.join(metadata.dependencies) or 'None'}\n"
                 f"Hooks: {', '.join(h.name for h in metadata.hooks) or 'None'}"
             )
+
+            # Show plugin-specific data if available
+            if hasattr(plugin, 'get_statistics') and is_enabled:
+                try:
+                    stats = plugin.get_statistics()
+                    details += "\n\n" + "=" * 40 + "\n"
+                    details += tr("plugins_statistics") + "\n"
+                    details += "=" * 40 + "\n"
+                    details += f"{tr('plugins_total_plays')}: {stats.get('total_plays', 0)}\n"
+                    details += f"{tr('plugins_unique_songs')}: {stats.get('unique_songs', 0)}\n"
+                    avg = stats.get('average_plays', 0)
+                    details += f"{tr('plugins_avg_plays')}: {avg:.1f}\n"
+
+                    most_played = stats.get('most_played', [])
+                    if most_played:
+                        details += f"\n{tr('plugins_most_played')}:\n"
+                        for i, (song_id, count) in enumerate(most_played[:5], 1):
+                            # Truncate long song IDs
+                            display_id = song_id if len(song_id) < 40 else song_id[:37] + "..."
+                            details += f"  {i}. {display_id} ({count}x)\n"
+                except Exception as e:
+                    logger.debug(f"Could not get plugin statistics: {e}")
+
             self.details_text.setText(details)
 
     def _get_selected_plugin_name(self) -> Optional[str]:

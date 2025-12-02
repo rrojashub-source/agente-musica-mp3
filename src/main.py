@@ -628,29 +628,32 @@ Your API keys are stored securely in your OS credential manager.
         # Tab 11: Cloud Sync (NEW - Phase 3)
         try:
             self.cloud_sync_tab = CloudSyncTab(db_manager=self.db_manager)
-            self.tabs.addTab(self.cloud_sync_tab, "☁️ Cloud Sync")
+            self.tabs.addTab(self.cloud_sync_tab, tr("tab_cloud_sync"))
             logger.info("Cloud Sync tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Cloud Sync tab: {e}")
-            self.tabs.addTab(QWidget(), "☁️ Cloud Sync (Error)")
+            self.tabs.addTab(QWidget(), tr("tab_cloud_sync") + " (Error)")
 
         # Tab 12: Plugins (NEW - Phase 3)
         try:
             self.plugins_tab = PluginsTab()
-            self.tabs.addTab(self.plugins_tab, "🔌 Plugins")
+            self.tabs.addTab(self.plugins_tab, tr("tab_plugins"))
             logger.info("Plugins tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Plugins tab: {e}")
-            self.tabs.addTab(QWidget(), "🔌 Plugins (Error)")
+            self.tabs.addTab(QWidget(), tr("tab_plugins") + " (Error)")
 
         # Tab 13: Remote Control (NEW - Phase 3)
         try:
             self.remote_tab = RemoteTab()
-            self.tabs.addTab(self.remote_tab, "📱 Remote")
+            self.tabs.addTab(self.remote_tab, tr("tab_remote"))
             logger.info("Remote Control tab loaded")
+
+            # Connect RemoteServer to audio player
+            self._connect_remote_server()
         except Exception as e:
             logger.error(f"Failed to load Remote Control tab: {e}")
-            self.tabs.addTab(QWidget(), "📱 Remote (Error)")
+            self.tabs.addTab(QWidget(), tr("tab_remote") + " (Error)")
 
         return self.tabs
 
@@ -937,6 +940,126 @@ Your API keys are stored securely in your OS credential manager.
             logger.info("Song ended (library mode)")
             if hasattr(self, 'library_tab'):
                 self.library_tab._on_song_ended()
+
+    def _connect_remote_server(self):
+        """Connect RemoteServer callbacks to audio player and controls using Qt signals"""
+        try:
+            from services.remote_server import RemoteServer, NowPlayingInfo
+            from PyQt6.QtCore import QTimer
+
+            server = RemoteServer.get_instance()
+            self._remote_server = server  # Keep reference for updates
+
+            # Connect Qt signal (thread-safe) to handle commands
+            if hasattr(server, 'command_received'):
+                server.command_received.connect(self._handle_remote_command)
+                logger.info("Connected to RemoteServer command_received signal")
+
+            # Start timer to update now_playing info for mobile interface
+            self._remote_update_timer = QTimer()
+            self._remote_update_timer.timeout.connect(self._update_remote_now_playing)
+            self._remote_update_timer.start(500)  # Update every 500ms
+
+            # Force immediate update so mobile gets current state right away
+            QTimer.singleShot(100, self._update_remote_now_playing)
+
+            logger.info("Remote server callbacks connected to audio player")
+
+        except Exception as e:
+            logger.error(f"Failed to connect remote server: {e}")
+
+    def _handle_remote_command(self, command: str, params: dict):
+        """Handle remote commands in main Qt thread (thread-safe via signal)"""
+        logger.info(f"Handling remote command: {command} with params: {params}")
+
+        try:
+            if command == 'play':
+                self.audio_player.play()
+                if hasattr(self, 'now_playing'):
+                    self.now_playing.set_playing(True)
+
+            elif command == 'pause':
+                self.audio_player.pause()
+                if hasattr(self, 'now_playing'):
+                    self.now_playing.set_playing(False)
+
+            elif command == 'toggle':
+                if self.audio_player.is_playing():
+                    self.audio_player.pause()
+                    if hasattr(self, 'now_playing'):
+                        self.now_playing.set_playing(False)
+                else:
+                    self.audio_player.play()
+                    if hasattr(self, 'now_playing'):
+                        self.now_playing.set_playing(True)
+
+            elif command == 'next':
+                self._on_global_next_clicked()
+
+            elif command == 'previous':
+                self._on_global_prev_clicked()
+
+            elif command == 'volume':
+                volume = params.get('volume', 100)
+                self.audio_player.set_volume(volume / 100.0)
+                # Sync volume slider and label in now_playing widget
+                if hasattr(self, 'now_playing'):
+                    if hasattr(self.now_playing, 'volume_slider'):
+                        self.now_playing.volume_slider.blockSignals(True)  # Prevent feedback loop
+                        self.now_playing.volume_slider.setValue(volume)
+                        self.now_playing.volume_slider.blockSignals(False)
+                    if hasattr(self.now_playing, 'volume_label_value'):
+                        self.now_playing.volume_label_value.setText(f"{volume}%")
+
+            elif command == 'seek':
+                position = params.get('position', 0)
+                self.audio_player.seek(position)
+
+            logger.info(f"Remote command '{command}' executed in main thread")
+
+        except Exception as e:
+            logger.error(f"Error handling remote command '{command}': {e}")
+
+    def _update_remote_now_playing(self):
+        """Update RemoteServer with current playback info"""
+        if not hasattr(self, '_remote_server') or not self._remote_server:
+            return
+
+        try:
+            from services.remote_server import NowPlayingInfo
+
+            # Get current song info from now_playing widget
+            title = ""
+            artist = ""
+            album = ""
+
+            if hasattr(self, 'now_playing') and hasattr(self.now_playing, 'current_song'):
+                song = self.now_playing.current_song
+                if song:
+                    title = song.get('title', '')
+                    artist = song.get('artist', '')
+                    album = song.get('album', '')
+
+            # Get playback state
+            position = self.audio_player.get_position() if self.audio_player else 0
+            duration = self.audio_player.get_duration() if self.audio_player else 0
+            is_playing = self.audio_player.is_playing() if self.audio_player else False
+            volume = int(self.audio_player.get_volume() * 100)
+
+            # Update server
+            info = NowPlayingInfo(
+                title=title,
+                artist=artist,
+                album=album,
+                duration=int(duration),
+                position=int(position),
+                is_playing=is_playing,
+                volume=volume
+            )
+            self._remote_server.update_now_playing(info)
+
+        except Exception as e:
+            pass  # Silently ignore errors to avoid log spam
 
     def _on_library_playback_started(self):
         """Handle playback started from library - update source tracking"""

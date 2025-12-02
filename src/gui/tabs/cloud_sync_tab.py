@@ -27,6 +27,7 @@ from services.cloud_sync_service import (
     CloudSyncService, LocalFolderProvider, GoogleDriveProvider,
     SyncStatus, ConflictStrategy
 )
+from translations import tr
 
 logger = logging.getLogger(__name__)
 
@@ -69,27 +70,24 @@ class CloudSyncTab(QWidget):
         layout.setSpacing(15)
 
         # Header
-        header_label = QLabel("☁️ Cloud Sync")
+        header_label = QLabel(tr("cloud_sync_title"))
         header_label.setStyleSheet("font-size: 18px; font-weight: bold;")
         layout.addWidget(header_label)
 
         # Info label
-        info_label = QLabel(
-            "Sync your library metadata across devices using cloud storage.\n"
-            "Note: Only metadata is synced, not the actual MP3 files."
-        )
+        info_label = QLabel(tr("cloud_sync_info"))
         info_label.setStyleSheet("margin-bottom: 10px; color: #666;")
         layout.addWidget(info_label)
 
         # === PROVIDER SELECTION ===
-        provider_group = QGroupBox("Provider Configuration")
+        provider_group = QGroupBox(tr("cloud_sync_provider_config"))
         provider_layout = QVBoxLayout()
 
         # Provider dropdown
         provider_row = QHBoxLayout()
-        provider_label = QLabel("Cloud Provider:")
+        provider_label = QLabel(tr("cloud_sync_provider"))
         self.provider_combo = QComboBox()
-        self.provider_combo.addItems(["Local Folder (NAS/USB)", "Google Drive"])
+        self.provider_combo.addItems([tr("cloud_sync_local_folder"), "Google Drive"])
         self.provider_combo.currentIndexChanged.connect(self._on_provider_changed)
         provider_row.addWidget(provider_label)
         provider_row.addWidget(self.provider_combo)
@@ -100,10 +98,10 @@ class CloudSyncTab(QWidget):
         self.local_folder_widget = QWidget()
         local_layout = QHBoxLayout(self.local_folder_widget)
         local_layout.setContentsMargins(0, 10, 0, 0)
-        local_label = QLabel("Sync Folder:")
+        local_label = QLabel(tr("cloud_sync_folder"))
         self.folder_input = QLineEdit()
-        self.folder_input.setPlaceholderText("D:\\Sync\\NexusMusic or /mnt/nas/music")
-        self.browse_btn = QPushButton("📁 Browse")
+        self.folder_input.setPlaceholderText(tr("cloud_sync_folder_placeholder"))
+        self.browse_btn = QPushButton(tr("cloud_sync_browse"))
         self.browse_btn.clicked.connect(self._browse_folder)
         local_layout.addWidget(local_label)
         local_layout.addWidget(self.folder_input, 1)
@@ -115,42 +113,58 @@ class CloudSyncTab(QWidget):
         gdrive_layout = QVBoxLayout(self.gdrive_widget)
         gdrive_layout.setContentsMargins(0, 10, 0, 0)
 
-        # Info about Google Drive setup
-        gdrive_info = QLabel(
-            "🔐 Google Drive requires OAuth 2.0 authentication.\n"
-            "You need a credentials.json file from Google Cloud Console."
-        )
+        # Simple info - no technical setup required
+        gdrive_info = QLabel(tr("cloud_sync_gdrive_simple_info"))
         gdrive_info.setStyleSheet("color: #666;")
+        gdrive_info.setWordWrap(True)
         gdrive_layout.addWidget(gdrive_info)
 
-        # Credentials file selector
-        creds_row = QHBoxLayout()
-        creds_label = QLabel("Credentials File:")
-        self.gdrive_creds_input = QLineEdit()
-        self.gdrive_creds_input.setPlaceholderText("Path to credentials.json from Google Cloud Console")
-        self.gdrive_browse_btn = QPushButton("📁 Browse")
-        self.gdrive_browse_btn.clicked.connect(self._browse_credentials)
-        creds_row.addWidget(creds_label)
-        creds_row.addWidget(self.gdrive_creds_input, 1)
-        creds_row.addWidget(self.gdrive_browse_btn)
-        gdrive_layout.addLayout(creds_row)
-
-        # Setup guide link
-        setup_btn = QPushButton("📖 How to Get Credentials")
-        setup_btn.clicked.connect(self._show_gdrive_setup_guide)
-        setup_btn.setStyleSheet("color: #2196F3;")
-        gdrive_layout.addWidget(setup_btn)
-
-        # Auth status
-        self.gdrive_status = QLabel("Status: Not authenticated")
-        self.gdrive_status.setStyleSheet("font-weight: bold;")
+        # Auth status with user email
+        self.gdrive_status = QLabel(tr("cloud_sync_status_not_auth"))
+        self.gdrive_status.setStyleSheet("font-weight: bold; font-size: 13px; margin: 10px 0;")
         gdrive_layout.addWidget(self.gdrive_status)
+
+        # Connect/Disconnect buttons row
+        gdrive_buttons = QHBoxLayout()
+
+        self.gdrive_connect_btn = QPushButton("🔗 " + tr("cloud_sync_connect_google"))
+        self.gdrive_connect_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4285F4;
+                color: white;
+                padding: 10px 20px;
+                font-weight: bold;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #3367D6;
+            }
+        """)
+        self.gdrive_connect_btn.clicked.connect(self._connect_google_drive)
+        gdrive_buttons.addWidget(self.gdrive_connect_btn)
+
+        self.gdrive_logout_btn = QPushButton("🚪 " + tr("cloud_sync_logout"))
+        self.gdrive_logout_btn.setStyleSheet("""
+            QPushButton {
+                padding: 10px 20px;
+                border-radius: 4px;
+            }
+        """)
+        self.gdrive_logout_btn.clicked.connect(self._logout_google_drive)
+        self.gdrive_logout_btn.hide()  # Hidden until connected
+        gdrive_buttons.addWidget(self.gdrive_logout_btn)
+
+        gdrive_buttons.addStretch()
+        gdrive_layout.addLayout(gdrive_buttons)
 
         self.gdrive_widget.hide()
         provider_layout.addWidget(self.gdrive_widget)
 
+        # Check if already authenticated
+        self._check_gdrive_auth_status()
+
         # Connect button
-        self.connect_btn = QPushButton("🔗 Connect Provider")
+        self.connect_btn = QPushButton(tr("cloud_sync_connect"))
         self.connect_btn.clicked.connect(self._connect_provider)
         provider_layout.addWidget(self.connect_btn)
 
@@ -158,13 +172,13 @@ class CloudSyncTab(QWidget):
         layout.addWidget(provider_group)
 
         # === SYNC STATUS ===
-        status_group = QGroupBox("Sync Status")
+        status_group = QGroupBox(tr("cloud_sync_status"))
         status_layout = QVBoxLayout()
 
         # Connection status
         status_row = QHBoxLayout()
-        status_label = QLabel("Connection:")
-        self.connection_status = QLabel("⚪ Not connected")
+        status_label = QLabel(tr("cloud_sync_connection"))
+        self.connection_status = QLabel(tr("cloud_sync_not_connected"))
         self.connection_status.setStyleSheet("font-weight: bold;")
         status_row.addWidget(status_label)
         status_row.addWidget(self.connection_status)
@@ -173,8 +187,8 @@ class CloudSyncTab(QWidget):
 
         # Last sync info
         last_sync_row = QHBoxLayout()
-        last_sync_label = QLabel("Last Sync:")
-        self.last_sync_status = QLabel("Never")
+        last_sync_label = QLabel(tr("cloud_sync_last_sync"))
+        self.last_sync_status = QLabel(tr("cloud_sync_never"))
         last_sync_row.addWidget(last_sync_label)
         last_sync_row.addWidget(self.last_sync_status)
         last_sync_row.addStretch()
@@ -182,7 +196,7 @@ class CloudSyncTab(QWidget):
 
         # Device ID
         device_row = QHBoxLayout()
-        device_label = QLabel("Device ID:")
+        device_label = QLabel(tr("cloud_sync_device_id"))
         self.device_id_label = QLabel("---")
         self.device_id_label.setStyleSheet("font-family: monospace;")
         device_row.addWidget(device_label)
@@ -194,19 +208,19 @@ class CloudSyncTab(QWidget):
         layout.addWidget(status_group)
 
         # === SYNC OPTIONS ===
-        options_group = QGroupBox("Sync Options")
+        options_group = QGroupBox(tr("cloud_sync_options"))
         options_layout = QVBoxLayout()
 
         # Conflict strategy
         conflict_row = QHBoxLayout()
-        conflict_label = QLabel("Conflict Resolution:")
+        conflict_label = QLabel(tr("cloud_sync_conflict"))
         self.conflict_combo = QComboBox()
         self.conflict_combo.addItems([
-            "Newer Wins (recommended)",
-            "Local Wins (prefer this device)",
-            "Remote Wins (prefer cloud)",
-            "Keep Both (no data loss)",
-            "Manual (ask each time)"
+            tr("cloud_sync_conflict_newer"),
+            tr("cloud_sync_conflict_local"),
+            tr("cloud_sync_conflict_remote"),
+            tr("cloud_sync_conflict_both"),
+            tr("cloud_sync_conflict_manual")
         ])
         self.conflict_combo.currentIndexChanged.connect(self._on_conflict_changed)
         conflict_row.addWidget(conflict_label)
@@ -215,21 +229,21 @@ class CloudSyncTab(QWidget):
         options_layout.addLayout(conflict_row)
 
         # Auto sync checkbox
-        self.auto_sync_check = QCheckBox("Auto-sync on startup")
+        self.auto_sync_check = QCheckBox(tr("cloud_sync_auto_sync"))
         options_layout.addWidget(self.auto_sync_check)
 
         options_group.setLayout(options_layout)
         layout.addWidget(options_group)
 
         # === PROGRESS ===
-        progress_group = QGroupBox("Progress")
+        progress_group = QGroupBox(tr("cloud_sync_progress"))
         progress_layout = QVBoxLayout()
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
         progress_layout.addWidget(self.progress_bar)
 
-        self.progress_label = QLabel("Ready")
+        self.progress_label = QLabel(tr("cloud_sync_ready"))
         self.progress_label.setStyleSheet("color: #666;")
         progress_layout.addWidget(self.progress_label)
 
@@ -237,10 +251,10 @@ class CloudSyncTab(QWidget):
         layout.addWidget(progress_group)
 
         # === ACTION BUTTONS ===
-        actions_group = QGroupBox("Actions")
+        actions_group = QGroupBox(tr("cloud_sync_actions"))
         actions_layout = QHBoxLayout()
 
-        self.sync_btn = QPushButton("🔄 Sync Now")
+        self.sync_btn = QPushButton(tr("cloud_sync_sync_now"))
         self.sync_btn.setEnabled(False)
         self.sync_btn.clicked.connect(self._do_sync)
         self.sync_btn.setStyleSheet("""
@@ -259,11 +273,11 @@ class CloudSyncTab(QWidget):
         """)
         actions_layout.addWidget(self.sync_btn)
 
-        self.export_btn = QPushButton("📤 Export Library")
+        self.export_btn = QPushButton(tr("cloud_sync_export"))
         self.export_btn.clicked.connect(self._do_export)
         actions_layout.addWidget(self.export_btn)
 
-        self.import_btn = QPushButton("📥 Import Library")
+        self.import_btn = QPushButton(tr("cloud_sync_import"))
         self.import_btn.clicked.connect(self._do_import)
         actions_layout.addWidget(self.import_btn)
 
@@ -271,7 +285,7 @@ class CloudSyncTab(QWidget):
         layout.addWidget(actions_group)
 
         # === LOG ===
-        log_group = QGroupBox("Activity Log")
+        log_group = QGroupBox(tr("cloud_sync_activity_log"))
         log_layout = QVBoxLayout()
 
         self.log_text = QTextEdit()
@@ -280,7 +294,7 @@ class CloudSyncTab(QWidget):
         self.log_text.setStyleSheet("font-family: monospace; font-size: 11px;")
         log_layout.addWidget(self.log_text)
 
-        clear_log_btn = QPushButton("Clear Log")
+        clear_log_btn = QPushButton(tr("cloud_sync_clear_log"))
         clear_log_btn.clicked.connect(lambda: self.log_text.clear())
         log_layout.addWidget(clear_log_btn)
 
@@ -340,61 +354,85 @@ class CloudSyncTab(QWidget):
         if folder:
             self.folder_input.setText(folder)
 
-    def _browse_credentials(self):
-        """Browse for Google Drive credentials.json file"""
-        file_path, _ = QFileDialog.getOpenFileName(
+    def _check_gdrive_auth_status(self):
+        """Check if Google Drive is already authenticated"""
+        try:
+            provider = GoogleDriveProvider()
+            if provider.is_authenticated:
+                self.gdrive_status.setText("⏳ " + tr("cloud_sync_checking_auth"))
+                self.gdrive_status.setStyleSheet("font-weight: bold; color: #FF9800;")
+        except Exception:
+            pass
+
+    def _connect_google_drive(self):
+        """Connect to Google Drive with simple OAuth flow"""
+        self._log("Connecting to Google Drive...")
+        self.gdrive_status.setText("⏳ " + tr("cloud_sync_opening_browser"))
+        self.gdrive_status.setStyleSheet("font-weight: bold; color: #FF9800;")
+        self.gdrive_connect_btn.setEnabled(False)
+
+        try:
+            self.provider = GoogleDriveProvider()
+            self.sync_service.set_provider(self.provider)
+
+            if self.sync_service.connect():
+                # Success!
+                user_email = getattr(self.provider, 'user_email', 'Connected')
+                self.gdrive_status.setText(f"✅ {tr('cloud_sync_connected_as')}: {user_email}")
+                self.gdrive_status.setStyleSheet("font-weight: bold; color: #4CAF50;")
+                self.gdrive_connect_btn.hide()
+                self.gdrive_logout_btn.show()
+                self._update_connection_status(True)
+                self._log(f"Connected to Google Drive as {user_email}")
+
+                QMessageBox.information(
+                    self,
+                    tr("cloud_sync_success"),
+                    tr("cloud_sync_gdrive_success_msg")
+                )
+            else:
+                self.gdrive_status.setText("❌ " + tr("cloud_sync_connection_failed"))
+                self.gdrive_status.setStyleSheet("font-weight: bold; color: #f44336;")
+                self.gdrive_connect_btn.setEnabled(True)
+                self._log("Google Drive connection failed")
+
+        except ImportError:
+            self.gdrive_status.setText("❌ " + tr("cloud_sync_missing_deps"))
+            self.gdrive_status.setStyleSheet("font-weight: bold; color: #f44336;")
+            self.gdrive_connect_btn.setEnabled(True)
+            self._log("Missing dependencies: pip install google-api-python-client google-auth-oauthlib")
+            QMessageBox.warning(
+                self,
+                tr("cloud_sync_missing_deps"),
+                "pip install google-api-python-client google-auth-oauthlib"
+            )
+        except Exception as e:
+            self.gdrive_status.setText("❌ Error")
+            self.gdrive_status.setStyleSheet("font-weight: bold; color: #f44336;")
+            self.gdrive_connect_btn.setEnabled(True)
+            self._log(f"Google Drive error: {e}")
+            logger.error(f"Google Drive connection error: {e}")
+
+    def _logout_google_drive(self):
+        """Logout from Google Drive"""
+        reply = QMessageBox.question(
             self,
-            "Select Google Drive Credentials",
-            str(Path.home()),
-            "JSON Files (*.json)"
+            tr("cloud_sync_logout_confirm_title"),
+            tr("cloud_sync_logout_confirm_msg"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
-        if file_path:
-            self.gdrive_creds_input.setText(file_path)
-            self._log(f"Credentials file selected: {file_path}")
 
-    def _show_gdrive_setup_guide(self):
-        """Show Google Drive setup guide"""
-        guide_text = """
-<h3>🔐 Google Drive Setup Guide</h3>
-
-<p><b>Step 1: Create a Google Cloud Project</b></p>
-<ol>
-<li>Go to <a href="https://console.cloud.google.com/">Google Cloud Console</a></li>
-<li>Create a new project or select existing one</li>
-<li>Enable the <b>Google Drive API</b> in APIs & Services</li>
-</ol>
-
-<p><b>Step 2: Create OAuth Credentials</b></p>
-<ol>
-<li>Go to APIs & Services → Credentials</li>
-<li>Click "Create Credentials" → "OAuth client ID"</li>
-<li>Select "Desktop app" as application type</li>
-<li>Download the JSON file (credentials.json)</li>
-</ol>
-
-<p><b>Step 3: Configure OAuth Consent Screen</b></p>
-<ol>
-<li>Go to OAuth consent screen</li>
-<li>Add your email as a test user</li>
-<li>Set app name to "NEXUS Music Manager"</li>
-</ol>
-
-<p><b>Step 4: First Authentication</b></p>
-<ol>
-<li>Select your credentials.json file above</li>
-<li>Click "Connect Provider"</li>
-<li>A browser window will open for authentication</li>
-<li>Grant access to your Google Drive</li>
-</ol>
-
-<p><i>Note: The token will be saved locally for future use.</i></p>
-"""
-        msg = QMessageBox(self)
-        msg.setWindowTitle("Google Drive Setup Guide")
-        msg.setTextFormat(Qt.TextFormat.RichText)
-        msg.setText(guide_text)
-        msg.setIcon(QMessageBox.Icon.Information)
-        msg.exec()
+        if reply == QMessageBox.StandardButton.Yes:
+            if self.provider and hasattr(self.provider, 'logout'):
+                self.provider.logout()
+            self.provider = None
+            self._update_connection_status(False)
+            self.gdrive_status.setText(tr("cloud_sync_status_not_auth"))
+            self.gdrive_status.setStyleSheet("font-weight: bold;")
+            self.gdrive_connect_btn.show()
+            self.gdrive_connect_btn.setEnabled(True)
+            self.gdrive_logout_btn.hide()
+            self._log("Logged out from Google Drive")
 
     def _connect_provider(self):
         """Connect to selected provider"""
@@ -403,7 +441,7 @@ class CloudSyncTab(QWidget):
         if provider_idx == 0:  # Local Folder
             folder = self.folder_input.text().strip()
             if not folder:
-                QMessageBox.warning(self, "Error", "Please select a sync folder")
+                QMessageBox.warning(self, "Error", tr("cloud_sync_folder_placeholder"))
                 return
 
             # Create folder if doesn't exist
@@ -417,59 +455,8 @@ class CloudSyncTab(QWidget):
                 else:
                     self._log("Failed to connect to local folder")
                     QMessageBox.warning(self, "Error", "Failed to connect to folder")
-        else:  # Google Drive
-            creds_file = self.gdrive_creds_input.text().strip()
-            if not creds_file:
-                QMessageBox.warning(
-                    self,
-                    "Credentials Required",
-                    "Please select a credentials.json file from Google Cloud Console.\n\n"
-                    "Click 'How to Get Credentials' for setup instructions."
-                )
-                return
-
-            if not Path(creds_file).exists():
-                QMessageBox.warning(self, "Error", f"Credentials file not found: {creds_file}")
-                return
-
-            self.provider = GoogleDriveProvider(creds_file)
-            self.sync_service.set_provider(self.provider)
-
-            # Show progress
-            self._log("Authenticating with Google Drive...")
-            self.gdrive_status.setText("Status: Authenticating...")
-            self.gdrive_status.setStyleSheet("font-weight: bold; color: #FF9800;")
-
-            try:
-                if self.sync_service.connect():
-                    self._update_connection_status(True)
-                    self.gdrive_status.setText("Status: ✅ Connected")
-                    self.gdrive_status.setStyleSheet("font-weight: bold; color: #4CAF50;")
-                    self._log("Connected to Google Drive successfully!")
-                    QMessageBox.information(
-                        self,
-                        "Success",
-                        "Connected to Google Drive!\n\n"
-                        "Your library will sync to the 'NEXUS_Music_Sync' folder."
-                    )
-                else:
-                    self.gdrive_status.setText("Status: ❌ Authentication failed")
-                    self.gdrive_status.setStyleSheet("font-weight: bold; color: #f44336;")
-                    self._log("Google Drive authentication failed")
-                    QMessageBox.warning(
-                        self,
-                        "Authentication Failed",
-                        "Could not authenticate with Google Drive.\n\n"
-                        "Make sure you have:\n"
-                        "1. Valid credentials.json file\n"
-                        "2. Google Drive API enabled\n"
-                        "3. Your email added as test user"
-                    )
-            except Exception as e:
-                self.gdrive_status.setText("Status: ❌ Error")
-                self.gdrive_status.setStyleSheet("font-weight: bold; color: #f44336;")
-                self._log(f"Google Drive error: {e}")
-                QMessageBox.warning(self, "Error", str(e))
+        else:  # Google Drive - use dedicated OAuth flow
+            self._connect_google_drive()
 
     def _update_connection_status(self, connected: bool):
         """Update connection status display"""

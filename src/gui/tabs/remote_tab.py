@@ -17,6 +17,7 @@ from typing import Optional
 import base64
 
 from services.remote_server import RemoteServer
+from translations import tr
 
 logger = logging.getLogger(__name__)
 
@@ -46,16 +47,12 @@ class RemoteTab(QWidget):
         main_layout.setContentsMargins(10, 5, 10, 10)  # Reduced top margin from 10 to 5
 
         # Header
-        header = QLabel("📱 Remote Control")
+        header = QLabel(tr("remote_title"))
         header.setStyleSheet("font-size: 18px; font-weight: bold;")
         main_layout.addWidget(header)
 
         # Instructions (moved from bottom)
-        instructions = QLabel(
-            "1. Click 'Start' to enable remote control\n"
-            "2. Make sure your phone is on the same WiFi network\n"
-            "3. Scan the QR code or enter the URL in your mobile browser"
-        )
+        instructions = QLabel(tr("remote_instructions"))
         instructions.setStyleSheet("color: #888; font-size: 11px; padding: 5px 0;")
         main_layout.addWidget(instructions)
 
@@ -87,11 +84,11 @@ class RemoteTab(QWidget):
         controls_row.setSpacing(20)
 
         # SERVER (LEFT SIDE)
-        server_group = QGroupBox("Server")
+        server_group = QGroupBox(tr("remote_server"))
         server_layout = QVBoxLayout(server_group)
 
         port_row = QHBoxLayout()
-        port_row.addWidget(QLabel("Port:"))
+        port_row.addWidget(QLabel(tr("remote_port")))
         self.port_spin = QSpinBox()
         self.port_spin.setRange(1024, 65535)
         self.port_spin.setValue(8080)
@@ -101,13 +98,13 @@ class RemoteTab(QWidget):
         server_layout.addLayout(port_row)
 
         btn_row = QHBoxLayout()
-        self.start_btn = QPushButton("▶ Start")
+        self.start_btn = QPushButton(tr("remote_start"))
         self.start_btn.setFixedHeight(35)
         self.start_btn.setStyleSheet("background: #4CAF50; color: white; font-weight: bold;")
         self.start_btn.clicked.connect(self._start_server)
         btn_row.addWidget(self.start_btn)
 
-        self.stop_btn = QPushButton("⏹ Stop")
+        self.stop_btn = QPushButton(tr("remote_stop"))
         self.stop_btn.setFixedHeight(35)
         self.stop_btn.setEnabled(False)
         self.stop_btn.setStyleSheet("background: #f44336; color: white; font-weight: bold;")
@@ -118,21 +115,21 @@ class RemoteTab(QWidget):
         controls_row.addWidget(server_group)
 
         # CONNECTION (RIGHT SIDE)
-        conn_group = QGroupBox("Connection")
+        conn_group = QGroupBox(tr("remote_connection"))
         conn_layout = QVBoxLayout(conn_group)
 
-        self.url_label = QLabel("URL: Not running")
-        self.url_label.setStyleSheet("background: #2d2d2d; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 10px;")
+        self.url_label = QLabel(tr("remote_url_not_running"))
+        self.url_label.setStyleSheet("background: #2d2d2d; color: #ffffff; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 10px;")
         self.url_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         conn_layout.addWidget(self.url_label)
 
-        self.open_btn = QPushButton("🌐 Open in Browser")
+        self.open_btn = QPushButton(tr("remote_open_browser"))
         self.open_btn.setFixedHeight(35)
         self.open_btn.setEnabled(False)
         self.open_btn.clicked.connect(self._open_in_browser)
         conn_layout.addWidget(self.open_btn)
 
-        self.status_label = QLabel("⚪ Server stopped")
+        self.status_label = QLabel(tr("remote_status_stopped"))
         self.status_label.setStyleSheet("font-weight: bold;")
         conn_layout.addWidget(self.status_label)
 
@@ -141,13 +138,13 @@ class RemoteTab(QWidget):
         main_layout.addLayout(controls_row)
 
         # Activity Log
-        log_group = QGroupBox("Activity Log")
+        log_group = QGroupBox(tr("remote_activity_log"))
         log_layout = QVBoxLayout(log_group)
 
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setFixedHeight(80)  # Fixed height to prevent pushing content
-        self.log_text.setStyleSheet("font-family: monospace; font-size: 10px; background: #1e1e1e;")
+        self.log_text.setStyleSheet("font-family: monospace; font-size: 10px; background: #1e1e1e; color: #cccccc;")
         log_layout.addWidget(self.log_text)
 
         main_layout.addWidget(log_group)
