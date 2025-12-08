@@ -71,6 +71,7 @@ from gui.tabs.cleanup_tab import CleanupTab
 from gui.tabs.cloud_sync_tab import CloudSyncTab
 from gui.tabs.plugins_tab import PluginsTab
 from gui.tabs.remote_tab import RemoteTab
+from gui.tabs.content_filter_tab import ContentFilterTab
 
 # Import GUI widgets
 from gui.widgets.now_playing_widget import NowPlayingWidget
@@ -654,6 +655,15 @@ Your API keys are stored securely in your OS credential manager.
         except Exception as e:
             logger.error(f"Failed to load Remote Control tab: {e}")
             self.tabs.addTab(QWidget(), tr("tab_remote") + " (Error)")
+
+        # Tab 14: Content Filter (NEW - Phase 8)
+        try:
+            self.content_filter_tab = ContentFilterTab(self.db_manager)
+            self.tabs.addTab(self.content_filter_tab, tr("tab_content_filter"))
+            logger.info("Content Filter tab loaded")
+        except Exception as e:
+            logger.error(f"Failed to load Content Filter tab: {e}")
+            self.tabs.addTab(QWidget(), tr("tab_content_filter") + " (Error)")
 
         return self.tabs
 
