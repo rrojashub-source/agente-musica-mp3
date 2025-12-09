@@ -681,6 +681,23 @@ class LibraryTab(QWidget):
         self.status_label.setText(f"🧠 Analyzing audio for '{song_title}'...")
         QApplication.processEvents()
 
+        # First check if the file exists
+        song_info = self.db_manager.get_song_by_id(song_id)
+        if song_info:
+            file_path = song_info.get('file_path', '')
+            if not Path(file_path).exists():
+                QMessageBox.warning(
+                    self,
+                    "File Not Found",
+                    f"Cannot analyze this song - file not found:\n\n"
+                    f"'{song_title}' by {song_artist}\n\n"
+                    f"Path: {file_path}\n\n"
+                    f"The file may have been moved or deleted.\n"
+                    f"Use '🧹 Clean Database' to remove missing files."
+                )
+                self.status_label.setText("File not found")
+                return
+
         try:
             # Find similar songs using AI embeddings
             similar_songs = self.audio_embeddings.find_similar(
@@ -697,7 +714,8 @@ class LibraryTab(QWidget):
                     f"'{song_title}' by {song_artist}\n\n"
                     f"This could mean:\n"
                     f"• This song is unique in your library\n"
-                    f"• Not enough songs have been analyzed yet\n\n"
+                    f"• Not enough songs have been analyzed yet\n"
+                    f"• Other songs' files may be missing\n\n"
                     f"Try again after importing more music."
                 )
                 self.status_label.setText("No similar songs found")
