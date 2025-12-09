@@ -1,5 +1,5 @@
 """
-Library Tab with Playback Integration - Phase 6.3
+Library Tab with Playback Integration - Phase 6.3 + AI Similarity (Phase 9)
 
 Complete library view with integrated audio playback:
 - Table view of all songs in database
@@ -11,9 +11,11 @@ Complete library view with integrated audio playback:
 - Auto-play next song on end
 - Graceful error handling for missing files
 - Skeleton loading animation during data load
+- AI-powered "Find Similar Songs" using audio embeddings
 
 Created: November 13, 2025
 Updated: November 23, 2025 (Added skeleton loading)
+Updated: December 8, 2025 (Added AI similarity search - Phase 9)
 """
 import logging
 from pathlib import Path
@@ -26,6 +28,7 @@ from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl, QThread, pyqtSlot
 from PyQt6.QtGui import QColor, QDragEnterEvent, QDropEvent, QBrush
 
 from core.cover_art_manager import CoverArtManager
+from core.audio_embeddings import AudioEmbeddings
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +69,9 @@ class LibraryTab(QWidget):
 
         # Initialize cover art manager
         self.cover_manager = CoverArtManager()
+
+        # Initialize AI audio embeddings for similarity search
+        self.audio_embeddings = AudioEmbeddings(db_manager)
 
         # State
         self._current_song_id = None
@@ -631,6 +637,13 @@ class LibraryTab(QWidget):
         # Create context menu
         menu = QMenu(self)
 
+        # Find Similar Songs action (only for single selection)
+        find_similar_action = None
+        if len(songs_to_delete) == 1:
+            find_similar_action = menu.addAction("🧠 Find Similar Songs (AI)")
+            find_similar_action.setStatusTip(f"Find songs similar to '{songs_to_delete[0]['title']}' using AI")
+            menu.addSeparator()
+
         # Delete action (singular or plural)
         if len(songs_to_delete) == 1:
             delete_text = "🗑️ Delete Song"
@@ -646,8 +659,182 @@ class LibraryTab(QWidget):
         action = menu.exec(self.library_table.viewport().mapToGlobal(position))
 
         # Handle action
-        if action == delete_action:
+        if action == find_similar_action and find_similar_action:
+            self._find_similar_songs(songs_to_delete[0])
+        elif action == delete_action:
             self._delete_selected_songs(songs_to_delete)
+
+    def _find_similar_songs(self, song: dict):
+        """
+        Find songs similar to the selected song using AI audio embeddings.
+
+        This is the AI-powered similarity search feature (Phase 9).
+
+        Args:
+            song: Dict with 'id', 'title', 'artist' keys
+        """
+        song_id = song['id']
+        song_title = song['title']
+        song_artist = song['artist']
+
+        logger.info(f"Finding similar songs to: {song_title} - {song_artist}")
+        self.status_label.setText(f"🧠 Analyzing audio for '{song_title}'...")
+        QApplication.processEvents()
+
+        try:
+            # Find similar songs using AI embeddings
+            similar_songs = self.audio_embeddings.find_similar(
+                song_id,
+                limit=10,
+                min_similarity=0.3
+            )
+
+            if not similar_songs:
+                QMessageBox.information(
+                    self,
+                    "No Similar Songs Found",
+                    f"No similar songs found for:\n\n"
+                    f"'{song_title}' by {song_artist}\n\n"
+                    f"This could mean:\n"
+                    f"• This song is unique in your library\n"
+                    f"• Not enough songs have been analyzed yet\n\n"
+                    f"Try again after importing more music."
+                )
+                self.status_label.setText("No similar songs found")
+                return
+
+            # Show results in a dialog
+            self._show_similar_songs_dialog(song, similar_songs)
+
+            self.status_label.setText(f"Found {len(similar_songs)} similar songs")
+
+        except Exception as e:
+            logger.error(f"Error finding similar songs: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to find similar songs:\n\n{e}"
+            )
+            self.status_label.setText("Error finding similar songs")
+
+    def _show_similar_songs_dialog(self, reference_song: dict, similar_songs: list):
+        """
+        Show dialog with similar songs results.
+
+        Args:
+            reference_song: The original song
+            similar_songs: List of similar songs with similarity scores
+        """
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTableWidget, QDialogButtonBox
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"🧠 Songs Similar to '{reference_song['title']}'")
+        dialog.setMinimumSize(600, 400)
+
+        layout = QVBoxLayout(dialog)
+
+        # Header
+        header_label = QLabel(
+            f"<b>AI Analysis Results</b><br>"
+            f"Reference: <i>{reference_song['title']}</i> by {reference_song['artist']}<br>"
+            f"Found {len(similar_songs)} similar songs based on audio characteristics"
+        )
+        layout.addWidget(header_label)
+
+        # Results table
+        results_table = QTableWidget()
+        results_table.setColumnCount(4)
+        results_table.setHorizontalHeaderLabels(["Title", "Artist", "Similarity", ""])
+        results_table.setRowCount(len(similar_songs))
+        results_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        results_table.setAlternatingRowColors(True)
+
+        # Column widths
+        header = results_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        header.resizeSection(2, 80)
+        header.resizeSection(3, 60)
+
+        for row, result in enumerate(similar_songs):
+            song = result['song']
+            similarity = result['similarity']
+
+            # Title
+            title_item = QTableWidgetItem(song.get('title', 'Unknown'))
+            title_item.setData(Qt.ItemDataRole.UserRole, song.get('id'))
+            results_table.setItem(row, 0, title_item)
+
+            # Artist
+            artist_item = QTableWidgetItem(song.get('artist', 'Unknown'))
+            results_table.setItem(row, 1, artist_item)
+
+            # Similarity percentage
+            similarity_pct = int(similarity * 100)
+            similarity_item = QTableWidgetItem(f"{similarity_pct}%")
+
+            # Color code by similarity
+            if similarity >= 0.8:
+                similarity_item.setForeground(QBrush(QColor(0, 180, 0)))  # Green
+            elif similarity >= 0.6:
+                similarity_item.setForeground(QBrush(QColor(0, 140, 200)))  # Blue
+            elif similarity >= 0.4:
+                similarity_item.setForeground(QBrush(QColor(200, 150, 0)))  # Yellow
+            else:
+                similarity_item.setForeground(QBrush(QColor(150, 150, 150)))  # Gray
+
+            results_table.setItem(row, 2, similarity_item)
+
+            # Play button
+            play_button = QPushButton("▶")
+            play_button.setFixedWidth(40)
+            play_button.setToolTip(f"Play '{song.get('title')}'")
+            play_button.clicked.connect(lambda checked, s=song: self._play_similar_song(s, dialog))
+            results_table.setCellWidget(row, 3, play_button)
+
+        layout.addWidget(results_table)
+
+        # Double-click to play
+        results_table.itemDoubleClicked.connect(
+            lambda item: self._play_similar_song_from_table(results_table, item, dialog)
+        )
+
+        # Buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        button_box.rejected.connect(dialog.reject)
+        layout.addWidget(button_box)
+
+        dialog.exec()
+
+    def _play_similar_song(self, song: dict, dialog: 'QDialog'):
+        """
+        Play a song from the similar songs dialog.
+
+        Args:
+            song: Song dict to play
+            dialog: Parent dialog
+        """
+        song_id = song.get('id')
+        if song_id:
+            self.play_song(song_id)
+
+    def _play_similar_song_from_table(self, table: QTableWidget, item: QTableWidgetItem, dialog: 'QDialog'):
+        """
+        Handle double-click on similar songs table.
+
+        Args:
+            table: The results table
+            item: Clicked item
+            dialog: Parent dialog
+        """
+        row = item.row()
+        title_item = table.item(row, 0)
+        if title_item:
+            song_id = title_item.data(Qt.ItemDataRole.UserRole)
+            if song_id:
+                self.play_song(song_id)
 
     def _delete_selected_songs(self, songs: list):
         """
