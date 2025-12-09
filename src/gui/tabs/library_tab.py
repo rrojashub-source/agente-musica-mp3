@@ -699,12 +699,32 @@ class LibraryTab(QWidget):
                 return
 
         try:
+            # Show progress dialog during AI analysis
+            from PyQt6.QtWidgets import QProgressDialog
+
+            progress = QProgressDialog(
+                f"🧠 Analyzing audio patterns...\n\n"
+                f"Reference: {song_title}\n"
+                f"This may take a moment for the first analysis.",
+                "Cancel",
+                0, 0,  # Indeterminate progress
+                self
+            )
+            progress.setWindowTitle("AI Similarity Search")
+            progress.setWindowModality(Qt.WindowModality.WindowModal)
+            progress.setMinimumDuration(0)  # Show immediately
+            progress.setValue(0)
+            progress.show()
+            QApplication.processEvents()
+
             # Find similar songs using AI embeddings
             similar_songs = self.audio_embeddings.find_similar(
                 song_id,
                 limit=10,
                 min_similarity=0.3
             )
+
+            progress.close()
 
             if not similar_songs:
                 QMessageBox.information(
