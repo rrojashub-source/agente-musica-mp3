@@ -104,9 +104,9 @@ class LibraryTab(QWidget):
 
         # Library table
         self.library_table = QTableWidget()
-        self.library_table.setColumnCount(6)
+        self.library_table.setColumnCount(8)
         self.library_table.setHorizontalHeaderLabels([
-            "Title", "Artist", "Album", "Genre", "Year", "Duration"
+            "Title", "Artist", "Album", "Genre", "Year", "Duration", "BPM", "Mood"
         ])
 
         # Table settings
@@ -141,12 +141,14 @@ class LibraryTab(QWidget):
         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)  # All columns resizable
 
         # Set initial default widths (user can adjust)
-        header.resizeSection(0, 250)  # Title
-        header.resizeSection(1, 150)  # Artist
-        header.resizeSection(2, 150)  # Album
-        header.resizeSection(3, 100)  # Genre
-        header.resizeSection(4, 60)   # Year
-        header.resizeSection(5, 80)   # Duration
+        header.resizeSection(0, 220)  # Title
+        header.resizeSection(1, 140)  # Artist
+        header.resizeSection(2, 140)  # Album
+        header.resizeSection(3, 80)   # Genre
+        header.resizeSection(4, 50)   # Year
+        header.resizeSection(5, 70)   # Duration
+        header.resizeSection(6, 50)   # BPM
+        header.resizeSection(7, 80)   # Mood
 
         # Last column stretches to fill remaining space
         header.setStretchLastSection(True)
@@ -271,6 +273,28 @@ class LibraryTab(QWidget):
                 duration_str = self._format_duration(duration)
                 duration_item = QTableWidgetItem(duration_str)
                 self.library_table.setItem(row, 5, duration_item)
+
+                # BPM (AI-detected tempo)
+                bpm = song.get('bpm')
+                bpm_item = QTableWidgetItem(str(bpm) if bpm else '')
+                bpm_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.library_table.setItem(row, 6, bpm_item)
+
+                # Mood (AI-classified)
+                mood = song.get('mood', '')
+                mood_item = QTableWidgetItem(mood if mood else '')
+                # Color-code moods for visual feedback
+                if mood == 'Energetic':
+                    mood_item.setForeground(QColor(255, 100, 50))   # Orange
+                elif mood == 'Happy':
+                    mood_item.setForeground(QColor(50, 200, 50))    # Green
+                elif mood == 'Calm':
+                    mood_item.setForeground(QColor(100, 150, 255))  # Blue
+                elif mood == 'Sad':
+                    mood_item.setForeground(QColor(150, 100, 200))  # Purple
+                elif mood == 'Intense':
+                    mood_item.setForeground(QColor(255, 50, 50))    # Red
+                self.library_table.setItem(row, 7, mood_item)
 
             # Re-enable sorting
             self.library_table.setSortingEnabled(True)
@@ -636,9 +660,13 @@ class LibraryTab(QWidget):
 
         # Find Similar Songs action (only for single selection)
         find_similar_action = None
+        analyze_action = None
         if len(songs_to_delete) == 1:
             find_similar_action = menu.addAction("🧠 Find Similar Songs (AI)")
             find_similar_action.setStatusTip(f"Find songs similar to '{songs_to_delete[0]['title']}' using AI")
+
+            analyze_action = menu.addAction("🎵 Analyze BPM/Mood (AI)")
+            analyze_action.setStatusTip(f"Detect tempo and mood for '{songs_to_delete[0]['title']}'")
             menu.addSeparator()
 
         # Delete action (singular or plural)
@@ -658,6 +686,8 @@ class LibraryTab(QWidget):
         # Handle action
         if action == find_similar_action and find_similar_action:
             self._find_similar_songs(songs_to_delete[0])
+        elif action == analyze_action and analyze_action:
+            self._analyze_bpm_mood(songs_to_delete[0])
         elif action == delete_action:
             self._delete_selected_songs(songs_to_delete)
 
@@ -696,6 +726,99 @@ class LibraryTab(QWidget):
             # Emit signal to update Brain AI panel
             self.find_similar_requested.emit(song_info)
             self.status_label.setText(f"🧠 Finding similar to '{song_title}'...")
+
+    def _analyze_bpm_mood(self, song: dict):
+        """
+        Analyze BPM and Mood for a song using AI audio analysis.
+
+        Updates the database and refreshes the table row.
+
+        Args:
+            song: Dict with 'id', 'title', 'artist', 'row' keys
+        """
+        from core.audio_embeddings import AudioEmbeddings
+
+        song_id = song['id']
+        song_title = song['title']
+        row = song['row']
+
+        # Get full song info
+        song_info = self.db_manager.get_song_by_id(song_id)
+        if not song_info:
+            self.status_label.setText("Song not found")
+            return
+
+        file_path = song_info.get('file_path', '')
+        if not Path(file_path).exists():
+            QMessageBox.warning(
+                self,
+                "File Not Found",
+                f"Cannot analyze - file not found:\n\n{file_path}"
+            )
+            return
+
+        # Show progress
+        self.status_label.setText(f"🎵 Analyzing '{song_title}'...")
+        QApplication.processEvents()
+
+        try:
+            # Perform AI analysis
+            embeddings = AudioEmbeddings(self.db_manager)
+            analysis = embeddings.analyze_song(file_path)
+
+            if analysis:
+                bpm = analysis.get('bpm')
+                mood = analysis.get('mood')
+                energy = analysis.get('energy')
+                valence = analysis.get('valence')
+
+                # Update database
+                updates = {}
+                if bpm:
+                    updates['bpm'] = bpm
+                if mood:
+                    updates['mood'] = mood
+                if energy is not None:
+                    updates['energy'] = energy
+                if valence is not None:
+                    updates['valence'] = valence
+
+                if updates:
+                    self.db_manager.update_song(song_id, updates)
+
+                    # Update table display
+                    if bpm:
+                        bpm_item = QTableWidgetItem(str(bpm))
+                        bpm_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                        self.library_table.setItem(row, 6, bpm_item)
+
+                    if mood:
+                        mood_item = QTableWidgetItem(mood)
+                        # Color-code moods
+                        if mood == 'Energetic':
+                            mood_item.setForeground(QColor(255, 100, 50))
+                        elif mood == 'Happy':
+                            mood_item.setForeground(QColor(50, 200, 50))
+                        elif mood == 'Calm':
+                            mood_item.setForeground(QColor(100, 150, 255))
+                        elif mood == 'Sad':
+                            mood_item.setForeground(QColor(150, 100, 200))
+                        elif mood == 'Intense':
+                            mood_item.setForeground(QColor(255, 50, 50))
+                        self.library_table.setItem(row, 7, mood_item)
+
+                    self.status_label.setText(
+                        f"✅ {song_title}: BPM={bpm or '?'}, Mood={mood or '?'}"
+                    )
+                    logger.info(f"Analyzed song {song_id}: BPM={bpm}, Mood={mood}")
+                else:
+                    self.status_label.setText(f"⚠️ Could not analyze '{song_title}'")
+            else:
+                self.status_label.setText(f"⚠️ Analysis failed for '{song_title}'")
+
+        except Exception as e:
+            logger.error(f"BPM/Mood analysis failed: {e}")
+            self.status_label.setText(f"❌ Analysis error: {str(e)[:50]}")
 
     def _delete_selected_songs(self, songs: list):
         """
