@@ -26,14 +26,6 @@ logger = logging.getLogger(__name__)
 
 # Check optional dependencies
 try:
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.metrics.pairwise import cosine_similarity
-    SKLEARN_AVAILABLE = True
-except ImportError:
-    SKLEARN_AVAILABLE = False
-    logger.warning("scikit-learn not available - similarity search limited")
-
-try:
     from pydub import AudioSegment
     PYDUB_AVAILABLE = True
 except ImportError:
@@ -544,10 +536,6 @@ class AudioEmbeddings:
         """
         if not self.db_manager:
             logger.error("Database manager required for similarity search")
-            return []
-
-        if not SKLEARN_AVAILABLE:
-            logger.error("scikit-learn required for similarity search")
             return []
 
         # Get reference song
