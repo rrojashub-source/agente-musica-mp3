@@ -1,21 +1,24 @@
 """
-Recommendations Widget - Show similar songs
+Recommendations Widget - AI-Powered Similar Songs (Phase 9)
 
 Displays a collapsible list of recommended songs based on
-the currently playing track.
+the currently playing track using AI audio embeddings.
 
 Created: November 23, 2025
+Updated: December 8, 2025 - Integrated AI audio embeddings for real similarity
 """
 import logging
 from typing import Optional, Dict, List
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QListWidget, QListWidgetItem, QFrame
+    QPushButton, QListWidget, QListWidgetItem, QFrame,
+    QApplication
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QColor
 
-from core.recommendation_engine import RecommendationEngine
+from core.audio_embeddings import AudioEmbeddings
 
 logger = logging.getLogger(__name__)
 
@@ -40,15 +43,16 @@ class RecommendationsWidget(QWidget):
         """
         super().__init__(parent)
         self.db_manager = db_manager
-        self.recommendation_engine = RecommendationEngine(db_manager)
+        self.audio_embeddings = AudioEmbeddings(db_manager)
 
         self._current_song: Optional[Dict] = None
         self._recommendations: List[Dict] = []
         self._is_collapsed = False
+        self._is_loading = False
 
         self._init_ui()
 
-        logger.info("RecommendationsWidget initialized")
+        logger.info("RecommendationsWidget initialized with AI audio embeddings")
 
     def _init_ui(self):
         """Initialize UI"""
@@ -59,7 +63,7 @@ class RecommendationsWidget(QWidget):
         # Header with collapse button
         header_layout = QHBoxLayout()
 
-        self.title_label = QLabel("🎯 Similar Songs")
+        self.title_label = QLabel("🧠 Brain AI")
         self.title_label.setStyleSheet("font-weight: bold; font-size: 12px;")
         header_layout.addWidget(self.title_label)
 
@@ -104,11 +108,11 @@ class RecommendationsWidget(QWidget):
 
         # Initially hidden
         self.recommendations_list.hide()
-        self.title_label.setText("🎯 Similar Songs (play a song)")
+        self.title_label.setText("🧠 Brain AI (play a song)")
 
     def set_current_song(self, song_data: Optional[Dict]):
         """
-        Update current song and refresh recommendations
+        Update current song and refresh recommendations using AI
 
         Args:
             song_data: Currently playing song dict, or None if stopped
@@ -116,44 +120,88 @@ class RecommendationsWidget(QWidget):
         self._current_song = song_data
 
         if song_data:
-            self._refresh_recommendations()
             self.recommendations_list.show()
             song_title = song_data.get('title', 'Unknown')
-            self.title_label.setText(f"🎯 Similar to: {song_title[:30]}...")
+            self.title_label.setText(f"🧠 Similar to: {song_title[:25]}...")
+            self._refresh_recommendations()
         else:
             self.recommendations_list.clear()
             self.recommendations_list.hide()
-            self.title_label.setText("🎯 Similar Songs (play a song)")
+            self.title_label.setText("🧠 Brain AI (play a song)")
 
     def _refresh_recommendations(self):
-        """Refresh the recommendations list"""
+        """Refresh the recommendations list using AI audio embeddings"""
         self.recommendations_list.clear()
 
         if not self._current_song:
             return
 
-        # Get recommendations
-        self._recommendations = self.recommendation_engine.get_recommendations(
-            self._current_song,
-            limit=8
-        )
-
-        if not self._recommendations:
-            item = QListWidgetItem("No similar songs found")
-            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
-            self.recommendations_list.addItem(item)
+        if self._is_loading:
             return
 
-        # Populate list
-        for song in self._recommendations:
-            title = song.get('title', 'Unknown')
-            artist = song.get('artist', 'Unknown')
+        song_id = self._current_song.get('id')
+        if not song_id:
+            logger.warning("No song ID for recommendations")
+            return
 
-            item = QListWidgetItem(f"♪ {title}\n   {artist}")
-            item.setData(Qt.ItemDataRole.UserRole, song)
+        # Show loading state
+        self._is_loading = True
+        loading_item = QListWidgetItem("🔄 Analyzing audio...")
+        loading_item.setFlags(loading_item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+        self.recommendations_list.addItem(loading_item)
+        QApplication.processEvents()
+
+        try:
+            # Get AI-powered recommendations using audio embeddings
+            similar_results = self.audio_embeddings.find_similar(
+                song_id,
+                limit=8,
+                min_similarity=0.3
+            )
+
+            self.recommendations_list.clear()
+
+            if not similar_results:
+                item = QListWidgetItem("No similar songs found")
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                self.recommendations_list.addItem(item)
+                return
+
+            # Populate list with similarity scores
+            self._recommendations = []
+            for result in similar_results:
+                song = result['song']
+                similarity = result['similarity']
+                self._recommendations.append(song)
+
+                title = song.get('title', 'Unknown')
+                artist = song.get('artist', 'Unknown')
+                similarity_pct = int(similarity * 100)
+
+                item = QListWidgetItem(f"♪ {title}\n   {artist} ({similarity_pct}%)")
+                item.setData(Qt.ItemDataRole.UserRole, song)
+
+                # Color code by similarity
+                if similarity >= 0.8:
+                    item.setForeground(QColor(0, 200, 100))  # Green - very similar
+                elif similarity >= 0.6:
+                    item.setForeground(QColor(0, 180, 230))  # Cyan - similar
+                elif similarity >= 0.4:
+                    item.setForeground(QColor(200, 180, 0))  # Yellow - somewhat similar
+
+                self.recommendations_list.addItem(item)
+
+            logger.info(f"AI found {len(self._recommendations)} similar songs")
+
+        except Exception as e:
+            logger.error(f"Error getting AI recommendations: {e}")
+            self.recommendations_list.clear()
+            item = QListWidgetItem(f"Error: {str(e)[:30]}")
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
             self.recommendations_list.addItem(item)
 
-        logger.info(f"Loaded {len(self._recommendations)} recommendations")
+        finally:
+            self._is_loading = False
 
     def _on_item_double_clicked(self, item: QListWidgetItem):
         """Handle recommendation double-click"""
@@ -180,4 +228,4 @@ class RecommendationsWidget(QWidget):
         self._recommendations = []
         self.recommendations_list.clear()
         self.recommendations_list.hide()
-        self.title_label.setText("🎯 Similar Songs (play a song)")
+        self.title_label.setText("🧠 Brain AI (play a song)")

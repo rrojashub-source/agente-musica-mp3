@@ -535,6 +535,8 @@ Your API keys are stored securely in your OS credential manager.
             self.tabs.addTab(self.library_tab, tr("tab_library"))
             # Connect playback_started to track source
             self.library_tab.playback_started.connect(self._on_library_playback_started)
+            # Connect find_similar_requested to update Brain AI panel
+            self.library_tab.find_similar_requested.connect(self._on_find_similar_requested)
             logger.info("Library tab loaded")
         except Exception as e:
             logger.error(f"Failed to load Library tab: {e}")
@@ -1106,6 +1108,12 @@ Your API keys are stored securely in your OS credential manager.
         """Update recommendations based on current song"""
         if hasattr(self, 'recommendations_widget'):
             self.recommendations_widget.set_current_song(song_data)
+
+    def _on_find_similar_requested(self, song_data: dict):
+        """Handle find similar songs request from library tab - update Brain AI panel"""
+        if hasattr(self, 'recommendations_widget'):
+            self.recommendations_widget.set_current_song(song_data)
+            self.statusBar.showMessage(f"🧠 Finding similar to: {song_data.get('title', 'Unknown')}", 3000)
 
     def _play_recommended_song(self, song_data: dict):
         """Play a song selected from recommendations"""
