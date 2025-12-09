@@ -1,18 +1,22 @@
 """
-Audio Embeddings - AI-Powered Similarity Search (Phase 9)
+Audio Embeddings - AI-Powered Audio Analysis (Phase 9)
 
 Extract audio features and generate embeddings for "Find Similar Songs".
+Also provides BPM detection and Mood/Energy classification.
 
 Features:
 - Extract audio features using FFT analysis (no librosa dependency)
 - Generate compact 128D embeddings for each song
 - Cosine similarity for finding similar songs
+- BPM (tempo) detection via autocorrelation
+- Mood/Energy classification (Energetic, Happy, Calm, Sad, Intense)
 - SQLite cache for persistent embeddings
 
 This is REAL AI: Uses signal processing + ML for audio analysis.
 No external API required - works 100% offline.
 
 Created: December 8, 2025
+Updated: December 8, 2025 - Added BPM detection and Mood classification
 Author: NEXUS + Ricardo
 """
 import logging
@@ -706,3 +710,365 @@ class AudioEmbeddings:
         except Exception as e:
             logger.error(f"Failed to get stats: {e}")
             return {'total': 0, 'coverage': 0}
+
+    # =========================================================================
+    # BPM DETECTION
+    # =========================================================================
+
+    def detect_bpm(self, file_path: str) -> Optional[int]:
+        """
+        Detect BPM (beats per minute) of an audio file.
+
+        Uses onset detection + autocorrelation for tempo estimation.
+
+        Args:
+            file_path: Path to audio file
+
+        Returns:
+            Estimated BPM (60-200 range), or None if detection failed
+        """
+        if not PYDUB_AVAILABLE:
+            logger.error("pydub required for BPM detection")
+            return None
+
+        if not Path(file_path).exists():
+            logger.error(f"File not found: {file_path}")
+            return None
+
+        try:
+            # Load audio file
+            audio = AudioSegment.from_file(file_path)
+            audio = audio.set_channels(1)
+            audio = audio.set_frame_rate(self.SAMPLE_RATE)
+
+            # Get raw samples
+            samples = np.array(audio.get_array_of_samples(), dtype=np.float32)
+            samples = samples / (2 ** 15)
+
+            # Use middle 30 seconds for more stable BPM
+            sample_duration = 30 * self.SAMPLE_RATE
+            if len(samples) > sample_duration:
+                start = (len(samples) - sample_duration) // 2
+                samples = samples[start:start + sample_duration]
+
+            bpm = self._estimate_bpm(samples)
+
+            logger.debug(f"Detected BPM for {Path(file_path).name}: {bpm}")
+            return bpm
+
+        except Exception as e:
+            logger.error(f"BPM detection failed for {file_path}: {e}")
+            return None
+
+    def _estimate_bpm(self, samples: np.ndarray) -> Optional[int]:
+        """
+        Estimate BPM using onset detection and autocorrelation.
+
+        Args:
+            samples: Audio samples
+
+        Returns:
+            Estimated BPM or None
+        """
+        try:
+            # Calculate onset envelope (energy changes over time)
+            frame_length = 1024
+            hop_length = 512
+
+            num_frames = (len(samples) - frame_length) // hop_length + 1
+            onset_env = []
+
+            prev_energy = 0
+            for i in range(num_frames):
+                start = i * hop_length
+                end = start + frame_length
+                frame = samples[start:end]
+
+                # RMS energy
+                energy = np.sqrt(np.mean(frame ** 2))
+
+                # Onset = positive energy difference
+                onset = max(0, energy - prev_energy)
+                onset_env.append(onset)
+                prev_energy = energy
+
+            onset_env = np.array(onset_env)
+
+            # Normalize
+            if np.max(onset_env) > 0:
+                onset_env = onset_env / np.max(onset_env)
+
+            # Autocorrelation for periodicity detection
+            autocorr = np.correlate(onset_env, onset_env, mode='full')
+            autocorr = autocorr[len(autocorr)//2:]
+
+            # Normalize
+            if autocorr[0] > 0:
+                autocorr = autocorr / autocorr[0]
+
+            # BPM search range: 60-200 BPM
+            # Convert BPM to lag in frames
+            fps = self.SAMPLE_RATE / hop_length  # frames per second
+
+            min_bpm, max_bpm = 60, 200
+            min_lag = int(fps * 60 / max_bpm)  # lag for max BPM
+            max_lag = int(fps * 60 / min_bpm)  # lag for min BPM
+
+            # Ensure we don't exceed array bounds
+            max_lag = min(max_lag, len(autocorr) - 1)
+
+            if max_lag <= min_lag:
+                return None
+
+            # Find peak in search range
+            search_range = autocorr[min_lag:max_lag]
+            peak_idx = np.argmax(search_range) + min_lag
+
+            # Convert lag to BPM
+            bpm = int(round(fps * 60 / peak_idx))
+
+            # Sanity check
+            if 60 <= bpm <= 200:
+                return bpm
+
+            # Try octave correction (common BPM detection issue)
+            if bpm < 60:
+                bpm *= 2
+            elif bpm > 200:
+                bpm //= 2
+
+            if 60 <= bpm <= 200:
+                return bpm
+
+            return None
+
+        except Exception as e:
+            logger.error(f"BPM estimation failed: {e}")
+            return None
+
+    # =========================================================================
+    # MOOD / ENERGY CLASSIFICATION
+    # =========================================================================
+
+    # Mood categories
+    MOODS = ['Energetic', 'Happy', 'Calm', 'Sad', 'Intense']
+
+    def classify_mood(self, file_path: str) -> Optional[Dict]:
+        """
+        Classify the mood/energy of an audio file.
+
+        Uses audio features to classify into mood categories:
+        - Energetic: High tempo, high energy, bright sound
+        - Happy: Major key feel, moderate-high tempo, bright
+        - Calm: Low tempo, low energy, warm sound
+        - Sad: Minor key feel, slow tempo, dark sound
+        - Intense: High energy, aggressive, loud
+
+        Args:
+            file_path: Path to audio file
+
+        Returns:
+            Dict with 'mood' (primary), 'energy' (0-100), 'valence' (0-100),
+            and 'confidence' (0-100), or None if classification failed
+        """
+        if not PYDUB_AVAILABLE:
+            logger.error("pydub required for mood classification")
+            return None
+
+        if not Path(file_path).exists():
+            logger.error(f"File not found: {file_path}")
+            return None
+
+        try:
+            # Load audio
+            audio = AudioSegment.from_file(file_path)
+            audio = audio.set_channels(1)
+            audio = audio.set_frame_rate(self.SAMPLE_RATE)
+
+            samples = np.array(audio.get_array_of_samples(), dtype=np.float32)
+            samples = samples / (2 ** 15)
+
+            # Extract mood features
+            mood_features = self._extract_mood_features(samples)
+
+            if mood_features is None:
+                return None
+
+            # Classify based on features
+            result = self._classify_mood_from_features(mood_features)
+
+            logger.debug(f"Classified mood for {Path(file_path).name}: {result['mood']}")
+            return result
+
+        except Exception as e:
+            logger.error(f"Mood classification failed for {file_path}: {e}")
+            return None
+
+    def _extract_mood_features(self, samples: np.ndarray) -> Optional[Dict]:
+        """
+        Extract features relevant to mood classification.
+
+        Args:
+            samples: Audio samples
+
+        Returns:
+            Dict with mood-relevant features
+        """
+        try:
+            if len(samples) < self.FRAME_SIZE * 10:
+                return None
+
+            # Calculate various features
+            num_frames = (len(samples) - self.FRAME_SIZE) // self.HOP_SIZE + 1
+
+            spectral_centroids = []
+            spectral_flatness_vals = []
+            rms_values = []
+            zcrs = []
+            low_energy_ratios = []
+
+            for i in range(num_frames):
+                start = i * self.HOP_SIZE
+                end = start + self.FRAME_SIZE
+                frame = samples[start:end]
+
+                window = np.hanning(len(frame))
+                windowed = frame * window
+
+                # FFT
+                fft = np.fft.rfft(windowed)
+                magnitude = np.abs(fft)
+                freqs = np.fft.rfftfreq(len(windowed), 1/self.SAMPLE_RATE)
+
+                # Spectral centroid (brightness)
+                if np.sum(magnitude) > 0:
+                    centroid = np.sum(freqs * magnitude) / np.sum(magnitude)
+                else:
+                    centroid = 0
+                spectral_centroids.append(centroid)
+
+                # Spectral flatness (noisiness vs tonal)
+                eps = 1e-10
+                geo_mean = np.exp(np.mean(np.log(magnitude + eps)))
+                arith_mean = np.mean(magnitude)
+                flatness = geo_mean / (arith_mean + eps)
+                spectral_flatness_vals.append(flatness)
+
+                # RMS energy
+                rms = np.sqrt(np.mean(frame ** 2))
+                rms_values.append(rms)
+
+                # Zero crossing rate
+                zcr = np.sum(np.abs(np.diff(np.sign(frame)))) / (2 * len(frame))
+                zcrs.append(zcr)
+
+            # Low energy ratio (percentage of frames with below-average energy)
+            avg_rms = np.mean(rms_values)
+            low_energy_ratio = np.sum(np.array(rms_values) < avg_rms) / len(rms_values)
+
+            # Tempo estimation
+            bpm = self._estimate_bpm(samples)
+
+            # Aggregate features
+            return {
+                'brightness': np.mean(spectral_centroids),
+                'brightness_std': np.std(spectral_centroids),
+                'flatness': np.mean(spectral_flatness_vals),
+                'energy': np.mean(rms_values),
+                'energy_std': np.std(rms_values),
+                'zcr': np.mean(zcrs),
+                'low_energy_ratio': low_energy_ratio,
+                'tempo': bpm or 100,  # Default to 100 if detection failed
+                'dynamic_range': np.max(rms_values) - np.min(rms_values)
+            }
+
+        except Exception as e:
+            logger.error(f"Mood feature extraction failed: {e}")
+            return None
+
+    def _classify_mood_from_features(self, features: Dict) -> Dict:
+        """
+        Classify mood from extracted features using rule-based heuristics.
+
+        This is a simplified classifier - could be replaced with ML model.
+
+        Args:
+            features: Dict of audio features
+
+        Returns:
+            Classification result with mood, energy, valence, confidence
+        """
+        # Normalize features to 0-100 scale
+        brightness = min(100, features['brightness'] / 40)  # ~4000Hz max
+        tempo = min(100, max(0, (features['tempo'] - 60) / 1.4))  # 60-200 BPM
+        energy = min(100, features['energy'] * 500)  # RMS ~0-0.2
+        flatness = min(100, features['flatness'] * 100)
+        zcr = min(100, features['zcr'] * 1000)
+        dynamics = min(100, features['dynamic_range'] * 500)
+
+        # Calculate composite scores
+        energy_score = (energy * 0.5 + tempo * 0.3 + dynamics * 0.2)
+        valence_score = (brightness * 0.4 + (100 - flatness) * 0.3 + tempo * 0.3)
+
+        # Mood classification rules
+        mood_scores = {
+            'Energetic': (tempo * 0.4 + energy * 0.4 + brightness * 0.2),
+            'Happy': (valence_score * 0.5 + tempo * 0.3 + brightness * 0.2),
+            'Calm': (100 - energy_score) * 0.5 + (100 - tempo) * 0.3 + (100 - brightness) * 0.2,
+            'Sad': (100 - valence_score) * 0.4 + (100 - tempo) * 0.4 + flatness * 0.2,
+            'Intense': energy * 0.4 + dynamics * 0.3 + zcr * 0.3
+        }
+
+        # Find primary mood
+        primary_mood = max(mood_scores, key=mood_scores.get)
+        confidence = min(100, mood_scores[primary_mood])
+
+        return {
+            'mood': primary_mood,
+            'energy': int(energy_score),
+            'valence': int(valence_score),
+            'confidence': int(confidence),
+            'bpm': features['tempo']
+        }
+
+    def analyze_song(self, file_path: str) -> Optional[Dict]:
+        """
+        Complete audio analysis: embedding, BPM, and mood.
+
+        Convenience method that runs all analysis in one call.
+
+        Args:
+            file_path: Path to audio file
+
+        Returns:
+            Dict with 'bpm', 'mood', 'energy', 'valence', or None if failed
+        """
+        if not Path(file_path).exists():
+            return None
+
+        try:
+            # Get mood classification (includes BPM)
+            mood_result = self.classify_mood(file_path)
+
+            if mood_result:
+                return {
+                    'bpm': mood_result.get('bpm'),
+                    'mood': mood_result.get('mood'),
+                    'energy': mood_result.get('energy'),
+                    'valence': mood_result.get('valence'),
+                    'confidence': mood_result.get('confidence')
+                }
+
+            # Fallback: just BPM
+            bpm = self.detect_bpm(file_path)
+            return {
+                'bpm': bpm,
+                'mood': None,
+                'energy': None,
+                'valence': None,
+                'confidence': None
+            }
+
+        except Exception as e:
+            logger.error(f"Song analysis failed: {e}")
+            return None

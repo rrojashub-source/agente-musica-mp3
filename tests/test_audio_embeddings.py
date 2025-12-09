@@ -355,5 +355,176 @@ class TestPerformance:
         assert elapsed < 1.0, f"Feature extraction took {elapsed:.2f}s, expected < 1.0s"
 
 
+class TestBPMDetection:
+    """Test BPM detection functionality"""
+
+    def test_estimate_bpm_with_periodic_signal(self):
+        """Test BPM estimation with a periodic signal"""
+        embeddings = AudioEmbeddings()
+
+        # Create a signal with clear periodicity (120 BPM = 2 beats per second)
+        duration = 10  # seconds
+        sample_rate = 22050
+        bpm = 120
+        beat_interval = 60 / bpm  # seconds between beats
+
+        samples = np.zeros(duration * sample_rate, dtype=np.float32)
+
+        # Add impulses at beat positions
+        beat_samples = int(beat_interval * sample_rate)
+        for i in range(0, len(samples), beat_samples):
+            end = min(i + 1000, len(samples))
+            samples[i:end] = 0.8  # Beat pulse
+
+        estimated_bpm = embeddings._estimate_bpm(samples)
+
+        # BPM detection is approximate, allow ±20% tolerance
+        assert estimated_bpm is not None
+        assert 96 <= estimated_bpm <= 144, f"Expected ~120 BPM, got {estimated_bpm}"
+
+    def test_estimate_bpm_returns_none_for_noise(self):
+        """Test that random noise may not have clear BPM"""
+        embeddings = AudioEmbeddings()
+
+        # Pure random noise (no periodic structure)
+        samples = np.random.randn(22050 * 5).astype(np.float32) * 0.1
+
+        # Should either return None or a BPM in valid range
+        bpm = embeddings._estimate_bpm(samples)
+        if bpm is not None:
+            assert 60 <= bpm <= 200
+
+    def test_estimate_bpm_short_audio(self):
+        """Test BPM estimation with very short audio"""
+        embeddings = AudioEmbeddings()
+
+        # Very short audio
+        samples = np.random.randn(1000).astype(np.float32)
+
+        # Should handle gracefully
+        bpm = embeddings._estimate_bpm(samples)
+        # May return None for very short audio
+
+
+class TestMoodClassification:
+    """Test mood/energy classification functionality"""
+
+    def test_extract_mood_features_shape(self):
+        """Test that mood features are extracted correctly"""
+        embeddings = AudioEmbeddings()
+
+        # Create test audio (3 seconds)
+        samples = np.random.randn(22050 * 3).astype(np.float32) * 0.3
+
+        features = embeddings._extract_mood_features(samples)
+
+        assert features is not None
+        assert 'brightness' in features
+        assert 'energy' in features
+        assert 'tempo' in features
+        assert 'flatness' in features
+        assert 'zcr' in features
+
+    def test_extract_mood_features_too_short(self):
+        """Test that short audio returns None"""
+        embeddings = AudioEmbeddings()
+
+        # Very short audio
+        samples = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+
+        features = embeddings._extract_mood_features(samples)
+
+        assert features is None
+
+    def test_classify_mood_from_features(self):
+        """Test mood classification from features"""
+        embeddings = AudioEmbeddings()
+
+        # High energy features (should classify as Energetic or Intense)
+        high_energy_features = {
+            'brightness': 3000,  # High brightness
+            'brightness_std': 500,
+            'flatness': 0.1,
+            'energy': 0.15,  # High energy
+            'energy_std': 0.05,
+            'zcr': 0.08,
+            'low_energy_ratio': 0.3,
+            'tempo': 140,  # Fast tempo
+            'dynamic_range': 0.1
+        }
+
+        result = embeddings._classify_mood_from_features(high_energy_features)
+
+        assert result is not None
+        assert 'mood' in result
+        assert result['mood'] in ['Energetic', 'Happy', 'Calm', 'Sad', 'Intense']
+        assert 'energy' in result
+        assert 'valence' in result
+        assert 0 <= result['energy'] <= 100
+        assert 0 <= result['valence'] <= 100
+
+    def test_classify_mood_calm_features(self):
+        """Test that calm features classify as Calm"""
+        embeddings = AudioEmbeddings()
+
+        # Low energy, slow tempo features
+        calm_features = {
+            'brightness': 1000,  # Low brightness
+            'brightness_std': 200,
+            'flatness': 0.3,
+            'energy': 0.02,  # Low energy
+            'energy_std': 0.01,
+            'zcr': 0.02,
+            'low_energy_ratio': 0.7,
+            'tempo': 70,  # Slow tempo
+            'dynamic_range': 0.02
+        }
+
+        result = embeddings._classify_mood_from_features(calm_features)
+
+        assert result is not None
+        # Low energy should result in lower energy score
+        assert result['energy'] < 50
+
+    def test_mood_categories_constant(self):
+        """Test that MOODS constant exists and has expected values"""
+        embeddings = AudioEmbeddings()
+
+        assert hasattr(embeddings, 'MOODS')
+        assert 'Energetic' in embeddings.MOODS
+        assert 'Happy' in embeddings.MOODS
+        assert 'Calm' in embeddings.MOODS
+        assert 'Sad' in embeddings.MOODS
+        assert 'Intense' in embeddings.MOODS
+
+
+class TestAnalyzeSong:
+    """Test the combined analyze_song method"""
+
+    def test_analyze_song_nonexistent_file(self):
+        """Test analyze_song with non-existent file"""
+        embeddings = AudioEmbeddings()
+
+        result = embeddings.analyze_song("/nonexistent/path/song.mp3")
+
+        assert result is None
+
+    def test_detect_bpm_nonexistent_file(self):
+        """Test detect_bpm with non-existent file"""
+        embeddings = AudioEmbeddings()
+
+        result = embeddings.detect_bpm("/nonexistent/path/song.mp3")
+
+        assert result is None
+
+    def test_classify_mood_nonexistent_file(self):
+        """Test classify_mood with non-existent file"""
+        embeddings = AudioEmbeddings()
+
+        result = embeddings.classify_mood("/nonexistent/path/song.mp3")
+
+        assert result is None
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
