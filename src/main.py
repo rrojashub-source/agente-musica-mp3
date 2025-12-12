@@ -72,6 +72,7 @@ from gui.tabs.cloud_sync_tab import CloudSyncTab
 from gui.tabs.plugins_tab import PluginsTab
 from gui.tabs.remote_tab import RemoteTab
 from gui.tabs.content_filter_tab import ContentFilterTab
+from gui.tabs.statistics_tab import StatisticsTab
 
 # Import GUI widgets
 from gui.widgets.now_playing_widget import NowPlayingWidget
@@ -227,6 +228,13 @@ class MusicPlayerApp(QMainWindow):
         api_settings_action.setShortcut("Ctrl+K")
         api_settings_action.triggered.connect(self._show_api_settings)
 
+        # Equalizer action
+        equalizer_action = settings_menu.addAction(tr("menu_equalizer"))
+        equalizer_action.setShortcut("Ctrl+E")
+        equalizer_action.triggered.connect(self._show_equalizer)
+
+        settings_menu.addSeparator()
+
         # Language submenu
         language_menu = settings_menu.addMenu(tr("menu_language"))
         for lang_code, lang_name in LANGUAGES.items():
@@ -275,6 +283,28 @@ class MusicPlayerApp(QMainWindow):
             self.statusBar.showMessage("API settings saved successfully", 3000)
         else:
             logger.info("API settings dialog cancelled")
+
+    def _show_equalizer(self):
+        """Show audio equalizer dialog"""
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout
+        from gui.widgets.equalizer_widget import EqualizerWidget
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(tr("equalizer_title"))
+        dialog.setMinimumSize(600, 400)
+
+        layout = QVBoxLayout(dialog)
+
+        # Create equalizer widget
+        equalizer = EqualizerWidget()
+        layout.addWidget(equalizer)
+
+        # Connect equalizer changes to audio player (if supported)
+        if hasattr(self.audio_player, 'set_equalizer_gains'):
+            equalizer.gains_changed.connect(self.audio_player.set_equalizer_gains)
+
+        dialog.exec()
+        logger.info("Equalizer dialog closed")
 
     def _change_language(self, lang_code: str):
         """Change application language"""
@@ -666,6 +696,15 @@ Your API keys are stored securely in your OS credential manager.
         except Exception as e:
             logger.error(f"Failed to load Content Filter tab: {e}")
             self.tabs.addTab(QWidget(), tr("tab_content_filter") + " (Error)")
+
+        # Tab 15: Statistics Dashboard (NEW - Phase 9)
+        try:
+            self.statistics_tab = StatisticsTab(self.db_manager)
+            self.tabs.addTab(self.statistics_tab, tr("tab_statistics"))
+            logger.info("Statistics tab loaded")
+        except Exception as e:
+            logger.error(f"Failed to load Statistics tab: {e}")
+            self.tabs.addTab(QWidget(), tr("tab_statistics") + " (Error)")
 
         return self.tabs
 

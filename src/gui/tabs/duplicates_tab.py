@@ -295,7 +295,7 @@ class DuplicatesTab(QWidget):
             try:
                 size_bytes = os.path.getsize(file_path)
                 size_mb = size_bytes / (1024 * 1024)
-            except:
+            except (OSError, IOError):
                 pass
 
         # CRITICAL: Add visual indicator for best quality

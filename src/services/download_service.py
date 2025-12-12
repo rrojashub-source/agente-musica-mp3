@@ -374,7 +374,8 @@ class DownloadService(QObject):
         try:
             items = self.queue.get_all_items()
             return sum(1 for i in items.values() if i.get('status') == 'pending')
-        except:
+        except (AttributeError, KeyError, TypeError) as e:
+            logger.debug(f"Error getting pending count: {e}")
             return 0
 
     def get_active_count(self) -> int:
@@ -382,7 +383,8 @@ class DownloadService(QObject):
         try:
             items = self.queue.get_all_items()
             return sum(1 for i in items.values() if i.get('status') == 'downloading')
-        except:
+        except (AttributeError, KeyError, TypeError) as e:
+            logger.debug(f"Error getting active count: {e}")
             return 0
 
     def get_completed_count(self) -> int:
@@ -390,7 +392,8 @@ class DownloadService(QObject):
         try:
             items = self.queue.get_all_items()
             return sum(1 for i in items.values() if i.get('status') == 'completed')
-        except:
+        except (AttributeError, KeyError, TypeError) as e:
+            logger.debug(f"Error getting completed count: {e}")
             return 0
 
     # ==========================================

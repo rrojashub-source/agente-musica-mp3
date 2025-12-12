@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Callable
 from PyQt6.QtCore import QObject, pyqtSignal
 from workers.download_worker import DownloadWorker
+from utils.input_sanitizer import sanitize_filename
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -518,8 +519,10 @@ class DownloadQueue(QObject):
             download_dir = Path.cwd() / "downloads"
             logger.warning("No config_manager provided, using fallback downloads/ directory")
 
-        # Create output path
-        output_path = download_dir / f"{item['metadata'].get('title', item_id)}.mp3"
+        # Create output path with sanitized filename to prevent path traversal
+        raw_title = item['metadata'].get('title', item_id)
+        safe_title = sanitize_filename(raw_title)
+        output_path = download_dir / f"{safe_title}.mp3"
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Create worker

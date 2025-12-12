@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(pytest:*)",
+      "Bash(for file in src/**/*.py)",
+      "Bash(done)",
+      "Bash(sort:*)",
+      "Bash(python3:*)",
+      "Bash(python -m pytest tests/test_audio_equalizer.py -v --tb=short)",
+      "Bash(python -m pytest:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

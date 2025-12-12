@@ -465,7 +465,7 @@ class MusicBrainzFetcher:
                     if 'date' in release:
                         try:
                             metadata['year'] = int(release['date'][:4])
-                        except:
+                        except (ValueError, TypeError, IndexError):
                             pass
 
             # Genre/tags

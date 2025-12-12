@@ -13,6 +13,8 @@ import logging
 from typing import Dict, List, Optional, Tuple
 from difflib import SequenceMatcher
 
+from utils.input_sanitizer import sanitize_query
+
 logger = logging.getLogger(__name__)
 
 
@@ -107,8 +109,12 @@ class MetadataFetcher:
         results = []
 
         try:
+            # Sanitize inputs to prevent injection
+            safe_title = sanitize_query(title)
+            safe_artist = sanitize_query(artist)
+
             # Build MusicBrainz query
-            query = f'recording:"{title}" AND artist:"{artist}"'
+            query = f'recording:"{safe_title}" AND artist:"{safe_artist}"'
 
             # Search (using adapter or direct client)
             mb_results = self.musicbrainz_client.search_recordings(query, limit=5)
@@ -316,8 +322,8 @@ class MetadataFetcher:
             artist_credit = mb_recording.get('artist-credit', [])
             if artist_credit:
                 return artist_credit[0].get('name', 'Unknown Artist')
-        except:
-            pass
+        except (KeyError, IndexError, TypeError) as e:
+            logger.debug(f"Could not extract artist name: {e}")
         return 'Unknown Artist'
 
     def _extract_album_name(self, mb_recording: Dict) -> str:
@@ -326,8 +332,8 @@ class MetadataFetcher:
             releases = mb_recording.get('releases', [])
             if releases:
                 return releases[0].get('title', 'Unknown Album')
-        except:
-            pass
+        except (KeyError, IndexError, TypeError) as e:
+            logger.debug(f"Could not extract album name: {e}")
         return 'Unknown Album'
 
     def _extract_year(self, mb_recording: Dict) -> Optional[int]:
@@ -338,8 +344,8 @@ class MetadataFetcher:
                 date_str = releases[0].get('date', '')
                 if date_str:
                     return int(date_str[:4])
-        except:
-            pass
+        except (KeyError, IndexError, TypeError, ValueError) as e:
+            logger.debug(f"Could not extract year: {e}")
         return None
 
     def _extract_spotify_year(self, track: Dict) -> Optional[int]:
@@ -349,8 +355,8 @@ class MetadataFetcher:
             release_date = album.get('release_date', '')
             if release_date:
                 return int(release_date[:4])
-        except:
-            pass
+        except (KeyError, TypeError, ValueError) as e:
+            logger.debug(f"Could not extract Spotify year: {e}")
         return None
 
     def get_best_match(self, results: List[Dict], min_confidence: float = 70.0) -> Optional[Dict]:

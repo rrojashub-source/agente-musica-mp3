@@ -519,13 +519,26 @@ class DatabaseManager:
 
             stats['orphans_found'] = len(orphan_ids)
 
-            # Delete orphans
-            for song_id in orphan_ids:
+            # Delete orphans using batch DELETE (avoid N+1 query problem)
+            if orphan_ids:
                 try:
-                    if self.delete_song(song_id):
-                        stats['orphans_deleted'] += 1
+                    # Use batch delete for better performance
+                    placeholders = ','.join('?' * len(orphan_ids))
+                    sql = f"DELETE FROM songs WHERE id IN ({placeholders})"
+                    cursor = self.conn.cursor()
+                    cursor.execute(sql, orphan_ids)
+                    self.conn.commit()
+                    stats['orphans_deleted'] = cursor.rowcount
+                    logger.info(f"Batch deleted {cursor.rowcount} orphan songs")
                 except Exception as e:
-                    stats['errors'].append(f"Failed to delete song {song_id}: {e}")
+                    # Fallback to individual deletes if batch fails
+                    logger.warning(f"Batch delete failed, falling back to individual: {e}")
+                    for song_id in orphan_ids:
+                        try:
+                            if self.delete_song(song_id):
+                                stats['orphans_deleted'] += 1
+                        except Exception as e2:
+                            stats['errors'].append(f"Failed to delete song {song_id}: {e2}")
 
             logger.info(
                 f"Orphan cleanup: {stats['orphans_deleted']}/{stats['orphans_found']} deleted "

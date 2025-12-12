@@ -207,7 +207,7 @@ class LyricsAnalyzer:
             try:
                 if self._profanity_checker.contains_profanity(lyrics):
                     profanity_count = max(profanity_count, 1)
-            except:
+            except (AttributeError, TypeError, RuntimeError):
                 pass
 
         # Calculate profanity density (profanity per 100 words)

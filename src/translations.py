@@ -383,6 +383,37 @@ TRANSLATIONS = {
         "content_filter_zone_export_msg": "Se exportaron {count} canciones a:\n{path}",
         "content_filter_usb_export_complete": "Exportación USB Completada",
         "content_filter_usb_export_msg": "Se exportaron {count} canciones al USB.\n\nEstructura de carpetas:\n  {base}/Infantil - Música infantil\n  {base}/Clean - Música limpia\n  {base}/Christian - Música cristiana\n  {base}/Explicit - Contenido explícito\n\nResumen guardado en: {summary}",
+
+        # === Statistics Tab ===
+        "tab_statistics": "📊 Estadísticas",
+        "statistics_title": "📊 Estadísticas de Biblioteca",
+        "statistics_overview": "Resumen General",
+        "statistics_total_songs": "Total Canciones",
+        "statistics_total_artists": "Total Artistas",
+        "statistics_total_albums": "Total Álbumes",
+        "statistics_total_genres": "Total Géneros",
+        "statistics_total_duration": "Duración Total",
+        "statistics_total_plays": "Reproducciones Totales",
+        "statistics_top_artists": "🎤 Top Artistas",
+        "statistics_top_songs": "🎵 Top Canciones",
+        "statistics_top_genres": "🎸 Top Géneros",
+        "statistics_decades": "📅 Por Década",
+        "statistics_quality": "🔊 Calidad de Audio",
+        "statistics_recently_added": "📥 Agregados Recientemente",
+        "statistics_recently_played": "▶️ Reproducidos Recientemente",
+        "statistics_refresh": "🔄 Actualizar",
+        "statistics_hours": "horas",
+        "statistics_plays": "reproducciones",
+        "statistics_songs": "canciones",
+
+        # === Equalizer ===
+        "menu_equalizer": "🎚️ &Ecualizador...",
+        "equalizer_title": "🎚️ Ecualizador de Audio",
+        "equalizer_preset": "Preset:",
+        "equalizer_save_preset": "💾 Guardar",
+        "equalizer_delete_preset": "🗑️ Eliminar",
+        "equalizer_enabled": "Ecualizador Habilitado",
+        "equalizer_reset": "Restablecer",
     },
 
     "en": {
@@ -735,6 +766,37 @@ TRANSLATIONS = {
         "content_filter_zone_export_msg": "Exported {count} songs to:\n{path}",
         "content_filter_usb_export_complete": "USB Export Complete",
         "content_filter_usb_export_msg": "Exported {count} songs to USB.\n\nFolder structure:\n  {base}/Infantil - Children's music\n  {base}/Clean - Clean music\n  {base}/Christian - Christian music\n  {base}/Explicit - Explicit content\n\nSummary saved to: {summary}",
+
+        # === Statistics Tab ===
+        "tab_statistics": "📊 Statistics",
+        "statistics_title": "📊 Library Statistics",
+        "statistics_overview": "Overview",
+        "statistics_total_songs": "Total Songs",
+        "statistics_total_artists": "Total Artists",
+        "statistics_total_albums": "Total Albums",
+        "statistics_total_genres": "Total Genres",
+        "statistics_total_duration": "Total Duration",
+        "statistics_total_plays": "Total Plays",
+        "statistics_top_artists": "🎤 Top Artists",
+        "statistics_top_songs": "🎵 Top Songs",
+        "statistics_top_genres": "🎸 Top Genres",
+        "statistics_decades": "📅 By Decade",
+        "statistics_quality": "🔊 Audio Quality",
+        "statistics_recently_added": "📥 Recently Added",
+        "statistics_recently_played": "▶️ Recently Played",
+        "statistics_refresh": "🔄 Refresh",
+        "statistics_hours": "hours",
+        "statistics_plays": "plays",
+        "statistics_songs": "songs",
+
+        # === Equalizer ===
+        "menu_equalizer": "🎚️ &Equalizer...",
+        "equalizer_title": "🎚️ Audio Equalizer",
+        "equalizer_preset": "Preset:",
+        "equalizer_save_preset": "💾 Save",
+        "equalizer_delete_preset": "🗑️ Delete",
+        "equalizer_enabled": "Equalizer Enabled",
+        "equalizer_reset": "Reset",
     }
 }
 

@@ -300,7 +300,8 @@ class CleanupWorkflowWorker(QThread):
         try:
             song = self.db_manager.get_song_by_id(song_id)
             return song.get('duration') if song else None
-        except:
+        except (AttributeError, KeyError, TypeError) as e:
+            logger.debug(f"Could not get song duration for {song_id}: {e}")
             return None
 
     def _get_song_file_path(self, song_id: int) -> Optional[str]:
@@ -308,7 +309,8 @@ class CleanupWorkflowWorker(QThread):
         try:
             song = self.db_manager.get_song_by_id(song_id)
             return song.get('file_path') if song else None
-        except:
+        except (AttributeError, KeyError, TypeError) as e:
+            logger.debug(f"Could not get file path for {song_id}: {e}")
             return None
 
 
