@@ -1,5 +1,5 @@
 """
-Audio Visualizer Widget - Phase 7.3
+Audio Visualizer Widget - Phase 7.3 + Phase 10
 
 Waveform visualization widget for audio playback.
 
@@ -11,17 +11,26 @@ Features:
 - Smooth performance (60 FPS capable)
 - Modern spectrum analyzer with gradient colors
 - Multiple visualization styles with style selector
+- Organic SDF Ray Marching visualizer (Phase 10)
 
 Created: November 13, 2025
 Updated: November 20, 2025 - Modern gradient bars
 Updated: November 21, 2025 - Multiple styles + selector
+Updated: December 17, 2025 - Added Organic visualizer (Phase 10)
 """
 import logging
 from typing import List, Optional
 import math
-from PyQt6.QtWidgets import QWidget, QComboBox
+from PyQt6.QtWidgets import QWidget, QComboBox, QStackedWidget, QVBoxLayout
 from PyQt6.QtCore import Qt, QRect, QPoint, QSettings
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QLinearGradient, QRadialGradient
+
+# Try to import Organic Visualizer (Phase 10)
+try:
+    from gui.visualizers import OrganicVisualizerWidget
+    ORGANIC_AVAILABLE = True
+except ImportError:
+    ORGANIC_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -78,8 +87,16 @@ class VisualizerWidget(QWidget):
         # Widget settings
         self.setMinimumSize(200, 100)
 
+        # Organic visualizer widget (Phase 10)
+        self.organic_widget: Optional['OrganicVisualizerWidget'] = None
+        if ORGANIC_AVAILABLE:
+            self._init_organic_visualizer()
+
         # Create style selector as floating widget (NO layout to preserve paintEvent)
         self._init_style_selector()
+
+        # Show/hide organic widget based on initial style
+        self._update_organic_visibility()
 
         logger.info(f"VisualizerWidget initialized with style: {self.viz_style}")
 
@@ -90,18 +107,24 @@ class VisualizerWidget(QWidget):
         """Initialize floating style selector (no layout to preserve paintEvent)"""
         # ComboBox for style selection (floating widget, not in layout)
         self.style_selector = QComboBox(self)
-        self.style_selector.addItems([
+
+        # Build style list dynamically (Organic only if OpenGL available)
+        styles = [
             "Bars (Spectrum) 📊",
             "Circular (Radial) 🔵",
             "Brain AI 🧠"
-        ])
+        ]
+        if ORGANIC_AVAILABLE:
+            styles.append("Organic SDF 🌊")
+        self.style_selector.addItems(styles)
 
         # Set current style (waveform removed, migrate to bars)
         style_index = {
             'waveform': 0,  # Legacy: redirect to bars
             'bars': 0,
             'circular': 1,
-            'brain_ai': 2
+            'brain_ai': 2,
+            'organic': 3 if ORGANIC_AVAILABLE else 0
         }.get(self.viz_style, 0)
         self.style_selector.setCurrentIndex(style_index)
 
@@ -144,24 +167,64 @@ class VisualizerWidget(QWidget):
         # Connect change event
         self.style_selector.currentIndexChanged.connect(self._on_style_changed)
 
+    def _init_organic_visualizer(self):
+        """Initialize the Organic SDF Ray Marching visualizer (Phase 10)"""
+        try:
+            self.organic_widget = OrganicVisualizerWidget(self)
+            self.organic_widget.setGeometry(0, 0, self.width(), self.height())
+            self.organic_widget.hide()  # Hidden by default
+            self.organic_widget.set_style('music')  # Use music color preset
+            logger.info("Organic visualizer initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize organic visualizer: {e}")
+            self.organic_widget = None
+
+    def _update_organic_visibility(self):
+        """Show/hide organic widget based on current style"""
+        if self.organic_widget:
+            if self.viz_style == 'organic':
+                self.organic_widget.show()
+                # Keep selector ABOVE organic widget
+                if hasattr(self, 'style_selector'):
+                    self.style_selector.raise_()
+            else:
+                self.organic_widget.hide()
+
     def resizeEvent(self, event):
-        """Reposition selector on resize"""
+        """Reposition selector and resize organic widget on resize"""
+        # Resize organic widget to fill entire area (FIRST, so it's below)
+        if self.organic_widget:
+            self.organic_widget.setGeometry(0, 0, self.width(), self.height())
+
+        # Position selector in top-right corner (LAST, so it's on top)
         if hasattr(self, 'style_selector'):
-            # Position in top-right corner with 10px margin
             x = self.width() - self.style_selector.width() - 10
             y = 10
             self.style_selector.move(x, y)
+            self.style_selector.raise_()  # Always keep on top
+
         super().resizeEvent(event)
 
     def _on_style_changed(self, index: int):
         """Handle style selection change"""
-        styles = ['bars', 'circular', 'brain_ai']  # Waveform removed
+        # Build styles list dynamically (matches selector)
+        styles = ['bars', 'circular', 'brain_ai']
+        if ORGANIC_AVAILABLE:
+            styles.append('organic')
+
+        if index >= len(styles):
+            return
+
         new_style = styles[index]
 
         if new_style != self.viz_style:
             self.viz_style = new_style
             # Save preference
             self.settings.setValue("visualizer/style", new_style)
+
+            # Show/hide organic widget based on style
+            self._update_organic_visibility()
+
             self.update()
             logger.info(f"Visualizer style changed to: {new_style}")
 
@@ -190,6 +253,14 @@ class VisualizerWidget(QWidget):
         else:
             self.position = 0.0
 
+        # Forward FFT data to organic visualizer if active
+        if self.organic_widget and self.viz_style == 'organic' and self.spectrum_data:
+            # Get current spectrum frame based on position
+            time_index = int(self.position * len(self.spectrum_data))
+            time_index = max(0, min(time_index, len(self.spectrum_data) - 1))
+            current_fft = self.spectrum_data[time_index]
+            self.organic_widget.update_from_fft(current_fft)
+
         self.update()  # Trigger repaint
 
     def set_spectrum(self, spectrum_data: List[List[float]], duration: float):
@@ -205,6 +276,19 @@ class VisualizerWidget(QWidget):
         self.spectrum_duration = duration
         self.update()  # Trigger repaint
         logger.debug(f"Spectrum data set: {len(spectrum_data)} windows, {duration:.2f}s")
+
+    def update_organic_audio(self, fft_data: List[float]):
+        """
+        Update organic visualizer with FFT data (Phase 10)
+
+        Called on each audio frame to update the organic visualizer
+        with real-time audio analysis.
+
+        Args:
+            fft_data: List of FFT magnitude values
+        """
+        if self.organic_widget and self.viz_style == 'organic':
+            self.organic_widget.update_from_fft(fft_data)
 
     def set_duration(self, duration: float):
         """
@@ -231,9 +315,11 @@ class VisualizerWidget(QWidget):
         Set visualization style
 
         Args:
-            style: 'bars', 'circular', or 'brain_ai'
+            style: 'bars', 'circular', 'brain_ai', or 'organic'
         """
         valid_styles = ['bars', 'circular', 'brain_ai']
+        if ORGANIC_AVAILABLE:
+            valid_styles.append('organic')
 
         # Migrate legacy waveform to bars
         if style == 'waveform':
@@ -251,6 +337,9 @@ class VisualizerWidget(QWidget):
                 self.style_selector.setCurrentIndex(style_index)
                 self.style_selector.blockSignals(False)
 
+            # Show/hide organic widget based on style
+            self._update_organic_visibility()
+
             self.update()  # Trigger repaint
             logger.debug(f"Visualization style set to: {style}")
         else:
@@ -263,6 +352,13 @@ class VisualizerWidget(QWidget):
         Args:
             event: QPaintEvent
         """
+        # Skip 2D drawing when organic mode is active (OpenGL widget handles rendering)
+        if self.viz_style == 'organic' and self.organic_widget:
+            # Just draw background - organic widget overlays on top
+            painter = QPainter(self)
+            painter.fillRect(self.rect(), self.background_color)
+            return
+
         logger.debug(f"paintEvent called: style={self.viz_style}, has_waveform={self.waveform_data is not None}, has_spectrum={self.spectrum_data is not None}")
 
         painter = QPainter(self)
@@ -934,13 +1030,25 @@ class VisualizerWidget(QWidget):
         self.spectrum_data = None
         self.spectrum_duration = 0.0
         self.position = 0.0
+
+        # Reset organic visualizer audio state
+        if self.organic_widget:
+            self.organic_widget.update_audio(0.0, 0.0, 0.0, 0.0)
+
         self.update()
         logger.debug("Visualizer cleared")
 
     def reset(self):
         """Reset to initial state"""
         self.clear()
-        self.viz_style = 'waveform'
+        self.viz_style = 'bars'  # Default to bars (waveform removed)
         self.waveform_color = QColor(0, 150, 255)
+        self._update_organic_visibility()
         self.update()
         logger.debug("Visualizer reset")
+
+    def closeEvent(self, event):
+        """Handle widget close - cleanup OpenGL resources"""
+        if self.organic_widget:
+            self.organic_widget.cleanup()
+        super().closeEvent(event)

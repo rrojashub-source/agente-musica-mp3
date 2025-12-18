@@ -53,6 +53,10 @@ pygame>=2.5.0
 # Audio visualization
 numpy>=1.24.0
 
+# OpenGL for organic visualizer (Phase 10)
+PyOpenGL>=3.1.7
+PyOpenGL-accelerate>=3.1.7
+
 # Lyrics API (Genius)
 lyricsgenius>=3.0.1
 
