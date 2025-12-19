@@ -5,12 +5,18 @@ Purpose: Check if fpcalc (Chromaprint) is available for audio fingerprinting
 Created: November 18, 2025
 """
 import os
+import sys
 import subprocess
 import logging
 from pathlib import Path
 from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+# Windows flag to hide console window
+SUBPROCESS_FLAGS = {}
+if sys.platform == 'win32':
+    SUBPROCESS_FLAGS['creationflags'] = subprocess.CREATE_NO_WINDOW
 
 
 class FpcalcChecker:
@@ -63,7 +69,8 @@ class FpcalcChecker:
                 ['fpcalc', '-version'],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
+                **SUBPROCESS_FLAGS
             )
             if result.returncode == 0:
                 self.fpcalc_path = 'fpcalc'  # In PATH
@@ -101,7 +108,8 @@ class FpcalcChecker:
                 [self.fpcalc_path, '-version'],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
+                **SUBPROCESS_FLAGS
             )
 
             if result.returncode == 0:
