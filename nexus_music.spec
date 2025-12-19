@@ -120,6 +120,7 @@ a = Analysis(
         'gui.dialogs.shortcuts_dialog',
         'utils',
         'utils.input_sanitizer',
+        'utils.subprocess_patch',
         'workers',
         'workers.download_worker',
         'workers.library_import_worker',

@@ -11,6 +11,10 @@ Phases: 1-7 Complete
 Multi-language: Español (es), English (en)
 """
 
+# CRITICAL: Patch subprocess FIRST to hide console windows on Windows
+# Must be imported before any other module that uses subprocess
+import utils.subprocess_patch  # noqa: F401
+
 import sys
 import logging
 from pathlib import Path
