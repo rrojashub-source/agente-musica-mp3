@@ -19,16 +19,32 @@ a = Analysis(
     pathex=[str(project_root), str(src_path)],
     binaries=[],
     datas=[
-        # Include data files
-        ('data', 'data'),
-        # Include any resource files
+        # Include data files (artist database, etc.)
+        ('src/data', 'data'),
+        # Include shader files for Organic Visualizer
+        ('src/gui/visualizers/organic_shaders', 'gui/visualizers/organic_shaders'),
+        # Include theme files (QSS stylesheets)
+        ('src/gui/themes', 'gui/themes'),
+        # Include database migrations
+        ('src/database/migrations', 'database/migrations'),
+        # Include plugins
+        ('src/plugins/available', 'plugins/available'),
     ],
     hiddenimports=[
         # PyQt6 modules
         'PyQt6.QtWidgets',
         'PyQt6.QtCore',
         'PyQt6.QtGui',
+        'PyQt6.QtOpenGLWidgets',
         'PyQt6.sip',
+        # OpenGL for Organic Visualizer
+        'OpenGL',
+        'OpenGL.GL',
+        'OpenGL.GL.shaders',
+        'OpenGL.arrays',
+        'OpenGL.arrays.ctypesarrays',
+        'OpenGL.platform',
+        'OpenGL.platform.win32',
         # Database
         'sqlite3',
         # Audio
@@ -97,6 +113,8 @@ a = Analysis(
         'gui.widgets.playlist_widget',
         'gui.widgets.visualizer_widget',
         'gui.widgets.queue_widget',
+        'gui.visualizers',
+        'gui.visualizers.organic_visualizer',
         'gui.dialogs',
         'gui.dialogs.api_settings_dialog',
         'gui.dialogs.shortcuts_dialog',

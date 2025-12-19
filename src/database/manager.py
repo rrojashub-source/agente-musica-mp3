@@ -7,11 +7,21 @@ Thread-safety: Uses threading.local() for per-thread connections
 
 import sqlite3
 import logging
+import sys
 import threading
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger(__name__)
+
+
+def get_resource_path(relative_path: str) -> Path:
+    """Get absolute path to resource, works for dev and PyInstaller bundle."""
+    if hasattr(sys, '_MEIPASS'):
+        base_path = Path(sys._MEIPASS)
+    else:
+        base_path = Path(__file__).parent.parent  # database -> src
+    return base_path / relative_path
 
 
 class DatabaseManager:
@@ -94,7 +104,7 @@ class DatabaseManager:
 
     def _run_migrations(self):
         """Run SQL migrations from migrations/ folder"""
-        migrations_dir = Path(__file__).parent / "migrations"
+        migrations_dir = get_resource_path("database/migrations")
 
         if not migrations_dir.exists():
             logger.warning(f"Migrations directory not found: {migrations_dir}")

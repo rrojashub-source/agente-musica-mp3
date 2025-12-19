@@ -12,6 +12,15 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Type
 from dataclasses import dataclass, field
 
+
+def get_resource_path(relative_path: str) -> Path:
+    """Get absolute path to resource, works for dev and PyInstaller bundle."""
+    if hasattr(sys, '_MEIPASS'):
+        base_path = Path(sys._MEIPASS)
+    else:
+        base_path = Path(__file__).parent.parent  # plugins -> src
+    return base_path / relative_path
+
 try:
     from PyQt6.QtCore import QObject, pyqtSignal
     HAS_QT = True
@@ -77,15 +86,14 @@ class PluginManager(QObject if HAS_QT else object):
         if plugins_dir:
             self._plugins_dir = Path(plugins_dir)
         else:
-            self._plugins_dir = Path(__file__).parent / "available"
+            self._plugins_dir = get_resource_path("plugins/available")
 
         if data_dir:
             self._data_dir = Path(data_dir)
         else:
             self._data_dir = Path.home() / ".nexus_music" / "plugins"
 
-        # Create directories if needed
-        self._plugins_dir.mkdir(parents=True, exist_ok=True)
+        # Create data directory (user writable), plugins dir is bundled
         self._data_dir.mkdir(parents=True, exist_ok=True)
 
         # Plugin registry

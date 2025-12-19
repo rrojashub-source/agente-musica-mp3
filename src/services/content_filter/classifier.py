@@ -20,6 +20,7 @@ Created: December 8, 2025
 import json
 import logging
 import re
+import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -27,6 +28,15 @@ from typing import Optional, List, Dict, Any
 from mutagen import File as MutagenFile
 from mutagen.id3 import ID3
 from mutagen.easyid3 import EasyID3
+
+
+def get_resource_path(relative_path: str) -> Path:
+    """Get absolute path to resource, works for dev and PyInstaller bundle."""
+    if hasattr(sys, '_MEIPASS'):
+        base_path = Path(sys._MEIPASS)
+    else:
+        base_path = Path(__file__).parent.parent.parent  # content_filter -> services -> src
+    return base_path / relative_path
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +147,7 @@ class ContentClassifier:
 
     def _load_artist_database(self):
         """Load artist classification database"""
-        db_path = Path(__file__).parent.parent.parent / "data" / "artist_database.json"
+        db_path = get_resource_path("data/artist_database.json")
 
         try:
             with open(db_path, 'r', encoding='utf-8') as f:

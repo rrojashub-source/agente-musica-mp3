@@ -36,7 +36,7 @@ pip install -r requirements.txt
 
 echo.
 echo [2/3] Building executable...
-pyinstaller nexus_music.spec --clean --noconfirm
+python -m PyInstaller nexus_music.spec --clean --noconfirm
 
 if errorlevel 1 (
     echo.

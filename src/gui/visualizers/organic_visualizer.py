@@ -22,11 +22,23 @@ Origin: NEXUS Avatar project (nexus-avatar/src/shaders/nexusCore.ts)
 """
 
 import logging
+import sys
 import time
 from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
+
+
+def get_resource_path(relative_path: str) -> Path:
+    """Get absolute path to resource, works for dev and PyInstaller bundle."""
+    if hasattr(sys, '_MEIPASS'):
+        # Running from PyInstaller bundle
+        base_path = Path(sys._MEIPASS)
+    else:
+        # Running from source
+        base_path = Path(__file__).parent.parent.parent  # src/gui/visualizers -> src
+    return base_path / relative_path
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtCore import Qt, QTimer
@@ -151,7 +163,7 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
 
         try:
             # Load shaders
-            shader_dir = Path(__file__).parent / "organic_shaders"
+            shader_dir = get_resource_path("gui/visualizers/organic_shaders")
             vertex_path = shader_dir / "vertex.glsl"
             fragment_path = shader_dir / "fragment_music.glsl"
 

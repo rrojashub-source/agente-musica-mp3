@@ -11,10 +11,22 @@ Features:
 
 import json
 import logging
+import sys
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from PyQt6.QtWidgets import QApplication
+
+
+def get_resource_path(relative_path: str) -> Path:
+    """Get absolute path to resource, works for dev and PyInstaller bundle."""
+    if hasattr(sys, '_MEIPASS'):
+        # Running from PyInstaller bundle
+        base_path = Path(sys._MEIPASS)
+    else:
+        # Running from source
+        base_path = Path(__file__).parent.parent
+    return base_path / relative_path
 
 logger = logging.getLogger(__name__)
 
@@ -122,8 +134,8 @@ class ThemeManager:
         Returns:
             str: QSS content (or empty string if file not found)
         """
-        # Path to QSS file
-        themes_dir = Path(__file__).parent.parent / "gui" / "themes"
+        # Path to QSS file (works for both dev and PyInstaller bundle)
+        themes_dir = get_resource_path("gui/themes")
         qss_file = themes_dir / f"{theme_name}.qss"
 
         # Read QSS file
