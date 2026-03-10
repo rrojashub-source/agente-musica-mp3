@@ -1,135 +1,80 @@
-# NEXUS Music Manager - Claude Context
+# NEXUS Music Manager
 
-**Version:** 1.0.0 RELEASE
-**Status:** PROYECTO COMPLETADO
-**Commercial Score:** 99/100
-**Executable:** `F:\NEXUS_Music_Manager.exe`
-**License:** MIT
+**Version:** 1.0.0 RELEASE | **Status:** Completado (maintenance mode) | **Score:** 99/100
 
 ---
 
-## Resumen del Proyecto
+## Resumen
 
-**NEXUS Music Manager** - Gestor de biblioteca musical profesional con experiencia tipo Spotify/iTunes para colecciones MP3 personales.
+Gestor de biblioteca musical profesional con GUI PyQt6. Descarga desde YouTube, búsqueda dual YouTube+Spotify, metadata automática via MusicBrainz, reproductor con 4 visualizadores, IA para similitud de canciones, filtro de contenido, plugins, control remoto móvil, sync cloud, multi-idioma ES/EN.
 
-### Features Principales
-- Descarga de música desde YouTube (yt-dlp)
-- Búsqueda dual (YouTube + Spotify con auto-conversión)
-- Metadata automática (MusicBrainz)
-- Reproductor completo con 4 visualizadores
-- IA para encontrar canciones similares (embeddings 128D)
-- Filtro de contenido (Kids/Family/Clean modes)
-- Sistema de plugins extensible
-- Control remoto móvil (REST API + Web UI)
-- Sincronización en la nube
-- Multi-idioma (ES/EN)
+## Stack
 
----
+- **Python 3.11+** — Core
+- **PyQt6** — GUI (13 tabs, 8 widgets custom)
+- **SQLite + FTS5 + WAL** — Base de datos con búsqueda full-text
+- **pygame + numpy FFT** — Reproducción de audio y análisis espectral
+- **OpenGL 3.3 + GLSL** — Visualizador orgánico SDF
+- **yt-dlp** — Descargas de YouTube
+- **Flask** — API REST para control remoto
+- **PyInstaller** — Empaquetado .exe Windows
 
-## Stack Tecnológico
-
-- **Python 3.11+** - Core
-- **PyQt6** - GUI framework
-- **yt-dlp** - YouTube downloads
-- **SQLite + FTS5** - Database
-- **Mutagen** - ID3 tags
-- **librosa** - Audio analysis
-- **OpenGL 3.3** - Visualizers
-- **Flask** - Remote API
-- **PyInstaller** - Packaging
-
----
-
-## Estructura del Proyecto
+## Estructura
 
 ```
-NEXUS_Music_Manager/
-├── src/
-│   ├── api/                 # YouTube, Spotify, MusicBrainz
-│   ├── core/                # Download, metadata, embeddings, duplicates
-│   ├── gui/
-│   │   ├── tabs/            # 12 tabs funcionales
-│   │   ├── widgets/         # Custom widgets
-│   │   ├── visualizers/     # 4 visualizers
-│   │   └── dialogs/         # Settings, shortcuts
-│   ├── services/            # Cloud sync, remote, content filter
-│   ├── plugins/             # Plugin system
-│   ├── utils/               # Utilities
-│   └── workers/             # Background workers
-├── tests/                   # 416+ tests
-├── plugins/available/       # 3 plugins incluidos
-├── memory/                  # Estado dinámico
-├── tasks/                   # Planes externos
-└── docs/                    # Documentación
+src/
+├── main.py                 # Entry point (NexusMainWindow)
+├── api/                    # YouTube, Spotify, MusicBrainz, Genius clients
+├── core/                   # Player, downloads, embeddings, duplicates, metadata
+├── gui/
+│   ├── tabs/               # 13 tabs funcionales
+│   ├── widgets/            # 8 widgets custom (NowPlaying, Visualizer, Playlist...)
+│   ├── visualizers/        # Organic SDF visualizer (OpenGL)
+│   ├── dialogs/            # API settings, shortcuts
+│   └── themes/             # dark.qss, light.qss
+├── services/               # Cloud sync, remote server, content filter, stats
+├── plugins/                # Plugin system (17 hooks) + 3 plugins
+├── database/               # SQLite manager + 5 migraciones SQL
+├── workers/                # Background workers (download, import)
+├── utils/                  # Sanitizer, rate limiter, subprocess patch
+└── translations.py         # ES/EN (200+ claves)
+tests/                      # 49 archivos, 416+ tests
+docs/                       # Arquitectura, API reference, troubleshooting
+scripts/                    # 12 scripts utilitarios
+tasks/                      # 11 planes de fase (históricos)
+memory/                     # Estado por componente
 ```
-
----
-
-## Fases Completadas
-
-| Fase | Descripción | Estado |
-|------|-------------|--------|
-| 1-4 | Core (Download, DB, GUI, Metadata) | ✅ |
-| 5 | Management Tools (Duplicates, Organize) | ✅ |
-| 6 | Audio Player (Gapless, Equalizer, Visualizers) | ✅ |
-| 7 | Playlists & Polish | ✅ |
-| 8 | AI Content Filter | ✅ |
-| 9 | AI Features (Embeddings, Similarity) | ✅ |
-| 10 | Organic SDF Visualizer | ✅ |
-| Final | PyInstaller Packaging | ✅ |
-
----
 
 ## Ejecutar
 
-**Producción (Windows):**
-```
-F:\NEXUS_Music_Manager.exe
-```
-
-**Desarrollo:**
 ```bash
-cd /mnt/d/01_PROYECTOS_ACTIVOS/AGENTE_MUSICA_MP3
-source spike_pyqt6/venv/bin/activate
+# Producción (Windows)
+dist/NEXUS_Music_Manager.exe
+
+# Desarrollo
+pip install -r requirements.txt
 python src/main.py
-```
 
-**Tests:**
-```bash
+# Tests
 pytest tests/ -v
 ```
 
----
+## Reglas
 
-## Métricas Finales
+- **Proyecto completado** — solo mantenimiento y bug fixes
+- NO agregar features nuevas sin decisión explícita de Ricardo
+- DB principal: `music_library.db` (68 canciones, FTS5)
+- API keys en OS keyring (no en código)
+- Los paths en la DB pueden necesitar actualización si cambia la ubicación de los MP3s
+- **NOTA:** CLAUDE.md anterior decía "librosa" pero el proyecto usa numpy FFT directamente
 
-| Categoría | Score |
-|-----------|-------|
-| Funcionalidad | 100% |
-| UX/UI | 95% |
-| Testing | 95% |
-| Seguridad | 95% |
-| IA | 100% |
-| Extensibilidad | 100% |
-| **TOTAL** | **99/100** |
+## Dependencias clave
 
----
+Ver `requirements.txt` (20 deps producción) y `requirements-dev.txt` (14 deps dev).
+**Inconsistencia conocida:** `setup.py` omite algunas deps (pypresence, flask, flask-cors, qrcode, PyOpenGL, pyacoustid).
 
-## NO TOCAR
+## Git
 
-- `downloads/` - Biblioteca del usuario
-- `F:\NEXUS_Music_Manager.exe` - Ejecutable final
-- Archivos de configuración del usuario
-
----
-
-## Créditos
-
-- **Desarrollo:** Ricardo Rojas + NEXUS@CLI
-- **Periodo:** Octubre - Diciembre 2025
-- **Commits totales:** 50+
-- **Tests:** 416+
-
----
-
-**PROYECTO COMPLETADO - December 18, 2025**
+- Remote: `origin → github.com/rrojashub-source/agente-musica-mp3.git`
+- Branch principal: `main` (212 commits)
+- Branch sin limpiar: `practical-solomon`
