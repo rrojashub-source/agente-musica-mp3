@@ -159,7 +159,7 @@ class DuplicateDetector:
                 fp = self._generate_fingerprint(song['file_path'])
                 if fp:
                     fingerprints[song['id']] = fp
-            except Exception as e:
+            except (OSError, ImportError) as e:
                 logger.warning(f"Failed to generate fingerprint for {song['file_path']}: {e}")
                 continue
 
@@ -208,7 +208,7 @@ class DuplicateDetector:
                 if os.path.exists(file_path):
                     size = os.path.getsize(file_path)
                     size_groups[size].append(song)
-            except Exception as e:
+            except OSError as e:
                 logger.warning(f"Failed to get file size for {song['file_path']}: {e}")
                 continue
 
@@ -295,6 +295,9 @@ class DuplicateDetector:
             try:
                 duration, fingerprint = acoustid.fingerprint_file(file_path)
                 return fingerprint
+            except (acoustid.FingerprintGenerationError, acoustid.NoBackendError, OSError) as e:
+                logger.warning(f"Failed to generate fingerprint: {e}")
+                return None
             finally:
                 # Restore original environment variable
                 if old_fpcalc is not None:
@@ -304,9 +307,6 @@ class DuplicateDetector:
 
         except ImportError:
             logger.warning("acoustid not installed - fingerprint detection unavailable")
-            return None
-        except Exception as e:
-            logger.warning(f"Failed to generate fingerprint: {e}")
             return None
 
     def _sort_by_quality(self, songs: List[Dict]) -> List[Dict]:

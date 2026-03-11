@@ -75,7 +75,7 @@ class CoverArtManager:
             logger.info(f"Found cover URL for {artist} - {album}")
             return cover_url
 
-        except Exception as e:
+        except (requests.RequestException, KeyError, ValueError) as e:
             logger.warning(f"Failed to get cover URL for {artist} - {album}: {e}")
             return None
 
@@ -122,7 +122,7 @@ class CoverArtManager:
                 logger.warning(f"Failed to download cover: HTTP {response.status_code}")
                 return False
 
-        except Exception as e:
+        except (requests.RequestException, OSError) as e:
             logger.error(f"Error downloading cover for {artist} - {album}: {e}")
             return False
 
@@ -156,7 +156,7 @@ class CoverArtManager:
                 logger.warning(f"No cover found for MBID {release_mbid}")
                 return False
 
-        except Exception as e:
+        except (requests.RequestException, OSError) as e:
             logger.error(f"Error downloading cover for MBID {release_mbid}: {e}")
             return False
 

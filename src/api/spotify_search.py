@@ -18,6 +18,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from spotipy.exceptions import SpotifyException
 import logging
+import requests
 from time import sleep
 import hashlib
 from utils.input_sanitizer import sanitize_query
@@ -138,7 +139,7 @@ class SpotifySearcher:
                 else:
                     return self._handle_spotify_error(e, "search_tracks")
 
-            except Exception as e:
+            except (requests.RequestException, ConnectionError) as e:
                 logger.error(f"Unexpected error during Spotify track search: {e}")
                 return []
 
@@ -209,7 +210,7 @@ class SpotifySearcher:
                 else:
                     return self._handle_spotify_error(e, "search_albums")
 
-            except Exception as e:
+            except (requests.RequestException, ConnectionError) as e:
                 logger.error(f"Unexpected error during Spotify album search: {e}")
                 return []
 
@@ -280,7 +281,7 @@ class SpotifySearcher:
                 else:
                     return self._handle_spotify_error(e, "search_artists")
 
-            except Exception as e:
+            except (requests.RequestException, ConnectionError) as e:
                 logger.error(f"Unexpected error during Spotify artist search: {e}")
                 return []
 
@@ -477,6 +478,6 @@ class SpotifySearcher:
         try:
             track = self.sp.track(track_id)
             return track
-        except Exception as e:
+        except (SpotifyException, requests.RequestException) as e:
             logger.error(f"Error getting track details: {e}")
             return None

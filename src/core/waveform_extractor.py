@@ -82,7 +82,7 @@ class WaveformExtractor:
 
             return waveform
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Failed to extract waveform from {file_path}: {e}")
             return None
 
@@ -140,7 +140,7 @@ class WaveformExtractor:
 
             return waveform
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"pydub extraction failed: {e}")
             return None
 
@@ -187,7 +187,7 @@ class WaveformExtractor:
             logger.info(f"Generated fallback waveform: {num_points} points")
             return waveform
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Fallback extraction failed: {e}")
             return None
 
@@ -251,7 +251,7 @@ class WaveformExtractor:
 
             return result
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Failed to extract spectrum from {file_path}: {e}")
             return None
 
@@ -341,7 +341,7 @@ class WaveformExtractor:
 
             return (spectrum_data, duration)
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Spectrum extraction with pydub failed: {e}")
             return None
 

@@ -15,6 +15,7 @@ Created: November 13, 2025
 import logging
 import os
 import re
+import sqlite3
 from pathlib import Path
 from typing import List, Dict, Optional
 
@@ -147,7 +148,7 @@ class BatchRenamer:
                         result['failed'] += 1
                         result['errors'].append(f"Failed to rename: {old_path}")
 
-            except Exception as e:
+            except (OSError, KeyError, ValueError) as e:
                 result['failed'] += 1
                 result['errors'].append(f"Error: {song.get('file_path', 'unknown')}: {str(e)}")
                 logger.error(f"Rename error: {e}")
@@ -278,7 +279,7 @@ class BatchRenamer:
             os.rename(old_path, new_path)
             logger.debug(f"Renamed: {old_path} -> {new_path}")
             return True
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to rename {old_path} to {new_path}: {e}")
             return False
 
@@ -293,7 +294,7 @@ class BatchRenamer:
         try:
             self.db.update_song_path(song_id, new_path)
             logger.debug(f"Updated database: song {song_id} -> {new_path}")
-        except Exception as e:
+        except (sqlite3.Error, AttributeError) as e:
             logger.error(f"Failed to update database for song {song_id}: {e}")
             raise
 

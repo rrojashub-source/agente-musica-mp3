@@ -158,6 +158,6 @@ class SpotifyAdapter:
             logger.info(f"Adapted {len(adapted_results)} Spotify results")
             return adapted_results
 
-        except Exception as e:
+        except (KeyError, TypeError, ValueError) as e:
             logger.error(f"Spotify search error: {e}")
             return []

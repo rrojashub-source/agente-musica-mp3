@@ -147,7 +147,7 @@ class ThemeManager:
                 logger.debug(f"Loaded QSS: {qss_file} ({len(qss_content)} chars)")
                 return qss_content
 
-            except Exception as e:
+            except OSError as e:
                 logger.error(f"Failed to load QSS {qss_file}: {e}")
                 return ""
         else:
@@ -178,7 +178,7 @@ class ThemeManager:
 
             logger.debug(f"Saved theme preference: {self.current_theme}")
 
-        except Exception as e:
+        except (OSError, TypeError) as e:
             logger.error(f"Failed to save theme preference: {e}")
 
             # Clean up temp file
@@ -205,5 +205,5 @@ class ThemeManager:
             else:
                 logger.warning(f"Invalid theme in config: {theme}, using default")
 
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, KeyError) as e:
             logger.error(f"Failed to load theme preference: {e}")

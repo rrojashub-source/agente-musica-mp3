@@ -13,6 +13,7 @@ API Documentation: https://docs.genius.com/
 Created: November 17, 2025
 """
 import logging
+import requests
 from typing import Optional
 from utils.rate_limiter import RateLimiter
 
@@ -57,7 +58,7 @@ class GeniusClient:
         except ImportError:
             logger.error("lyricsgenius library not installed - run: pip install lyricsgenius")
             raise
-        except Exception as e:
+        except (ConnectionError, OSError, RuntimeError) as e:
             logger.error(f"Failed to initialize Genius API: {e}")
             raise
 
@@ -115,7 +116,7 @@ class GeniusClient:
                 logger.warning(f"Lyrics not found: {title} - {artist}")
                 return None
 
-        except Exception as e:
+        except (requests.RequestException, AttributeError, ValueError) as e:
             logger.error(f"Genius API error for '{title} - {artist}': {e}")
             return None
 

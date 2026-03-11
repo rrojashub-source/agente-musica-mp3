@@ -14,6 +14,7 @@ import logging
 import os
 import shutil
 import re
+import sqlite3
 from pathlib import Path
 from typing import List, Dict, Optional
 
@@ -149,7 +150,7 @@ class LibraryOrganizer:
                         result['failed'] += 1
                         result['errors'].append(f"File not found: {old_path}")
 
-            except Exception as e:
+            except (OSError, sqlite3.Error, ValueError) as e:
                 result['failed'] += 1
                 result['errors'].append(f"Error: {song.get('file_path', 'unknown')}: {str(e)}")
                 logger.error(f"Organization error: {e}")
@@ -230,7 +231,7 @@ class LibraryOrganizer:
         try:
             os.makedirs(directory, exist_ok=True)
             logger.debug(f"Created directory: {directory}")
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to create directory {directory}: {e}")
             raise
 
@@ -254,7 +255,7 @@ class LibraryOrganizer:
             shutil.move(source, target)
             logger.debug(f"Moved: {source} -> {target}")
             return True
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to move {source} to {target}: {e}")
             return False
 
@@ -273,7 +274,7 @@ class LibraryOrganizer:
             shutil.copy2(source, target)
             logger.debug(f"Copied: {source} -> {target}")
             return True
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to copy {source} to {target}: {e}")
             return False
 
@@ -288,7 +289,7 @@ class LibraryOrganizer:
         try:
             self.db.update_song_path(song_id, new_path)
             logger.debug(f"Updated database: song {song_id} -> {new_path}")
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to update database for song {song_id}: {e}")
             raise
 
@@ -363,7 +364,7 @@ class LibraryOrganizer:
                     result['failed'] += 1
                     result['errors'].append(f"File not found for rollback: {new_path}")
 
-            except Exception as e:
+            except (OSError, sqlite3.Error) as e:
                 result['failed'] += 1
                 result['errors'].append(f"Rollback error: {str(e)}")
                 logger.error(f"Rollback error: {e}")

@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 import tempfile
 import shutil
+import musicbrainzngs
 
 
 class TestMusicBrainzClient(unittest.TestCase):
@@ -199,7 +200,7 @@ class TestMusicBrainzClient(unittest.TestCase):
         client = self.client_class()
 
         with patch('musicbrainzngs.search_recordings') as mock_search:
-            mock_search.side_effect = Exception("API Error")
+            mock_search.side_effect = musicbrainzngs.WebServiceError("API Error")
 
             # Should handle error gracefully (return empty, not crash)
             results = client.search_recording("Test")

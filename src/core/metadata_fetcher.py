@@ -10,6 +10,7 @@ Purpose: Search correct metadata from multiple sources
 Created: November 18, 2025
 """
 import logging
+import requests
 from typing import Dict, List, Optional, Tuple
 from difflib import SequenceMatcher
 
@@ -74,7 +75,7 @@ class MetadataFetcher:
             try:
                 mb_results = self._search_musicbrainz(title, artist, duration)
                 results.extend(mb_results)
-            except Exception as e:
+            except (requests.RequestException, KeyError, ValueError, TypeError) as e:
                 logger.warning(f"MusicBrainz search failed: {e}")
 
         # Try Spotify as fallback
@@ -82,7 +83,7 @@ class MetadataFetcher:
             try:
                 spotify_results = self._search_spotify(title, artist, duration)
                 results.extend(spotify_results)
-            except Exception as e:
+            except (requests.RequestException, KeyError, ValueError, TypeError) as e:
                 logger.warning(f"Spotify search failed: {e}")
 
         # Sort by score (highest first)
@@ -161,7 +162,7 @@ class MetadataFetcher:
                     'raw': mb_recording
                 })
 
-        except Exception as e:
+        except (KeyError, TypeError, ValueError) as e:
             logger.error(f"MusicBrainz search error: {e}")
 
         return results
@@ -248,7 +249,7 @@ class MetadataFetcher:
                     'raw': track
                 })
 
-        except Exception as e:
+        except (KeyError, TypeError, ValueError) as e:
             logger.error(f"Spotify search error: {e}")
 
         return results

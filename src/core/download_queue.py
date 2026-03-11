@@ -10,6 +10,7 @@ Features:
 - Automatic retry on failure
 """
 import json
+import sqlite3
 import uuid
 import logging
 import threading
@@ -421,7 +422,7 @@ class DownloadQueue(QObject):
             try:
                 audio = MP3(str(file_path_obj))
                 id3 = audio.tags if audio.tags else ID3()
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 logger.warning(f"Could not read ID3 tags: {e}")
                 audio = None
                 id3 = None
@@ -459,7 +460,7 @@ class DownloadQueue(QObject):
             else:
                 logger.warning(f"Song not imported (duplicate?): {artist} - {title}")
 
-        except Exception as e:
+        except (OSError, sqlite3.Error, ValueError) as e:
             logger.error(f"Failed to import to database: {e}")
 
     def _mark_failed(self, item_id: str, error: str):

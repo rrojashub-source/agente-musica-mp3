@@ -72,7 +72,7 @@ class BPMDetector:
             logger.debug(f"Detected BPM for {Path(file_path).name}: {bpm}")
             return bpm
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"BPM detection failed for {file_path}: {e}")
             return None
 
@@ -150,6 +150,6 @@ class BPMDetector:
 
             return None
 
-        except Exception as e:
+        except (ValueError, TypeError, IndexError) as e:
             logger.error(f"BPM estimation failed: {e}")
             return None

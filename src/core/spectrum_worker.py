@@ -73,7 +73,7 @@ class SpectrumWorker(QThread):
                 logger.warning(error_msg)
                 self.error.emit(error_msg)
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             error_msg = f"Spectrum extraction error: {str(e)}"
             logger.error(error_msg)
             self.error.emit(error_msg)

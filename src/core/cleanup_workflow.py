@@ -14,9 +14,11 @@ Created: November 18, 2025
 Updated: November 18, 2025 (Added AcoustID fallback)
 """
 import logging
+import sqlite3
 from typing import Dict, List, Optional
 from PyQt6.QtCore import QThread, pyqtSignal
 import keyring
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +249,7 @@ class CleanupWorkflowWorker(QThread):
                             })
                             logger.info(f"AcoustID match found for song {cleaned_song['id']}")
 
-            except Exception as e:
+            except (requests.RequestException, OSError, ValueError) as e:
                 logger.warning(f"Failed to fetch metadata for song {cleaned_song['id']}: {e}")
 
         self.step_completed.emit(3, {
@@ -397,7 +399,7 @@ class CleanupApplier:
                                         logger.info(f"Downloaded cover: {artist} - {album}")
                                 else:
                                     logger.debug(f"Cover already exists: {artist} - {album}")
-                            except Exception as e:
+                            except (requests.RequestException, OSError) as e:
                                 logger.warning(f"Failed to download cover for {artist} - {album}: {e}")
 
                     # TODO: Update MP3 file ID3 tags
@@ -407,7 +409,7 @@ class CleanupApplier:
                     results['failed'] += 1
                     results['errors'].append(f"Failed to update song {song_id}")
 
-            except Exception as e:
+            except (KeyError, sqlite3.Error) as e:
                 results['failed'] += 1
                 error_msg = f"Error updating song {change['id']}: {e}"
                 results['errors'].append(error_msg)

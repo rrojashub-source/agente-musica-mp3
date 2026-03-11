@@ -94,7 +94,7 @@ class AudioPlayer:
         except ImportError:
             logger.error("pygame not installed - audio playback unavailable")
             self._pygame = None
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(f"Failed to initialize pygame.mixer: {e}")
             self._pygame = None
 
@@ -130,7 +130,7 @@ class AudioPlayer:
                 except ImportError:
                     logger.warning("mutagen not installed - duration unavailable")
                     self._duration = 0.0
-                except Exception as e:
+                except Exception as e:  # MutagenError inherits from Exception
                     logger.warning(f"Failed to get duration: {e}")
                     self._duration = 0.0
 

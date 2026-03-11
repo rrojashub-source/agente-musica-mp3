@@ -368,7 +368,7 @@ class AudioEqualizer:
 
             logger.info(f"Loaded {len(self._custom_presets)} custom EQ presets")
 
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
             logger.error(f"Failed to load custom presets: {e}")
 
     def _save_custom_presets(self):
@@ -386,7 +386,7 @@ class AudioEqualizer:
 
             logger.debug(f"Saved {len(self._custom_presets)} custom presets")
 
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             logger.error(f"Failed to save custom presets: {e}")
 
     def get_band_labels(self) -> List[str]:

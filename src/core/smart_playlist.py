@@ -14,6 +14,7 @@ Created: November 24, 2025
 """
 import logging
 import json
+import sqlite3
 from typing import List, Dict, Optional, Any, Callable
 from dataclasses import dataclass, field, asdict
 from enum import Enum
@@ -466,7 +467,7 @@ class SmartPlaylistEngine:
             else:
                 logger.error("Unknown library_db type")
                 return []
-        except Exception as e:
+        except (sqlite3.Error, AttributeError) as e:
             logger.error(f"Failed to get songs from library: {e}")
             return []
 
@@ -575,7 +576,7 @@ class SmartPlaylistEngine:
                 key=lambda s: (s.get(sort_by) is None, s.get(sort_by, '')),
                 reverse=not ascending
             )
-        except Exception as e:
+        except (TypeError, ValueError) as e:
             logger.warning(f"Sort failed: {e}")
             return songs
 
@@ -600,7 +601,7 @@ class SmartPlaylistEngine:
             logger.info(f"Saved {len(self._playlists)} playlists to {filepath}")
             return True
 
-        except Exception as e:
+        except (OSError, TypeError) as e:
             logger.error(f"Failed to save playlists: {e}")
             return False
 
@@ -622,7 +623,7 @@ class SmartPlaylistEngine:
         except FileNotFoundError:
             logger.info(f"Playlist file not found: {filepath}")
             return False
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
             logger.error(f"Failed to load playlists: {e}")
             return False
 

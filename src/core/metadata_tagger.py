@@ -11,8 +11,9 @@ Features:
 import logging
 from pathlib import Path
 from typing import Dict, Optional
+from mutagen import MutagenError
 from mutagen.mp3 import MP3
-from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TCON, APIC
+from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TCON, APIC, error as ID3Error
 from core.metadata_autocompleter import MetadataAutocompleter
 
 # Setup logger
@@ -65,7 +66,7 @@ class MetadataTagger:
             # Add ID3 tag if not present
             try:
                 audio.add_tags()
-            except Exception:
+            except ID3Error:
                 pass  # Tags already exist
 
             # Write title (TIT2)
@@ -103,7 +104,7 @@ class MetadataTagger:
             logger.error(f"File not found: {file_path}")
             return False
 
-        except Exception as e:
+        except (OSError, MutagenError) as e:
             logger.error(f"Error tagging file {file_path}: {e}")
             return False
 
@@ -158,7 +159,7 @@ class MetadataTagger:
             # Tag file with merged metadata
             return self.tag_file(file_path, merged_metadata)
 
-        except Exception as e:
+        except (OSError, ValueError, KeyError, MutagenError) as e:
             logger.error(f"Error in lookup_and_tag: {e}")
             return False
 
@@ -180,7 +181,7 @@ class MetadataTagger:
             # Add ID3 tag if not present
             try:
                 audio.add_tags()
-            except Exception:
+            except ID3Error:
                 pass
 
             # Read image data
@@ -212,6 +213,6 @@ class MetadataTagger:
             logger.error(f"File not found: {file_path} or {image_path}")
             return False
 
-        except Exception as e:
+        except (OSError, MutagenError) as e:
             logger.error(f"Error embedding album art: {e}")
             return False

@@ -100,7 +100,7 @@ class MusicBrainzClient:
             logger.info(f"Search '{title}' returned {len(recordings)} results")
             return recordings
 
-        except Exception as e:
+        except (musicbrainzngs.WebServiceError, musicbrainzngs.UsageError) as e:
             logger.error(f"MusicBrainz search error: {e}")
             return []
 
@@ -130,7 +130,7 @@ class MusicBrainzClient:
                 logger.warning(f"Failed to download album art: HTTP {response.status_code}")
                 return False
 
-        except Exception as e:
+        except (requests.RequestException, OSError) as e:
             logger.error(f"Error downloading album art: {e}")
             return False
 

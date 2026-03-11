@@ -17,6 +17,7 @@ Author: NEXUS + Ricardo
 """
 import logging
 import hashlib
+import sqlite3
 from pathlib import Path
 from typing import List, Dict, Optional
 import numpy as np
@@ -100,7 +101,7 @@ class AudioEmbeddings:
             conn.commit()
             logger.debug("Embeddings table ready")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to create embeddings table: {e}")
 
     # =========================================================================
@@ -146,7 +147,7 @@ class AudioEmbeddings:
             logger.debug(f"Extracted embedding for {Path(file_path).name}: {features.shape}")
             return features
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Failed to extract embedding from {file_path}: {e}")
             return None
 
@@ -195,7 +196,7 @@ class AudioEmbeddings:
             content = f"{size}:".encode() + first_chunk
             return hashlib.md5(content).hexdigest()
 
-        except Exception:
+        except OSError:
             return ""
 
     def _get_cached_embedding(
@@ -218,7 +219,7 @@ class AudioEmbeddings:
             if row:
                 return np.frombuffer(row[0], dtype=np.float32)
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.debug(f"Cache lookup failed: {e}")
 
         return None
@@ -244,7 +245,7 @@ class AudioEmbeddings:
             self.db_manager.conn.commit()
             logger.debug(f"Cached embedding for song {song_id}")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to cache embedding: {e}")
 
     # =========================================================================
@@ -423,7 +424,7 @@ class AudioEmbeddings:
                 'embedding_dim': self.EMBEDDING_DIM
             }
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get stats: {e}")
             return {'total': 0, 'coverage': 0}
 
@@ -474,7 +475,7 @@ class AudioEmbeddings:
                 'confidence': None
             }
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Song analysis failed: {e}")
             return None
 

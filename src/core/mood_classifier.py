@@ -89,7 +89,7 @@ class MoodClassifier:
             logger.debug(f"Classified mood for {Path(file_path).name}: {result['mood']}")
             return result
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Mood classification failed for {file_path}: {e}")
             return None
 
@@ -167,7 +167,7 @@ class MoodClassifier:
                 'dynamic_range': np.max(rms_values) - np.min(rms_values)
             }
 
-        except Exception as e:
+        except (ValueError, TypeError, IndexError) as e:
             logger.error(f"Mood feature extraction failed: {e}")
             return None
 

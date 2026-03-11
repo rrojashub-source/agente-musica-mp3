@@ -15,6 +15,7 @@ Created: November 13, 2025
 """
 import logging
 import os
+import sqlite3
 from typing import List, Dict, Optional
 from pathlib import Path
 from datetime import datetime
@@ -76,7 +77,7 @@ class PlaylistManager:
             logger.info(f"Created playlist: {name} (ID: {playlist_id})")
             return playlist_id
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to create playlist: {e}")
             raise
 
@@ -97,7 +98,7 @@ class PlaylistManager:
             logger.info(f"Deleted playlist ID: {playlist_id}")
             return True
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to delete playlist: {e}")
             return False
 
@@ -118,7 +119,7 @@ class PlaylistManager:
             logger.info(f"Renamed playlist ID {playlist_id} to: {new_name}")
             return True
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to rename playlist: {e}")
             return False
 
@@ -150,7 +151,7 @@ class PlaylistManager:
             logger.debug(f"Added song {song_id} to playlist {playlist_id} at position {position}")
             return True
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to add song to playlist: {e}")
             return False
 
@@ -174,7 +175,7 @@ class PlaylistManager:
             self._reorder_playlist_songs(playlist_id)
             return True
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to remove song from playlist: {e}")
             return False
 
@@ -217,7 +218,7 @@ class PlaylistManager:
             logger.debug(f"Reordered playlist {playlist_id}: moved position {old_index} → {new_index}")
             return True
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to reorder songs: {e}")
             return False
 
@@ -245,7 +246,7 @@ class PlaylistManager:
             playlists = self.db_manager.fetch_all(query)
             return playlists or []
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get playlists: {e}")
             return []
 
@@ -277,7 +278,7 @@ class PlaylistManager:
             songs = self.db_manager.fetch_all(query, (playlist_id,))
             return songs or []
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get playlist songs: {e}")
             return []
 
@@ -313,7 +314,7 @@ class PlaylistManager:
             logger.info(f"Saved playlist {playlist_id} to {file_path}")
             return True
 
-        except Exception as e:
+        except (OSError, sqlite3.Error) as e:
             logger.error(f"Failed to save playlist: {e}")
             return False
 
@@ -374,7 +375,7 @@ class PlaylistManager:
             logger.info(f"Loaded playlist from {file_path} (ID: {playlist_id}, {position} songs)")
             return playlist_id
 
-        except Exception as e:
+        except (OSError, sqlite3.Error) as e:
             logger.error(f"Failed to load playlist: {e}")
             return None
 
@@ -413,7 +414,7 @@ class PlaylistManager:
             logger.info(f"Duplicated playlist {playlist_id} → {new_id}")
             return new_id
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to duplicate playlist: {e}")
             return None
 
@@ -443,7 +444,7 @@ class PlaylistManager:
                 'total_duration': result['total_duration'] if result else 0
             }
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get playlist stats: {e}")
             return {'song_count': 0, 'total_duration': 0}
 
@@ -464,9 +465,10 @@ class PlaylistManager:
             songs = self.db_manager.fetch_all(query, (playlist_id,))
 
             # Update positions sequentially
-            for i, song in enumerate(songs):
-                update_query = "UPDATE playlist_songs SET position = ? WHERE id = ?"
-                self.db_manager.execute_query(update_query, (i, song['id']))
+            if songs:
+                for i, song in enumerate(songs):
+                    update_query = "UPDATE playlist_songs SET position = ? WHERE id = ?"
+                    self.db_manager.execute_query(update_query, (i, song['id']))
 
-        except Exception as e:
+        except (sqlite3.Error, TypeError) as e:
             logger.error(f"Failed to reorder playlist songs: {e}")

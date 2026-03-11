@@ -154,7 +154,7 @@ class AcoustIDClient:
             logger.error(f"AcoustID API error: {e}")
             return None
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Unexpected error identifying song: {e}", exc_info=True)
             return None
 
@@ -186,7 +186,7 @@ class AcoustIDClient:
                 match['year'] = results.get('year')
                 match['duration'] = results.get('duration')
 
-        except Exception as e:
+        except (acoustid.WebServiceError, KeyError, TypeError) as e:
             logger.debug(f"Failed to enrich metadata: {e}")
             # Non-critical, continue with basic match
 
@@ -244,7 +244,7 @@ class AcoustIDClient:
             logger.debug(f"Generated fingerprint: {len(fingerprint)} chars, {duration}s")
             return fingerprint
 
-        except Exception as e:
+        except (OSError, acoustid.FingerprintGenerationError) as e:
             logger.error(f"Failed to generate fingerprint: {e}")
             return None
 
@@ -283,6 +283,6 @@ class AcoustIDClient:
 
             return None
 
-        except Exception as e:
+        except (acoustid.WebServiceError, KeyError, TypeError) as e:
             logger.error(f"Fingerprint lookup failed: {e}")
             return None

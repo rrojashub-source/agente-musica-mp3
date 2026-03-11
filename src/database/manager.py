@@ -152,7 +152,7 @@ class DatabaseManager:
                 self.conn.commit()
 
                 logger.info(f"Applied migration: {migration_file.name}")
-            except Exception as e:
+            except (sqlite3.Error, OSError) as e:
                 self.conn.rollback()
                 logger.error(f"Failed to apply migration {migration_file.name}: {e}")
                 raise
@@ -292,7 +292,7 @@ class DatabaseManager:
         except sqlite3.IntegrityError as e:
             logger.error(f"Failed to add song (duplicate?): {e}")
             return None
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to add song: {e}")
             return None
 
@@ -345,7 +345,7 @@ class DatabaseManager:
         # Normalize path for consistent comparison
         try:
             normalized_path = str(Path(file_path).resolve())
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Failed to normalize path {file_path}: {e}")
             return False
 
@@ -392,7 +392,7 @@ class DatabaseManager:
             self.execute_query(sql, tuple(values))
             logger.info(f"Updated song {song_id}: {updates}")
             return True
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to update song {song_id}: {e}")
             return False
 
@@ -427,7 +427,7 @@ class DatabaseManager:
 
             return self.fetch_one(sql, (title, artist, duration_min, duration_max))
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to find song by metadata: {e}")
             return None
 
@@ -458,7 +458,7 @@ class DatabaseManager:
                 logger.warning(f"Song ID {song_id} not found")
                 return False
 
-        except Exception as e:
+        except (sqlite3.Error, OSError) as e:
             logger.error(f"Failed to update path for song {song_id}: {e}")
             return False
 
@@ -485,7 +485,7 @@ class DatabaseManager:
                 logger.warning(f"Song ID {song_id} not found")
                 return False
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to delete song {song_id}: {e}")
             return False
 
@@ -540,14 +540,14 @@ class DatabaseManager:
                     self.conn.commit()
                     stats['orphans_deleted'] = cursor.rowcount
                     logger.info(f"Batch deleted {cursor.rowcount} orphan songs")
-                except Exception as e:
+                except sqlite3.Error as e:
                     # Fallback to individual deletes if batch fails
                     logger.warning(f"Batch delete failed, falling back to individual: {e}")
                     for song_id in orphan_ids:
                         try:
                             if self.delete_song(song_id):
                                 stats['orphans_deleted'] += 1
-                        except Exception as e2:
+                        except sqlite3.Error as e2:
                             stats['errors'].append(f"Failed to delete song {song_id}: {e2}")
 
             logger.info(
@@ -557,7 +557,7 @@ class DatabaseManager:
 
             return stats
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Orphan cleanup failed: {e}")
             stats['errors'].append(str(e))
             return stats
@@ -570,7 +570,7 @@ class DatabaseManager:
                 try:
                     conn.close()
                     closed_count += 1
-                except Exception as e:
+                except sqlite3.Error as e:
                     logger.warning(f"Error closing connection: {e}")
             self._connections.clear()
 

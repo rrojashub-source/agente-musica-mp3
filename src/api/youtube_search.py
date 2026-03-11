@@ -12,8 +12,8 @@ Security (Pre-Phase 5 Hardening):
 - Input sanitization to prevent injection attacks
 """
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from requests.exceptions import Timeout
+from googleapiclient.errors import HttpError, Error as GoogleApiError
+from requests.exceptions import Timeout, ConnectionError as RequestsConnectionError
 from functools import lru_cache
 from time import sleep
 import logging
@@ -148,7 +148,7 @@ class YouTubeSearcher:
                     logger.error("YouTube API request timed out after all retries")
                     return []
 
-            except Exception as e:
+            except (GoogleApiError, RequestsConnectionError, OSError) as e:
                 # Handle any other errors
                 logger.error(f"Unexpected error during YouTube search: {e}")
                 return []
@@ -286,6 +286,6 @@ class YouTubeSearcher:
             else:
                 return None
 
-        except Exception as e:
+        except (HttpError, RequestsConnectionError, OSError) as e:
             logger.error(f"Error getting video metadata: {e}")
             return None

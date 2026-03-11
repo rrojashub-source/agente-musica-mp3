@@ -174,7 +174,7 @@ class AudioFeatureExtractor:
 
             return feature_vector
 
-        except Exception as e:
+        except (ValueError, TypeError, IndexError) as e:
             logger.error(f"Feature extraction failed: {e}")
             return None
 
