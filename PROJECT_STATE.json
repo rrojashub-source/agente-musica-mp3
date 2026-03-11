@@ -1,28 +1,37 @@
 {
   "project": "NEXUS Music Manager",
   "version": "1.0.0",
-  "status": "completed",
-  "phase": "maintenance",
+  "status": "refactoring_planned",
+  "phase": "pre-refactoring (auditoria completada, plan aprobado)",
   "commercial_score": 99,
+  "audit_score": 6.8,
+  "target_score": 8.5,
   "last_active_development": "2025-12-18",
   "restored_from_backup": "2026-03-10",
-  "backup_source": "Z:\\BACKUPS\\PROYECTOS\\01_PROYECTOS_ACTIVOS_BACKUP_20260115_234428\\AGENTE_MUSICA_MP3",
+  "audit_date": "2026-03-10",
 
-  "description": "Gestor de biblioteca musical profesional con GUI PyQt6. Descarga YouTube, búsqueda Spotify, metadata automática, reproductor con visualizadores, IA para similitud, plugins, control remoto, sync cloud.",
+  "description": "Gestor de biblioteca musical profesional con GUI PyQt6. Descarga YouTube, busqueda Spotify, metadata automatica, reproductor con visualizadores, IA para similitud, plugins, control remoto, sync cloud.",
 
   "stack": {
-    "language": "Python 3.11+",
-    "gui": "PyQt6",
-    "database": "SQLite + FTS5 + WAL",
-    "audio": "pygame + numpy FFT",
-    "visualizer": "OpenGL 3.3 + GLSL shaders",
-    "apis": ["YouTube Data API v3", "Spotify Web API", "MusicBrainz", "Genius"],
-    "packaging": "PyInstaller",
-    "remote": "Flask REST API"
+    "current": {
+      "language": "Python 3.11+",
+      "gui": "PyQt6",
+      "database": "SQLite + FTS5 + WAL",
+      "audio": "pygame + numpy FFT",
+      "visualizer": "OpenGL 3.3 + GLSL shaders",
+      "apis": ["YouTube Data API v3", "Spotify Web API", "MusicBrainz", "Genius"],
+      "packaging": "PyInstaller",
+      "remote": "Flask REST API"
+    },
+    "target": {
+      "gui": "PySide6 (LGPL, soporte Nuitka)",
+      "audio": "python-mpv (gapless real, todos formatos)",
+      "packaging": "Nuitka + UPX (~90MB vs 164MB actual)"
+    }
   },
 
   "metrics": {
-    "commits": 212,
+    "commits": 213,
     "source_files": 103,
     "source_lines": 38082,
     "test_files": 49,
@@ -31,37 +40,95 @@
     "development_period": "2025-09 to 2025-12"
   },
 
-  "phases_completed": [
-    "Phase 1-4: Core (Download, DB, GUI, Metadata)",
-    "Phase 5: Management Tools (Duplicates, Organize, Rename)",
-    "Phase 6: Audio Player (Gapless, Equalizer, Visualizers)",
-    "Phase 7: Playlists & Polish (Smart Playlists, Stats, i18n)",
-    "Phase 8: AI Content Filter (Kids/Family/Clean modes)",
-    "Phase 9: AI Features (Embeddings 128D, Similarity, BPM, Mood)",
-    "Phase 10: Organic SDF Visualizer (Ray Marching + GLSL)"
-  ],
+  "audit_summary": {
+    "date": "2026-03-10",
+    "agents_used": ["code-reviewer (GPU)", "security-auditor (GPU)", "refactoring-specialist (GPU)", "stack-research (Sonnet)"],
+    "report": "docs/AUDIT_REPORT_2026-03-10.md",
+    "plan": "tasks/refactoring_plan_v2.md",
+    "critical_findings": 9,
+    "high_findings": 8,
+    "medium_findings": 11,
+    "low_findings": 5,
+    "top_3_critical": [
+      "Flask remote server sin autenticacion (src/services/remote_server.py)",
+      "Path traversal en descargas (src/workers/download_worker.py:49)",
+      "God Class main.py (1373 lineas, 26 dependencias)"
+    ]
+  },
+
+  "refactoring_plan": {
+    "total_phases": 4,
+    "total_estimated_weeks": 6,
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Seguridad + Blockers",
+        "weeks": "1-2",
+        "status": "pending",
+        "tasks": [
+          "Auth JWT en Flask + CORS restrictivo + default localhost",
+          "Validar output_path en download_worker",
+          "Whitelist/firma de plugins",
+          "Completar metodos truncados",
+          "Threading locks en audio_player y download_queue",
+          "Especificar excepciones (348 except Exception)"
+        ]
+      },
+      {
+        "phase": 2,
+        "name": "Refactoring Estructural",
+        "weeks": "3-4",
+        "status": "pending",
+        "tasks": [
+          "Split main.py en 5 controllers + Facade",
+          "Extract BaseTab class (15 tabs)",
+          "Split audio_embeddings en 3 clases",
+          "Split cleanup_assistant_tab en 3 clases",
+          "Dependency Injection + ServiceFactory",
+          "Eliminar main_window_complete.py (dead code)"
+        ]
+      },
+      {
+        "phase": 3,
+        "name": "Migracion de Stack",
+        "weeks": "5-6",
+        "status": "pending",
+        "tasks": [
+          "PyQt6 -> PySide6",
+          "PyInstaller -> Nuitka",
+          "pygame -> python-mpv",
+          "UPX compression"
+        ]
+      },
+      {
+        "phase": 4,
+        "name": "Polish",
+        "weeks": "continuo",
+        "status": "pending",
+        "tasks": [
+          "Type hints completos + mypy",
+          "Constantes para magic numbers",
+          "Variables globales -> Singletons",
+          "Documentacion de metodos criticos"
+        ]
+      }
+    ]
+  },
 
   "executable": {
     "path": "dist/NEXUS_Music_Manager.exe",
     "size_mb": 164,
     "platform": "Windows 10/11",
-    "type": "single-file"
+    "type": "single-file",
+    "note": "Version funcional pre-refactoring. No recompilar hasta Fase 3."
   },
 
   "git": {
     "remote": "https://github.com/rrojashub-source/agente-musica-mp3.git",
     "branch": "main",
-    "total_commits": 212,
-    "last_commit": "d9c54ed - docs: Project closure - NEXUS Music Manager v1.0.0 RELEASE"
+    "total_commits": 213,
+    "last_commit": "e353d7d - refactor: Restore and restructure project from Z: backup"
   },
-
-  "known_issues": [
-    "DB file paths point to original system locations — need update if music folder changes",
-    "API keys stored in OS keyring — need reconfiguration on new machine",
-    "setup.py missing some deps (pypresence, flask, flask-cors, qrcode, PyOpenGL, pyacoustid)",
-    "CLAUDE.md references librosa but project uses numpy FFT directly",
-    "Branch 'practical-solomon' exists but may not be needed"
-  ],
 
   "decisions": [
     {
@@ -72,15 +139,17 @@
     {
       "date": "2026-03-10",
       "decision": "Excluded from restoration: development/ (977MB venvs), build/ (206MB artifacts), data/downloads/ (MP3s), backup DBs, .cache (Spotify token)",
-      "reason": "Clean structure — only source code, tests, docs, scripts, and main DB restored"
+      "reason": "Clean structure only"
+    },
+    {
+      "date": "2026-03-10",
+      "decision": "NO reescribir en otro stack. Iterar con PySide6 + Nuitka + python-mpv",
+      "reason": "Tauon Music Player demuestra Python viable. Problemas son pygame y PyInstaller, no Python. Reescritura = 6-12 meses sin features."
+    },
+    {
+      "date": "2026-03-10",
+      "decision": "Plan de refactoring v2 aprobado: 4 fases, 6 semanas",
+      "reason": "Auditoria revelo 9 criticos, 8 altos. Score 6.8/10 necesita mejora antes de nuevas features."
     }
-  ],
-
-  "pending_maintenance": [
-    "Sync setup.py with requirements.txt",
-    "Fix CLAUDE.md librosa reference → numpy FFT",
-    "Consider cleanup of branch practical-solomon",
-    "Update PROJECT_ID.md and QUICK_START.md to reflect v1.0.0 final",
-    "Decide if project stays in 01_PROYECTOS_ACTIVOS or moves to archive"
   ]
 }

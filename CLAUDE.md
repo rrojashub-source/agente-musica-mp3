@@ -1,54 +1,76 @@
 # NEXUS Music Manager
 
-**Version:** 1.0.0 RELEASE | **Status:** Completado (maintenance mode) | **Score:** 99/100
+**Version:** 1.0.0 | **Status:** Refactoring planificado | **Audit Score:** 6.8/10 | **Target:** 8.5/10
+
+---
+
+## Estado Actual (2026-03-10)
+
+Proyecto completado en dic-2025 (score comercial 99/100). Restaurado desde backup Z: el 2026-03-10 tras perdida del working tree. Auditoria integral completada con 4 agentes. Plan de refactoring v2 aprobado.
+
+**Documentos clave:**
+- `PROJECT_STATE.json` — estado dinamico completo (fases, decisiones, plan)
+- `docs/AUDIT_REPORT_2026-03-10.md` — hallazgos de auditoria (9 criticos, 8 altos)
+- `tasks/refactoring_plan_v2.md` — plan detallado 4 fases, 6 semanas
+
+**IMPORTANTE:** NO agregar features nuevas hasta completar Fase 1 (seguridad) y Fase 2 (refactoring).
 
 ---
 
 ## Resumen
 
-Gestor de biblioteca musical profesional con GUI PyQt6. Descarga desde YouTube, búsqueda dual YouTube+Spotify, metadata automática via MusicBrainz, reproductor con 4 visualizadores, IA para similitud de canciones, filtro de contenido, plugins, control remoto móvil, sync cloud, multi-idioma ES/EN.
+Gestor de biblioteca musical profesional con GUI PyQt6. Descarga YouTube, busqueda Spotify, metadata automatica MusicBrainz, reproductor con 4 visualizadores, IA para similitud (embeddings 128D), filtro de contenido, plugins, control remoto movil, sync cloud, multi-idioma ES/EN.
 
-## Stack
+## Stack Actual → Target
 
-- **Python 3.11+** — Core
-- **PyQt6** — GUI (13 tabs, 8 widgets custom)
-- **SQLite + FTS5 + WAL** — Base de datos con búsqueda full-text
-- **pygame + numpy FFT** — Reproducción de audio y análisis espectral
-- **OpenGL 3.3 + GLSL** — Visualizador orgánico SDF
-- **yt-dlp** — Descargas de YouTube
-- **Flask** — API REST para control remoto
-- **PyInstaller** — Empaquetado .exe Windows
+| Componente | Actual | Target (Fase 3) |
+|------------|--------|------------------|
+| GUI | PyQt6 | **PySide6** (LGPL, soporte Nuitka) |
+| Audio | pygame | **python-mpv** (gapless real, todos formatos) |
+| Empaquetado | PyInstaller (164MB) | **Nuitka + UPX** (~90MB) |
+| DB | SQLite + FTS5 + WAL | Sin cambio |
+| Visualizer | OpenGL 3.3 + GLSL | Sin cambio |
+| APIs | YouTube, Spotify, MusicBrainz, Genius | Sin cambio |
+| Remote | Flask REST API | Flask + **JWT auth** (Fase 1) |
 
 ## Estructura
 
 ```
 src/
-├── main.py                 # Entry point (NexusMainWindow)
-├── api/                    # YouTube, Spotify, MusicBrainz, Genius clients
+├── main.py                 # Entry point — GOD CLASS, split en Fase 2
+├── api/                    # YouTube, Spotify, MusicBrainz, Genius
 ├── core/                   # Player, downloads, embeddings, duplicates, metadata
 ├── gui/
-│   ├── tabs/               # 13 tabs funcionales
-│   ├── widgets/            # 8 widgets custom (NowPlaying, Visualizer, Playlist...)
+│   ├── tabs/               # 13 tabs (necesitan BaseTab en Fase 2)
+│   ├── widgets/            # 8 widgets custom
 │   ├── visualizers/        # Organic SDF visualizer (OpenGL)
 │   ├── dialogs/            # API settings, shortcuts
 │   └── themes/             # dark.qss, light.qss
-├── services/               # Cloud sync, remote server, content filter, stats
+├── services/               # Cloud sync, remote server, content filter
 ├── plugins/                # Plugin system (17 hooks) + 3 plugins
 ├── database/               # SQLite manager + 5 migraciones SQL
-├── workers/                # Background workers (download, import)
+├── workers/                # Download, import workers
 ├── utils/                  # Sanitizer, rate limiter, subprocess patch
 └── translations.py         # ES/EN (200+ claves)
 tests/                      # 49 archivos, 416+ tests
-docs/                       # Arquitectura, API reference, troubleshooting
-scripts/                    # 12 scripts utilitarios
-tasks/                      # 11 planes de fase (históricos)
-memory/                     # Estado por componente
+docs/                       # Arquitectura, API ref, auditoria
+scripts/                    # 16 scripts utilitarios
+tasks/                      # Planes de fase + plan refactoring v2
 ```
+
+## Vulnerabilidades Criticas (Fase 1)
+
+1. **Flask sin auth** → `src/services/remote_server.py` — agregar JWT + CORS restrictivo
+2. **Path traversal** → `src/workers/download_worker.py:49` — validar output_path
+3. **Plugins sin sandbox** → `src/plugins/plugin_manager.py:157` — whitelist
+4. **Thread-safety** → `audio_player.py`, `download_queue.py` — agregar RLock
+5. **348 except Exception** → especificar excepciones en todo el proyecto
+6. **Metodos truncados** → main.py, audio_player, cloud_sync — completar
 
 ## Ejecutar
 
 ```bash
-# Producción (Windows)
+# Produccion (Windows)
 dist/NEXUS_Music_Manager.exe
 
 # Desarrollo
@@ -61,20 +83,22 @@ pytest tests/ -v
 
 ## Reglas
 
-- **Proyecto completado** — solo mantenimiento y bug fixes
-- NO agregar features nuevas sin decisión explícita de Ricardo
+- **Fase 1 (seguridad) es BLOQUEANTE** — no avanzar sin completarla
+- Commits atomicos: un cambio logico por commit
+- Tests deben pasar despues de cada fase
+- El exe en dist/ es la version funcional pre-refactoring
 - DB principal: `music_library.db` (68 canciones, FTS5)
-- API keys en OS keyring (no en código)
-- Los paths en la DB pueden necesitar actualización si cambia la ubicación de los MP3s
-- **NOTA:** CLAUDE.md anterior decía "librosa" pero el proyecto usa numpy FFT directamente
+- API keys en OS keyring (no en codigo)
+- Paths en DB pueden necesitar update si cambia ubicacion de MP3s
+- El proyecto usa **numpy FFT** (no librosa) para audio analysis
 
-## Dependencias clave
+## Dependencias
 
-Ver `requirements.txt` (20 deps producción) y `requirements-dev.txt` (14 deps dev).
-**Inconsistencia conocida:** `setup.py` omite algunas deps (pypresence, flask, flask-cors, qrcode, PyOpenGL, pyacoustid).
+Ver `requirements.txt` (20 deps) y `requirements-dev.txt` (14 deps).
+**Inconsistencia:** `setup.py` omite: pypresence, flask, flask-cors, qrcode, PyOpenGL, pyacoustid.
 
 ## Git
 
-- Remote: `origin → github.com/rrojashub-source/agente-musica-mp3.git`
-- Branch principal: `main` (212 commits)
-- Branch sin limpiar: `practical-solomon`
+- Remote: `origin` → `github.com/rrojashub-source/agente-musica-mp3.git`
+- Branch: `main` (213 commits)
+- Branch sin limpiar: `practical-solomon` (considerar eliminar)

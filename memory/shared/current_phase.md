@@ -1,152 +1,36 @@
-# AGENTE_MUSICA_MP3 - Estado Final
+# NEXUS Music Manager — Estado Actual
 
-**Last Updated:** December 18, 2025
-**Status:** PROYECTO COMPLETADO Y DISTRIBUIBLE
-**Commercial Score:** 99/100
-**Executable:** `F:\NEXUS_Music_Manager.exe`
-
----
-
-## PROYECTO COMPLETADO
-
-### Resumen Ejecutivo
-
-**NEXUS Music Manager** es un gestor de biblioteca musical profesional con:
-- Descarga de música desde YouTube (yt-dlp)
-- Búsqueda dual (YouTube + Spotify)
-- Metadata automática (MusicBrainz)
-- Reproductor completo con visualizadores
-- IA para encontrar canciones similares
-- Sistema de plugins extensible
-- Control remoto móvil
-- Sincronización en la nube
-- Multi-idioma (ES/EN)
+**Updated:** 2026-03-10
+**Status:** Refactoring planificado (auditoria completada)
+**Audit Score:** 6.8/10 → Target: 8.5/10
 
 ---
 
-## Fases Completadas
+## Contexto Rapido
 
-### Phase 1-4: Core Features
-- Download system con queue concurrente
-- SQLite database con FTS5
-- PyQt6 modern GUI
-- MusicBrainz metadata integration
-- Spotify → YouTube auto-conversion
+Proyecto completado v1.0.0 (dic-2025, score 99/100). Restaurado desde backup Z: el 2026-03-10 tras perdida del working tree. Auditoria integral con 4 agentes revelo 9 criticos y 8 altos.
 
-### Phase 5: Management Tools
-- Duplicate detection (audio fingerprinting)
-- Library organization (artist/album folders)
-- Batch metadata editing
-- File cleanup workflow
+## Plan de Refactoring (4 Fases)
 
-### Phase 6: Audio Player
-- Gapless playback
-- Equalizer (10-band)
-- Multiple visualizers
-- Lyrics display (LRC sync)
-- Keyboard shortcuts
+| Fase | Nombre | Semanas | Status |
+|------|--------|---------|--------|
+| 1 | Seguridad + Blockers | 1-2 | PENDING |
+| 2 | Refactoring Estructural | 3-4 | PENDING |
+| 3 | Migracion Stack (PySide6, Nuitka, mpv) | 5-6 | PENDING |
+| 4 | Polish (types, docs, constants) | Continuo | PENDING |
 
-### Phase 7: Playlists & Polish
-- Smart Playlists (rule-based)
-- M3U/M3U8 export
-- Statistics dashboard
-- UI refinements
+## Archivos Clave
 
-### Phase 8: AI Content Filter
-- 3-tier classification (artist → lyrics → audio)
-- Safe Zones (Kids, Family, Clean modes)
-- USB export organized
-- 279 artists database
+- `PROJECT_STATE.json` — estado dinamico completo
+- `docs/AUDIT_REPORT_2026-03-10.md` — informe de auditoria
+- `tasks/refactoring_plan_v2.md` — plan detallado paso a paso
 
-### Phase 9: AI Features
-- Audio embeddings (128D vectors)
-- Find Similar Songs (cosine similarity)
-- BPM detection
-- Mood classification
-- Embedding cache (SQLite)
+## Top 3 Prioridades
 
-### Phase 10: Organic Visualizer
-- Ray Marching SDF visualizer
-- Audio-reactive organic shapes
-- Beat detection metamorphosis
-- OpenGL 3.3 + GLSL shaders
+1. Auth JWT en Flask (`src/services/remote_server.py`)
+2. Validar paths en download worker (`src/workers/download_worker.py:49`)
+3. Split main.py God Class (1373 lineas → 5 controllers)
 
-### Final Polish (Dec 18, 2025)
-- PyInstaller packaging
-- Windows subprocess patch (hide console windows)
-- Fast startup confirmed
-- **Executable distribuible: `F:\NEXUS_Music_Manager.exe`**
+## Decision: NO reescribir
 
----
-
-## Arquitectura Final
-
-```
-NEXUS_Music_Manager/
-├── src/
-│   ├── api/                 # YouTube, Spotify, MusicBrainz clients
-│   ├── core/                # Download queue, metadata, embeddings, duplicates
-│   ├── gui/
-│   │   ├── tabs/            # 12 tabs (Library, Search, Download, Player, etc.)
-│   │   ├── widgets/         # Custom widgets
-│   │   ├── visualizers/     # 4 visualizers (bars, wave, brain, organic)
-│   │   └── dialogs/         # Settings, shortcuts, etc.
-│   ├── services/            # Cloud sync, remote server, content filter
-│   ├── plugins/             # Plugin system + 3 plugins
-│   ├── utils/               # Input sanitizer, subprocess patch
-│   └── workers/             # Background workers
-├── tests/                   # 416+ tests
-├── plugins/available/       # PlayCounter, Scrobbler, Discord RPC
-└── downloads/               # User's downloaded music
-```
-
----
-
-## Métricas Finales
-
-| Categoría | Score | Notas |
-|-----------|-------|-------|
-| Funcionalidad | 100% | Todas las features implementadas |
-| UX/UI | 95% | GUI moderna, responsive |
-| Testing | 95% | 416+ tests |
-| Seguridad | 95% | Keyring, input sanitization |
-| IA | 100% | Embeddings, similarity, content filter |
-| Extensibilidad | 100% | Plugin system, cloud providers |
-
-**Score Total: 99/100**
-
----
-
-## Tecnologías Utilizadas
-
-- **Python 3.11+**
-- **PyQt6** - GUI framework
-- **yt-dlp** - YouTube downloads
-- **SQLite + FTS5** - Database
-- **Mutagen** - ID3 tags
-- **librosa** - Audio analysis
-- **OpenGL 3.3** - Visualizers
-- **Flask** - Remote API
-- **PyInstaller** - Packaging
-
----
-
-## Distribución
-
-**Executable:** `F:\NEXUS_Music_Manager.exe`
-- Single file executable
-- No installation required
-- Windows 10/11 compatible
-- All dependencies bundled
-
----
-
-## Créditos
-
-- **Desarrollo:** Ricardo Rojas + NEXUS@CLI
-- **Periodo:** Octubre - Diciembre 2025
-- **Licencia:** MIT
-
----
-
-**PROYECTO CERRADO - December 18, 2025**
+Stack actual (Python) es viable. Mejoras: PyQt6→PySide6, PyInstaller→Nuitka, pygame→python-mpv. Reduce EXE de 164MB a ~90MB sin reescritura.
