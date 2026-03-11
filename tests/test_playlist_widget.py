@@ -62,13 +62,13 @@ class TestPlaylistWidget(unittest.TestCase):
 
         self.assertIsNotNone(self.widget)
 
-    def test_02_widget_has_playlists_list(self):
+    def test_02_widget_has_playlists_table(self):
         """Test widget has playlists list view"""
         if self.widget is None:
             self.skipTest("PlaylistWidget not implemented")
 
         # Should have QListWidget or QTreeWidget for playlists
-        self.assertTrue(hasattr(self.widget, 'playlists_list'))
+        self.assertTrue(hasattr(self.widget, 'playlists_table'))
 
     def test_03_widget_has_songs_table(self):
         """Test widget has songs table for current playlist"""
@@ -103,7 +103,7 @@ class TestPlaylistWidget(unittest.TestCase):
         self.widget.load_playlists()
 
         # Should display 2 playlists
-        self.assertEqual(self.widget.playlists_list.count(), 2)
+        self.assertEqual(self.widget.playlists_table.rowCount(), 2)
 
     def test_06_create_new_playlist(self):
         """Test creating new playlist"""
@@ -135,7 +135,7 @@ class TestPlaylistWidget(unittest.TestCase):
         self.widget.load_playlists()
 
         # Select first playlist
-        self.widget.playlists_list.setCurrentRow(0)
+        self.widget.playlists_table.selectRow(0)
 
         # Mock confirmation dialogs
         with patch('gui.widgets.playlist_widget.QMessageBox.question') as mock_question, \
@@ -160,7 +160,7 @@ class TestPlaylistWidget(unittest.TestCase):
         self.widget.load_playlists()
 
         # Select playlist (manually set current_playlist_id since signals might not fire in tests)
-        self.widget.playlists_list.setCurrentRow(0)
+        self.widget.playlists_table.selectRow(0)
         self.widget.current_playlist_id = 1
 
         # Mock song selection dialog and message box
@@ -205,7 +205,7 @@ class TestPlaylistWidget(unittest.TestCase):
         self.widget.load_playlists()
 
         # Select playlist
-        self.widget.playlists_list.setCurrentRow(0)
+        self.widget.playlists_table.selectRow(0)
 
         # Mock file dialog and message box
         with patch('gui.widgets.playlist_widget.QFileDialog.getSaveFileName') as mock_dialog, \

@@ -210,8 +210,9 @@ class TestKeyboardShortcutManager(unittest.TestCase):
         line_edit = QLineEdit()
         event = self._create_key_event(Qt.Key.Key_Space)
 
-        # Event filter should return False (not consumed)
-        result = self.manager.eventFilter(line_edit, event)
+        # Mock focusWidget to return the QLineEdit (simulates it having focus)
+        with patch('core.keyboard_shortcuts.QApplication.focusWidget', return_value=line_edit):
+            result = self.manager.eventFilter(line_edit, event)
 
         self.assertFalse(result, "Should not consume event in typing context")
         signal_mock.assert_not_called()
@@ -232,7 +233,8 @@ class TestKeyboardShortcutManager(unittest.TestCase):
 
         # Verify essential shortcuts are listed
         shortcut_keys = [s[0] for s in shortcuts]
-        self.assertIn("Space", shortcut_keys)
+        # Keys may include translations (e.g., "Space / Espacio")
+        self.assertTrue(any("Space" in k for k in shortcut_keys), "Space shortcut should be listed")
         self.assertIn("Ctrl+F", shortcut_keys)
         self.assertIn("Ctrl+L", shortcut_keys)
 
