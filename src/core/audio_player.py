@@ -62,6 +62,9 @@ class AudioPlayer:
 
     def __init__(self):
         """Initialize audio player"""
+        # Thread safety: RLock protects all mutable state fields
+        self._lock = threading.RLock()
+
         self._current_file = None
         self._duration = 0.0
         self._state = PlaybackState.STOPPED
@@ -114,23 +117,24 @@ class AudioPlayer:
             return False
 
         try:
-            # Load file
-            self._pygame.mixer.music.load(file_path)
-            self._current_file = file_path
+            with self._lock:
+                # Load file
+                self._pygame.mixer.music.load(file_path)
+                self._current_file = file_path
 
-            # Get duration using mutagen
-            try:
-                from mutagen.mp3 import MP3
-                audio = MP3(file_path)
-                self._duration = audio.info.length
-            except ImportError:
-                logger.warning("mutagen not installed - duration unavailable")
-                self._duration = 0.0
-            except Exception as e:
-                logger.warning(f"Failed to get duration: {e}")
-                self._duration = 0.0
+                # Get duration using mutagen
+                try:
+                    from mutagen.mp3 import MP3
+                    audio = MP3(file_path)
+                    self._duration = audio.info.length
+                except ImportError:
+                    logger.warning("mutagen not installed - duration unavailable")
+                    self._duration = 0.0
+                except Exception as e:
+                    logger.warning(f"Failed to get duration: {e}")
+                    self._duration = 0.0
 
-            self._state = PlaybackState.STOPPED
+                self._state = PlaybackState.STOPPED
             logger.info(f"Loaded: {file_path} (duration: {self._duration:.2f}s)")
             return True
 
@@ -145,10 +149,11 @@ class AudioPlayer:
             return
 
         try:
-            self._pygame.mixer.music.play()
-            self._state = PlaybackState.PLAYING
-            self._start_time = self._pygame.time.get_ticks() / 1000.0
-            self._start_offset = 0.0  # Playing from beginning
+            with self._lock:
+                self._pygame.mixer.music.play()
+                self._state = PlaybackState.PLAYING
+                self._start_time = self._pygame.time.get_ticks() / 1000.0
+                self._start_offset = 0.0  # Playing from beginning
             logger.debug("Playback started")
         except Exception as e:
             logger.error(f"Failed to play: {e}")
@@ -159,12 +164,13 @@ class AudioPlayer:
             return
 
         try:
-            # Save current position before pausing
-            if self._state == PlaybackState.PLAYING:
-                self._paused_position = self.get_position()
+            with self._lock:
+                # Save current position before pausing
+                if self._state == PlaybackState.PLAYING:
+                    self._paused_position = self._get_position_unlocked()
 
-            self._pygame.mixer.music.pause()
-            self._state = PlaybackState.PAUSED
+                self._pygame.mixer.music.pause()
+                self._state = PlaybackState.PAUSED
             logger.debug(f"Playback paused at {self._paused_position:.2f}s")
         except Exception as e:
             logger.error(f"Failed to pause: {e}")
@@ -175,8 +181,9 @@ class AudioPlayer:
             return
 
         try:
-            self._pygame.mixer.music.unpause()
-            self._state = PlaybackState.PLAYING
+            with self._lock:
+                self._pygame.mixer.music.unpause()
+                self._state = PlaybackState.PLAYING
             logger.debug("Playback resumed")
         except Exception as e:
             logger.error(f"Failed to resume: {e}")
@@ -187,10 +194,11 @@ class AudioPlayer:
             return
 
         try:
-            self._pygame.mixer.music.stop()
-            self._state = PlaybackState.STOPPED
-            self._paused_position = 0.0  # Reset position
-            self._start_offset = 0.0  # Reset offset
+            with self._lock:
+                self._pygame.mixer.music.stop()
+                self._state = PlaybackState.STOPPED
+                self._paused_position = 0.0  # Reset position
+                self._start_offset = 0.0  # Reset offset
             logger.debug("Playback stopped")
         except Exception as e:
             logger.error(f"Failed to stop: {e}")
@@ -210,34 +218,54 @@ class AudioPlayer:
             return
 
         try:
-            # Store current state
-            was_playing = self.is_playing()
-            was_paused = self._state == PlaybackState.PAUSED
-            logger.debug(f"Seek to {position:.2f}s - was_playing={was_playing}, was_paused={was_paused}")
+            with self._lock:
+                # Store current state
+                was_playing = self._pygame.mixer.music.get_busy()
+                was_paused = self._state == PlaybackState.PAUSED
+                logger.debug(f"Seek to {position:.2f}s - was_playing={was_playing}, was_paused={was_paused}")
 
-            # Stop current playback
-            self._pygame.mixer.music.stop()
+                # Stop current playback
+                self._pygame.mixer.music.stop()
 
-            # Reload the file
-            self._pygame.mixer.music.load(self._current_file)
+                # Reload the file
+                self._pygame.mixer.music.load(self._current_file)
 
-            # Use play(start=position) - works reliably with MP3
-            logger.debug(f"Calling pygame play(start={position:.2f})")
-            self._pygame.mixer.music.play(start=position)
-            self._state = PlaybackState.PLAYING
-            self._start_time = self._pygame.time.get_ticks() / 1000.0 - position
-            self._start_offset = position  # Remember where we started playing from
+                # Use play(start=position) - works reliably with MP3
+                logger.debug(f"Calling pygame play(start={position:.2f})")
+                self._pygame.mixer.music.play(start=position)
+                self._state = PlaybackState.PLAYING
+                self._start_time = self._pygame.time.get_ticks() / 1000.0 - position
+                self._start_offset = position  # Remember where we started playing from
 
-            # If it was paused or stopped, pause it again at the new position
-            if was_paused or not was_playing:
-                logger.debug(f"Re-pausing at position {position:.2f}s")
-                self._pygame.mixer.music.pause()
-                self._state = PlaybackState.PAUSED
-                self._paused_position = position  # Save new paused position
+                # If it was paused or stopped, pause it again at the new position
+                if was_paused or not was_playing:
+                    logger.debug(f"Re-pausing at position {position:.2f}s")
+                    self._pygame.mixer.music.pause()
+                    self._state = PlaybackState.PAUSED
+                    self._paused_position = position  # Save new paused position
 
             logger.debug(f"Seek completed to {position:.2f}s")
         except Exception as e:
             logger.error(f"Seek failed: {e}")
+
+    def _get_position_unlocked(self) -> float:
+        """Get position without acquiring lock (for internal use when lock is held)"""
+        if not self._pygame:
+            return 0.0
+
+        if self._state == PlaybackState.PAUSED:
+            return self._paused_position
+
+        if self._state == PlaybackState.STOPPED:
+            return 0.0
+
+        try:
+            pos_ms = self._pygame.mixer.music.get_pos()
+            elapsed = pos_ms / 1000.0
+            return self._start_offset + elapsed
+        except Exception as e:
+            logger.error(f"Failed to get position: {e}")
+            return 0.0
 
     def get_position(self) -> float:
         """
@@ -246,28 +274,8 @@ class AudioPlayer:
         Returns:
             Current position in seconds
         """
-        if not self._pygame:
-            return 0.0
-
-        # If paused, return the saved paused position
-        if self._state == PlaybackState.PAUSED:
-            return self._paused_position
-
-        # If stopped, return 0
-        if self._state == PlaybackState.STOPPED:
-            return 0.0
-
-        # If playing, get current position from pygame
-        try:
-            # pygame.mixer.music.get_pos() returns milliseconds since play() was called
-            # Need to add the start offset (where we started playing from)
-            pos_ms = self._pygame.mixer.music.get_pos()
-            elapsed = pos_ms / 1000.0
-            absolute_position = self._start_offset + elapsed
-            return absolute_position
-        except Exception as e:
-            logger.error(f"Failed to get position: {e}")
-            return 0.0
+        with self._lock:
+            return self._get_position_unlocked()
 
     def get_duration(self) -> float:
         """
@@ -276,7 +284,8 @@ class AudioPlayer:
         Returns:
             Duration in seconds
         """
-        return self._duration
+        with self._lock:
+            return self._duration
 
     def set_volume(self, level: float):
         """
@@ -335,7 +344,8 @@ class AudioPlayer:
         Returns:
             Current state (STOPPED, PLAYING, PAUSED)
         """
-        return self._state
+        with self._lock:
+            return self._state
 
     def cleanup(self):
         """Cleanup resources"""
@@ -494,29 +504,30 @@ class AudioPlayer:
         if not self._pygame:
             return False
 
-        # Check if music stopped playing
-        if self._state == PlaybackState.PLAYING and not self._pygame.mixer.music.get_busy():
-            ended_file = self._current_file
+        with self._lock:
+            # Check if music stopped playing
+            if self._state == PlaybackState.PLAYING and not self._pygame.mixer.music.get_busy():
+                ended_file = self._current_file
 
-            # If there's a queued track, it's now playing
-            if self._queued_file:
-                logger.info(f"Gapless transition: {self._queued_file}")
-                self._current_file = self._queued_file
-                self._duration = self._queued_duration
-                self._queued_file = None
-                self._queued_duration = 0.0
-                self._start_time = self._pygame.time.get_ticks() / 1000.0
-                self._start_offset = 0.0
+                # If there's a queued track, it's now playing
+                if self._queued_file:
+                    logger.info(f"Gapless transition: {self._queued_file}")
+                    self._current_file = self._queued_file
+                    self._duration = self._queued_duration
+                    self._queued_file = None
+                    self._queued_duration = 0.0
+                    self._start_time = self._pygame.time.get_ticks() / 1000.0
+                    self._start_offset = 0.0
+                else:
+                    # No queued track - playback stopped
+                    self._state = PlaybackState.STOPPED
+                    logger.info(f"Track ended: {ended_file}")
             else:
-                # No queued track - playback stopped
-                self._state = PlaybackState.STOPPED
-                logger.info(f"Track ended: {ended_file}")
+                return False
 
-            # Notify callbacks
-            self._notify_track_end(ended_file)
-            return True
-
-        return False
+        # Notify callbacks outside lock to prevent deadlocks
+        self._notify_track_end(ended_file)
+        return True
 
     def _notify_track_end(self, file_path: str):
         """Notify all registered callbacks that track ended"""
