@@ -2,7 +2,7 @@
   "project": "NEXUS Music Manager",
   "version": "2.1.0",
   "status": "refactoring_in_progress",
-  "phase": "Phase 1+2 COMPLETE. Next: Phase 3 (stack migration) or Phase 4 (polish).",
+  "phase": "Phase 1+2 COMPLETE. Phase 4 (polish) in progress. Next: Phase 3 (stack migration).",
   "commercial_score": 99,
   "audit_score": 6.8,
   "target_score": 8.5,
@@ -31,7 +31,7 @@
   },
 
   "metrics": {
-    "commits": 226,
+    "commits": 228,
     "source_files": 111,
     "source_lines": 36488,
     "test_files": 56,
@@ -106,12 +106,12 @@
         "phase": 4,
         "name": "Polish",
         "weeks": "continuo",
-        "status": "pending",
+        "status": "in_progress",
         "tasks": [
-          "Type hints completos + mypy",
-          "Constantes para magic numbers",
-          "Variables globales -> Singletons",
-          "Documentacion de metodos criticos"
+          "DONE: Constantes para magic numbers — utils/constants.py con 30 constantes, aplicadas en 18 archivos",
+          "DONE: Docstrings en controllers — todos los metodos publicos documentados (Phase 2)",
+          "SKIPPED: Variables globales -> Singletons — translations.py es modulo simple, singleton no aporta valor",
+          "PENDING: Type hints completos + mypy — core files tienen hints, mypy instalado, coverage 25%"
         ]
       }
     ]
