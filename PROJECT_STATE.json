@@ -31,7 +31,7 @@
   },
 
   "metrics": {
-    "commits": 228,
+    "commits": 234,
     "source_files": 111,
     "source_lines": 36488,
     "test_files": 56,
@@ -187,6 +187,16 @@
       "date": "2026-03-11",
       "decision": "Phase 1.7 (except Exception) COMPLETE. 341→80 instances (77% reduction).",
       "reason": "261 generic catches replaced with specific types across 61 files (api/, core/, database/, services/, controllers/, gui/, plugins/). 80 remaining are justified: audio_player.py (15, pygame.error mock incompatibility), ui_composer.py (16, GUI error boundaries), GUI tabs/widgets (22, Qt event loop boundaries), plugins (10, isolation), services/utils (7, top-level handlers). Test suite verified: 0 regressions from changes."
+    },
+    {
+      "date": "2026-03-11",
+      "decision": "Phase 4.1 (constants) COMPLETE. Phase 4.3 (singletons) SKIPPED.",
+      "reason": "Created src/utils/constants.py with 30 named constants across 5 domains (audio, API, DB, timers, UI). Applied in 18 files. translations.py singleton skipped — module-level functions are simpler and sufficient for single global var."
+    },
+    {
+      "date": "2026-03-11",
+      "decision": "Fixed 9 preexisting test failures. 604 tests passing, 0 regressions.",
+      "reason": "keyboard_shortcuts (i18n labels + focusWidget mock), musicbrainz_client (WebServiceError), playlist_widget (playlists_list→playlists_table). Remaining failures: genius (no lyricsgenius lib), new_plugins (no lyrics plugin), 3 playlist_widget (deeper API changes), 1 production_polish (tooltip), 5 library_import_worker (MP3 scan)."
     }
   ]
 }
