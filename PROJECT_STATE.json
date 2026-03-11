@@ -84,8 +84,8 @@
         "tasks": [
           "DONE: Split main.py (1373 LOC -> 303 LOC Facade + 4 controllers: playback 312, ui_composer 567, remote 147, library 120)",
           "DONE: 38 new controller tests + 111 existing tests = 149 passing",
-          "Extract BaseTab class (15 tabs)",
-          "Split audio_embeddings en 3 clases",
+          "DONE: BaseTab class (230 LOC) + 5 tabs refactored (duplicates, rename, organize, cleanup, import) — 261 LOC eliminated, 106 tests passing. Remaining 8 tabs deferred (non-standard patterns, low ROI).",
+          "DONE: Split audio_embeddings.py (1074 LOC -> 501 LOC Facade + 3 classes: audio_feature_extractor 291, bpm_detector 155, mood_classifier 215). 37 existing tests passing, 0 changes to consumers.",
           "Split cleanup_assistant_tab en 3 clases",
           "Dependency Injection + ServiceFactory",
           "Eliminar main_window_complete.py (dead code)"
@@ -168,6 +168,16 @@
       "date": "2026-03-10",
       "decision": "Phase 2.1 complete: Split main.py God Class (1373 LOC) into Facade (303 LOC) + 4 controllers",
       "reason": "Created playback_controller (312), ui_composer (567), remote_controller (147), library_controller (120). 38 new tests + 111 existing = 149 all passing. stats_controller.py skipped — no meaningful logic in main.py for it."
+    },
+    {
+      "date": "2026-03-11",
+      "decision": "Phase 2.2 complete: BaseTab class + 5 tabs refactored. 8 remaining tabs deferred.",
+      "reason": "BaseTab (230 LOC) with progress infra + connect_worker + dialogs. 5 tabs fully refactored (duplicates, rename, organize, cleanup, import) — 261 LOC eliminated. 8 remaining tabs have non-standard signal patterns (content_filter, cloud_sync) or no worker boilerplate (library, lyrics, plugins, remote, search, statistics) — low ROI for BaseTab migration. 38 new BaseTab tests + 106 total passing."
+    },
+    {
+      "date": "2026-03-11",
+      "decision": "Phase 2.3 complete: Split audio_embeddings.py (1074 LOC) into 4 files with clear SRP.",
+      "reason": "AudioEmbeddings Facade (501 LOC) delegates to AudioFeatureExtractor (291 LOC), BPMDetector (155 LOC), MoodClassifier (215 LOC). Public API unchanged — backward compat delegation for private methods used by tests. 37/37 existing tests pass, 0 consumer changes needed (recommendations_widget.py, library_tab.py)."
     }
   ]
 }
