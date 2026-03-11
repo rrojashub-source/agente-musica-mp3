@@ -2,7 +2,7 @@
   "project": "NEXUS Music Manager",
   "version": "2.1.0",
   "status": "refactoring_in_progress",
-  "phase": "Phase 2.1 DONE (split main.py), continuing Phase 2 (structural refactoring)",
+  "phase": "Phase 2 COMPLETE (structural refactoring). Next: Phase 3 (stack migration) or Phase 4 (polish)",
   "commercial_score": 99,
   "audit_score": 6.8,
   "target_score": 8.5,
@@ -31,12 +31,12 @@
   },
 
   "metrics": {
-    "commits": 213,
-    "source_files": 103,
-    "source_lines": 38082,
-    "test_files": 49,
-    "test_lines": 14759,
-    "tests_count": "416+",
+    "commits": 223,
+    "source_files": 111,
+    "source_lines": 36488,
+    "test_files": 56,
+    "test_lines": 15720,
+    "tests_count": "450+",
     "development_period": "2025-09 to 2025-12"
   },
 
@@ -80,14 +80,14 @@
         "phase": 2,
         "name": "Refactoring Estructural",
         "weeks": "3-4",
-        "status": "in_progress",
+        "status": "complete",
         "tasks": [
           "DONE: Split main.py (1373 LOC -> 303 LOC Facade + 4 controllers: playback 312, ui_composer 567, remote 147, library 120)",
           "DONE: 38 new controller tests + 111 existing tests = 149 passing",
           "DONE: BaseTab class (230 LOC) + 5 tabs refactored (duplicates, rename, organize, cleanup, import) — 261 LOC eliminated, 106 tests passing. Remaining 8 tabs deferred (non-standard patterns, low ROI).",
           "DONE: Split audio_embeddings.py (1074 LOC -> 501 LOC Facade + 3 classes: audio_feature_extractor 291, bpm_detector 155, mood_classifier 215). 37 existing tests passing, 0 changes to consumers.",
-          "DONE: Deleted dead code — cleanup_assistant_tab.py (1210 LOC) + main_window_complete.py (804 LOC) = 2014 LOC removed. Both only referenced each other, not imported by active code.",
-          "Dependency Injection + ServiceFactory"
+          "DONE: Deleted dead code — cleanup_assistant_tab.py (1210 LOC) + main_window_complete.py (804 LOC) = 2014 LOC removed.",
+          "DEFERRED: DI + ServiceFactory — main.py already 303 LOC, low ROI at current scale"
         ]
       },
       {
@@ -177,6 +177,11 @@
       "date": "2026-03-11",
       "decision": "Phase 2.3 complete: Split audio_embeddings.py (1074 LOC) into 4 files with clear SRP.",
       "reason": "AudioEmbeddings Facade (501 LOC) delegates to AudioFeatureExtractor (291 LOC), BPMDetector (155 LOC), MoodClassifier (215 LOC). Public API unchanged — backward compat delegation for private methods used by tests. 37/37 existing tests pass, 0 consumer changes needed (recommendations_widget.py, library_tab.py)."
+    },
+    {
+      "date": "2026-03-11",
+      "decision": "Phase 2 COMPLETE. Phase 2.4+2.6 merged (dead code deletion). Phase 2.5 (DI) deferred.",
+      "reason": "cleanup_assistant_tab.py (1210 LOC) + main_window_complete.py (804 LOC) were dead code — only referenced each other. Deleted both (2014 LOC removed). DI/ServiceFactory deferred: main.py is already 303 LOC, adding AppContext + factory adds files without clear benefit at this scale. Total Phase 2 impact: main.py 1373→303, audio_embeddings 1074→501, 2014 LOC dead code deleted, 5 tabs refactored with BaseTab."
     }
   ]
 }
