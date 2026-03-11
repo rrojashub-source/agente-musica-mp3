@@ -36,7 +36,7 @@ class ConfigManager:
             try:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
-            except Exception as e:
+            except (json.JSONDecodeError, OSError) as e:
                 print(f"Warning: Failed to load config: {e}")
                 return self.get_default_config()
         else:
@@ -60,7 +60,7 @@ class ConfigManager:
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
             return True
-        except Exception as e:
+        except (OSError, json.JSONDecodeError) as e:
             print(f"Error saving config: {e}")
             return False
 

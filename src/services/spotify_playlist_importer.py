@@ -166,7 +166,7 @@ class SpotifyPlaylistImporter:
             logger.info(f"Fetched playlist '{playlist.name}' with {len(tracks)} tracks")
             return playlist
 
-        except Exception as e:
+        except (KeyError, ValueError, AttributeError, TypeError) as e:
             logger.error(f"Error fetching playlist {playlist_id}: {e}")
             return None
 
@@ -211,7 +211,7 @@ class SpotifyPlaylistImporter:
                 next_url = results.get('next')
                 playlist_data['tracks'] = results
 
-            except Exception as e:
+            except (KeyError, ValueError, AttributeError) as e:
                 logger.error(f"Error fetching playlist page: {e}")
                 break
 
@@ -251,7 +251,7 @@ class SpotifyPlaylistImporter:
                 position=position
             )
 
-        except Exception as e:
+        except (KeyError, IndexError, ValueError) as e:
             logger.warning(f"Error parsing track at position {position}: {e}")
             return None
 
@@ -316,7 +316,7 @@ class SpotifyPlaylistImporter:
                         if results:
                             item['url'] = results[0].get('url')
                             item['video_id'] = results[0].get('video_id')
-                    except Exception as e:
+                    except (ConnectionError, OSError, KeyError, ValueError) as e:
                         logger.warning(f"YouTube search failed for '{track.search_query}': {e}")
 
                 # Add to queue
@@ -325,7 +325,7 @@ class SpotifyPlaylistImporter:
 
                 logger.debug(f"Added to queue: {track.search_query}")
 
-            except Exception as e:
+            except (KeyError, ValueError, AttributeError, RuntimeError) as e:
                 logger.error(f"Failed to add track '{track.title}': {e}")
 
         logger.info(f"Added {added}/{total} tracks from playlist '{playlist.name}'")

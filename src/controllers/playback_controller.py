@@ -142,7 +142,7 @@ class PlaybackController(QObject):
             else:
                 logger.error(f"Failed to load: {file_path}")
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error playing song from playlist: {e}")
 
     def _play_next_from_playlist(self):
@@ -224,7 +224,7 @@ class PlaybackController(QObject):
             else:
                 logger.error(f"Failed to load: {file_path}")
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error playing recommended song: {e}")
 
     # ==========================================
@@ -270,7 +270,7 @@ class PlaybackController(QObject):
             if self.status_bar:
                 self.status_bar.showMessage(f"Volume: {percentage}%", 1000)
             logger.debug(f"Shortcut: Volume {percentage}%")
-        except Exception as e:
+        except (RuntimeError, AttributeError) as e:
             logger.error(f"Volume change failed: {e}")
 
     def handle_mute_toggle(self):
@@ -308,5 +308,5 @@ class PlaybackController(QObject):
                 if self.status_bar:
                     self.status_bar.showMessage(f"Volume: {percentage}%", 1000)
                 logger.debug(f"Shortcut: Unmuted to {percentage}%")
-        except Exception as e:
+        except (RuntimeError, AttributeError) as e:
             logger.error(f"Mute toggle failed: {e}")

@@ -200,7 +200,7 @@ class DownloadService(QObject):
                 if song_id:
                     self.auto_import_completed.emit(song_id)
                     logger.info(f"Auto-imported to library: {file_path} (ID: {song_id})")
-        except Exception as e:
+        except (ImportError, OSError, ValueError) as e:
             logger.error(f"Failed to auto-import {file_path}: {e}")
 
     # ==========================================
@@ -228,7 +228,7 @@ class DownloadService(QObject):
                 self.queue_changed.emit()
                 logger.info(f"Added download: {metadata.get('title', url)}")
             return item_id
-        except Exception as e:
+        except (ValueError, RuntimeError, AttributeError) as e:
             logger.error(f"Error adding download: {e}")
             self.error_occurred.emit(str(e))
             return None
@@ -262,7 +262,7 @@ class DownloadService(QObject):
                 self.queue._items[item_id]['status'] = 'paused'
             self.queue_changed.emit()
             return True
-        except Exception as e:
+        except (KeyError, AttributeError, RuntimeError) as e:
             logger.error(f"Error pausing {item_id}: {e}")
             return False
 
@@ -275,7 +275,7 @@ class DownloadService(QObject):
                 self.queue._items[item_id]['status'] = 'pending'
             self.queue_changed.emit()
             return True
-        except Exception as e:
+        except (KeyError, AttributeError, RuntimeError) as e:
             logger.error(f"Error resuming {item_id}: {e}")
             return False
 
@@ -289,7 +289,7 @@ class DownloadService(QObject):
             self.download_canceled.emit(item_id)
             self.queue_changed.emit()
             return True
-        except Exception as e:
+        except (KeyError, AttributeError, RuntimeError) as e:
             logger.error(f"Error canceling {item_id}: {e}")
             return False
 
@@ -303,7 +303,7 @@ class DownloadService(QObject):
                 self.queue._items[item_id]['progress'] = 0
             self.queue_changed.emit()
             return True
-        except Exception as e:
+        except (KeyError, AttributeError, RuntimeError) as e:
             logger.error(f"Error retrying {item_id}: {e}")
             return False
 
@@ -326,7 +326,7 @@ class DownloadService(QObject):
                         count += 1
             self.queue_changed.emit()
             return count
-        except Exception as e:
+        except (KeyError, AttributeError, RuntimeError) as e:
             logger.error(f"Error clearing completed: {e}")
             return 0
 
@@ -341,7 +341,7 @@ class DownloadService(QObject):
                 self.queue._items.clear()
             self.queue_changed.emit()
             return count
-        except Exception as e:
+        except (KeyError, AttributeError, RuntimeError) as e:
             logger.error(f"Error clearing all: {e}")
             return 0
 
@@ -356,7 +356,7 @@ class DownloadService(QObject):
             if item_id in items:
                 return DownloadItem.from_dict(items[item_id])
             return None
-        except Exception as e:
+        except (KeyError, AttributeError, ValueError) as e:
             logger.error(f"Error getting item {item_id}: {e}")
             return None
 
@@ -365,7 +365,7 @@ class DownloadService(QObject):
         try:
             items = self.queue.get_all_items()
             return [DownloadItem.from_dict(item) for item in items.values()]
-        except Exception as e:
+        except (AttributeError, ValueError) as e:
             logger.error(f"Error getting all items: {e}")
             return []
 

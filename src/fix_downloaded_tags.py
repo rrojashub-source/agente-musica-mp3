@@ -60,7 +60,7 @@ def fix_tags_in_folder(folder_path):
                 fixed_count += 1
                 print("  STATUS: Tags written")
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             print(f"  ERROR: {mp3_file.name}: {e}")
 
     print(f"\nSUMMARY: Fixed {fixed_count}/{len(mp3_files)} files")

@@ -11,6 +11,7 @@ Features:
 """
 
 import logging
+import sqlite3
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Callable
 from dataclasses import dataclass, field
@@ -181,7 +182,7 @@ class LibraryService(QObject):
                 (song_id,)
             )
             return Song.from_dict(result) if result else None
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error getting song {song_id}: {e}")
             self.error_occurred.emit(str(e))
             return None
@@ -194,7 +195,7 @@ class LibraryService(QObject):
                 (file_path,)
             )
             return Song.from_dict(result) if result else None
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error getting song by path {file_path}: {e}")
             return None
 
@@ -215,7 +216,7 @@ class LibraryService(QObject):
                 self._invalidate_stats_cache()
                 logger.info(f"Added song: {song_data.get('title')} (ID: {song_id})")
             return song_id
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error adding song: {e}")
             self.error_occurred.emit(f"Failed to add song: {e}")
             return None
@@ -252,7 +253,7 @@ class LibraryService(QObject):
 
             logger.info(f"Updated song {song_id}: {list(updates.keys())}")
             return True
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error updating song {song_id}: {e}")
             self.error_occurred.emit(f"Failed to update song: {e}")
             return False
@@ -265,7 +266,7 @@ class LibraryService(QObject):
             self._invalidate_stats_cache()
             logger.info(f"Deleted song {song_id}")
             return True
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error deleting song {song_id}: {e}")
             self.error_occurred.emit(f"Failed to delete song: {e}")
             return False
@@ -299,7 +300,7 @@ class LibraryService(QObject):
                 (limit, offset)
             )
             return [Song.from_dict(r) for r in results]
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error getting all songs: {e}")
             return []
 
@@ -312,7 +313,7 @@ class LibraryService(QObject):
         try:
             results = self.db.search_songs(query, limit)
             return [Song.from_dict(r) for r in results]
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error searching songs: {e}")
             return []
 
@@ -324,7 +325,7 @@ class LibraryService(QObject):
                 (artist,)
             )
             return [Song.from_dict(r) for r in results]
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error getting songs by artist: {e}")
             return []
 
@@ -342,7 +343,7 @@ class LibraryService(QObject):
                     (album,)
                 )
             return [Song.from_dict(r) for r in results]
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error getting songs by album: {e}")
             return []
 
@@ -354,7 +355,7 @@ class LibraryService(QObject):
                 (f"%{genre}%",)
             )
             return [Song.from_dict(r) for r in results]
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error getting songs by genre: {e}")
             return []
 
@@ -369,7 +370,7 @@ class LibraryService(QObject):
                 (f"-{days}", limit)
             )
             return [Song.from_dict(r) for r in results]
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error getting recently added: {e}")
             return []
 
@@ -381,7 +382,7 @@ class LibraryService(QObject):
                 (limit,)
             )
             return [Song.from_dict(r) for r in results]
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error getting most played: {e}")
             return []
 
@@ -425,7 +426,7 @@ class LibraryService(QObject):
                 return self._stats_cache
 
             return LibraryStats()
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error getting stats: {e}")
             return LibraryStats()
 
@@ -445,7 +446,7 @@ class LibraryService(QObject):
                 "SELECT DISTINCT artist FROM songs WHERE artist IS NOT NULL ORDER BY artist"
             )
             return [r['artist'] for r in results if r['artist']]
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error getting artists: {e}")
             return []
 
@@ -456,7 +457,7 @@ class LibraryService(QObject):
                 "SELECT DISTINCT album FROM songs WHERE album IS NOT NULL ORDER BY album"
             )
             return [r['album'] for r in results if r['album']]
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error getting albums: {e}")
             return []
 
@@ -467,7 +468,7 @@ class LibraryService(QObject):
                 "SELECT DISTINCT genre FROM songs WHERE genre IS NOT NULL ORDER BY genre"
             )
             return [r['genre'] for r in results if r['genre']]
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error getting genres: {e}")
             return []
 
@@ -487,7 +488,7 @@ class LibraryService(QObject):
             )
             self.song_updated.emit(song_id)
             return True
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error incrementing play count: {e}")
             return False
 

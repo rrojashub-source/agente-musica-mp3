@@ -93,7 +93,7 @@ def extract_metadata(file_path: str) -> Optional[Dict]:
 
         return song_data
 
-    except Exception as e:
+    except (OSError, ValueError, UnicodeDecodeError) as e:
         logger.error(f"Failed to extract metadata from {normalized_path}: {e}")
         return None
 
@@ -184,7 +184,7 @@ class LibraryImportWorker(QThread):
             for idx, mp3_file in enumerate(mp3_files):
                 try:
                     self._process_file(mp3_file)
-                except Exception as e:
+                except (OSError, ValueError, UnicodeDecodeError) as e:
                     self.failed_count += 1
                     error_msg = f"Failed to process {mp3_file}: {e}"
                     self.errors.append(error_msg)
@@ -211,7 +211,7 @@ class LibraryImportWorker(QThread):
                 f"{self.failed_count} failed, {self.skipped_count} skipped"
             )
 
-        except Exception as e:
+        except RuntimeError as e:
             logger.error(f"Fatal import error: {e}")
             self.error.emit(str(e))
 
@@ -267,7 +267,7 @@ class LibraryImportWorker(QThread):
         # (forward/backward slashes, relative/absolute, case variations)
         try:
             normalized_path = str(Path(file_path).resolve())
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to normalize path {file_path}: {e}")
             self.failed_count += 1
             return

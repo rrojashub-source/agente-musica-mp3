@@ -163,7 +163,7 @@ class RemoteTab(QWidget):
 
             self._log("Remote server initialized")
 
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(f"Failed to init remote server: {e}")
             self._log(f"ERROR: {e}")
 
@@ -187,7 +187,7 @@ class RemoteTab(QWidget):
                     "Failed to start server.\n"
                     "Make sure Flask is installed: pip install flask flask-cors"
                 )
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(f"Server start error: {e}")
             self._log(f"ERROR: {e}")
 
@@ -230,7 +230,7 @@ class RemoteTab(QWidget):
                 pixmap = QPixmap.fromImage(image)
                 self.qr_label.setPixmap(pixmap.scaled(180, 180, Qt.AspectRatioMode.KeepAspectRatio))
 
-        except Exception as e:
+        except (OSError, ValueError, KeyError) as e:
             logger.debug(f"QR code fetch failed (expected if qrcode not installed): {e}")
             self.qr_label.setText("QR not available\n(install qrcode)")
 

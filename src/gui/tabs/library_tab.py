@@ -18,6 +18,7 @@ Updated: November 23, 2025 (Added skeleton loading)
 Updated: December 8, 2025 (Added AI similarity search - Phase 9)
 """
 import logging
+import sqlite3
 from pathlib import Path
 from typing import Optional, Dict
 from PyQt6.QtWidgets import (
@@ -305,7 +306,7 @@ class LibraryTab(QWidget):
 
             logger.info(f"Loaded {len(songs)} songs into library")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to load library: {e}")
             self.status_label.setText(f"Error loading library: {e}")
 
@@ -816,7 +817,7 @@ class LibraryTab(QWidget):
             else:
                 self.status_label.setText(f"⚠️ Analysis failed for '{song_title}'")
 
-        except Exception as e:
+        except (ValueError, TypeError, OSError) as e:
             logger.error(f"BPM/Mood analysis failed: {e}")
             self.status_label.setText(f"❌ Analysis error: {str(e)[:50]}")
 
@@ -913,7 +914,7 @@ class LibraryTab(QWidget):
 
             logger.info(f"Successfully deleted {len(songs)} songs")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to delete {len(songs)} songs: {e}", exc_info=True)
             QMessageBox.critical(
                 self,
@@ -989,7 +990,7 @@ class LibraryTab(QWidget):
 
             logger.info(f"Database cleanup: {deleted}/{found} deleted")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Cleanup database error: {e}", exc_info=True)
             QMessageBox.critical(
                 self,
@@ -1086,7 +1087,7 @@ class LibraryTab(QWidget):
                 imported += 1
                 logger.info(f"Imported: {song_data['title']} - {song_data['artist']}")
 
-            except Exception as e:
+            except (OSError, sqlite3.Error) as e:
                 errors += 1
                 logger.error(f"Error importing {file_path}: {e}")
 

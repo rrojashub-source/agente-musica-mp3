@@ -179,7 +179,7 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
                 self.api_key_input.setText(key)
                 self.status_label.setText("✅ Clave existente cargada / Existing key loaded")
                 logger.info(f"{self.api_name} key loaded from keyring")
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.debug(f"No existing key for {self.api_name}: {e}")
             self.status_label.setText("ℹ️ No hay clave guardada. Ingresa tu clave arriba. / No existing key. Please enter your API key above.")
 
@@ -205,7 +205,7 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
                 self._validate_genius(api_key)
             elif self.api_name == "AcoustID":
                 self._validate_acoustid(api_key)
-        except Exception as e:
+        except Exception as e:  # GUI error boundary - must not crash
             self.status_label.setText(f"❌ Inválida / Invalid: {str(e)}")
             logger.error(f"{self.api_name} validation failed: {e}")
         finally:
@@ -425,7 +425,7 @@ class SpotifyTabWidget(QWidget):
                 self.status_label.setText("⚠️ Credenciales parciales. Ingresa ambos. / Partial credentials. Please enter both.")
             else:
                 self.status_label.setText("ℹ️ Sin credenciales. Ingresa ambas arriba. / No credentials. Please enter both above.")
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.debug(f"No existing Spotify credentials: {e}")
             self.status_label.setText("ℹ️ Sin credenciales. Ingresa ambas arriba. / No credentials. Please enter both above.")
 
@@ -470,7 +470,7 @@ class SpotifyTabWidget(QWidget):
                     self.status_label.setText("❌ Formato de Client Secret inválido / Invalid Client Secret format")
             else:
                 self.status_label.setText("❌ Formato de Client ID inválido / Invalid Client ID format")
-        except Exception as e:
+        except Exception as e:  # GUI error boundary - must not crash
             self.status_label.setText(f"❌ Inválidas / Invalid: {str(e)}")
             logger.error(f"Spotify validation failed: {e}")
         finally:
@@ -663,7 +663,7 @@ class APISettingsDialog(QDialog):
                     "Please enter at least one API key before saving."
                 )
 
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.error(f"Error saving keys to keyring: {e}")
             from PyQt6.QtWidgets import QMessageBox
             QMessageBox.critical(

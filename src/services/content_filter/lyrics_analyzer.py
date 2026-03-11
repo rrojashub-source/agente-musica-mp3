@@ -101,7 +101,7 @@ class LyricsAnalyzer:
                 try:
                     import keyring
                     token = keyring.get_password("nexus_music", "genius_token")
-                except Exception:
+                except (ImportError, RuntimeError):
                     pass
 
             # 3. Try credentials.json
@@ -114,7 +114,7 @@ class LyricsAnalyzer:
                         with open(creds_path) as f:
                             creds = json.load(f)
                         token = creds.get('apis', {}).get('genius', {}).get('api_key')
-                except Exception:
+                except (OSError, json.JSONDecodeError, KeyError):
                     pass
 
             if token:
@@ -176,7 +176,7 @@ class LyricsAnalyzer:
 
                 logger.debug(f"Found lyrics for {artist} - {title} ({len(lyrics)} chars)")
                 return lyrics
-        except Exception as e:
+        except (ConnectionError, OSError, ValueError) as e:
             logger.debug(f"Could not fetch lyrics for {artist} - {title}: {e}")
 
         return None

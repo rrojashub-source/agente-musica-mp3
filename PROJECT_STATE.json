@@ -2,7 +2,7 @@
   "project": "NEXUS Music Manager",
   "version": "2.1.0",
   "status": "refactoring_in_progress",
-  "phase": "Phase 2 COMPLETE (structural refactoring). Next: Phase 3 (stack migration) or Phase 4 (polish)",
+  "phase": "Phase 1.7 IN PROGRESS (except Exception cleanup). Phase 2 COMPLETE. Next: Phase 3 or 4.",
   "commercial_score": 99,
   "audit_score": 6.8,
   "target_score": 8.5,
@@ -73,7 +73,7 @@
           "DONE: Fix regex typo in sanitize_metadata (input_sanitizer.py:297)",
           "DONE: Metodos truncados verificados completos (C4 false positive)",
           "DONE: Threading locks en audio_player + download_queue (C5)",
-          "PARTIAL: except Exception — priority files fixed (4/73), GUI catches deferred to Phase 4"
+          "IN PROGRESS: except Exception cleanup — 96 fixed in api/ core/ database/ (341→245). Second batch (services/ controllers/ gui/) in progress."
         ]
       },
       {

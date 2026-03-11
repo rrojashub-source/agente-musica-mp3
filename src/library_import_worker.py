@@ -5,6 +5,7 @@ Extrae metadatos con mutagen y los guarda en la base de datos
 Project: AGENTE_MUSICA_MP3_001
 """
 
+import sqlite3
 import sys
 from pathlib import Path
 from typing import Optional, Dict, Any
@@ -147,7 +148,7 @@ class LibraryImportWorker(QThread):
 
             return metadata
 
-        except Exception as e:
+        except (OSError, ValueError, UnicodeDecodeError) as e:
             # Error al leer archivo - retornar metadatos mínimos
             return {
                 'file_path': str(file_path),
@@ -223,7 +224,7 @@ class LibraryImportWorker(QThread):
                                 f"Importados: {imported_count:,}/{total_files:,}"
                             )
 
-                    except Exception as e:
+                    except (sqlite3.Error, OSError) as e:
                         error_count += 1
                         self.file_processed.emit(str(file_path), False)
                 else:
@@ -239,5 +240,5 @@ class LibraryImportWorker(QThread):
 
             db.close()
 
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             self.error_occurred.emit(f"Error durante importación: {str(e)}")

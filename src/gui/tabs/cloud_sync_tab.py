@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QFont
+import json
 import logging
 from pathlib import Path
 from datetime import datetime
@@ -323,7 +324,7 @@ class CloudSyncTab(QWidget):
 
                 # Connect signals now that service is ready
                 self._connect_signals()
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(f"Failed to init sync service: {e}")
             self._log(f"ERROR: Failed to initialize: {e}")
 
@@ -361,7 +362,7 @@ class CloudSyncTab(QWidget):
             if provider.is_authenticated:
                 self.gdrive_status.setText("⏳ " + tr("cloud_sync_checking_auth"))
                 self.gdrive_status.setStyleSheet("font-weight: bold; color: #FF9800;")
-        except Exception:
+        except Exception:  # GUI error boundary - must not crash
             pass
 
     def _connect_google_drive(self):
@@ -406,7 +407,7 @@ class CloudSyncTab(QWidget):
                 tr("cloud_sync_missing_deps"),
                 "pip install google-api-python-client google-auth-oauthlib"
             )
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             self.gdrive_status.setText("❌ Error")
             self.gdrive_status.setStyleSheet("font-weight: bold; color: #f44336;")
             self.gdrive_connect_btn.setEnabled(True)
@@ -500,7 +501,7 @@ class CloudSyncTab(QWidget):
                 self.last_sync_status.setText(now)
             else:
                 self._log("Sync failed")
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(f"Sync error: {e}")
             self._log(f"ERROR: {e}")
         finally:
@@ -531,7 +532,7 @@ class CloudSyncTab(QWidget):
                         f"Songs: {len(export_data.songs)}\n"
                         f"Playlists: {len(export_data.playlists)}"
                     )
-            except Exception as e:
+            except (OSError, AttributeError, TypeError) as e:
                 logger.error(f"Export error: {e}")
                 self._log(f"ERROR: Export failed - {e}")
                 QMessageBox.warning(self, "Export Error", str(e))
@@ -574,7 +575,7 @@ class CloudSyncTab(QWidget):
                             )
                         else:
                             self._log("Import failed")
-            except Exception as e:
+            except (json.JSONDecodeError, KeyError, OSError) as e:
                 logger.error(f"Import error: {e}")
                 self._log(f"ERROR: Import failed - {e}")
                 QMessageBox.warning(self, "Import Error", str(e))

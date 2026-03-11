@@ -145,7 +145,7 @@ def get_recent_logs(lines: int = 100) -> str:
             all_lines = f.readlines()
             recent = all_lines[-lines:] if len(all_lines) > lines else all_lines
             return ''.join(recent)
-    except Exception as e:
+    except OSError as e:
         return f"Error reading log file: {str(e)}"
 
 
@@ -184,5 +184,5 @@ def clear_old_logs(days: int = 7):
                 log_file.unlink()
                 get_logger().info(f"Deleted old log file: {log_file.name}")
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             get_logger().warning(f"Failed to delete old log: {log_file.name} - {e}")

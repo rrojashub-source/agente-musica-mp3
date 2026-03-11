@@ -663,7 +663,7 @@ CLIENT_SECRET = "TU_CLIENT_SECRET"
 
             <p><i>💡 Tip: Si reportas un problema, copia las líneas relevantes del log para ayudar en el diagnóstico.</i></p>
             """
-        except Exception as e:
+        except OSError as e:
             return f"""
             <h1>📋 Logs del Sistema</h1>
             <p style='color: red;'><b>Error al cargar logs:</b> {str(e)}</p>

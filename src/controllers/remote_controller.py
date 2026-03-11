@@ -52,7 +52,7 @@ class RemoteController(QObject):
 
             logger.info("Remote server callbacks connected to audio player")
 
-        except Exception as e:
+        except (ImportError, RuntimeError, AttributeError) as e:
             logger.error(f"Failed to connect remote server: {e}")
 
     def handle_command(self, command: str, params: dict):
@@ -105,7 +105,7 @@ class RemoteController(QObject):
 
             logger.info(f"Remote command '{command}' executed in main thread")
 
-        except Exception as e:
+        except (RuntimeError, AttributeError, ValueError) as e:
             logger.error(f"Error handling remote command '{command}': {e}")
 
     def update_now_playing(self):
@@ -143,5 +143,5 @@ class RemoteController(QObject):
             )
             self._remote_server.update_now_playing(info)
 
-        except Exception:
-            pass  # Silently ignore to avoid log spam
+        except Exception:  # noqa: BLE001 — intentional: called every 500ms, any error is transient
+            pass  # Silently ignore to avoid log spam on frequent timer tick

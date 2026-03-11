@@ -114,7 +114,7 @@ class CorrectionEngine:
 
             return result
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Error applying correction to {file_path}: {e}")
             self.errors.append({
                 'file': str(file_path),
@@ -146,7 +146,7 @@ class CorrectionEngine:
                 'backup_path': str(backup_path)
             }
 
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Error creating backup for {file_path}: {e}")
             return {
                 'success': False,
@@ -238,7 +238,7 @@ class CorrectionEngine:
                 'backup_path': action.backup_path
             }
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Error updating tags for {file_path}: {e}")
             return {
                 'success': False,
@@ -280,7 +280,7 @@ class CorrectionEngine:
                 'backup_path': action.backup_path
             }
 
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Error renaming {file_path}: {e}")
             return {
                 'success': False,
@@ -344,7 +344,7 @@ class CorrectionEngine:
                 'backup_path': action.backup_path
             }
 
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Error organizing {file_path}: {e}")
             return {
                 'success': False,

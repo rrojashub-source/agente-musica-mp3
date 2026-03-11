@@ -5,8 +5,11 @@ Project: AGENTE_MUSICA_MP3_001
 Purpose: Guide user through YouTube, Spotify, and Genius API setup
 """
 
+import subprocess
 from pathlib import Path
 from typing import Optional
+
+import requests
 
 from PyQt6.QtWidgets import (
     QWizard, QWizardPage, QVBoxLayout, QHBoxLayout, QLabel,
@@ -185,7 +188,7 @@ class YouTubeAPIPage(QWizardPage):
             self.status_label.setStyleSheet("color: green;")
             QMessageBox.information(self, "Success", "YouTube API key works!")
 
-        except Exception as e:
+        except Exception as e:  # googleapiclient raises many undocumented exception types
             self.status_label.setText(f"❌ Error: {str(e)}")
             self.status_label.setStyleSheet("color: red;")
             QMessageBox.warning(self, "Invalid Key", f"API key test failed:\n{str(e)}")
@@ -312,7 +315,7 @@ class SpotifyAPIPage(QWizardPage):
             self.status_label.setStyleSheet("color: green;")
             QMessageBox.information(self, "Success", "Spotify API credentials work!")
 
-        except Exception as e:
+        except Exception as e:  # spotipy raises many undocumented exception types
             self.status_label.setText(f"❌ Error: {str(e)}")
             self.status_label.setStyleSheet("color: red;")
             QMessageBox.warning(self, "Invalid Credentials", f"Test failed:\n{str(e)}")
@@ -389,8 +392,6 @@ class GeniusAPIPage(QWizardPage):
             return
 
         try:
-            import requests
-
             headers = {"Authorization": f"Bearer {token}"}
             response = requests.get(
                 "https://api.genius.com/search?q=test",
@@ -405,7 +406,7 @@ class GeniusAPIPage(QWizardPage):
             else:
                 raise Exception(f"HTTP {response.status_code}")
 
-        except Exception as e:
+        except (requests.RequestException, OSError, ValueError) as e:
             self.status_label.setText(f"❌ Error: {str(e)}")
             self.status_label.setStyleSheet("color: red;")
             QMessageBox.warning(self, "Invalid Token", f"Test failed:\n{str(e)}")
@@ -514,7 +515,6 @@ class CompletionPage(QWizardPage):
 
     def open_config_file(self):
         """Open config file in system editor"""
-        import subprocess
         import platform
 
         config_file = Path(__file__).parent / "api_keys_config.txt"
@@ -528,7 +528,7 @@ class CompletionPage(QWizardPage):
                 subprocess.run(["open", str(config_file)])
             else:  # Linux
                 subprocess.run(["xdg-open", str(config_file)])
-        except Exception as e:
+        except (OSError, subprocess.SubprocessError) as e:
             QMessageBox.warning(self, "Error", f"Could not open file:\n{str(e)}")
 
 

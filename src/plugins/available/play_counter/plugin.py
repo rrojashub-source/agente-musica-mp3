@@ -64,7 +64,7 @@ class PlayCounterPlugin(Plugin):
             logger.info("PlayCounter plugin enabled")
             return True
 
-        except Exception as e:
+        except (OSError, json.JSONDecodeError) as e:
             logger.error(f"Failed to enable PlayCounter: {e}")
             return False
 
@@ -81,7 +81,7 @@ class PlayCounterPlugin(Plugin):
             logger.info("PlayCounter plugin disabled")
             return True
 
-        except Exception as e:
+        except (OSError, AttributeError) as e:
             logger.error(f"Failed to disable PlayCounter: {e}")
             return False
 
@@ -117,7 +117,7 @@ class PlayCounterPlugin(Plugin):
                     data = json.load(f)
                     self._play_counts = defaultdict(int, data.get('play_counts', {}))
                     self._last_played = data.get('last_played', {})
-            except Exception as e:
+            except (json.JSONDecodeError, OSError) as e:
                 logger.error(f"Failed to load play data: {e}")
 
     def _save_data(self) -> None:
@@ -130,7 +130,7 @@ class PlayCounterPlugin(Plugin):
                 }
                 with open(self._data_file, 'w') as f:
                     json.dump(data, f, indent=2)
-            except Exception as e:
+            except OSError as e:
                 logger.error(f"Failed to save play data: {e}")
 
     # ==========================================

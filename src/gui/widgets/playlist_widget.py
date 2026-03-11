@@ -17,6 +17,7 @@ Created: November 13, 2025
 Updated: November 22, 2025 (Fixed song selection dialog)
 """
 import logging
+import sqlite3
 from typing import List, Optional
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
@@ -104,7 +105,7 @@ class SongSelectionDialog(QDialog):
                 # Album
                 self.songs_table.setItem(row, 3, QTableWidgetItem(song.get('album', 'Unknown')))
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to load songs: {e}")
 
     def _select_all(self):
@@ -335,7 +336,7 @@ class PlaylistWidget(QWidget):
 
             logger.info(f"Loaded {len(playlists)} playlists into grid")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to load playlists: {e}")
             QMessageBox.warning(self, "Error", f"Failed to load playlists: {e}")
 
@@ -358,7 +359,7 @@ class PlaylistWidget(QWidget):
                 logger.info(f"Created playlist: {name} (ID: {playlist_id})")
                 QMessageBox.information(self, "Success", f"Playlist '{name}' created!")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to create playlist: {e}")
             QMessageBox.warning(self, "Error", f"Failed to create playlist: {e}")
 
@@ -406,7 +407,7 @@ class PlaylistWidget(QWidget):
                 logger.info(f"Deleted playlist: {playlist_name} (ID: {playlist_id})")
                 QMessageBox.information(self, "Success", f"Playlist '{playlist_name}' deleted!")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to delete playlist: {e}")
             QMessageBox.warning(self, "Error", f"Failed to delete playlist: {e}")
 
@@ -441,7 +442,7 @@ class PlaylistWidget(QWidget):
                     logger.error(f"Failed to rename playlist {self.current_playlist_id}")
                     QMessageBox.warning(self, "Error", f"Failed to rename playlist")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to rename playlist: {e}")
             QMessageBox.warning(self, "Error", f"Failed to rename playlist: {e}")
 
@@ -472,7 +473,7 @@ class PlaylistWidget(QWidget):
                 else:
                     QMessageBox.warning(self, "Error", "Failed to import playlist")
 
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to import playlist: {e}")
             QMessageBox.warning(self, "Error", f"Failed to import playlist: {e}")
 
@@ -503,7 +504,7 @@ class PlaylistWidget(QWidget):
                 else:
                     QMessageBox.warning(self, "Error", "Failed to export playlist")
 
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to export playlist: {e}")
             QMessageBox.warning(self, "Error", f"Failed to export playlist: {e}")
 
@@ -535,7 +536,7 @@ class PlaylistWidget(QWidget):
                 logger.info(f"Added {added_count} songs to playlist {self.current_playlist_id}")
                 QMessageBox.information(self, "Success", f"Added {added_count} songs to playlist!")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to add songs to playlist: {e}")
             QMessageBox.warning(self, "Error", f"Failed to add songs: {e}")
 
@@ -578,7 +579,7 @@ class PlaylistWidget(QWidget):
             # Emit signal
             self.playlist_selected.emit(playlist_id)
 
-        except Exception as e:
+        except Exception as e:  # GUI error boundary - must not crash
             logger.error(f"Failed to handle playlist selection: {e}")
 
     def _get_current_playlist_name(self) -> str:
@@ -629,7 +630,7 @@ class PlaylistWidget(QWidget):
 
             logger.info(f"Loaded {len(songs)} songs for playlist {playlist_id}")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to load playlist songs: {e}")
             QMessageBox.warning(self, "Error", f"Failed to load songs: {e}")
 
@@ -665,7 +666,7 @@ class PlaylistWidget(QWidget):
             # Show menu at cursor position
             menu.exec(self.playlists_table.mapToGlobal(position))
 
-        except Exception as e:
+        except Exception as e:  # GUI error boundary - must not crash
             logger.error(f"Failed to show context menu: {e}")
 
     def _on_song_double_clicked(self, item: QTableWidgetItem):
@@ -684,7 +685,7 @@ class PlaylistWidget(QWidget):
                 else:
                     logger.error(f"Song not found in database: {song['id']}")
 
-        except Exception as e:
+        except Exception as e:  # GUI error boundary - must not crash
             logger.error(f"Failed to play song: {e}")
 
     def _show_songs_context_menu(self, position):
@@ -719,7 +720,7 @@ class PlaylistWidget(QWidget):
             # Show menu at cursor position
             menu.exec(self.songs_table.mapToGlobal(position))
 
-        except Exception as e:
+        except Exception as e:  # GUI error boundary - must not crash
             logger.error(f"Failed to show songs context menu: {e}")
 
     def _play_song_at_row(self, row: int):
@@ -734,7 +735,7 @@ class PlaylistWidget(QWidget):
                     logger.info(f"Playing song from playlist: {song_info.get('title')}")
                     self.play_song_requested.emit(song_info)
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to play song at row {row}: {e}")
 
     def _remove_song_from_playlist(self, song_id: int, row: int):
@@ -763,7 +764,7 @@ class PlaylistWidget(QWidget):
                 else:
                     QMessageBox.warning(self, "Error", "Failed to remove song")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to remove song from playlist: {e}")
             QMessageBox.warning(self, "Error", f"Failed to remove song: {e}")
 

@@ -190,7 +190,7 @@ class UIComposer:
             w.import_tab = ImportTab(self.db_manager)
             tabs.addTab(w.import_tab, tr("tab_import"))
             logger.info("Import tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Import tab: {e}")
             tabs.addTab(QWidget(), tr("tab_import") + " (Error)")
 
@@ -199,7 +199,7 @@ class UIComposer:
             w.library_tab = LibraryTab(self.db_manager, self.audio_player, w.now_playing)
             tabs.addTab(w.library_tab, tr("tab_library"))
             logger.info("Library tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Library tab: {e}")
             tabs.addTab(QWidget(), tr("tab_library") + " (Error)")
 
@@ -208,7 +208,7 @@ class UIComposer:
             w.albums_widget = AlbumGridWidget(self.db_manager)
             tabs.addTab(w.albums_widget, tr("tab_albums"))
             logger.info("Albums tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Albums tab: {e}")
             tabs.addTab(QWidget(), tr("tab_albums") + " (Error)")
 
@@ -217,7 +217,7 @@ class UIComposer:
             w.lyrics_tab = LyricsTab(self.genius_client)
             tabs.addTab(w.lyrics_tab, tr("tab_lyrics"))
             logger.info("Lyrics tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Lyrics tab: {e}")
             tabs.addTab(QWidget(), tr("tab_lyrics") + " (Error)")
 
@@ -226,7 +226,7 @@ class UIComposer:
             w.search_tab = SearchTab(self.download_queue)
             tabs.addTab(w.search_tab, tr("tab_search"))
             logger.info("Search tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Search tab: {e}")
             tabs.addTab(QWidget(), tr("tab_search") + " (Error)")
 
@@ -235,7 +235,7 @@ class UIComposer:
             w.queue_widget = QueueWidget(self.download_queue)
             tabs.addTab(w.queue_widget, tr("tab_queue"))
             logger.info("Queue tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Queue tab: {e}")
 
         # Tab 7: Duplicates
@@ -243,7 +243,7 @@ class UIComposer:
             w.duplicates_tab = DuplicatesTab(self.db_manager)
             tabs.addTab(w.duplicates_tab, tr("tab_duplicates"))
             logger.info("Duplicates tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Duplicates tab: {e}")
             tabs.addTab(QWidget(), tr("tab_duplicates") + " (Error)")
 
@@ -252,7 +252,7 @@ class UIComposer:
             w.rename_tab = RenameTab(self.db_manager)
             tabs.addTab(w.rename_tab, tr("tab_rename"))
             logger.info("Rename tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Rename tab: {e}")
             tabs.addTab(QWidget(), tr("tab_rename") + " (Error)")
 
@@ -261,7 +261,7 @@ class UIComposer:
             w.organize_tab = OrganizeTab(self.db_manager)
             tabs.addTab(w.organize_tab, tr("tab_organize"))
             logger.info("Organize tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Organize tab: {e}")
             tabs.addTab(QWidget(), tr("tab_organize") + " (Error)")
 
@@ -271,7 +271,7 @@ class UIComposer:
             w.cleanup_tab = CleanupTab(db_path)
             tabs.addTab(w.cleanup_tab, tr("tab_cleanup"))
             logger.info("Cleanup Wizard tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Cleanup Wizard tab: {e}")
             tabs.addTab(QWidget(), tr("tab_cleanup") + " (Error)")
 
@@ -280,7 +280,7 @@ class UIComposer:
             w.playlist_widget = PlaylistWidget(self.playlist_manager, self.db_manager)
             tabs.addTab(w.playlist_widget, tr("tab_playlist"))
             logger.info("Playlist tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Playlist tab: {e}")
             tabs.addTab(QWidget(), tr("tab_playlist") + " (Error)")
 
@@ -289,7 +289,7 @@ class UIComposer:
             w.cloud_sync_tab = CloudSyncTab(db_manager=self.db_manager)
             tabs.addTab(w.cloud_sync_tab, tr("tab_cloud_sync"))
             logger.info("Cloud Sync tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Cloud Sync tab: {e}")
             tabs.addTab(QWidget(), tr("tab_cloud_sync") + " (Error)")
 
@@ -298,7 +298,7 @@ class UIComposer:
             w.plugins_tab = PluginsTab()
             tabs.addTab(w.plugins_tab, tr("tab_plugins"))
             logger.info("Plugins tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Plugins tab: {e}")
             tabs.addTab(QWidget(), tr("tab_plugins") + " (Error)")
 
@@ -307,7 +307,7 @@ class UIComposer:
             w.remote_tab = RemoteTab()
             tabs.addTab(w.remote_tab, tr("tab_remote"))
             logger.info("Remote Control tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Remote Control tab: {e}")
             tabs.addTab(QWidget(), tr("tab_remote") + " (Error)")
 
@@ -316,7 +316,7 @@ class UIComposer:
             w.content_filter_tab = ContentFilterTab(self.db_manager)
             tabs.addTab(w.content_filter_tab, tr("tab_content_filter"))
             logger.info("Content Filter tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Content Filter tab: {e}")
             tabs.addTab(QWidget(), tr("tab_content_filter") + " (Error)")
 
@@ -325,7 +325,7 @@ class UIComposer:
             w.statistics_tab = StatisticsTab(self.db_manager)
             tabs.addTab(w.statistics_tab, tr("tab_statistics"))
             logger.info("Statistics tab loaded")
-        except Exception as e:
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
             logger.error(f"Failed to load Statistics tab: {e}")
             tabs.addTab(QWidget(), tr("tab_statistics") + " (Error)")
 
@@ -478,7 +478,7 @@ audio playback, playlists, and visualizer.</p>
 
             self._spectrum_worker.start()
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error starting audio analysis: {e}")
             self.window.statusBar.showMessage(f"Error: {str(e)}", 5000)
             self.window.visualizer.clear()
@@ -490,7 +490,7 @@ audio playback, playlists, and visualizer.</p>
             self.window.visualizer.set_duration(audio_duration)
             logger.info(f"Dynamic spectrum loaded: {len(spectrum_data)} windows")
             self.window.statusBar.showMessage("Visualizer ready", 2000)
-        except Exception as e:
+        except (ValueError, TypeError, RuntimeError) as e:
             logger.error(f"Error applying spectrum data: {e}")
             self.window.statusBar.showMessage(f"Visualizer error: {str(e)}", 5000)
 
@@ -510,7 +510,7 @@ audio playback, playlists, and visualizer.</p>
                 logger.warning("Failed to extract any visualization data")
                 self.window.visualizer.clear()
 
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"Fallback extraction error: {e}")
             self.window.visualizer.clear()
 

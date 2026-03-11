@@ -191,7 +191,7 @@ def validate_path(path: str, base_dir: str) -> tuple[bool, str]:
 
         return True, str(target_path)
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error(f"Path validation error: {e}")
         return False, f"Invalid path: {str(e)}"
 
@@ -261,7 +261,7 @@ def sanitize_url(url: str, allowed_domains: list[str] = None) -> tuple[bool, str
 
         return True, sanitized
 
-    except Exception as e:
+    except ValueError as e:
         logger.error(f"URL validation error: {e}")
         return False, f"Invalid URL: {str(e)}"
 

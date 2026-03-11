@@ -12,6 +12,7 @@ Version: 2.1 (Post-refactoring Phase 2.1)
 # CRITICAL: Patch subprocess FIRST to hide console windows on Windows
 import utils.subprocess_patch  # noqa: F401
 
+import sqlite3
 import sys
 import logging
 from pathlib import Path
@@ -105,7 +106,7 @@ class MusicPlayerApp(QMainWindow):
         try:
             self.db_manager = DatabaseManager()
             logger.info("Database initialized successfully")
-        except Exception as e:
+        except (sqlite3.Error, OSError) as e:
             QMessageBox.critical(
                 self, "Database Error",
                 f"Failed to initialize database:\n{str(e)}\n\n"
@@ -155,7 +156,7 @@ class MusicPlayerApp(QMainWindow):
             else:
                 self.genius_client = None
                 logger.info("Genius API token not found (lyrics disabled)")
-        except Exception as e:
+        except (keyring.errors.KeyringError, RuntimeError, ValueError) as e:
             logger.error(f"Failed to initialize Genius client: {e}")
             self.genius_client = None
 
@@ -250,19 +251,19 @@ class MusicPlayerApp(QMainWindow):
         try:
             self.audio_player.cleanup()
             logger.info("Audio player cleaned up")
-        except Exception as e:
+        except RuntimeError as e:
             logger.error(f"Error cleaning up audio player: {e}")
 
         try:
             self.download_queue.stop()
             logger.info("Download queue stopped")
-        except Exception as e:
+        except RuntimeError as e:
             logger.error(f"Error stopping download queue: {e}")
 
         try:
             self.db_manager.close()
             logger.info("Database closed")
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Error closing database: {e}")
 
         event.accept()

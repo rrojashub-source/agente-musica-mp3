@@ -391,6 +391,8 @@ class RemoteServer(QObject if HAS_QT else object):
                 logger.info(f"Callback '{name}' executed successfully")
                 return result
             except Exception as e:
+                # Broad catch intentional: callbacks are user-registered and can raise
+                # any exception; the server must not crash on a bad callback.
                 logger.error(f"Callback error [{name}]: {e}")
         else:
             logger.warning(f"No callback registered for '{name}'")
@@ -434,7 +436,7 @@ class RemoteServer(QObject if HAS_QT else object):
         def run_server():
             try:
                 self._app.run(host=host, port=port, threaded=True, use_reloader=False)
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
                 logger.error(f"Server error: {e}")
 
         self._server_thread = threading.Thread(target=run_server, daemon=True)
@@ -476,7 +478,7 @@ class RemoteServer(QObject if HAS_QT else object):
             ip = s.getsockname()[0]
             s.close()
             return ip
-        except Exception:
+        except OSError:
             return "127.0.0.1"
 
 

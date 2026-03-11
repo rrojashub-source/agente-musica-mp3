@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QColor, QAction
 import logging
+import sqlite3
 from pathlib import Path
 from typing import List, Optional
 import shutil
@@ -85,7 +86,7 @@ class ClassificationWorker(QThread):
                 self.progress.emit(i + 1, len(self.file_paths), result)
 
             self.finished.emit(results)
-        except Exception as e:
+        except Exception as e:  # GUI error boundary - must not crash
             self.error.emit(str(e))
 
     def cancel(self):
@@ -535,7 +536,7 @@ class ContentFilterTab(QWidget):
                 dst = Path(folder) / src.name
                 shutil.move(str(src), str(dst))
                 moved += 1
-            except Exception as e:
+            except OSError as e:
                 logger.error(f"Move failed: {e}")
 
         QMessageBox.information(
@@ -562,7 +563,7 @@ class ContentFilterTab(QWidget):
                 dst = Path(folder) / src.name
                 shutil.copy2(str(src), str(dst))
                 copied += 1
-            except Exception as e:
+            except OSError as e:
                 logger.error(f"Copy failed: {e}")
 
         QMessageBox.information(
@@ -591,7 +592,7 @@ class ContentFilterTab(QWidget):
             try:
                 Path(result.file_path).unlink()
                 deleted += 1
-            except Exception as e:
+            except OSError as e:
                 logger.error(f"Delete failed: {e}")
 
         QMessageBox.information(
@@ -635,7 +636,7 @@ class ContentFilterTab(QWidget):
                 dst = Path(folder) / src.name
                 shutil.copy2(str(src), str(dst))
                 copied += 1
-            except Exception as e:
+            except OSError as e:
                 logger.error(f"Export failed: {e}")
 
         QMessageBox.information(
@@ -686,7 +687,7 @@ class ContentFilterTab(QWidget):
                 if not dst.exists():
                     shutil.copy2(str(src), str(dst))
                     copied += 1
-            except Exception as e:
+            except OSError as e:
                 logger.error(f"Export failed: {e}")
 
         QMessageBox.information(
@@ -737,7 +738,7 @@ class ContentFilterTab(QWidget):
                     copied += 1
                 else:
                     skipped += 1
-            except Exception as e:
+            except OSError as e:
                 logger.error(f"USB export failed: {e}")
 
         # Create summary file
@@ -788,6 +789,6 @@ class ContentFilterTab(QWidget):
             # Filter existing files
             existing = [p for p in file_paths if Path(p).exists()]
             return existing
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Library scan failed: {e}")
             return []

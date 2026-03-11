@@ -164,7 +164,7 @@ class ContentClassifier:
             logger.info(f"Loaded artist database: {len(self._explicit_artists)} explicit, "
                        f"{len(self._children_artists)} children, {len(self._christian_artists)} christian, "
                        f"{len(self._clean_artists)} clean artists")
-        except Exception as e:
+        except (OSError, json.JSONDecodeError) as e:
             logger.error(f"Failed to load artist database: {e}")
             self._db = {}
             self._explicit_artists = {}
@@ -246,7 +246,7 @@ class ContentClassifier:
                 if progress_callback:
                     progress_callback(i + 1, total, result)
 
-            except Exception as e:
+            except (OSError, ValueError, AttributeError) as e:
                 logger.error(f"Error classifying {path}: {e}")
                 # Create error result
                 results.append(ClassificationResult(
@@ -272,7 +272,7 @@ class ContentClassifier:
                 artist = audio.get('artist', ['Unknown'])[0]
                 title = audio.get('title', [path.stem])[0]
                 genre = audio.get('genre', [''])[0]
-        except Exception as e:
+        except (OSError, ValueError, AttributeError) as e:
             logger.debug(f"Could not read metadata from {path}: {e}")
             # Try to parse from filename: "Artist - Title.mp3"
             name = path.stem

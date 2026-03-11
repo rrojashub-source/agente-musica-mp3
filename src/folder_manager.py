@@ -41,7 +41,7 @@ class FolderManager:
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except Exception as e:
+        except (json.JSONDecodeError, OSError) as e:
             logger.error(f"Error cargando config: {e}")
             return {}
 
@@ -76,7 +76,7 @@ class FolderManager:
             except PermissionError:
                 logger.error(f"❌ {folder_name}: Sin permisos para crear {folder_path}")
                 results[folder_name] = False
-            except Exception as e:
+            except OSError as e:
                 logger.error(f"❌ {folder_name}: Error creando {folder_path} - {e}")
                 results[folder_name] = False
 
@@ -109,7 +109,7 @@ class FolderManager:
                     audio_extensions = ['.mp3', '.flac', '.m4a', '.ogg', '.wav', '.opus']
                     file_count = sum(1 for f in folder_path.rglob('*')
                                    if f.is_file() and f.suffix.lower() in audio_extensions)
-                except Exception as e:
+                except OSError as e:
                     logger.error(f"Error contando archivos en {folder_name}: {e}")
 
             stats[folder_name] = {

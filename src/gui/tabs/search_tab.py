@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QColor
+import json
 import logging
 from api.youtube_search import YouTubeSearcher
 from api.spotify_search import SpotifySearcher
@@ -68,7 +69,7 @@ class SearchTab(QWidget):
                 logger.info("Loaded credentials from OS keyring")
         except ImportError:
             logger.debug("keyring module not available")
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.warning(f"Failed to load from keyring: {e}")
 
         # Priority 1: Environment variables
@@ -106,7 +107,7 @@ class SearchTab(QWidget):
                 logger.warning(f"Credentials file not found: {credentials_path}")
             except KeyError as e:
                 logger.error(f"Missing key in credentials file: {e}")
-            except Exception as e:
+            except (json.JSONDecodeError, ValueError, OSError) as e:
                 logger.error(f"Failed to load credentials file: {e}")
 
         # Initialize searchers if credentials available
@@ -115,7 +116,7 @@ class SearchTab(QWidget):
                 self.youtube_searcher = YouTubeSearcher(youtube_api_key)
                 self.spotify_searcher = SpotifySearcher(spotify_client_id, spotify_client_secret)
                 logger.info("API searchers initialized successfully")
-            except Exception as e:
+            except (ValueError, TypeError) as e:
                 logger.error(f"Failed to initialize API searchers: {e}")
                 self.youtube_searcher = None
                 self.spotify_searcher = None
@@ -258,7 +259,7 @@ class SearchTab(QWidget):
         try:
             results = self.youtube_searcher.search(query, max_results=10)
             self._display_youtube_results(results)
-        except Exception as e:
+        except (KeyError, ValueError, TypeError) as e:
             logger.error(f"YouTube search error: {e}")
 
     def _search_spotify(self, query: str):
@@ -271,7 +272,7 @@ class SearchTab(QWidget):
         try:
             results = self.spotify_searcher.search_tracks(query, limit=10)
             self._display_spotify_results(results)
-        except Exception as e:
+        except (KeyError, ValueError, TypeError) as e:
             logger.error(f"Spotify search error: {e}")
 
     def _display_youtube_results(self, results: list):
@@ -377,7 +378,7 @@ class SearchTab(QWidget):
                 logger.warning(f"No YouTube results found for: {search_query}")
                 return None
 
-        except Exception as e:
+        except (KeyError, ValueError, TypeError) as e:
             logger.error(f"Error converting Spotify to YouTube: {e}")
             return None
 
@@ -460,7 +461,7 @@ class SearchTab(QWidget):
                     logger.info(f"Added to queue: {metadata.get('title', 'Unknown')}")
                     added_count += 1
 
-            except Exception as e:
+            except (KeyError, ValueError, TypeError) as e:
                 logger.error(f"Failed to add song to queue: {e}")
 
         # Clear selection (both data and visual)
@@ -570,7 +571,7 @@ class SearchTab(QWidget):
             else:
                 logger.warning("Some credentials still missing after save")
 
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.error(f"Error reloading credentials: {e}")
             from PyQt6.QtWidgets import QMessageBox
             QMessageBox.warning(

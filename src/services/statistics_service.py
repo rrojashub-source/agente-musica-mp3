@@ -14,6 +14,7 @@ Features:
 Created: December 11, 2025
 """
 import logging
+import sqlite3
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
@@ -136,7 +137,7 @@ class StatisticsService:
 
             return stats
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get library overview: {e}")
             return {}
 
@@ -183,7 +184,7 @@ class StatisticsService:
                 for r in results
             ]
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get top artists: {e}")
             return []
 
@@ -215,7 +216,7 @@ class StatisticsService:
                 for r in results
             ]
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get top albums: {e}")
             return []
 
@@ -239,7 +240,7 @@ class StatisticsService:
 
             return [dict(r) for r in results]
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get top songs: {e}")
             return []
 
@@ -269,7 +270,7 @@ class StatisticsService:
                 for r in results
             ]
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get top genres: {e}")
             return []
 
@@ -306,7 +307,7 @@ class StatisticsService:
                 for r in results
             ]
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get decade breakdown: {e}")
             return []
 
@@ -322,7 +323,7 @@ class StatisticsService:
 
             return [dict(r) for r in results]
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get recently added: {e}")
             return []
 
@@ -339,7 +340,7 @@ class StatisticsService:
 
             return [dict(r) for r in results]
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get recently played: {e}")
             return []
 
@@ -376,7 +377,7 @@ class StatisticsService:
                 for r in results
             ]
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get bitrate distribution: {e}")
             return []
 
@@ -412,7 +413,7 @@ class StatisticsService:
                 'fields': fields
             }
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get metadata completeness: {e}")
             return {'total': 0, 'fields': {}}
 
@@ -449,7 +450,7 @@ class StatisticsService:
                 for h, c in sorted(hour_data.items())
             ]
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get listening by hour: {e}")
             return []
 
@@ -477,7 +478,7 @@ class StatisticsService:
 
             return [d for d in day_data.values()]
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to get listening by day: {e}")
             return []
 
@@ -509,13 +510,13 @@ class StatisticsService:
                     INSERT INTO play_history (song_id, duration_played, completed)
                     VALUES (?, ?, ?)
                 """, (song_id, duration_played, completed))
-            except Exception:
-                # play_history table might not exist yet
+            except sqlite3.OperationalError:
+                # play_history table might not exist yet — safe to ignore
                 pass
 
             logger.debug(f"Recorded play for song {song_id}")
 
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to record play for song {song_id}: {e}")
 
     # ==========================================

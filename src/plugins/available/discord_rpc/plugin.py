@@ -155,7 +155,7 @@ class DiscordRPCPlugin(Plugin):
         except InvalidPipe:
             logger.warning("Discord not running or RPC disabled")
             return False
-        except Exception as e:
+        except Exception as e:  # Plugin isolation - must not crash host
             logger.error(f"Failed to connect to Discord: {e}")
             return False
 
@@ -165,7 +165,7 @@ class DiscordRPCPlugin(Plugin):
             try:
                 self._rpc.clear()
                 self._rpc.close()
-            except Exception as e:
+            except (RuntimeError, OSError) as e:
                 logger.debug(f"Error closing Discord RPC: {e}")
             finally:
                 self._connected = False
@@ -186,7 +186,7 @@ class DiscordRPCPlugin(Plugin):
                         self._update_presence()
                     self._last_update_time = current_time
 
-            except Exception as e:
+            except Exception as e:  # Plugin isolation - must not crash host
                 logger.debug(f"Discord RPC update error: {e}")
                 self._connected = False
 
@@ -236,7 +236,7 @@ class DiscordRPCPlugin(Plugin):
 
                 self._rpc.update(**presence_data)
 
-        except Exception as e:
+        except Exception as e:  # Plugin isolation - must not crash host
             logger.debug(f"Failed to update Discord presence: {e}")
             self._connected = False
 

@@ -287,7 +287,7 @@ class PluginManager(QObject if HAS_QT else object):
             if HAS_QT:
                 self.plugin_error.emit(plugin_name, str(e))
             return False
-        except Exception as e:
+        except Exception as e:  # Plugin isolation - must not crash host
             logger.error(f"Unexpected error loading plugin {plugin_name} from {file_path}: {e}")
             if HAS_QT:
                 self.plugin_error.emit(plugin_name, str(e))
@@ -318,7 +318,7 @@ class PluginManager(QObject if HAS_QT else object):
             logger.info(f"Loaded plugin class: {plugin_name}")
             return True
 
-        except Exception as e:
+        except Exception as e:  # Plugin isolation - must not crash host
             logger.error(f"Failed to load plugin class: {e}")
             return False
 
@@ -366,7 +366,7 @@ class PluginManager(QObject if HAS_QT else object):
                 logger.error(f"Plugin {plugin_name} failed to enable")
                 return False
 
-        except Exception as e:
+        except Exception as e:  # Plugin isolation - must not crash host
             logger.error(f"Error enabling plugin {plugin_name}: {e}")
             state.load_error = str(e)
             if HAS_QT:
@@ -414,7 +414,7 @@ class PluginManager(QObject if HAS_QT else object):
                 logger.error(f"Plugin {plugin_name} failed to disable")
                 return False
 
-        except Exception as e:
+        except Exception as e:  # Plugin isolation - must not crash host
             logger.error(f"Error disabling plugin {plugin_name}: {e}")
             if HAS_QT:
                 self.plugin_error.emit(plugin_name, str(e))
@@ -449,7 +449,7 @@ class PluginManager(QObject if HAS_QT else object):
                     result = handler(*args, **kwargs)
                     results.append(result)
                     handlers_count += 1
-                except Exception as e:
+                except Exception as e:  # Plugin isolation - must not crash host
                     logger.error(f"Plugin {name} handler error for {hook.name}: {e}")
 
         if HAS_QT and handlers_count > 0:
@@ -519,7 +519,7 @@ class PluginManager(QObject if HAS_QT else object):
             try:
                 with open(self._settings_file, 'r') as f:
                     self._saved_settings = json.load(f)
-            except Exception as e:
+            except (json.JSONDecodeError, OSError) as e:
                 logger.error(f"Failed to load plugin settings: {e}")
 
     def _save_settings(self) -> None:
@@ -534,7 +534,7 @@ class PluginManager(QObject if HAS_QT else object):
         try:
             with open(self._settings_file, 'w') as f:
                 json.dump(settings, f, indent=2)
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to save plugin settings: {e}")
 
     def _get_saved_settings(self, plugin_name: str) -> Dict[str, Any]:

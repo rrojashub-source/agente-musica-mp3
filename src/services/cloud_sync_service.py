@@ -13,6 +13,7 @@ Features:
 import json
 import logging
 import hashlib
+import sqlite3
 import threading
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Callable
@@ -190,7 +191,7 @@ class LocalFolderProvider(CloudProvider):
             self._connected = True
             logger.info(f"Connected to local folder: {self._sync_folder}")
             return True
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to connect to local folder: {e}")
             return False
 
@@ -209,7 +210,7 @@ class LocalFolderProvider(CloudProvider):
             shutil.copy2(local_path, dest)
             logger.info(f"Uploaded to local folder: {remote_path}")
             return True
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to upload {remote_path}: {e}")
             return False
 
@@ -228,7 +229,7 @@ class LocalFolderProvider(CloudProvider):
             shutil.copy2(src, local_path)
             logger.info(f"Downloaded from local folder: {remote_path}")
             return True
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to download {remote_path}: {e}")
             return False
 
@@ -258,7 +259,7 @@ class LocalFolderProvider(CloudProvider):
             if path.exists():
                 path.unlink()
             return True
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to delete {remote_path}: {e}")
             return False
 
@@ -302,7 +303,7 @@ class GoogleDriveProvider(CloudProvider):
             try:
                 with open(config_path) as f:
                     return json.load(f)
-            except Exception as e:
+            except (OSError, json.JSONDecodeError) as e:
                 logger.error(f"Failed to load credentials: {e}")
 
         # Return empty config - will fail gracefully
@@ -354,7 +355,7 @@ class GoogleDriveProvider(CloudProvider):
                     creds = Credentials.from_authorized_user_file(
                         str(self._token_path), self._SCOPES
                     )
-                except Exception as e:
+                except (OSError, ValueError, KeyError) as e:
                     logger.warning(f"Invalid token file, will re-authenticate: {e}")
                     creds = None
 
@@ -365,7 +366,7 @@ class GoogleDriveProvider(CloudProvider):
                         from google.auth.transport.requests import Request
                         creds.refresh(Request())
                         logger.info("Google Drive token refreshed")
-                    except Exception as e:
+                    except (ConnectionError, OSError, ValueError) as e:
                         logger.warning(f"Token refresh failed, re-authenticating: {e}")
                         creds = None
 
@@ -408,6 +409,8 @@ class GoogleDriveProvider(CloudProvider):
             logger.error("Google Drive dependencies not installed. Run: pip install google-api-python-client google-auth-oauthlib")
             return False
         except Exception as e:
+            # Broad catch intentional: OAuth flow can raise many heterogeneous exceptions
+            # (HttpError, TransportError, browser errors, OS errors) depending on environment.
             logger.error(f"Failed to connect to Google Drive: {e}")
             return False
 
@@ -416,7 +419,7 @@ class GoogleDriveProvider(CloudProvider):
         try:
             about = self._service.about().get(fields="user").execute()
             self._user_email = about.get('user', {}).get('emailAddress', 'Unknown')
-        except Exception as e:
+        except (KeyError, AttributeError, ConnectionError, OSError) as e:
             logger.debug(f"Could not get user info: {e}")
             self._user_email = "Connected"
 
@@ -491,7 +494,7 @@ class GoogleDriveProvider(CloudProvider):
 
             logger.info(f"Uploaded to Google Drive: {remote_path}")
             return True
-        except Exception as e:
+        except (OSError, ConnectionError, KeyError) as e:
             logger.error(f"Failed to upload to Drive: {e}")
             return False
 
@@ -522,7 +525,7 @@ class GoogleDriveProvider(CloudProvider):
 
             logger.info(f"Downloaded from Google Drive: {remote_path}")
             return True
-        except Exception as e:
+        except (OSError, ConnectionError, KeyError) as e:
             logger.error(f"Failed to download from Drive: {e}")
             return False
 
@@ -561,7 +564,7 @@ class GoogleDriveProvider(CloudProvider):
             if file_info:
                 self._service.files().delete(fileId=file_info['id']).execute()
             return True
-        except Exception as e:
+        except (ConnectionError, OSError, KeyError) as e:
             logger.error(f"Failed to delete from Drive: {e}")
             return False
 
@@ -666,7 +669,7 @@ class CloudSyncService(QObject):
             try:
                 data = json.loads(state_file.read_text())
                 self._state = SyncState.from_dict(data)
-            except Exception as e:
+            except (OSError, json.JSONDecodeError, KeyError, TypeError) as e:
                 logger.error(f"Failed to load sync state: {e}")
 
     def _save_state(self):
@@ -674,7 +677,7 @@ class CloudSyncService(QObject):
         state_file = self._data_dir / self.STATE_FILENAME
         try:
             state_file.write_text(json.dumps(self._state.to_dict(), indent=2))
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Failed to save sync state: {e}")
 
     # ==========================================
@@ -747,7 +750,7 @@ class CloudSyncService(QObject):
         try:
             songs = db.fetch_all("SELECT * FROM songs")
             export.songs = songs
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.error(f"Failed to export songs: {e}")
 
         # Export playlists
@@ -762,7 +765,7 @@ class CloudSyncService(QObject):
                     (playlist['id'],)
                 )
                 playlist['song_ids'] = [s['song_id'] for s in playlist_songs]
-        except Exception as e:
+        except sqlite3.Error as e:
             logger.debug(f"No playlists to export: {e}")
 
         logger.info(f"Exported {len(export.songs)} songs, {len(export.playlists)} playlists")
@@ -808,7 +811,7 @@ class CloudSyncService(QObject):
                     db.add_song(song)
                     stats['added'] += 1
 
-            except Exception as e:
+            except sqlite3.Error as e:
                 logger.error(f"Failed to import song: {e}")
                 stats['errors'] += 1
 
@@ -890,6 +893,8 @@ class CloudSyncService(QObject):
                 raise Exception("Failed to upload to cloud")
 
         except Exception as e:
+            # Broad catch intentional: sync() orchestrates network, disk, JSON and DB
+            # operations; any of them can fail and must be reported to the UI via signals.
             logger.error(f"Sync failed: {e}")
             self._state.status = SyncStatus.FAILED.value
             self.status_changed.emit(SyncStatus.FAILED)

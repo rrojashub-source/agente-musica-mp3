@@ -68,7 +68,7 @@ class LibraryScanWorker(QThread):
             self.progress_update.emit(100, f"Escaneo completo: {len(audio_files)} archivos")
             self.scan_complete.emit(len(audio_files))
 
-        except Exception as e:
+        except OSError as e:
             self.error_occurred.emit(f"Error escaneando: {str(e)}")
 
 

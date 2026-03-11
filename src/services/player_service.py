@@ -174,7 +174,7 @@ class PlayerService(QObject):
                 from services.library_service import LibraryService
                 library = LibraryService.get_instance()
                 library.increment_play_count(self._now_playing.song_id)
-            except Exception as e:
+            except (ImportError, RuntimeError) as e:
                 logger.debug(f"Could not track play count: {e}")
 
     # ==========================================
@@ -222,7 +222,7 @@ class PlayerService(QObject):
                 self.error_occurred.emit("Failed to start playback")
                 return False
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error playing: {e}")
             self.error_occurred.emit(str(e))
             return False
@@ -236,7 +236,7 @@ class PlayerService(QObject):
                 self._position_timer.stop()
                 return True
             return False
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(f"Error pausing: {e}")
             return False
 
@@ -261,7 +261,7 @@ class PlayerService(QObject):
             self.state_changed.emit(PlaybackState.STOPPED)
             self._position_timer.stop()
             return True
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(f"Error stopping: {e}")
             return False
 
@@ -278,7 +278,7 @@ class PlayerService(QObject):
                 self.position_changed.emit(position)
                 return True
             return False
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error seeking: {e}")
             return False
 
@@ -301,7 +301,7 @@ class PlayerService(QObject):
                 self.volume_changed.emit(volume)
                 return True
             return False
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error setting volume: {e}")
             return False
 
