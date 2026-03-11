@@ -86,9 +86,8 @@
           "DONE: 38 new controller tests + 111 existing tests = 149 passing",
           "DONE: BaseTab class (230 LOC) + 5 tabs refactored (duplicates, rename, organize, cleanup, import) — 261 LOC eliminated, 106 tests passing. Remaining 8 tabs deferred (non-standard patterns, low ROI).",
           "DONE: Split audio_embeddings.py (1074 LOC -> 501 LOC Facade + 3 classes: audio_feature_extractor 291, bpm_detector 155, mood_classifier 215). 37 existing tests passing, 0 changes to consumers.",
-          "Split cleanup_assistant_tab en 3 clases",
-          "Dependency Injection + ServiceFactory",
-          "Eliminar main_window_complete.py (dead code)"
+          "DONE: Deleted dead code — cleanup_assistant_tab.py (1210 LOC) + main_window_complete.py (804 LOC) = 2014 LOC removed. Both only referenced each other, not imported by active code.",
+          "Dependency Injection + ServiceFactory"
         ]
       },
       {
