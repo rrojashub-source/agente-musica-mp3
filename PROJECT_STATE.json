@@ -2,7 +2,7 @@
   "project": "NEXUS Music Manager",
   "version": "2.1.0",
   "status": "refactoring_in_progress",
-  "phase": "Phase 1+2 COMPLETE. Phase 4 (polish) in progress. Next: Phase 3 (stack migration).",
+  "phase": "Phase 1+2+3 COMPLETE (code). Phase 4 partial. Pending: Nuitka EXE build on Windows.",
   "commercial_score": 99,
   "audit_score": 6.8,
   "target_score": 8.5,
@@ -15,18 +15,16 @@
   "stack": {
     "current": {
       "language": "Python 3.11+",
-      "gui": "PyQt6",
+      "gui": "PySide6",
       "database": "SQLite + FTS5 + WAL",
-      "audio": "pygame + numpy FFT",
+      "audio": "python-mpv (libmpv) + numpy FFT",
       "visualizer": "OpenGL 3.3 + GLSL shaders",
       "apis": ["YouTube Data API v3", "Spotify Web API", "MusicBrainz", "Genius"],
-      "packaging": "PyInstaller",
+      "packaging": "Nuitka (pending build) / PyInstaller (legacy spec)",
       "remote": "Flask REST API"
     },
     "target": {
-      "gui": "PySide6 (LGPL, soporte Nuitka)",
-      "audio": "python-mpv (gapless real, todos formatos)",
-      "packaging": "Nuitka + UPX (~90MB vs 164MB actual)"
+      "packaging": "Nuitka + UPX (~90MB vs 164MB actual) — needs Windows build session"
     }
   },
 
@@ -94,12 +92,13 @@
         "phase": 3,
         "name": "Migracion de Stack",
         "weeks": "5-6",
-        "status": "pending",
+        "status": "mostly_complete",
         "tasks": [
-          "PyQt6 -> PySide6",
-          "PyInstaller -> Nuitka",
-          "pygame -> python-mpv",
-          "UPX compression"
+          "DONE: PyQt6 -> PySide6 — 74 files migrated, Signal/Slot/Property renamed, shiboken6 segfault fix in tests",
+          "DONE: pygame -> python-mpv — AudioPlayer rewritten, native gapless, all audio formats, 28 tests passing",
+          "DONE: Nuitka compat — 5 resource path files updated (__compiled__ check), requirements updated",
+          "PENDING: Build EXE with Nuitka on Windows — spec file ready, needs Windows session",
+          "PENDING: UPX compression — post Nuitka build"
         ]
       },
       {
@@ -128,8 +127,8 @@
   "git": {
     "remote": "https://github.com/rrojashub-source/agente-musica-mp3.git",
     "branch": "main",
-    "total_commits": 216,
-    "last_commit": "refactor(phase-2.1): Split main.py God Class into 4 controllers + Facade"
+    "total_commits": 234,
+    "last_commit": "refactor(phase-3.3): add Nuitka compatibility to resource path resolution"
   },
 
   "decisions": [
@@ -197,6 +196,21 @@
       "date": "2026-03-11",
       "decision": "Fixed 9 preexisting test failures. 604 tests passing, 0 regressions.",
       "reason": "keyboard_shortcuts (i18n labels + focusWidget mock), musicbrainz_client (WebServiceError), playlist_widget (playlists_list→playlists_table). Remaining failures: genius (no lyricsgenius lib), new_plugins (no lyrics plugin), 3 playlist_widget (deeper API changes), 1 production_polish (tooltip), 5 library_import_worker (MP3 scan)."
+    },
+    {
+      "date": "2026-03-11",
+      "decision": "Phase 3.1 COMPLETE: PyQt6 → PySide6 migration across 74 files.",
+      "reason": "PySide6 is LGPL (no licensing risk), better Nuitka support, near-identical API. Mechanical rename: pyqtSignal→Signal, pyqtSlot→Slot, pyqtProperty→Property. shiboken6 metaclass conflict with unittest.mock.patch.object — fix: subclass override pattern in tests. All imports verified with Grep."
+    },
+    {
+      "date": "2026-03-11",
+      "decision": "Phase 3.2 COMPLETE: pygame → python-mpv audio engine rewrite.",
+      "reason": "python-mpv provides native gapless playback (gapless-audio=yes), all audio formats via libmpv, event-driven track end detection. AudioPlayer rewritten preserving 26-method public API — zero consumer changes needed. playback_controller.py cleaned of 2 direct pygame imports. 28 tests rewritten for mpv mocks."
+    },
+    {
+      "date": "2026-03-11",
+      "decision": "Phase 3.3 COMPLETE: Nuitka compatibility for resource paths (5 files).",
+      "reason": "Added '__compiled__' in globals() check alongside hasattr(sys, '_MEIPASS') in database/manager.py, core/theme_manager.py, plugins/plugin_manager.py, services/content_filter/classifier.py, gui/visualizers/organic_visualizer.py. requirements-dev.txt updated pyinstaller→nuitka. setup.py and spec file updated. Actual EXE build pending Windows session."
     }
   ]
 }
