@@ -12,11 +12,12 @@ Features:
 import json
 import uuid
 import logging
+import threading
 from pathlib import Path
 from typing import Dict, List, Optional, Callable
 from PyQt6.QtCore import QObject, pyqtSignal
 from workers.download_worker import DownloadWorker
-from utils.input_sanitizer import sanitize_filename
+from utils.input_sanitizer import sanitize_filename, sanitize_url, sanitize_metadata
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -62,6 +63,10 @@ class DownloadQueue(QObject):
         self._items = {}  # item_id -> item_dict
         self._workers = {}  # item_id -> DownloadWorker
         self._running = False
+        self._lock = threading.RLock()  # Protects _items and _workers dicts
+
+        # Allowed YouTube domains for URL validation
+        self._allowed_domains = ["youtube.com", "youtu.be", "music.youtube.com"]
 
         # Callback for completion (optional)
         self.on_complete = None
@@ -78,7 +83,19 @@ class DownloadQueue(QObject):
 
         Returns:
             str: Unique item ID
+
+        Raises:
+            ValueError: If URL is not a valid YouTube URL
         """
+        # Validate URL against allowed YouTube domains
+        is_valid, result = sanitize_url(video_url, self._allowed_domains)
+        if not is_valid:
+            raise ValueError(f"Invalid video URL: {result}")
+        video_url = result  # Use sanitized URL
+
+        # Sanitize metadata to prevent XSS/injection
+        metadata = sanitize_metadata(metadata)
+
         # Generate unique ID
         item_id = str(uuid.uuid4())
 
@@ -93,7 +110,8 @@ class DownloadQueue(QObject):
             'retry_count': 0
         }
 
-        self._items[item_id] = item
+        with self._lock:
+            self._items[item_id] = item
         logger.info(f"Added to queue: {metadata.get('title', video_url)} (id={item_id})")
 
         # Auto-start if already running
@@ -109,7 +127,8 @@ class DownloadQueue(QObject):
         Returns:
             list: List of item dicts
         """
-        return list(self._items.values())
+        with self._lock:
+            return list(self._items.values())
 
     def get_all_items(self) -> Dict[str, dict]:
         """
@@ -118,7 +137,8 @@ class DownloadQueue(QObject):
         Returns:
             dict: Dictionary of item_id -> item_dict
         """
-        return self._items.copy()
+        with self._lock:
+            return self._items.copy()
 
     def get_item(self, item_id: str) -> Optional[dict]:
         """
@@ -130,7 +150,8 @@ class DownloadQueue(QObject):
         Returns:
             dict: Item dict or None if not found
         """
-        return self._items.get(item_id)
+        with self._lock:
+            return self._items.get(item_id)
 
     def start(self):
         """
@@ -165,7 +186,8 @@ class DownloadQueue(QObject):
         Returns:
             list: Items with status='downloading'
         """
-        return [item for item in self._items.values() if item['status'] == 'downloading']
+        with self._lock:
+            return [item for item in self._items.values() if item['status'] == 'downloading']
 
     def pause(self, item_id: str) -> bool:
         """
@@ -177,21 +199,22 @@ class DownloadQueue(QObject):
         Returns:
             bool: True if paused successfully
         """
-        item = self._items.get(item_id)
-        if not item:
-            return False
+        with self._lock:
+            item = self._items.get(item_id)
+            if not item:
+                return False
 
-        # Terminate worker if running
-        if item_id in self._workers:
-            worker = self._workers[item_id]
-            worker.terminate()
-            worker.wait()
-            del self._workers[item_id]
+            # Terminate worker if running
+            if item_id in self._workers:
+                worker = self._workers[item_id]
+                worker.terminate()
+                worker.wait()
+                del self._workers[item_id]
 
-        # Update status
-        item['status'] = 'paused'
+            # Update status
+            item['status'] = 'paused'
+
         logger.info(f"Paused: {item_id}")
-
         return True
 
     def resume(self, item_id: str) -> bool:
@@ -204,12 +227,14 @@ class DownloadQueue(QObject):
         Returns:
             bool: True if resumed successfully
         """
-        item = self._items.get(item_id)
-        if not item or item['status'] != 'paused':
-            return False
+        with self._lock:
+            item = self._items.get(item_id)
+            if not item or item['status'] != 'paused':
+                return False
 
-        # Reset to pending
-        item['status'] = 'pending'
+            # Reset to pending
+            item['status'] = 'pending'
+
         logger.info(f"Resumed: {item_id}")
 
         # Process if queue running
@@ -228,19 +253,21 @@ class DownloadQueue(QObject):
         Returns:
             bool: True if canceled successfully
         """
-        item = self._items.get(item_id)
-        if not item:
-            return False
+        with self._lock:
+            item = self._items.get(item_id)
+            if not item:
+                return False
 
-        # Terminate worker if running
-        if item_id in self._workers:
-            worker = self._workers[item_id]
-            worker.terminate()
-            worker.wait()
-            del self._workers[item_id]
+            # Terminate worker if running
+            if item_id in self._workers:
+                worker = self._workers[item_id]
+                worker.terminate()
+                worker.wait()
+                del self._workers[item_id]
 
-        # Update status
-        item['status'] = 'canceled'
+            # Update status
+            item['status'] = 'canceled'
+
         logger.info(f"Canceled: {item_id}")
 
         # Process next
@@ -256,13 +283,14 @@ class DownloadQueue(QObject):
         Returns:
             int: Number of items removed
         """
-        completed_ids = [
-            item_id for item_id, item in self._items.items()
-            if item['status'] == 'completed'
-        ]
+        with self._lock:
+            completed_ids = [
+                item_id for item_id, item in self._items.items()
+                if item['status'] == 'completed'
+            ]
 
-        for item_id in completed_ids:
-            del self._items[item_id]
+            for item_id in completed_ids:
+                del self._items[item_id]
 
         count = len(completed_ids)
         logger.info(f"Cleared {count} completed items")
@@ -288,16 +316,22 @@ class DownloadQueue(QObject):
             item_id (str): Item ID
             metadata (dict): Final metadata
         """
-        item = self._items.get(item_id)
-        if not item:
-            return
+        with self._lock:
+            item = self._items.get(item_id)
+            if not item:
+                return
 
-        # Update status
-        item['status'] = 'completed'
-        item['progress'] = 100
-        item['metadata'].update(metadata)
+            # Update status
+            item['status'] = 'completed'
+            item['progress'] = 100
+            item['metadata'].update(metadata)
+            title = item['metadata'].get('title', item_id)
 
-        logger.info(f"Completed: {item['metadata'].get('title', item_id)}")
+            # Cleanup worker
+            if item_id in self._workers:
+                del self._workers[item_id]
+
+        logger.info(f"Completed: {title}")
 
         # Auto-import to database if available
         if self.db_manager and 'output_path' in metadata:
@@ -309,10 +343,6 @@ class DownloadQueue(QObject):
 
         # Emit signal
         self.item_completed.emit(item_id, metadata)
-
-        # Cleanup worker
-        if item_id in self._workers:
-            del self._workers[item_id]
 
         # Process next
         if self._running:
@@ -440,67 +470,60 @@ class DownloadQueue(QObject):
             item_id (str): Item ID
             error (str): Error message
         """
-        item = self._items.get(item_id)
-        if not item:
-            return
+        should_retry = False
+        with self._lock:
+            item = self._items.get(item_id)
+            if not item:
+                return
 
-        # Increment retry count
-        item['retry_count'] += 1
-        item['error'] = error
-
-        # Check if should retry
-        if item['retry_count'] < self.max_retries:
-            # Retry download
-            item['status'] = 'pending'
-            item['progress'] = 0
-            logger.warning(f"Retry {item['retry_count']}/{self.max_retries}: {item_id} - {error}")
+            # Increment retry count
+            item['retry_count'] += 1
+            item['error'] = error
 
             # Cleanup worker
             if item_id in self._workers:
                 del self._workers[item_id]
 
-            # Process next (will retry this item)
-            if self._running:
-                self._process_next()
+            # Check if should retry
+            if item['retry_count'] < self.max_retries:
+                item['status'] = 'pending'
+                item['progress'] = 0
+                should_retry = True
+                logger.warning(f"Retry {item['retry_count']}/{self.max_retries}: {item_id} - {error}")
+            else:
+                item['status'] = 'failed'
+                logger.error(f"Failed (max retries): {item_id} - {error}")
 
-        else:
-            # Max retries exhausted
-            item['status'] = 'failed'
-            logger.error(f"Failed (max retries): {item_id} - {error}")
-
-            # Emit signal
+        if not should_retry:
             self.item_failed.emit(item_id, error)
 
-            # Cleanup worker
-            if item_id in self._workers:
-                del self._workers[item_id]
-
-            # Process next
-            if self._running:
-                self._process_next()
+        # Process next
+        if self._running:
+            self._process_next()
 
     def _process_next(self):
         """
         Process next pending item if under max_concurrent limit
         """
-        # Check if we can start more downloads
-        active_count = len(self.get_active_downloads())
-        if active_count >= self.max_concurrent:
-            logger.debug(f"Max concurrent reached ({active_count}/{self.max_concurrent})")
-            return
+        with self._lock:
+            # Check if we can start more downloads
+            active_count = len([i for i in self._items.values() if i['status'] == 'downloading'])
+            if active_count >= self.max_concurrent:
+                logger.debug(f"Max concurrent reached ({active_count}/{self.max_concurrent})")
+                return
 
-        # Find next pending item
-        pending = [item for item in self._items.values() if item['status'] == 'pending']
-        if not pending:
-            # Check if queue completed
-            if active_count == 0 and all(item['status'] in ['completed', 'canceled', 'failed'] for item in self._items.values()):
-                logger.info("Queue completed")
-                self.queue_completed.emit()
-            return
+            # Find next pending item
+            pending = [item for item in self._items.values() if item['status'] == 'pending']
+            if not pending:
+                # Check if queue completed
+                if active_count == 0 and all(item['status'] in ['completed', 'canceled', 'failed'] for item in self._items.values()):
+                    logger.info("Queue completed")
+                    self.queue_completed.emit()
+                return
 
-        # Start next download
-        item = pending[0]
-        self._start_download(item)
+            # Start next download
+            item = pending[0]
+            self._start_download(item)
 
     def _start_download(self, item: dict):
         """
@@ -525,15 +548,16 @@ class DownloadQueue(QObject):
         output_path = download_dir / f"{safe_title}.mp3"
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Create worker
-        worker = DownloadWorker(item['video_url'], str(output_path))
+        # Create worker with path validation
+        worker = DownloadWorker(item['video_url'], str(output_path),
+                                allowed_base_dir=str(download_dir))
 
         # Connect signals (use default argument to capture item_id by value, not reference)
         worker.progress.connect(lambda p, id=item_id: self.update_progress(id, p))
         worker.finished.connect(lambda meta, id=item_id: self.mark_completed(id, meta))
         worker.error.connect(lambda err, id=item_id: self._mark_failed(id, err))
 
-        # Store worker
+        # Store worker (lock already held from _process_next)
         self._workers[item_id] = worker
 
         # Update status

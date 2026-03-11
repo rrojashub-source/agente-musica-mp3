@@ -15,9 +15,12 @@ Usage:
 """
 import os
 import json
+import secrets
 import socket
 import logging
 import threading
+import time
+from collections import defaultdict
 from pathlib import Path
 from typing import Optional, Dict, Any, Callable
 from dataclasses import dataclass, asdict
@@ -105,8 +108,16 @@ class RemoteServer(QObject if HAS_QT else object):
         self._app: Optional[Flask] = None
         self._server_thread: Optional[threading.Thread] = None
         self._is_running = False
-        self._host = "0.0.0.0"
+        self._host = "127.0.0.1"
         self._port = 8080
+
+        # Auth token (generated per session)
+        self._auth_token: str = secrets.token_urlsafe(32)
+
+        # Rate limiting per IP: {ip: [timestamps]}
+        self._rate_limit_requests: Dict[str, list] = defaultdict(list)
+        self._rate_limit_max = 60  # requests per minute
+        self._rate_limit_window = 60  # seconds
 
         # Callbacks for player control
         self._callbacks: Dict[str, Callable] = {}
@@ -133,15 +144,61 @@ class RemoteServer(QObject if HAS_QT else object):
         cls._instance = None
 
     def _setup_app(self):
-        """Setup Flask application"""
+        """Setup Flask application with security hardening"""
         self._app = Flask(__name__)
-        CORS(self._app)  # Allow cross-origin requests
+
+        # CORS: only allow localhost origins
+        CORS(self._app, origins=[
+            "http://127.0.0.1:*",
+            "http://localhost:*",
+            "http://192.168.*.*:*",  # LAN for mobile remote
+        ])
 
         # Disable Flask logging in production
         log = logging.getLogger('werkzeug')
         log.setLevel(logging.WARNING)
 
+        # Rate limiting middleware
+        @self._app.before_request
+        def _rate_limit():
+            client_ip = request.remote_addr or "unknown"
+            now = time.time()
+            window_start = now - self._rate_limit_window
+
+            # Clean old entries
+            self._rate_limit_requests[client_ip] = [
+                t for t in self._rate_limit_requests[client_ip]
+                if t > window_start
+            ]
+
+            if len(self._rate_limit_requests[client_ip]) >= self._rate_limit_max:
+                logger.warning(f"Rate limit exceeded for {client_ip}")
+                return jsonify({'error': 'Rate limit exceeded'}), 429
+
+            self._rate_limit_requests[client_ip].append(now)
+
         self._register_routes()
+
+    def _require_auth(self, f):
+        """Decorator: require valid auth token in Authorization header or query param"""
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            # Check Authorization header
+            auth_header = request.headers.get('Authorization', '')
+            token = None
+            if auth_header.startswith('Bearer '):
+                token = auth_header[7:]
+
+            # Fallback: check query parameter (for initial page load)
+            if not token:
+                token = request.args.get('token')
+
+            if token != self._auth_token:
+                logger.warning(f"Unauthorized access attempt from {request.remote_addr}")
+                return jsonify({'error': 'Unauthorized'}), 401
+
+            return f(*args, **kwargs)
+        return decorated
 
     def _register_routes(self):
         """Register API routes"""
@@ -153,16 +210,20 @@ class RemoteServer(QObject if HAS_QT else object):
 
         @app.route('/')
         def index():
-            """Mobile web interface"""
-            return render_template_string(MOBILE_HTML)
+            """Mobile web interface — requires token in query param"""
+            token = request.args.get('token')
+            if token != self._auth_token:
+                return jsonify({'error': 'Unauthorized. Scan QR code to connect.'}), 401
+            return render_template_string(MOBILE_HTML, auth_token=self._auth_token)
 
         @app.route('/qr')
+        @self._require_auth
         def qr_code():
-            """Generate QR code for connection"""
+            """Generate QR code for connection (includes auth token)"""
             if not HAS_QRCODE:
                 return jsonify({'error': 'QR code not available'}), 500
 
-            url = f"http://{self.get_local_ip()}:{self._port}"
+            url = f"http://{self.get_local_ip()}:{self._port}?token={self._auth_token}"
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
             qr.add_data(url)
             qr.make(fit=True)
@@ -182,6 +243,7 @@ class RemoteServer(QObject if HAS_QT else object):
         # ==========================================
 
         @app.route('/api/status')
+        @self._require_auth
         def get_status():
             """Get current playback status"""
             return jsonify({
@@ -190,6 +252,7 @@ class RemoteServer(QObject if HAS_QT else object):
             })
 
         @app.route('/api/play', methods=['POST'])
+        @self._require_auth
         def play():
             """Play/resume playback"""
             self._execute_callback('play')
@@ -198,6 +261,7 @@ class RemoteServer(QObject if HAS_QT else object):
             return jsonify({'success': True, 'action': 'play'})
 
         @app.route('/api/pause', methods=['POST'])
+        @self._require_auth
         def pause():
             """Pause playback"""
             self._execute_callback('pause')
@@ -206,6 +270,7 @@ class RemoteServer(QObject if HAS_QT else object):
             return jsonify({'success': True, 'action': 'pause'})
 
         @app.route('/api/toggle', methods=['POST'])
+        @self._require_auth
         def toggle():
             """Toggle play/pause"""
             self._execute_callback('toggle')
@@ -214,6 +279,7 @@ class RemoteServer(QObject if HAS_QT else object):
             return jsonify({'success': True, 'action': 'toggle'})
 
         @app.route('/api/next', methods=['POST'])
+        @self._require_auth
         def next_track():
             """Skip to next track"""
             self._execute_callback('next')
@@ -222,6 +288,7 @@ class RemoteServer(QObject if HAS_QT else object):
             return jsonify({'success': True, 'action': 'next'})
 
         @app.route('/api/previous', methods=['POST'])
+        @self._require_auth
         def previous_track():
             """Go to previous track"""
             self._execute_callback('previous')
@@ -230,6 +297,7 @@ class RemoteServer(QObject if HAS_QT else object):
             return jsonify({'success': True, 'action': 'previous'})
 
         @app.route('/api/volume', methods=['POST'])
+        @self._require_auth
         def set_volume():
             """Set volume (0-100)"""
             data = request.get_json() or {}
@@ -244,6 +312,7 @@ class RemoteServer(QObject if HAS_QT else object):
             return jsonify({'success': True, 'volume': volume})
 
         @app.route('/api/seek', methods=['POST'])
+        @self._require_auth
         def seek():
             """Seek to position (seconds)"""
             data = request.get_json() or {}
@@ -259,6 +328,7 @@ class RemoteServer(QObject if HAS_QT else object):
         # ==========================================
 
         @app.route('/api/queue')
+        @self._require_auth
         def get_queue():
             """Get current queue"""
             return jsonify({
@@ -267,6 +337,7 @@ class RemoteServer(QObject if HAS_QT else object):
             })
 
         @app.route('/api/queue/add', methods=['POST'])
+        @self._require_auth
         def add_to_queue():
             """Add song to queue"""
             data = request.get_json() or {}
@@ -280,6 +351,7 @@ class RemoteServer(QObject if HAS_QT else object):
             return jsonify({'success': False, 'error': 'No song_id provided'}), 400
 
         @app.route('/api/queue/clear', methods=['POST'])
+        @self._require_auth
         def clear_queue():
             """Clear queue"""
             self._execute_callback('queue_clear')
@@ -292,6 +364,7 @@ class RemoteServer(QObject if HAS_QT else object):
         # ==========================================
 
         @app.route('/api/search')
+        @self._require_auth
         def search():
             """Search library"""
             query = request.args.get('q', '')
@@ -301,6 +374,7 @@ class RemoteServer(QObject if HAS_QT else object):
             return jsonify({'results': results, 'query': query})
 
         @app.route('/api/library/recent')
+        @self._require_auth
         def recent():
             """Get recently played"""
             limit = request.args.get('limit', 10, type=int)
@@ -339,7 +413,12 @@ class RemoteServer(QObject if HAS_QT else object):
         """Update queue"""
         self._queue = queue
 
-    def start(self, port: int = 8080, host: str = "0.0.0.0") -> bool:
+    @property
+    def auth_token(self) -> str:
+        """Get current session auth token"""
+        return self._auth_token
+
+    def start(self, port: int = 8080, host: str = "127.0.0.1") -> bool:
         """Start the server"""
         if not HAS_FLASK:
             logger.error("Flask not installed. Install with: pip install flask flask-cors")
@@ -385,8 +464,8 @@ class RemoteServer(QObject if HAS_QT else object):
 
     @property
     def url(self) -> str:
-        """Get server URL"""
-        return f"http://{self.get_local_ip()}:{self._port}"
+        """Get server URL (with auth token for QR code)"""
+        return f"http://{self.get_local_ip()}:{self._port}?token={self._auth_token}"
 
     @staticmethod
     def get_local_ip() -> str:
@@ -600,6 +679,12 @@ MOBILE_HTML = '''
     <div class="status" id="status">Connecting...</div>
 
     <script>
+        // Auth token injected by server
+        const AUTH_TOKEN = '{{ auth_token }}';
+        const AUTH_HEADERS = {
+            'Authorization': 'Bearer ' + AUTH_TOKEN,
+            'Content-Type': 'application/json'
+        };
         let isPlaying = false;
 
         function formatTime(seconds) {
@@ -626,7 +711,7 @@ MOBILE_HTML = '''
 
         async function fetchStatus() {
             try {
-                const res = await fetch('/api/status');
+                const res = await fetch('/api/status', { headers: AUTH_HEADERS });
                 const data = await res.json();
                 updateUI(data);
                 document.getElementById('status').textContent = 'Connected';
@@ -638,24 +723,24 @@ MOBILE_HTML = '''
         }
 
         async function togglePlay() {
-            await fetch('/api/toggle', { method: 'POST' });
+            await fetch('/api/toggle', { method: 'POST', headers: AUTH_HEADERS });
             fetchStatus();
         }
 
         async function next() {
-            await fetch('/api/next', { method: 'POST' });
+            await fetch('/api/next', { method: 'POST', headers: AUTH_HEADERS });
             fetchStatus();
         }
 
         async function previous() {
-            await fetch('/api/previous', { method: 'POST' });
+            await fetch('/api/previous', { method: 'POST', headers: AUTH_HEADERS });
             fetchStatus();
         }
 
         async function setVolume(value) {
             await fetch('/api/volume', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: AUTH_HEADERS,
                 body: JSON.stringify({ volume: parseInt(value) })
             });
         }

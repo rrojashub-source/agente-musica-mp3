@@ -321,5 +321,111 @@ class TestDownloadQueue(unittest.TestCase):
         self.assertEqual(items[2]['metadata']['title'], 'Song 2')
 
 
+class TestDownloadQueueSecurity(unittest.TestCase):
+    """Security tests for DownloadQueue"""
+
+    def setUp(self):
+        """Setup test fixtures"""
+        self.test_dir = tempfile.mkdtemp()
+        try:
+            from src.core.download_queue import DownloadQueue
+            self.queue_class = DownloadQueue
+        except ImportError:
+            self.queue_class = None
+
+    def tearDown(self):
+        """Cleanup test files"""
+        import shutil
+        if Path(self.test_dir).exists():
+            shutil.rmtree(self.test_dir)
+
+    def test_reject_non_youtube_url(self):
+        """Test that non-YouTube URLs are rejected"""
+        if self.queue_class is None:
+            self.fail("DownloadQueue class not found")
+
+        queue = self.queue_class(max_concurrent=3)
+
+        with self.assertRaises(ValueError):
+            queue.add(
+                video_url="https://evil.com/malware.exe",
+                metadata={'title': 'Malware'}
+            )
+
+    def test_reject_file_protocol_url(self):
+        """Test that file:// URLs are rejected"""
+        if self.queue_class is None:
+            self.fail("DownloadQueue class not found")
+
+        queue = self.queue_class(max_concurrent=3)
+
+        with self.assertRaises(ValueError):
+            queue.add(
+                video_url="file:///etc/passwd",
+                metadata={'title': 'Hack'}
+            )
+
+    def test_accept_valid_youtube_urls(self):
+        """Test that valid YouTube URLs are accepted"""
+        if self.queue_class is None:
+            self.fail("DownloadQueue class not found")
+
+        queue = self.queue_class(max_concurrent=3)
+
+        valid_urls = [
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "https://youtube.com/watch?v=dQw4w9WgXcQ",
+            "https://youtu.be/dQw4w9WgXcQ",
+            "https://music.youtube.com/watch?v=dQw4w9WgXcQ",
+        ]
+
+        for url in valid_urls:
+            item_id = queue.add(url, metadata={'title': 'Test'})
+            self.assertIsNotNone(item_id, f"Should accept {url}")
+
+    def test_metadata_is_sanitized(self):
+        """Test that metadata is sanitized on add"""
+        if self.queue_class is None:
+            self.fail("DownloadQueue class not found")
+
+        queue = self.queue_class(max_concurrent=3)
+
+        item_id = queue.add(
+            video_url="https://www.youtube.com/watch?v=test",
+            metadata={'title': '<script>alert("xss")</script>Test Song'}
+        )
+
+        item = queue.get_item(item_id)
+        self.assertNotIn('<script>', item['metadata']['title'])
+
+    def test_thread_safety_concurrent_add(self):
+        """Test that concurrent adds don't corrupt state"""
+        if self.queue_class is None:
+            self.fail("DownloadQueue class not found")
+
+        import threading
+
+        queue = self.queue_class(max_concurrent=3)
+        errors = []
+
+        def add_item(i):
+            try:
+                queue.add(
+                    video_url=f"https://www.youtube.com/watch?v=test{i}",
+                    metadata={'title': f'Song {i}'}
+                )
+            except Exception as e:
+                errors.append(str(e))
+
+        threads = [threading.Thread(target=add_item, args=(i,)) for i in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(len(errors), 0, f"Concurrent adds had errors: {errors}")
+        self.assertEqual(len(queue.get_all()), 20)
+
+
 if __name__ == "__main__":
     unittest.main()

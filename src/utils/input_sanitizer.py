@@ -294,7 +294,7 @@ def sanitize_metadata(metadata: dict) -> dict:
             # Remove HTML tags
             value = re.sub(r'<[^>]+>', '', value)
             # Remove control characters
-            value = re.sub(r'[\x00-\x1f\x7f-0x9f]', '', value)
+            value = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', value)
             # Remove script-related content
             value = re.sub(r'javascript:', '', value, flags=re.IGNORECASE)
             # Trim whitespace

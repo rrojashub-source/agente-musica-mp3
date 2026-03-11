@@ -13,6 +13,7 @@ import yt_dlp
 from PyQt6.QtCore import QThread, pyqtSignal
 import logging
 from pathlib import Path
+from utils.input_sanitizer import validate_path
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -35,23 +36,61 @@ class DownloadWorker(QThread):
     finished = pyqtSignal(dict)  # Metadata when download completes
     error = pyqtSignal(str)      # Error message on failure
 
-    def __init__(self, video_url, output_path):
+    # Allowed base directories for downloads
+    ALLOWED_BASE_DIRS = [
+        Path.home() / "Music",
+        Path.home() / "Downloads",
+        Path.home() / ".nexus_music",
+        Path.cwd() / "downloads",
+        Path.cwd() / "data" / "downloads",
+    ]
+
+    def __init__(self, video_url, output_path, allowed_base_dir=None):
         """
         Initialize download worker
 
         Args:
             video_url (str): YouTube video URL
             output_path (str): Output path for MP3 file
+            allowed_base_dir (str): Base directory that output_path must be within.
+                                    If None, validates against ALLOWED_BASE_DIRS.
+
+        Raises:
+            ValueError: If output_path escapes allowed base directory
         """
         super().__init__()
 
+        # Validate output path to prevent path traversal
+        output_path_str = str(output_path)
+        if allowed_base_dir:
+            is_valid, result = validate_path(output_path_str, str(allowed_base_dir))
+            if not is_valid:
+                raise ValueError(f"Invalid output path: {result}")
+            output_path_str = result  # Use resolved path
+        else:
+            # Validate against known safe directories
+            path_valid = False
+            for base_dir in self.ALLOWED_BASE_DIRS:
+                if base_dir.exists():
+                    is_valid, _ = validate_path(output_path_str, str(base_dir))
+                    if is_valid:
+                        path_valid = True
+                        break
+
+            # If no base dir matched, ensure parent exists and is within CWD
+            if not path_valid:
+                resolved = Path(output_path_str).resolve()
+                parent = resolved.parent
+                parent.mkdir(parents=True, exist_ok=True)
+                logger.warning(f"Output path {resolved} not in known safe dirs, allowing as fallback")
+
         self.video_url = video_url
-        self.output_path = output_path
+        self.output_path = output_path_str
 
         # Configure yt-dlp options
         self.yt_opts = {
             'format': 'bestaudio/best',
-            'outtmpl': str(output_path),
+            'outtmpl': output_path_str,
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',

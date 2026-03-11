@@ -99,6 +99,11 @@ class PluginManager(QObject if HAS_QT else object):
         # Plugin registry
         self._plugins: Dict[str, PluginState] = {}
 
+        # Plugin whitelist (None = allow all, set = only allow listed)
+        self._whitelist: Optional[List[str]] = None
+        self._whitelist_file = self._data_dir / "plugin_whitelist.json"
+        self._load_whitelist()
+
         # Settings file
         self._settings_file = self._data_dir / "plugin_settings.json"
 
@@ -121,28 +126,66 @@ class PluginManager(QObject if HAS_QT else object):
     # Plugin Loading
     # ==========================================
 
+    def _load_whitelist(self) -> None:
+        """Load plugin whitelist from file"""
+        if self._whitelist_file.exists():
+            try:
+                with open(self._whitelist_file, 'r') as f:
+                    data = json.load(f)
+                    self._whitelist = data.get('allowed_plugins', None)
+                    logger.info(f"Plugin whitelist loaded: {self._whitelist}")
+            except (json.JSONDecodeError, IOError) as e:
+                logger.error(f"Failed to load plugin whitelist: {e}")
+                self._whitelist = []  # Deny all on error
+
+    def set_whitelist(self, plugin_names: Optional[List[str]]) -> None:
+        """Set plugin whitelist. None = allow all, list = only allow listed."""
+        self._whitelist = plugin_names
+        try:
+            with open(self._whitelist_file, 'w') as f:
+                json.dump({'allowed_plugins': plugin_names}, f, indent=2)
+        except IOError as e:
+            logger.error(f"Failed to save plugin whitelist: {e}")
+
+    def _is_plugin_allowed(self, plugin_name: str) -> bool:
+        """Check if a plugin is allowed by the whitelist"""
+        if self._whitelist is None:
+            return True  # No whitelist = allow all
+        return plugin_name in self._whitelist
+
     def load_plugins(self) -> int:
         """
-        Discover and load all plugins from plugins directory.
+        Discover and load all whitelisted plugins from plugins directory.
 
         Returns:
             Number of plugins successfully loaded
         """
         loaded_count = 0
 
-        # Add plugins directory to path
-        if str(self._plugins_dir) not in sys.path:
-            sys.path.insert(0, str(self._plugins_dir))
+        # NOTE: Do NOT add plugins_dir to sys.path globally.
+        # Each plugin is loaded via spec_from_file_location with explicit paths.
 
         # Scan for plugin modules
+        if not self._plugins_dir.exists():
+            logger.warning(f"Plugins directory does not exist: {self._plugins_dir}")
+            return 0
+
         for item in self._plugins_dir.iterdir():
             if item.is_dir() and not item.name.startswith('_'):
+                # Check whitelist before loading
+                if not self._is_plugin_allowed(item.name):
+                    logger.warning(f"Plugin '{item.name}' not in whitelist, skipping")
+                    continue
                 # Directory-based plugin
                 plugin_file = item / "plugin.py"
                 if plugin_file.exists():
                     if self._load_plugin_from_file(plugin_file, item.name):
                         loaded_count += 1
             elif item.suffix == '.py' and not item.name.startswith('_'):
+                # Check whitelist before loading
+                if not self._is_plugin_allowed(item.stem):
+                    logger.warning(f"Plugin '{item.stem}' not in whitelist, skipping")
+                    continue
                 # Single-file plugin
                 if self._load_plugin_from_file(item, item.stem):
                     loaded_count += 1
@@ -166,17 +209,29 @@ class PluginManager(QObject if HAS_QT else object):
             True if plugin was loaded successfully
         """
         try:
-            # Load module
+            # Verify plugin file is within plugins directory (prevent path traversal)
+            resolved_file = file_path.resolve()
+            resolved_plugins = self._plugins_dir.resolve()
+            try:
+                resolved_file.relative_to(resolved_plugins)
+            except ValueError:
+                logger.error(f"Plugin file outside plugins directory: {file_path}")
+                return False
+
+            # Load module with explicit file path (no sys.path modification)
             spec = importlib.util.spec_from_file_location(
                 f"nexus_plugin_{plugin_name}",
-                file_path
+                resolved_file,
+                submodule_search_locations=[str(resolved_file.parent)]
             )
             if spec is None or spec.loader is None:
                 logger.error(f"Cannot load plugin spec: {file_path}")
                 return False
 
             module = importlib.util.module_from_spec(spec)
-            sys.modules[spec.name] = module
+            # Register in sys.modules with namespaced name to avoid collisions
+            module_name = f"nexus_plugin_{plugin_name}"
+            sys.modules[module_name] = module
             spec.loader.exec_module(module)
 
             # Find Plugin subclass
@@ -191,11 +246,19 @@ class PluginManager(QObject if HAS_QT else object):
 
             if plugin_class is None:
                 logger.warning(f"No Plugin subclass found in {file_path}")
+                # Clean up module registration
+                sys.modules.pop(module_name, None)
                 return False
 
             # Instantiate plugin
             plugin_instance = plugin_class()
             plugin_name = plugin_instance.metadata.name
+
+            # Re-validate against whitelist using actual plugin name
+            if not self._is_plugin_allowed(plugin_name):
+                logger.warning(f"Plugin '{plugin_name}' (from {file_path}) not in whitelist")
+                sys.modules.pop(module_name, None)
+                return False
 
             # Register plugin
             self._plugins[plugin_name] = PluginState(
@@ -214,8 +277,18 @@ class PluginManager(QObject if HAS_QT else object):
 
             return True
 
+        except ImportError as e:
+            logger.error(f"Import error loading plugin {plugin_name} from {file_path}: {e}")
+            if HAS_QT:
+                self.plugin_error.emit(plugin_name, str(e))
+            return False
+        except (TypeError, AttributeError) as e:
+            logger.error(f"Plugin class error for {plugin_name} from {file_path}: {e}")
+            if HAS_QT:
+                self.plugin_error.emit(plugin_name, str(e))
+            return False
         except Exception as e:
-            logger.error(f"Failed to load plugin from {file_path}: {e}")
+            logger.error(f"Unexpected error loading plugin {plugin_name} from {file_path}: {e}")
             if HAS_QT:
                 self.plugin_error.emit(plugin_name, str(e))
             return False
