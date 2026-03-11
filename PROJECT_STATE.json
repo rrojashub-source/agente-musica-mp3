@@ -1,8 +1,8 @@
 {
   "project": "NEXUS Music Manager",
   "version": "1.0.0",
-  "status": "refactoring_planned",
-  "phase": "pre-refactoring (auditoria completada, plan aprobado)",
+  "status": "refactoring_in_progress",
+  "phase": "Phase 1: Security + Blockers (1.1-1.4 DONE, 1.5-1.7 pending)",
   "commercial_score": 99,
   "audit_score": 6.8,
   "target_score": 8.5,
@@ -64,14 +64,16 @@
         "phase": 1,
         "name": "Seguridad + Blockers",
         "weeks": "1-2",
-        "status": "pending",
+        "status": "in_progress",
         "tasks": [
-          "Auth JWT en Flask + CORS restrictivo + default localhost",
-          "Validar output_path en download_worker",
-          "Whitelist/firma de plugins",
-          "Completar metodos truncados",
-          "Threading locks en audio_player y download_queue",
-          "Especificar excepciones (348 except Exception)"
+          "DONE: Auth token + CORS restrictivo + default 127.0.0.1 + rate limiting (remote_server.py)",
+          "DONE: Validar output_path con validate_path() (download_worker.py)",
+          "DONE: Whitelist plugins + path check + no sys.path global (plugin_manager.py)",
+          "DONE: URL validation + metadata sanitization + threading locks (download_queue.py)",
+          "DONE: Fix regex typo in sanitize_metadata (input_sanitizer.py:297)",
+          "PENDING: Completar metodos truncados (main.py, audio_player, cloud_sync)",
+          "PENDING: Threading locks en audio_player",
+          "PENDING: Especificar excepciones (348 except Exception)"
         ]
       },
       {
@@ -126,8 +128,8 @@
   "git": {
     "remote": "https://github.com/rrojashub-source/agente-musica-mp3.git",
     "branch": "main",
-    "total_commits": 213,
-    "last_commit": "e353d7d - refactor: Restore and restructure project from Z: backup"
+    "total_commits": 215,
+    "last_commit": "69cd1f0 - security(phase-1): Auth JWT, path validation, URL whitelist, plugin security, threading locks"
   },
 
   "decisions": [
@@ -150,6 +152,11 @@
       "date": "2026-03-10",
       "decision": "Plan de refactoring v2 aprobado: 4 fases, 6 semanas",
       "reason": "Auditoria revelo 9 criticos, 8 altos. Score 6.8/10 necesita mejora antes de nuevas features."
+    },
+    {
+      "date": "2026-03-10",
+      "decision": "Phase 1.1-1.4 completadas: auth token, path validation, plugin whitelist, URL validation, threading locks",
+      "reason": "99/99 tests pasando. Criticos C1, C2, C3, A1 resueltos. Quedan C4 (metodos truncados), C5 (audio_player locks), C6 (except Exception)."
     }
   ]
 }
