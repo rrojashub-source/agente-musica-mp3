@@ -11,8 +11,8 @@ Purpose: Import MP3 library into database with GUI
 Created: November 13, 2025
 """
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QLineEdit, QFileDialog, QProgressBar,
+    QVBoxLayout, QHBoxLayout, QPushButton,
+    QLabel, QLineEdit, QFileDialog,
     QTextEdit, QCheckBox, QGroupBox, QMessageBox
 )
 from PyQt6.QtCore import Qt
@@ -20,11 +20,12 @@ import logging
 from pathlib import Path
 
 from workers.library_import_worker import LibraryImportWorker
+from gui.base import BaseTab
 
 logger = logging.getLogger(__name__)
 
 
-class ImportTab(QWidget):
+class ImportTab(BaseTab):
     """
     Import Tab for MP3 Library
 
@@ -38,18 +39,8 @@ class ImportTab(QWidget):
     """
 
     def __init__(self, db_manager, parent=None):
-        """
-        Initialize Import Tab
-
-        Args:
-            db_manager: DatabaseManager instance
-            parent: Parent widget
-        """
-        super().__init__(parent)
-        self.db_manager = db_manager
         self.import_worker = None
-
-        self._init_ui()
+        super().__init__(db_manager=db_manager, parent=parent)
 
     def _init_ui(self):
         """Initialize user interface"""
@@ -106,14 +97,10 @@ class ImportTab(QWidget):
         self.import_button.clicked.connect(self._on_import_clicked)
         layout.addWidget(self.import_button)
 
-        # === PROGRESS ===
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        layout.addWidget(self.progress_bar)
-
-        self.status_label = QLabel("Ready to import")
+        # === PROGRESS + STATUS ===
+        self.add_progress_section(layout)
+        self.status_label.setText("Ready to import")
         self.status_label.setProperty("class", "secondary")  # Use theme color
-        layout.addWidget(self.status_label)
 
         # === RESULTS ===
         results_group = QGroupBox("Import Log")
@@ -188,23 +175,8 @@ class ImportTab(QWidget):
         self._start_import(folder_path, recursive)
 
     def _start_import(self, folder_path: str, recursive: bool):
-        """
-        Start import worker
-
-        Args:
-            folder_path: Folder to scan
-            recursive: Scan recursively
-        """
-        # Disable controls
-        self.import_button.setEnabled(False)
-        self.browse_button.setEnabled(False)
-        self.path_input.setEnabled(False)
-        self.recursive_checkbox.setEnabled(False)
-
-        # Show progress
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setValue(0)
-        self.status_label.setText("Starting import...")
+        """Start import worker."""
+        self._set_controls_enabled(False)
 
         # Clear results
         self.results_text.clear()
@@ -213,28 +185,25 @@ class ImportTab(QWidget):
         self._log(f"🔄 Recursive: {'Yes' if recursive else 'No'}")
         self._log("")
 
-        # Create worker
         self.import_worker = LibraryImportWorker(
-            self.db_manager,
-            folder_path,
-            recursive=recursive
+            self.db, folder_path, recursive=recursive
         )
-
-        # Connect signals
-        self.import_worker.progress.connect(self._on_progress)
+        self.connect_worker(
+            self.import_worker,
+            on_finished=self._on_import_finished,
+            on_error=self._on_import_error,
+            action_button=self.import_button
+        )
         self.import_worker.song_imported.connect(self._on_song_imported)
-        self.import_worker.finished.connect(self._on_import_finished)
-        self.import_worker.error.connect(self._on_import_error)
-
-        # Start worker
         self.import_worker.start()
-
         logger.info(f"Started import: {folder_path}")
 
-    def _on_progress(self, percentage: int, message: str):
-        """Handle progress update"""
-        self.progress_bar.setValue(percentage)
-        self.status_label.setText(message)
+    def _set_controls_enabled(self, enabled: bool):
+        """Enable/disable import controls."""
+        self.import_button.setEnabled(enabled)
+        self.browse_button.setEnabled(enabled)
+        self.path_input.setEnabled(enabled)
+        self.recursive_checkbox.setEnabled(enabled)
 
     def _on_song_imported(self, song_data: dict):
         """Handle song imported signal"""
@@ -249,10 +218,6 @@ class ImportTab(QWidget):
         skipped = result['skipped']
         errors = result.get('errors', [])
 
-        # Hide progress
-        self.progress_bar.setVisible(False)
-
-        # Update status
         self.status_label.setText(
             f"Complete: {success} imported, {skipped} skipped, {failed} failed"
         )
@@ -273,30 +238,22 @@ class ImportTab(QWidget):
             if len(errors) > 5:
                 self._log(f"   ... and {len(errors) - 5} more errors")
 
-        # Total in library
-        total = self.db_manager.get_song_count()
+        total = self.db.get_song_count()
         self._log("")
         self._log(f"📊 Total songs in library: {total}")
 
-        # Re-enable controls
-        self.import_button.setEnabled(True)
-        self.browse_button.setEnabled(True)
-        self.path_input.setEnabled(True)
-        self.recursive_checkbox.setEnabled(True)
+        self._set_controls_enabled(True)
 
-        # Show completion dialog
         if failed == 0:
             QMessageBox.information(
-                self,
-                "Import Complete",
+                self, "Import Complete",
                 f"Successfully imported {success} songs!\n\n"
                 f"Skipped {skipped} duplicates.\n\n"
                 f"Total songs in library: {total}"
             )
         else:
             QMessageBox.warning(
-                self,
-                "Import Completed with Errors",
+                self, "Import Completed with Errors",
                 f"Imported {success} songs.\n"
                 f"Skipped {skipped} duplicates.\n"
                 f"Failed to import {failed} files.\n\n"
@@ -308,24 +265,9 @@ class ImportTab(QWidget):
 
     def _on_import_error(self, error_message: str):
         """Handle fatal import error"""
-        self.progress_bar.setVisible(False)
-        self.status_label.setText(f"Error: {error_message}")
-
-        self._log("")
-        self._log(f"❌ FATAL ERROR: {error_message}")
-
-        # Re-enable controls
-        self.import_button.setEnabled(True)
-        self.browse_button.setEnabled(True)
-        self.path_input.setEnabled(True)
-        self.recursive_checkbox.setEnabled(True)
-
-        QMessageBox.critical(
-            self,
-            "Import Error",
-            f"Failed to import library:\n\n{error_message}"
-        )
-
+        self._log(f"\n❌ FATAL ERROR: {error_message}")
+        self._set_controls_enabled(True)
+        self.show_error(error_message)
         logger.error(f"Import error: {error_message}")
 
     def _log(self, message: str):

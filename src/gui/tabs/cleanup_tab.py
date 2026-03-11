@@ -10,9 +10,9 @@ Purpose: GUI wizard for metadata cleanup workflow
 Created: November 18, 2025
 """
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+    QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QTreeWidget, QTreeWidgetItem, QMessageBox,
-    QProgressBar, QGroupBox, QCheckBox, QSpinBox
+    QGroupBox, QCheckBox, QSpinBox
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QBrush
@@ -22,11 +22,12 @@ from database.manager import DatabaseManager
 from core.metadata_cleaner import MetadataCleaner
 from core.metadata_fetcher import MetadataFetcher
 from core.cleanup_workflow import CleanupWorkflowWorker, CleanupApplier
+from gui.base import BaseTab
 
 logger = logging.getLogger(__name__)
 
 
-class CleanupTab(QWidget):
+class CleanupTab(BaseTab):
     """
     Metadata Cleanup Wizard Tab
 
@@ -40,21 +41,15 @@ class CleanupTab(QWidget):
     """
 
     def __init__(self, db_path: str, parent=None):
-        super().__init__(parent)
         self.db_path = db_path
-        self.db = DatabaseManager(db_path)
-
-        # Initialize components
+        db = DatabaseManager(db_path)
         self.cleaner = MetadataCleaner()
         self.fetcher = None  # Initialize when needed (requires API clients)
-        self.applier = CleanupApplier(self.db)
-
-        # Workflow state
+        self.applier = CleanupApplier(db)
         self.workflow_worker = None
         self.workflow_results = None
         self.preview_changes = []
-
-        self._init_ui()
+        super().__init__(db_manager=db, parent=parent)
 
     def _init_ui(self):
         """Initialize user interface"""
@@ -117,14 +112,9 @@ class CleanupTab(QWidget):
         scan_group.setLayout(scan_layout)
         layout.addWidget(scan_group)
 
-        # === PROGRESS BAR ===
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        layout.addWidget(self.progress_bar)
-
-        # === STATUS LABEL ===
-        self.status_label = QLabel("Ready to scan")
-        layout.addWidget(self.status_label)
+        # === PROGRESS + STATUS ===
+        self.add_progress_section(layout)
+        self.status_label.setText("Ready to scan")
 
         # === STEP 2-4: PREVIEW RESULTS ===
         preview_group = QGroupBox("Step 2-4: Preview Changes")
@@ -250,19 +240,14 @@ class CleanupTab(QWidget):
             download_covers=self.download_covers_check.isChecked()
         )
 
-        # Connect signals
-        self.workflow_worker.progress.connect(self._on_workflow_progress)
+        # Connect worker signals (connect_worker handles progress/finished/error)
+        self.connect_worker(
+            self.workflow_worker,
+            on_finished=self._on_workflow_finished,
+            action_button=self.scan_button
+        )
         self.workflow_worker.step_completed.connect(self._on_step_completed)
-        self.workflow_worker.finished.connect(self._on_workflow_finished)
-        self.workflow_worker.error.connect(self._on_workflow_error)
-
-        # Start workflow
         self.workflow_worker.start()
-
-    def _on_workflow_progress(self, percentage, message):
-        """Handle workflow progress updates"""
-        self.progress_bar.setValue(percentage)
-        self.status_label.setText(message)
 
     def _on_step_completed(self, step_number, results):
         """Handle step completion"""
@@ -273,11 +258,6 @@ class CleanupTab(QWidget):
         self.workflow_results = results
         self.preview_changes = results.get('preview', [])
 
-        # Hide progress
-        self.progress_bar.setVisible(False)
-        self.scan_button.setEnabled(True)
-
-        # Update status
         analysis = results.get('analysis', {})
         cleaned_count = len(results.get('cleaned', []))
         fetched_count = len(results.get('fetched', []))
@@ -300,18 +280,6 @@ class CleanupTab(QWidget):
         self._show_scan_summary(analysis, cleaned_count, fetched_count)
 
         logger.info(f"Workflow complete: {len(self.preview_changes)} changes to preview")
-
-    def _on_workflow_error(self, error_message):
-        """Handle workflow error"""
-        self.progress_bar.setVisible(False)
-        self.scan_button.setEnabled(True)
-        self.status_label.setText(f"Error: {error_message}")
-
-        QMessageBox.critical(
-            self,
-            "Workflow Error",
-            f"Failed to complete workflow:\n\n{error_message}"
-        )
 
     def _populate_preview(self, preview_changes):
         """Populate preview tree with changes"""
