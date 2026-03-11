@@ -32,9 +32,9 @@ import numpy as np
 
 def get_resource_path(relative_path: str) -> Path:
     """Get absolute path to resource, works for dev and PyInstaller bundle."""
-    if hasattr(sys, '_MEIPASS'):
+    if hasattr(sys, '_MEIPASS') or '__compiled__' in globals():
         # Running from PyInstaller bundle
-        base_path = Path(sys._MEIPASS)
+        base_path = Path(sys._MEIPASS) if hasattr(sys, '_MEIPASS') else Path(__file__).parent.parent
     else:
         # Running from source
         base_path = Path(__file__).parent.parent.parent  # src/gui/visualizers -> src
