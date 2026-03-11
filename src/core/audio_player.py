@@ -21,6 +21,7 @@ import os
 import threading
 from typing import Optional, Callable, List
 from enum import Enum
+from utils.constants import AUDIO_SAMPLE_RATE, AUDIO_BUFFER_SIZE, AUDIO_CHANNELS, AUDIO_SAMPLE_WIDTH
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ class AudioPlayer:
         # Initialize pygame.mixer
         try:
             import pygame
-            pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
+            pygame.mixer.init(frequency=AUDIO_SAMPLE_RATE, size=AUDIO_SAMPLE_WIDTH, channels=AUDIO_CHANNELS, buffer=AUDIO_BUFFER_SIZE)
             self._pygame = pygame
 
             # Set up end-of-track event

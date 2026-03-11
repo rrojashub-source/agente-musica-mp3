@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 import requests
+from utils.constants import API_DEFAULT_TIMEOUT
 
 from PyQt6.QtWidgets import (
     QWizard, QWizardPage, QVBoxLayout, QHBoxLayout, QLabel,
@@ -396,7 +397,7 @@ class GeniusAPIPage(QWizardPage):
             response = requests.get(
                 "https://api.genius.com/search?q=test",
                 headers=headers,
-                timeout=10
+                timeout=API_DEFAULT_TIMEOUT
             )
 
             if response.status_code == 200:

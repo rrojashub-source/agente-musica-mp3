@@ -16,6 +16,7 @@ import time
 from typing import List, Dict, Optional
 from pathlib import Path
 from utils.rate_limiter import RateLimiter
+from utils.constants import API_DEFAULT_TIMEOUT
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -117,7 +118,7 @@ class MusicBrainzClient:
         """
         try:
             # Download image
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, timeout=API_DEFAULT_TIMEOUT)
 
             if response.status_code == 200:
                 # Save to file

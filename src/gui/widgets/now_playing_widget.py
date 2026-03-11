@@ -26,6 +26,7 @@ from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QPointF
 from PyQt6.QtGui import QPixmap, QPainter, QColor, QPen, QBrush, QPolygonF, QPainterPath
 from core.audio_player import PlaybackState
 from core.cover_art_manager import CoverArtManager
+from utils.constants import VISUALIZER_FRAME_INTERVAL_MS, ALBUM_ART_THUMBNAIL_SIZE
 
 logger = logging.getLogger(__name__)
 
@@ -404,7 +405,7 @@ class NowPlayingWidget(QWidget):
 
         # Album art thumbnail (100x100)
         self.album_art_label = QLabel()
-        self.album_art_label.setFixedSize(100, 100)
+        self.album_art_label.setFixedSize(ALBUM_ART_THUMBNAIL_SIZE, ALBUM_ART_THUMBNAIL_SIZE)
         self.album_art_label.setFrameStyle(QFrame.Shape.Box)
         # Let theme handle colors
         self.album_art_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -621,7 +622,7 @@ class NowPlayingWidget(QWidget):
     def _init_timer(self):
         """Initialize position update timer"""
         self.position_timer = QTimer(self)
-        self.position_timer.setInterval(33)  # 33ms updates (30 FPS for smooth visualizer)
+        self.position_timer.setInterval(VISUALIZER_FRAME_INTERVAL_MS)  # 33ms updates (30 FPS for smooth visualizer)
         self.position_timer.timeout.connect(self._update_position)
 
     def _connect_signals(self):
@@ -688,7 +689,7 @@ class NowPlayingWidget(QWidget):
             pixmap = QPixmap(album_art_path)
             if not pixmap.isNull():
                 scaled = pixmap.scaled(
-                    100, 100,
+                    ALBUM_ART_THUMBNAIL_SIZE, ALBUM_ART_THUMBNAIL_SIZE,
                     Qt.AspectRatioMode.KeepAspectRatio,
                     Qt.TransformationMode.SmoothTransformation
                 )
@@ -785,7 +786,7 @@ class NowPlayingWidget(QWidget):
                     pixmap = QPixmap(str(cover_path))
                     if not pixmap.isNull():
                         scaled = pixmap.scaled(
-                            100, 100,
+                            ALBUM_ART_THUMBNAIL_SIZE, ALBUM_ART_THUMBNAIL_SIZE,
                             Qt.AspectRatioMode.KeepAspectRatio,
                             Qt.TransformationMode.SmoothTransformation
                         )
@@ -822,7 +823,7 @@ class NowPlayingWidget(QWidget):
 
                     if not pixmap.isNull():
                         scaled = pixmap.scaled(
-                            100, 100,
+                            ALBUM_ART_THUMBNAIL_SIZE, ALBUM_ART_THUMBNAIL_SIZE,
                             Qt.AspectRatioMode.KeepAspectRatio,
                             Qt.TransformationMode.SmoothTransformation
                         )

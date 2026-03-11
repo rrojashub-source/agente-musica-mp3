@@ -11,6 +11,7 @@ import sys
 import threading
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+from utils.constants import DB_CONNECTION_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ class DatabaseManager:
         """Create a new optimized SQLite connection"""
         conn = sqlite3.connect(
             str(self.db_path),
-            timeout=30.0,  # 30 second timeout
+            timeout=DB_CONNECTION_TIMEOUT,
             check_same_thread=True  # Enforce thread safety
         )
         conn.row_factory = sqlite3.Row

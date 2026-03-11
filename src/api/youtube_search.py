@@ -20,6 +20,7 @@ import logging
 import hashlib
 from utils.input_sanitizer import sanitize_query
 from utils.rate_limiter import RateLimiter
+from utils.constants import API_CACHE_SIZE, API_DEFAULT_RESULTS, API_MAX_RESULTS, API_QUERY_MAX_LENGTH
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ class YouTubeSearcher:
         results = searcher.search("The Beatles", max_results=10)
     """
 
-    def __init__(self, api_key, cache_size=128):
+    def __init__(self, api_key, cache_size=API_CACHE_SIZE):
         """
         Initialize YouTube searcher with API key
 
@@ -49,7 +50,7 @@ class YouTubeSearcher:
         self._retry_attempts = 3
         self._retry_delay = 1  # seconds
 
-    def search(self, query, max_results=20, use_cache=True):
+    def search(self, query, max_results=API_DEFAULT_RESULTS, use_cache=True):
         """
         Search for videos on YouTube with caching and retry logic
 
@@ -73,14 +74,14 @@ class YouTubeSearcher:
 
         # Sanitize query (remove injection attempts, control chars, truncate)
         original_query = query
-        query = sanitize_query(query, max_length=500)
+        query = sanitize_query(query, max_length=API_QUERY_MAX_LENGTH)
 
         if not query:
             logger.warning("Query became empty after sanitization")
             return []
 
         # Limit max_results to YouTube API maximum
-        max_results = min(max_results, 50)
+        max_results = min(max_results, API_MAX_RESULTS)
 
         # Check cache first
         if use_cache:

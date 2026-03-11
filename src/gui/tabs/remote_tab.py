@@ -18,6 +18,7 @@ import base64
 
 from services.remote_server import RemoteServer
 from translations import tr
+from utils.constants import DEFAULT_REMOTE_PORT, PORT_RANGE_MIN, PORT_RANGE_MAX
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +91,8 @@ class RemoteTab(QWidget):
         port_row = QHBoxLayout()
         port_row.addWidget(QLabel(tr("remote_port")))
         self.port_spin = QSpinBox()
-        self.port_spin.setRange(1024, 65535)
-        self.port_spin.setValue(8080)
+        self.port_spin.setRange(PORT_RANGE_MIN, PORT_RANGE_MAX)
+        self.port_spin.setValue(DEFAULT_REMOTE_PORT)
         self.port_spin.setFixedWidth(80)
         port_row.addWidget(self.port_spin)
         port_row.addStretch()

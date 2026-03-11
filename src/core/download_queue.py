@@ -19,6 +19,7 @@ from typing import Dict, List, Optional, Callable
 from PyQt6.QtCore import QObject, pyqtSignal
 from workers.download_worker import DownloadWorker
 from utils.input_sanitizer import sanitize_filename, sanitize_url, sanitize_metadata
+from utils.constants import MAX_CONCURRENT_DOWNLOADS, MAX_DOWNLOAD_RETRIES
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ class DownloadQueue(QObject):
     item_failed = pyqtSignal(str, str)      # item_id, error
     queue_completed = pyqtSignal()          # All items done
 
-    def __init__(self, max_concurrent=50, max_retries=3, db_manager=None, config_manager=None):
+    def __init__(self, max_concurrent=MAX_CONCURRENT_DOWNLOADS, max_retries=MAX_DOWNLOAD_RETRIES, db_manager=None, config_manager=None):
         """
         Initialize download queue
 

@@ -43,6 +43,7 @@ def get_resource_path(relative_path: str) -> Path:
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QSurfaceFormat
+from utils.constants import ANIMATION_FRAME_INTERVAL_MS
 
 # Try to import OpenGL - graceful fallback if not available
 try:
@@ -127,7 +128,7 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
         # Animation timer (60 FPS)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._on_timer)
-        self.timer.start(16)  # ~60 FPS
+        self.timer.start(ANIMATION_FRAME_INTERVAL_MS)  # ~60 FPS
 
         # Widget settings
         self.setMinimumSize(200, 200)

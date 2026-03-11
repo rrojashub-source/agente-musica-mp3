@@ -16,6 +16,7 @@ import logging
 import requests
 from typing import Optional
 from utils.rate_limiter import RateLimiter
+from utils.constants import API_DEFAULT_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class GeniusClient:
             self.genius = lyricsgenius.Genius(self.access_token)
             self.genius.verbose = False  # Disable console output
             self.genius.remove_section_headers = True  # Clean lyrics
-            self.genius.timeout = 10  # 10 second timeout to prevent freezing
+            self.genius.timeout = API_DEFAULT_TIMEOUT
             logger.info("GeniusClient initialized successfully")
         except ImportError:
             logger.error("lyricsgenius library not installed - run: pip install lyricsgenius")

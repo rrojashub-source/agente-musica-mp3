@@ -20,6 +20,7 @@ import threading
 import random
 
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer
+from utils.constants import POSITION_UPDATE_INTERVAL_MS
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +143,7 @@ class PlayerService(QObject):
         """Setup timer for position updates"""
         self._position_timer = QTimer()
         self._position_timer.timeout.connect(self._update_position)
-        self._position_timer.setInterval(250)  # 4 updates per second
+        self._position_timer.setInterval(POSITION_UPDATE_INTERVAL_MS)  # 4 updates per second
 
     def _update_position(self):
         """Update position and emit signal"""

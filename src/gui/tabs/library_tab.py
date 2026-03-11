@@ -29,6 +29,7 @@ from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl, QThread, pyqtSlot
 from PyQt6.QtGui import QColor, QDragEnterEvent, QDropEvent, QBrush
 
 from core.cover_art_manager import CoverArtManager
+from utils.constants import TRACK_END_CHECK_INTERVAL_MS
 
 logger = logging.getLogger(__name__)
 
@@ -516,7 +517,7 @@ class LibraryTab(QWidget):
         """Start monitoring for end of song to auto-play next"""
         if not hasattr(self, '_end_monitor_timer'):
             self._end_monitor_timer = QTimer(self)
-            self._end_monitor_timer.setInterval(1000)  # Check every second
+            self._end_monitor_timer.setInterval(TRACK_END_CHECK_INTERVAL_MS)  # Check every second
             self._end_monitor_timer.timeout.connect(self._check_song_ended)
 
         self._end_monitor_timer.start()

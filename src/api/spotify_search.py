@@ -23,6 +23,7 @@ from time import sleep
 import hashlib
 from utils.input_sanitizer import sanitize_query
 from utils.rate_limiter import RateLimiter
+from utils.constants import API_CACHE_SIZE, API_DEFAULT_RESULTS, API_MAX_RESULTS, API_QUERY_MAX_LENGTH
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ class SpotifySearcher:
         artists = searcher.search_artists("Queen")
     """
 
-    def __init__(self, client_id, client_secret, cache_size=128):
+    def __init__(self, client_id, client_secret, cache_size=API_CACHE_SIZE):
         """
         Initialize Spotify searcher with OAuth credentials
 
@@ -70,7 +71,7 @@ class SpotifySearcher:
 
         logger.info("SpotifySearcher initialized successfully")
 
-    def search_tracks(self, query, limit=20, use_cache=True):
+    def search_tracks(self, query, limit=API_DEFAULT_RESULTS, use_cache=True):
         """
         Search for tracks on Spotify with caching and retry logic
 
@@ -94,14 +95,14 @@ class SpotifySearcher:
             return []
 
         # Sanitize query (remove injection attempts, control chars)
-        query = sanitize_query(query, max_length=500)
+        query = sanitize_query(query, max_length=API_QUERY_MAX_LENGTH)
 
         if not query:
             logger.warning("Query became empty after sanitization")
             return []
 
         # Limit to Spotify maximum
-        limit = min(limit, 50)
+        limit = min(limit, API_MAX_RESULTS)
 
         # Check cache first
         if use_cache:
@@ -145,7 +146,7 @@ class SpotifySearcher:
 
         return []
 
-    def search_albums(self, query, limit=20, use_cache=True):
+    def search_albums(self, query, limit=API_DEFAULT_RESULTS, use_cache=True):
         """
         Search for albums on Spotify with caching and retry logic
 
@@ -165,14 +166,14 @@ class SpotifySearcher:
             return []
 
         # Sanitize query (remove injection attempts, control chars)
-        query = sanitize_query(query, max_length=500)
+        query = sanitize_query(query, max_length=API_QUERY_MAX_LENGTH)
 
         if not query:
             logger.warning("Query became empty after sanitization")
             return []
 
         # Limit to Spotify maximum
-        limit = min(limit, 50)
+        limit = min(limit, API_MAX_RESULTS)
 
         # Check cache first
         if use_cache:
@@ -216,7 +217,7 @@ class SpotifySearcher:
 
         return []
 
-    def search_artists(self, query, limit=20, use_cache=True):
+    def search_artists(self, query, limit=API_DEFAULT_RESULTS, use_cache=True):
         """
         Search for artists on Spotify with caching and retry logic
 
@@ -236,14 +237,14 @@ class SpotifySearcher:
             return []
 
         # Sanitize query (remove injection attempts, control chars)
-        query = sanitize_query(query, max_length=500)
+        query = sanitize_query(query, max_length=API_QUERY_MAX_LENGTH)
 
         if not query:
             logger.warning("Query became empty after sanitization")
             return []
 
         # Limit to Spotify maximum
-        limit = min(limit, 50)
+        limit = min(limit, API_MAX_RESULTS)
 
         # Check cache first
         if use_cache:

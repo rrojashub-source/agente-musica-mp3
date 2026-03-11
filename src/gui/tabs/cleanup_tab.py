@@ -23,6 +23,7 @@ from core.metadata_cleaner import MetadataCleaner
 from core.metadata_fetcher import MetadataFetcher
 from core.cleanup_workflow import CleanupWorkflowWorker, CleanupApplier
 from gui.base import BaseTab
+from utils.constants import CONFIDENCE_THRESHOLD_DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,7 @@ class CleanupTab(BaseTab):
         confidence_label = QLabel("Min. Confidence:")
         self.confidence_spin = QSpinBox()
         self.confidence_spin.setRange(50, 100)
-        self.confidence_spin.setValue(70)
+        self.confidence_spin.setValue(CONFIDENCE_THRESHOLD_DEFAULT)
         self.confidence_spin.setSuffix("%")
         self.confidence_spin.setToolTip(
             "Minimum confidence to accept metadata matches (70% recommended)"

@@ -28,6 +28,7 @@ from core.audio_feature_extractor import (
 )
 from core.bpm_detector import BPMDetector
 from core.mood_classifier import MoodClassifier, MOODS as _MOODS
+from utils.constants import FILE_HASH_CHUNK_SIZE
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +192,7 @@ class AudioEmbeddings:
             size = path.stat().st_size
 
             with open(path, 'rb') as f:
-                first_chunk = f.read(4096)
+                first_chunk = f.read(FILE_HASH_CHUNK_SIZE)
 
             content = f"{size}:".encode() + first_chunk
             return hashlib.md5(content).hexdigest()

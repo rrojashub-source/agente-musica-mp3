@@ -27,6 +27,7 @@ import time
 import logging
 from functools import wraps
 from typing import Dict, Optional, Callable, Any
+from utils.constants import API_MAX_RETRIES
 
 logger = logging.getLogger(__name__)
 
@@ -234,7 +235,7 @@ def rate_limited(service: str, tokens: int = 1):
     return decorator
 
 
-def with_retry_on_rate_limit(service: str, max_retries: int = 3, base_delay: float = 1.0):
+def with_retry_on_rate_limit(service: str, max_retries: int = API_MAX_RETRIES, base_delay: float = 1.0):
     """
     Decorator to retry on rate limit errors (429)
 

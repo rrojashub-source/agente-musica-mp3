@@ -6,6 +6,7 @@ handles commands from mobile interface, updates now playing info.
 """
 import logging
 from PyQt6.QtCore import QObject, QTimer
+from utils.constants import REMOTE_UPDATE_INTERVAL_MS
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class RemoteController(QObject):
             # Start timer to update now_playing info for mobile interface
             self._remote_update_timer = QTimer()
             self._remote_update_timer.timeout.connect(self.update_now_playing)
-            self._remote_update_timer.start(500)
+            self._remote_update_timer.start(REMOTE_UPDATE_INTERVAL_MS)
 
             # Force immediate update
             QTimer.singleShot(100, self.update_now_playing)

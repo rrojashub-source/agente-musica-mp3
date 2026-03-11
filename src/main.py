@@ -48,6 +48,7 @@ from core.theme_manager import ThemeManager
 from core.keyboard_shortcuts import KeyboardShortcutManager
 from config_manager import ConfigManager
 from api.genius_client import GeniusClient
+from utils.constants import MAX_CONCURRENT_DOWNLOADS, MAX_DOWNLOAD_RETRIES, MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT
 
 # Import controllers
 from controllers.playback_controller import PlaybackController
@@ -64,7 +65,7 @@ class MusicPlayerApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(tr("app_title"))
-        self.setGeometry(100, 100, 1400, 900)
+        self.setGeometry(100, 100, MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT)
 
         # Phase 1: Initialize services
         self._init_services()
@@ -131,8 +132,8 @@ class MusicPlayerApp(QMainWindow):
 
         # Download queue
         self.download_queue = DownloadQueue(
-            max_concurrent=50,
-            max_retries=3,
+            max_concurrent=MAX_CONCURRENT_DOWNLOADS,
+            max_retries=MAX_DOWNLOAD_RETRIES,
             db_manager=self.db_manager,
             config_manager=self.config_manager
         )
