@@ -12,16 +12,16 @@ Purpose: Batch rename MP3 files based on metadata patterns
 Created: November 13, 2025
 """
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+    QVBoxLayout, QHBoxLayout, QPushButton,
     QComboBox, QLabel, QTreeWidget, QTreeWidgetItem,
-    QMessageBox, QProgressBar, QGroupBox, QLineEdit
+    QMessageBox, QGroupBox, QLineEdit
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
-from PyQt6.QtGui import QIcon
 import logging
 import os
 
 from core.batch_renamer import BatchRenamer
+from gui.base import BaseTab
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ class RenameWorker(QThread):
             self.error.emit(str(e))
 
 
-class RenameTab(QWidget):
+class RenameTab(BaseTab):
     """
     Batch Rename Tab
 
@@ -84,13 +84,10 @@ class RenameTab(QWidget):
     """
 
     def __init__(self, db_manager, parent=None):
-        super().__init__(parent)
-        self.db = db_manager
-        self.renamer = BatchRenamer(self.db)
+        self.renamer = BatchRenamer(db_manager)
         self.rename_worker = None
         self.last_result = None
-
-        self._init_ui()
+        super().__init__(db_manager=db_manager, parent=parent)
 
     def _init_ui(self):
         """Initialize user interface"""
@@ -144,14 +141,9 @@ class RenameTab(QWidget):
         self.preview_button.clicked.connect(self._on_preview_clicked)
         layout.addWidget(self.preview_button)
 
-        # === PROGRESS BAR ===
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        layout.addWidget(self.progress_bar)
-
-        # === STATUS LABEL ===
-        self.status_label = QLabel("Ready to rename files")
-        layout.addWidget(self.status_label)
+        # === PROGRESS + STATUS ===
+        self.add_progress_section(layout)
+        self.status_label.setText("Ready to rename files")
 
         # === RESULTS TREE ===
         results_group = QGroupBox("Preview / Results")
@@ -200,118 +192,77 @@ class RenameTab(QWidget):
 
     def _on_preview_clicked(self):
         """Handle preview button click"""
-        # Get all songs
         songs = self.db.get_all_songs()
 
         if len(songs) == 0:
             QMessageBox.information(
-                self,
-                "Empty Library",
+                self, "Empty Library",
                 "No songs in library to rename."
             )
             return
 
         logger.info(f"Previewing rename for {len(songs)} songs")
 
-        # Disable buttons during preview
-        self.preview_button.setEnabled(False)
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setValue(0)
-        self.status_label.setText("Generating preview...")
-
-        # Get settings
         template = self.template_combo.currentData()
         find = self.find_input.text()
         replace = self.replace_input.text()
         case = self.case_combo.currentData()
 
-        # Create worker thread (dry_run=True for preview)
         self.rename_worker = RenameWorker(
-            self.renamer,
-            songs,
-            template,
-            find=find,
-            replace=replace,
-            case=case,
-            dry_run=True
+            self.renamer, songs, template,
+            find=find, replace=replace, case=case, dry_run=True
         )
-        self.rename_worker.progress.connect(self._on_progress)
-        self.rename_worker.finished.connect(self._on_preview_finished)
-        self.rename_worker.error.connect(self._on_error)
+        self.connect_worker(
+            self.rename_worker,
+            on_finished=self._on_preview_finished,
+            on_error=self._on_worker_error,
+            action_button=self.preview_button
+        )
         self.rename_worker.start()
 
     def _on_apply_clicked(self):
         """Handle apply button click"""
-        # Confirmation dialog
-        reply = QMessageBox.question(
-            self,
-            "Confirm Rename",
+        if not self.show_confirm(
             f"Apply rename to all files?\n\n"
             f"Template: {self.template_combo.currentText()}\n"
             f"This will rename files permanently.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-
-        if reply == QMessageBox.StandardButton.No:
+            "Confirm Rename"
+        ):
             return
 
-        # Get all songs
         songs = self.db.get_all_songs()
-
         logger.info(f"Renaming {len(songs)} songs")
 
-        # Disable buttons during execution
         self.apply_button.setEnabled(False)
-        self.preview_button.setEnabled(False)
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setValue(0)
-        self.status_label.setText("Renaming files...")
 
-        # Get settings
         template = self.template_combo.currentData()
         find = self.find_input.text()
         replace = self.replace_input.text()
         case = self.case_combo.currentData()
 
-        # Create worker thread (dry_run=False for actual execution)
         self.rename_worker = RenameWorker(
-            self.renamer,
-            songs,
-            template,
-            find=find,
-            replace=replace,
-            case=case,
-            dry_run=False
+            self.renamer, songs, template,
+            find=find, replace=replace, case=case, dry_run=False
         )
-        self.rename_worker.progress.connect(self._on_progress)
-        self.rename_worker.finished.connect(self._on_apply_finished)
-        self.rename_worker.error.connect(self._on_error)
+        self.connect_worker(
+            self.rename_worker,
+            on_finished=self._on_apply_finished,
+            on_error=self._on_worker_error,
+            action_button=self.preview_button
+        )
         self.rename_worker.start()
-
-    def _on_progress(self, percentage, message):
-        """Handle progress updates"""
-        self.progress_bar.setValue(percentage)
-        self.status_label.setText(message)
 
     def _on_preview_finished(self, result):
         """Handle preview completion"""
         self.last_result = result
 
-        # Hide progress
-        self.progress_bar.setVisible(False)
-        self.preview_button.setEnabled(True)
-
-        # Update status
         total_songs = result['success']
         self.status_label.setText(
             f"Preview: {total_songs} files will be renamed"
         )
 
-        # Populate preview tree
         self._populate_preview(result['preview'])
 
-        # Enable apply button if preview successful
         if result['success'] > 0:
             self.apply_button.setEnabled(True)
 
@@ -320,28 +271,13 @@ class RenameTab(QWidget):
     def _on_apply_finished(self, result):
         """Handle execution completion"""
         self.last_result = result
-
-        # Hide progress
-        self.progress_bar.setVisible(False)
-        self.preview_button.setEnabled(True)
-
-        # Show results
         self._show_results(result)
-
         logger.info(f"Rename complete: {result['success']} success, {result['failed']} failed")
 
-    def _on_error(self, error_message):
-        """Handle rename error"""
-        self.progress_bar.setVisible(False)
-        self.preview_button.setEnabled(True)
+    def _on_worker_error(self, error_message):
+        """Handle worker error — ensure apply button is disabled"""
         self.apply_button.setEnabled(False)
-        self.status_label.setText(f"Error: {error_message}")
-
-        QMessageBox.critical(
-            self,
-            "Rename Error",
-            f"Failed to rename files:\n\n{error_message}"
-        )
+        self.show_error(error_message)
 
     def _populate_preview(self, preview_list):
         """Populate results tree with preview data"""

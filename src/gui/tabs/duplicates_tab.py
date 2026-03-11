@@ -11,16 +11,17 @@ Created: November 13, 2025
 Updated: November 20, 2025 (UX improvements: visual indicators, dark mode colors)
 """
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+    QVBoxLayout, QHBoxLayout, QPushButton,
     QComboBox, QSlider, QLabel, QTreeWidget, QTreeWidgetItem,
-    QMessageBox, QProgressBar, QGroupBox
+    QMessageBox, QGroupBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
-from PyQt6.QtGui import QIcon, QColor, QBrush, QFont
+from PyQt6.QtGui import QColor, QBrush, QFont
 import logging
 import os
 
 from core.duplicate_detector import DuplicateDetector
+from gui.base import BaseTab
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ class ScanWorker(QThread):
             self.error.emit(str(e))
 
 
-class DuplicatesTab(QWidget):
+class DuplicatesTab(BaseTab):
     """
     Duplicates Detection Tab
 
@@ -72,13 +73,10 @@ class DuplicatesTab(QWidget):
     """
 
     def __init__(self, db_manager, parent=None):
-        super().__init__(parent)
-        self.db = db_manager
-        self.detector = DuplicateDetector(self.db)
+        self.detector = DuplicateDetector(db_manager)
         self.scan_worker = None
         self.duplicate_groups = []
-
-        self._init_ui()
+        super().__init__(db_manager=db_manager, parent=parent)
 
     def _init_ui(self):
         """Initialize user interface"""
@@ -126,14 +124,9 @@ class DuplicatesTab(QWidget):
         controls_group.setLayout(controls_layout)
         layout.addWidget(controls_group)
 
-        # === PROGRESS BAR ===
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        layout.addWidget(self.progress_bar)
-
-        # === STATUS LABEL ===
-        self.status_label = QLabel("Ready to scan")
-        layout.addWidget(self.status_label)
+        # === PROGRESS + STATUS ===
+        self.add_progress_section(layout)
+        self.status_label.setText("Ready to scan")
 
         # === RESULTS TREE ===
         results_group = QGroupBox("Duplicate Groups")
@@ -185,64 +178,33 @@ class DuplicatesTab(QWidget):
             logger.warning("Scan already in progress")
             return
 
-        # Get selected method
         method = self.method_combo.currentData()
-
         logger.info(f"Starting duplicate scan (method: {method})")
 
-        # Disable scan button during scan
-        self.scan_button.setEnabled(False)
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setValue(0)
-        self.status_label.setText("Scanning...")
-
-        # Create worker thread
         self.scan_worker = ScanWorker(self.detector, method)
-        self.scan_worker.progress.connect(self._on_scan_progress)
-        self.scan_worker.finished.connect(self._on_scan_finished)
-        self.scan_worker.error.connect(self._on_scan_error)
+        self.connect_worker(
+            self.scan_worker,
+            on_finished=self._on_scan_finished,
+            action_button=self.scan_button
+        )
         self.scan_worker.start()
-
-    def _on_scan_progress(self, percentage, message):
-        """Handle scan progress updates"""
-        self.progress_bar.setValue(percentage)
-        self.status_label.setText(message)
 
     def _on_scan_finished(self, duplicate_groups):
         """Handle scan completion"""
         self.duplicate_groups = duplicate_groups
 
-        # Hide progress
-        self.progress_bar.setVisible(False)
-        self.scan_button.setEnabled(True)
-
-        # Update status
         total_songs = sum(len(group['songs']) for group in duplicate_groups)
         self.status_label.setText(
             f"Found {len(duplicate_groups)} duplicate groups ({total_songs} files)"
         )
 
-        # Populate results
         self._populate_results(duplicate_groups)
 
-        # Enable action buttons if duplicates found
         if len(duplicate_groups) > 0:
             self.delete_button.setEnabled(True)
             self.select_all_button.setEnabled(True)
 
         logger.info(f"Scan complete: {len(duplicate_groups)} groups found")
-
-    def _on_scan_error(self, error_message):
-        """Handle scan error"""
-        self.progress_bar.setVisible(False)
-        self.scan_button.setEnabled(True)
-        self.status_label.setText(f"Error: {error_message}")
-
-        QMessageBox.critical(
-            self,
-            "Scan Error",
-            f"Failed to scan library:\n\n{error_message}"
-        )
 
     def _populate_results(self, duplicate_groups):
         """Populate results tree with duplicate groups"""

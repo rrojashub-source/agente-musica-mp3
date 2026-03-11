@@ -11,17 +11,17 @@ Purpose: Auto-organize music library into structured folders
 Created: November 13, 2025
 """
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+    QVBoxLayout, QHBoxLayout, QPushButton,
     QComboBox, QLabel, QTreeWidget, QTreeWidgetItem,
-    QMessageBox, QProgressBar, QGroupBox, QLineEdit,
+    QMessageBox, QGroupBox, QLineEdit,
     QFileDialog, QRadioButton, QButtonGroup
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
-from PyQt6.QtGui import QIcon
 import logging
 import os
 
 from core.library_organizer import LibraryOrganizer
+from gui.base import BaseTab
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class OrganizeWorker(QThread):
             self.error.emit(str(e))
 
 
-class OrganizeTab(QWidget):
+class OrganizeTab(BaseTab):
     """
     Library Organization Tab
 
@@ -83,13 +83,10 @@ class OrganizeTab(QWidget):
     """
 
     def __init__(self, db_manager, parent=None):
-        super().__init__(parent)
-        self.db = db_manager
-        self.organizer = LibraryOrganizer(self.db)
+        self.organizer = LibraryOrganizer(db_manager)
         self.organize_worker = None
         self.last_result = None
-
-        self._init_ui()
+        super().__init__(db_manager=db_manager, parent=parent)
 
     def _init_ui(self):
         """Initialize user interface"""
@@ -143,14 +140,9 @@ class OrganizeTab(QWidget):
         self.preview_button.clicked.connect(self._on_preview_clicked)
         layout.addWidget(self.preview_button)
 
-        # === PROGRESS BAR ===
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        layout.addWidget(self.progress_bar)
-
-        # === STATUS LABEL ===
-        self.status_label = QLabel("Ready to organize library")
-        layout.addWidget(self.status_label)
+        # === PROGRESS + STATUS ===
+        self.add_progress_section(layout)
+        self.status_label.setText("Ready to organize library")
 
         # === RESULTS TREE ===
         results_group = QGroupBox("Preview / Results")
@@ -215,100 +207,68 @@ class OrganizeTab(QWidget):
 
     def _on_preview_clicked(self):
         """Handle preview button click"""
-        # Validate settings
         if not self.path_input.text():
-            QMessageBox.warning(
-                self,
-                "Missing Path",
-                "Please select a base directory first."
-            )
+            self.show_warning("Please select a base directory first.", "Missing Path")
             return
 
-        # Get all songs
         songs = self.db.get_all_songs()
 
         if len(songs) == 0:
             QMessageBox.information(
-                self,
-                "Empty Library",
+                self, "Empty Library",
                 "No songs in library to organize."
             )
             return
 
         logger.info(f"Previewing organization for {len(songs)} songs")
 
-        # Disable buttons during preview
-        self.preview_button.setEnabled(False)
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setValue(0)
-        self.status_label.setText("Generating preview...")
-
-        # Get settings
         base_path = self.path_input.text()
         template = self.template_combo.currentData()
         move = self.move_radio.isChecked()
 
-        # Create worker thread (dry_run=True for preview)
         self.organize_worker = OrganizeWorker(
-            self.organizer,
-            base_path,
-            template,
-            songs,
-            move=move,
-            dry_run=True
+            self.organizer, base_path, template, songs,
+            move=move, dry_run=True
         )
-        self.organize_worker.progress.connect(self._on_progress)
-        self.organize_worker.finished.connect(self._on_preview_finished)
-        self.organize_worker.error.connect(self._on_error)
+        self.connect_worker(
+            self.organize_worker,
+            on_finished=self._on_preview_finished,
+            on_error=self._on_worker_error,
+            action_button=self.preview_button
+        )
         self.organize_worker.start()
 
     def _on_execute_clicked(self):
         """Handle execute button click"""
-        # Confirmation dialog
-        reply = QMessageBox.question(
-            self,
-            "Confirm Organization",
+        if not self.show_confirm(
             f"Organize library with current settings?\n\n"
             f"Template: {self.template_combo.currentText()}\n"
             f"Base Path: {self.path_input.text()}\n"
             f"Mode: {'Move' if self.move_radio.isChecked() else 'Copy'}\n\n"
             f"This will {'move' if self.move_radio.isChecked() else 'copy'} files to new locations.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-
-        if reply == QMessageBox.StandardButton.No:
+            "Confirm Organization"
+        ):
             return
 
-        # Get all songs
         songs = self.db.get_all_songs()
-
         logger.info(f"Organizing {len(songs)} songs")
 
-        # Disable buttons during execution
         self.execute_button.setEnabled(False)
-        self.preview_button.setEnabled(False)
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setValue(0)
-        self.status_label.setText("Organizing library...")
 
-        # Get settings
         base_path = self.path_input.text()
         template = self.template_combo.currentData()
         move = self.move_radio.isChecked()
 
-        # Create worker thread (dry_run=False for actual execution)
         self.organize_worker = OrganizeWorker(
-            self.organizer,
-            base_path,
-            template,
-            songs,
-            move=move,
-            dry_run=False
+            self.organizer, base_path, template, songs,
+            move=move, dry_run=False
         )
-        self.organize_worker.progress.connect(self._on_progress)
-        self.organize_worker.finished.connect(self._on_execute_finished)
-        self.organize_worker.error.connect(self._on_error)
+        self.connect_worker(
+            self.organize_worker,
+            on_finished=self._on_execute_finished,
+            on_error=self._on_worker_error,
+            action_button=self.preview_button
+        )
         self.organize_worker.start()
 
     def _on_rollback_clicked(self):
@@ -327,29 +287,17 @@ class OrganizeTab(QWidget):
             self._show_results(result)
             self.rollback_button.setEnabled(False)
 
-    def _on_progress(self, percentage, message):
-        """Handle progress updates"""
-        self.progress_bar.setValue(percentage)
-        self.status_label.setText(message)
-
     def _on_preview_finished(self, result):
         """Handle preview completion"""
         self.last_result = result
 
-        # Hide progress
-        self.progress_bar.setVisible(False)
-        self.preview_button.setEnabled(True)
-
-        # Update status
         total_songs = result['success']
         self.status_label.setText(
             f"Preview: {total_songs} files will be organized"
         )
 
-        # Populate preview tree
         self._populate_preview(result['preview'])
 
-        # Enable execute button if preview successful
         if result['success'] > 0:
             self.execute_button.setEnabled(True)
 
@@ -358,32 +306,17 @@ class OrganizeTab(QWidget):
     def _on_execute_finished(self, result):
         """Handle execution completion"""
         self.last_result = result
-
-        # Hide progress
-        self.progress_bar.setVisible(False)
-        self.preview_button.setEnabled(True)
-
-        # Show results
         self._show_results(result)
 
-        # Enable rollback button
         if result['success'] > 0:
             self.rollback_button.setEnabled(True)
 
         logger.info(f"Organization complete: {result['success']} success, {result['failed']} failed")
 
-    def _on_error(self, error_message):
-        """Handle organization error"""
-        self.progress_bar.setVisible(False)
-        self.preview_button.setEnabled(True)
+    def _on_worker_error(self, error_message):
+        """Handle worker error — ensure execute button is disabled"""
         self.execute_button.setEnabled(False)
-        self.status_label.setText(f"Error: {error_message}")
-
-        QMessageBox.critical(
-            self,
-            "Organization Error",
-            f"Failed to organize library:\n\n{error_message}"
-        )
+        self.show_error(error_message)
 
     def _populate_preview(self, preview_list):
         """Populate results tree with preview data"""
