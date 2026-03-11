@@ -1,8 +1,8 @@
 {
   "project": "NEXUS Music Manager",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "status": "refactoring_in_progress",
-  "phase": "Phase 1 DONE (security), starting Phase 2 (structural refactoring)",
+  "phase": "Phase 2.1 DONE (split main.py), continuing Phase 2 (structural refactoring)",
   "commercial_score": 99,
   "audit_score": 6.8,
   "target_score": 8.5,
@@ -80,9 +80,10 @@
         "phase": 2,
         "name": "Refactoring Estructural",
         "weeks": "3-4",
-        "status": "pending",
+        "status": "in_progress",
         "tasks": [
-          "Split main.py en 5 controllers + Facade",
+          "DONE: Split main.py (1373 LOC -> 303 LOC Facade + 4 controllers: playback 312, ui_composer 567, remote 147, library 120)",
+          "DONE: 38 new controller tests + 111 existing tests = 149 passing",
           "Extract BaseTab class (15 tabs)",
           "Split audio_embeddings en 3 clases",
           "Split cleanup_assistant_tab en 3 clases",
@@ -128,8 +129,8 @@
   "git": {
     "remote": "https://github.com/rrojashub-source/agente-musica-mp3.git",
     "branch": "main",
-    "total_commits": 215,
-    "last_commit": "69cd1f0 - security(phase-1): Auth JWT, path validation, URL whitelist, plugin security, threading locks"
+    "total_commits": 216,
+    "last_commit": "refactor(phase-2.1): Split main.py God Class into 4 controllers + Facade"
   },
 
   "decisions": [
@@ -162,6 +163,11 @@
       "date": "2026-03-10",
       "decision": "Phase 1 complete. C4 was false positive (methods complete, auditor had line limits). C5 resolved with RLock. C6 priority files fixed, GUI catches deferred.",
       "reason": "111/111 tests passing (35+28+18+18+12). All 3 critical security vulns fixed. Starting Phase 2."
+    },
+    {
+      "date": "2026-03-10",
+      "decision": "Phase 2.1 complete: Split main.py God Class (1373 LOC) into Facade (303 LOC) + 4 controllers",
+      "reason": "Created playback_controller (312), ui_composer (567), remote_controller (147), library_controller (120). 38 new tests + 111 existing = 149 all passing. stats_controller.py skipped — no meaningful logic in main.py for it."
     }
   ]
 }
