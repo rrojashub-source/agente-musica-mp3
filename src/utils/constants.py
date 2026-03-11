@@ -8,12 +8,12 @@ Created: March 11, 2026
 """
 
 # ==========================================
-# Audio Engine
+# Audio Engine (python-mpv)
 # ==========================================
-AUDIO_SAMPLE_RATE = 44100       # Hz - pygame mixer sample rate
-AUDIO_BUFFER_SIZE = 512         # Frames - pygame mixer buffer
+# Note: mpv handles sample rate/channels/buffer internally
+# These are kept for reference and any custom audio processing
+AUDIO_SAMPLE_RATE = 44100       # Hz - standard sample rate
 AUDIO_CHANNELS = 2              # Stereo
-AUDIO_SAMPLE_WIDTH = -16        # 16-bit signed
 
 FILE_HASH_CHUNK_SIZE = 4096     # Bytes - for file hash computation
 

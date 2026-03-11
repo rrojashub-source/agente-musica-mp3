@@ -254,8 +254,7 @@ class PlaybackController(QObject):
     def handle_volume_change(self, delta):
         """Handle Up/Down arrows — Volume change"""
         try:
-            import pygame
-            current = pygame.mixer.music.get_volume()
+            current = self.audio_player.get_volume()
             new_volume = max(0.0, min(1.0, current + (delta / 100.0)))
             self.audio_player.set_volume(new_volume)
 
@@ -276,8 +275,7 @@ class PlaybackController(QObject):
     def handle_mute_toggle(self):
         """Handle M key — Mute/Unmute"""
         try:
-            import pygame
-            current = pygame.mixer.music.get_volume()
+            current = self.audio_player.get_volume()
 
             if current > 0:
                 self._previous_volume = current

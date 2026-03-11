@@ -1,27 +1,27 @@
 """
-Audio Player Engine - Phase 6.1
+Audio Player Engine - Phase 6.1 (migrated to python-mpv)
 
-Core audio playback engine using pygame.mixer for MP3 playback.
+Core audio playback engine using libmpv for audio playback.
 
 Features:
-- Load MP3 files
+- Load audio files (MP3, FLAC, OGG, OPUS, AAC, WAV, etc.)
 - Play/pause/resume/stop controls
 - Seek to position
 - Volume control (0.0-1.0)
 - Position and duration tracking
 - Playback state management
-- Gapless playback (queue next track)
-- End-of-track callbacks
+- Native gapless playback via mpv playlist
+- End-of-track callbacks via mpv events
 
 Created: November 13, 2025
-Updated: November 24, 2025 - Added gapless playback support
+Updated: March 11, 2026 - Migrated from pygame.mixer to python-mpv
 """
 import logging
 import os
 import threading
+import time
 from typing import Optional, Callable, List
 from enum import Enum
-from utils.constants import AUDIO_SAMPLE_RATE, AUDIO_BUFFER_SIZE, AUDIO_CHANNELS, AUDIO_SAMPLE_WIDTH
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class PlaybackState(Enum):
 
 class AudioPlayer:
     """
-    Audio playback engine using pygame.mixer
+    Audio playback engine using python-mpv (libmpv)
 
     Usage:
         player = AudioPlayer()
@@ -69,48 +69,87 @@ class AudioPlayer:
         self._current_file = None
         self._duration = 0.0
         self._state = PlaybackState.STOPPED
-        self._start_time = 0.0
-        self._paused_position = 0.0  # Track position when paused
-        self._start_offset = 0.0  # Track where playback started (for seek)
+        self._volume = 1.0  # 0.0-1.0 scale (mpv uses 0-100 internally)
 
         # Gapless playback support
-        self._queued_file = None  # Next track queued for gapless playback
+        self._queued_file = None
         self._queued_duration = 0.0
         self._gapless_enabled = True
         self._on_track_end_callbacks: List[Callable[[str], None]] = []
         self._end_event_timer = None
-        self._crossfade_ms = 0  # Crossfade duration (0 = gapless, no crossfade)
+        self._crossfade_ms = 0
 
-        # Initialize pygame.mixer
+        # Initialize mpv player
         try:
-            import pygame
-            pygame.mixer.init(frequency=AUDIO_SAMPLE_RATE, size=AUDIO_SAMPLE_WIDTH, channels=AUDIO_CHANNELS, buffer=AUDIO_BUFFER_SIZE)
-            self._pygame = pygame
+            import mpv
+            self._player = mpv.MPV(
+                ytdl=False,
+                video=False,         # Audio only
+                terminal=False,      # No terminal output
+                input_default_bindings=False,
+                input_vo_keyboard=False,
+            )
+            # Configure for gapless audio
+            self._player['gapless-audio'] = 'yes'
+            self._player['audio-display'] = 'no'
 
-            # Set up end-of-track event
-            self._MUSIC_END_EVENT = pygame.USEREVENT + 1
-            pygame.mixer.music.set_endevent(self._MUSIC_END_EVENT)
+            # Register end-of-file event handler
+            @self._player.event_callback('end-file')
+            def _on_end_file(event):
+                self._handle_track_end(event)
 
-            logger.info("AudioPlayer initialized with pygame.mixer (gapless enabled)")
+            self._mpv = mpv  # Keep module reference
+            logger.info("AudioPlayer initialized with python-mpv (gapless enabled)")
         except ImportError:
-            logger.error("pygame not installed - audio playback unavailable")
-            self._pygame = None
-        except (OSError, RuntimeError) as e:
-            logger.error(f"Failed to initialize pygame.mixer: {e}")
-            self._pygame = None
+            logger.error("python-mpv not installed - audio playback unavailable")
+            self._player = None
+            self._mpv = None
+        except Exception as e:
+            logger.error(f"Failed to initialize mpv: {e}")
+            self._player = None
+            self._mpv = None
+
+    def _handle_track_end(self, event):
+        """Handle mpv end-file event for track transitions"""
+        try:
+            # event['reason'] can be 'eof', 'stop', 'quit', 'error', etc.
+            reason = event.get('event', {}).get('reason', None) if isinstance(event, dict) else None
+
+            with self._lock:
+                if self._state != PlaybackState.PLAYING:
+                    return
+
+                ended_file = self._current_file
+
+                if self._queued_file:
+                    # Gapless transition to queued track
+                    logger.info(f"Gapless transition: {self._queued_file}")
+                    self._current_file = self._queued_file
+                    self._duration = self._queued_duration
+                    self._queued_file = None
+                    self._queued_duration = 0.0
+                else:
+                    self._state = PlaybackState.STOPPED
+                    logger.info(f"Track ended: {ended_file}")
+
+            # Notify callbacks outside lock
+            if ended_file:
+                self._notify_track_end(ended_file)
+        except Exception as e:
+            logger.error(f"Error handling track end: {e}")
 
     def load(self, file_path: str) -> bool:
         """
-        Load MP3 file for playback
+        Load audio file for playback
 
         Args:
-            file_path: Path to MP3 file
+            file_path: Path to audio file (MP3, FLAC, OGG, etc.)
 
         Returns:
             True if loaded successfully, False otherwise
         """
-        if not self._pygame:
-            logger.error("pygame not available")
+        if not self._player:
+            logger.error("mpv not available")
             return False
 
         if not os.path.exists(file_path):
@@ -119,23 +158,18 @@ class AudioPlayer:
 
         try:
             with self._lock:
-                # Load file
-                self._pygame.mixer.music.load(file_path)
-                self._current_file = file_path
-
-                # Get duration using mutagen
+                # Stop current playback if any
                 try:
-                    from mutagen.mp3 import MP3
-                    audio = MP3(file_path)
-                    self._duration = audio.info.length
-                except ImportError:
-                    logger.warning("mutagen not installed - duration unavailable")
-                    self._duration = 0.0
-                except Exception as e:  # MutagenError inherits from Exception
-                    logger.warning(f"Failed to get duration: {e}")
-                    self._duration = 0.0
+                    self._player.command('stop')
+                except Exception:
+                    pass
 
+                self._current_file = file_path
                 self._state = PlaybackState.STOPPED
+
+                # Get duration using mutagen (faster than loading in mpv)
+                self._duration = self._get_file_duration(file_path)
+
             logger.info(f"Loaded: {file_path} (duration: {self._duration:.2f}s)")
             return True
 
@@ -143,63 +177,89 @@ class AudioPlayer:
             logger.error(f"Failed to load {file_path}: {e}")
             return False
 
+    def _get_file_duration(self, file_path: str) -> float:
+        """Get audio file duration using mutagen"""
+        try:
+            from mutagen import File as MutagenFile
+            audio = MutagenFile(file_path)
+            if audio and audio.info:
+                return audio.info.length
+        except ImportError:
+            logger.warning("mutagen not installed - duration unavailable")
+        except Exception as e:
+            logger.warning(f"Failed to get duration: {e}")
+        return 0.0
+
     def play(self):
         """Start playback from beginning"""
-        if not self._pygame or not self._current_file:
+        if not self._player or not self._current_file:
             logger.warning("No file loaded")
             return
 
         try:
             with self._lock:
-                self._pygame.mixer.music.play()
+                self._player.play(self._current_file)
+                self._player.pause = False
                 self._state = PlaybackState.PLAYING
-                self._start_time = self._pygame.time.get_ticks() / 1000.0
-                self._start_offset = 0.0  # Playing from beginning
+
+                # Update duration from mpv if mutagen didn't get it
+                if self._duration <= 0:
+                    self._update_duration_from_mpv()
+
             logger.debug("Playback started")
         except Exception as e:
             logger.error(f"Failed to play: {e}")
 
+    def _update_duration_from_mpv(self):
+        """Try to get duration from mpv (call within lock)"""
+        try:
+            # mpv needs a moment to parse the file
+            for _ in range(10):
+                dur = self._player.duration
+                if dur is not None and dur > 0:
+                    self._duration = dur
+                    break
+                time.sleep(0.05)
+        except Exception:
+            pass
+
     def pause(self):
         """Pause playback"""
-        if not self._pygame:
+        if not self._player:
             return
 
         try:
             with self._lock:
-                # Save current position before pausing
                 if self._state == PlaybackState.PLAYING:
-                    self._paused_position = self._get_position_unlocked()
-
-                self._pygame.mixer.music.pause()
-                self._state = PlaybackState.PAUSED
-            logger.debug(f"Playback paused at {self._paused_position:.2f}s")
+                    self._player.pause = True
+                    self._state = PlaybackState.PAUSED
+            logger.debug("Playback paused")
         except Exception as e:
             logger.error(f"Failed to pause: {e}")
 
     def resume(self):
         """Resume playback from pause"""
-        if not self._pygame:
+        if not self._player:
             return
 
         try:
             with self._lock:
-                self._pygame.mixer.music.unpause()
-                self._state = PlaybackState.PLAYING
+                if self._state == PlaybackState.PAUSED:
+                    self._player.pause = False
+                    self._state = PlaybackState.PLAYING
             logger.debug("Playback resumed")
         except Exception as e:
             logger.error(f"Failed to resume: {e}")
 
     def stop(self):
         """Stop playback and reset position"""
-        if not self._pygame:
+        if not self._player:
             return
 
         try:
             with self._lock:
-                self._pygame.mixer.music.stop()
+                self._player.command('stop')
                 self._state = PlaybackState.STOPPED
-                self._paused_position = 0.0  # Reset position
-                self._start_offset = 0.0  # Reset offset
             logger.debug("Playback stopped")
         except Exception as e:
             logger.error(f"Failed to stop: {e}")
@@ -210,63 +270,31 @@ class AudioPlayer:
 
         Args:
             position: Position in seconds
-
-        Note: Uses play(start=position) for MP3 compatibility
-              This method works reliably with MP3 files (unlike set_pos)
         """
-        if not self._pygame or not self._current_file:
-            logger.warning("Seek called but no pygame or no file loaded")
+        if not self._player or not self._current_file:
+            logger.warning("Seek called but no mpv or no file loaded")
             return
 
         try:
             with self._lock:
-                # Store current state
-                was_playing = self._pygame.mixer.music.get_busy()
                 was_paused = self._state == PlaybackState.PAUSED
-                logger.debug(f"Seek to {position:.2f}s - was_playing={was_playing}, was_paused={was_paused}")
 
-                # Stop current playback
-                self._pygame.mixer.music.stop()
+                # If stopped, need to start playback first
+                if self._state == PlaybackState.STOPPED:
+                    self._player.play(self._current_file)
+                    self._state = PlaybackState.PLAYING
+                    # Wait for mpv to be ready
+                    time.sleep(0.05)
 
-                # Reload the file
-                self._pygame.mixer.music.load(self._current_file)
+                self._player.seek(position, reference='absolute')
 
-                # Use play(start=position) - works reliably with MP3
-                logger.debug(f"Calling pygame play(start={position:.2f})")
-                self._pygame.mixer.music.play(start=position)
-                self._state = PlaybackState.PLAYING
-                self._start_time = self._pygame.time.get_ticks() / 1000.0 - position
-                self._start_offset = position  # Remember where we started playing from
-
-                # If it was paused or stopped, pause it again at the new position
-                if was_paused or not was_playing:
-                    logger.debug(f"Re-pausing at position {position:.2f}s")
-                    self._pygame.mixer.music.pause()
+                if was_paused:
+                    self._player.pause = True
                     self._state = PlaybackState.PAUSED
-                    self._paused_position = position  # Save new paused position
 
             logger.debug(f"Seek completed to {position:.2f}s")
         except Exception as e:
             logger.error(f"Seek failed: {e}")
-
-    def _get_position_unlocked(self) -> float:
-        """Get position without acquiring lock (for internal use when lock is held)"""
-        if not self._pygame:
-            return 0.0
-
-        if self._state == PlaybackState.PAUSED:
-            return self._paused_position
-
-        if self._state == PlaybackState.STOPPED:
-            return 0.0
-
-        try:
-            pos_ms = self._pygame.mixer.music.get_pos()
-            elapsed = pos_ms / 1000.0
-            return self._start_offset + elapsed
-        except Exception as e:
-            logger.error(f"Failed to get position: {e}")
-            return 0.0
 
     def get_position(self) -> float:
         """
@@ -275,8 +303,18 @@ class AudioPlayer:
         Returns:
             Current position in seconds
         """
+        if not self._player:
+            return 0.0
+
         with self._lock:
-            return self._get_position_unlocked()
+            if self._state == PlaybackState.STOPPED:
+                return 0.0
+
+            try:
+                pos = self._player.time_pos
+                return pos if pos is not None else 0.0
+            except Exception:
+                return 0.0
 
     def get_duration(self) -> float:
         """
@@ -286,6 +324,14 @@ class AudioPlayer:
             Duration in seconds
         """
         with self._lock:
+            # Try getting from mpv first (more accurate)
+            if self._player and self._state != PlaybackState.STOPPED:
+                try:
+                    dur = self._player.duration
+                    if dur is not None and dur > 0:
+                        self._duration = dur
+                except Exception:
+                    pass
             return self._duration
 
     def set_volume(self, level: float):
@@ -295,13 +341,13 @@ class AudioPlayer:
         Args:
             level: Volume level (0.0 = mute, 1.0 = max)
         """
-        if not self._pygame:
+        if not self._player:
             return
 
         try:
-            # Clamp to valid range
             level = max(0.0, min(1.0, level))
-            self._pygame.mixer.music.set_volume(level)
+            self._volume = level
+            self._player.volume = level * 100  # mpv uses 0-100 scale
             logger.debug(f"Volume set to {level:.2f}")
         except Exception as e:
             logger.error(f"Failed to set volume: {e}")
@@ -313,13 +359,14 @@ class AudioPlayer:
         Returns:
             Volume level (0.0 - 1.0)
         """
-        if not self._pygame:
+        if not self._player:
             return 1.0
 
         try:
-            return self._pygame.mixer.music.get_volume()
+            vol = self._player.volume
+            return (vol / 100.0) if vol is not None else self._volume
         except Exception:
-            return 1.0
+            return self._volume
 
     def is_playing(self) -> bool:
         """
@@ -328,15 +375,11 @@ class AudioPlayer:
         Returns:
             True if playing, False otherwise
         """
-        if not self._pygame:
+        if not self._player:
             return False
 
-        try:
-            # get_busy() returns True if music is playing
-            return self._pygame.mixer.music.get_busy()
-        except Exception as e:
-            logger.error(f"Failed to check playback state: {e}")
-            return False
+        with self._lock:
+            return self._state == PlaybackState.PLAYING
 
     def get_state(self) -> PlaybackState:
         """
@@ -353,10 +396,9 @@ class AudioPlayer:
         if self._end_event_timer:
             self._end_event_timer.cancel()
 
-        if self._pygame:
+        if self._player:
             try:
-                self._pygame.mixer.music.stop()
-                self._pygame.mixer.quit()
+                self._player.terminate()
                 logger.info("AudioPlayer cleaned up")
             except Exception as e:
                 logger.error(f"Cleanup error: {e}")
@@ -369,22 +411,14 @@ class AudioPlayer:
         """
         Queue next track for gapless playback
 
-        The queued track will start immediately when the current track ends,
-        providing seamless transitions between songs.
-
         Args:
-            file_path: Path to the next MP3 file
+            file_path: Path to the next audio file
 
         Returns:
             True if queued successfully, False otherwise
-
-        Example:
-            player.load("song1.mp3")
-            player.play()
-            player.queue_next("song2.mp3")  # Will play seamlessly after song1
         """
-        if not self._pygame:
-            logger.error("pygame not available")
+        if not self._player:
+            logger.error("mpv not available")
             return False
 
         if not os.path.exists(file_path):
@@ -396,19 +430,10 @@ class AudioPlayer:
             return False
 
         try:
-            # Queue the next track using pygame's built-in queue
-            self._pygame.mixer.music.queue(file_path)
+            # Use mpv playlist for native gapless
+            self._player.playlist_append(file_path)
             self._queued_file = file_path
-
-            # Pre-calculate duration for the queued file
-            try:
-                from mutagen.mp3 import MP3
-                audio = MP3(file_path)
-                self._queued_duration = audio.info.length
-            except Exception as e:
-                logger.warning(f"Failed to get queued track duration: {e}")
-                self._queued_duration = 0.0
-
+            self._queued_duration = self._get_file_duration(file_path)
             logger.info(f"Queued for gapless: {file_path}")
             return True
 
@@ -418,27 +443,30 @@ class AudioPlayer:
 
     def clear_queue(self):
         """Clear the queued next track"""
+        if self._player:
+            try:
+                self._player.playlist_clear()
+                # Re-add current file if playing
+                if self._current_file and self._state != PlaybackState.STOPPED:
+                    pass  # mpv handles this
+            except Exception:
+                pass
         self._queued_file = None
         self._queued_duration = 0.0
         logger.debug("Queue cleared")
 
     def get_queued_file(self) -> Optional[str]:
-        """
-        Get the currently queued file path
-
-        Returns:
-            Path to queued file, or None if no file queued
-        """
+        """Get the currently queued file path"""
         return self._queued_file
 
     def set_gapless_enabled(self, enabled: bool):
-        """
-        Enable or disable gapless playback
-
-        Args:
-            enabled: True to enable, False to disable
-        """
+        """Enable or disable gapless playback"""
         self._gapless_enabled = enabled
+        if self._player:
+            try:
+                self._player['gapless-audio'] = 'yes' if enabled else 'no'
+            except Exception:
+                pass
         logger.info(f"Gapless playback: {'enabled' if enabled else 'disabled'}")
 
     def is_gapless_enabled(self) -> bool:
@@ -451,10 +479,13 @@ class AudioPlayer:
 
         Args:
             duration_ms: Crossfade duration in milliseconds (0 = no crossfade)
-
-        Note: Crossfade is a future feature - currently only gapless (0ms) is supported
         """
         self._crossfade_ms = max(0, duration_ms)
+        if self._player and duration_ms > 0:
+            try:
+                self._player['audio-crossfade'] = duration_ms / 1000.0
+            except Exception:
+                pass
         logger.info(f"Crossfade set to {self._crossfade_ms}ms")
 
     def get_crossfade(self) -> int:
@@ -466,22 +497,7 @@ class AudioPlayer:
     # ==========================================
 
     def on_track_end(self, callback: Callable[[str], None]):
-        """
-        Register callback for track end event
-
-        The callback receives the path of the track that just ended.
-        Use this to implement playlist advancement, shuffle, etc.
-
-        Args:
-            callback: Function to call when track ends. Receives file_path as argument.
-
-        Example:
-            def handle_track_end(file_path):
-                print(f"Track ended: {file_path}")
-                # Load next track from playlist
-
-            player.on_track_end(handle_track_end)
-        """
+        """Register callback for track end event"""
         if callback not in self._on_track_end_callbacks:
             self._on_track_end_callbacks.append(callback)
             logger.debug(f"Track end callback registered (total: {len(self._on_track_end_callbacks)})")
@@ -496,39 +512,44 @@ class AudioPlayer:
         """
         Check if track has ended and handle transition
 
-        This should be called periodically (e.g., from a timer) to detect
-        when the current track ends and trigger callbacks.
+        Note: With mpv, track end is handled via events (_handle_track_end).
+        This method is kept for API compatibility and can be called
+        from a timer for additional safety.
 
         Returns:
             True if track ended, False otherwise
         """
-        if not self._pygame:
+        if not self._player:
             return False
 
         with self._lock:
-            # Check if music stopped playing
-            if self._state == PlaybackState.PLAYING and not self._pygame.mixer.music.get_busy():
-                ended_file = self._current_file
+            if self._state == PlaybackState.PLAYING:
+                try:
+                    idle = self._player.core_idle
+                    if idle:
+                        ended_file = self._current_file
 
-                # If there's a queued track, it's now playing
-                if self._queued_file:
-                    logger.info(f"Gapless transition: {self._queued_file}")
-                    self._current_file = self._queued_file
-                    self._duration = self._queued_duration
-                    self._queued_file = None
-                    self._queued_duration = 0.0
-                    self._start_time = self._pygame.time.get_ticks() / 1000.0
-                    self._start_offset = 0.0
-                else:
-                    # No queued track - playback stopped
-                    self._state = PlaybackState.STOPPED
-                    logger.info(f"Track ended: {ended_file}")
-            else:
-                return False
+                        if self._queued_file:
+                            logger.info(f"Gapless transition: {self._queued_file}")
+                            self._current_file = self._queued_file
+                            self._duration = self._queued_duration
+                            self._queued_file = None
+                            self._queued_duration = 0.0
+                        else:
+                            self._state = PlaybackState.STOPPED
+                            logger.info(f"Track ended: {ended_file}")
 
-        # Notify callbacks outside lock to prevent deadlocks
-        self._notify_track_end(ended_file)
-        return True
+                        # Notify outside lock
+                        threading.Thread(
+                            target=self._notify_track_end,
+                            args=(ended_file,),
+                            daemon=True
+                        ).start()
+                        return True
+                except Exception:
+                    pass
+
+        return False
 
     def _notify_track_end(self, file_path: str):
         """Notify all registered callbacks that track ended"""
@@ -549,8 +570,7 @@ class AudioPlayer:
             if self._state == PlaybackState.PLAYING:
                 self.check_track_end()
 
-            # Schedule next check
-            if self._pygame and self._state != PlaybackState.STOPPED:
+            if self._player and self._state != PlaybackState.STOPPED:
                 self._end_event_timer = threading.Timer(
                     interval_ms / 1000.0,
                     check_loop
@@ -558,7 +578,6 @@ class AudioPlayer:
                 self._end_event_timer.daemon = True
                 self._end_event_timer.start()
 
-        # Start the loop
         check_loop()
         logger.debug(f"Track end detection started (interval: {interval_ms}ms)")
 
