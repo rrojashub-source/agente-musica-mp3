@@ -12,12 +12,12 @@ from typing import Optional
 import requests
 from utils.constants import API_DEFAULT_TIMEOUT
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWizard, QWizardPage, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QTextBrowser, QMessageBox, QCheckBox
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 
 
 class APIConfigWizard(QWizard):
@@ -534,7 +534,7 @@ class CompletionPage(QWizardPage):
 
 
 if __name__ == "__main__":
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
     import sys
 
     app = QApplication(sys.argv)

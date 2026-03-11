@@ -1,6 +1,6 @@
 """
 Queue Widget - Phase 4.7
-PyQt6 widget for displaying and managing download queue
+PySide6 widget for displaying and managing download queue
 
 Features:
 - Real-time queue display
@@ -9,11 +9,11 @@ Features:
 - Clear completed items
 - Auto-refresh on queue updates
 """
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,
     QTableWidgetItem, QProgressBar, QHeaderView
 )
-from PyQt6.QtCore import Qt, pyqtSlot, QTimer
+from PySide6.QtCore import Qt, Slot, QTimer
 import logging
 import time
 
@@ -368,7 +368,7 @@ class QueueWidget(QWidget):
         logger.info("Cleared completed items")
         self.refresh_display()
 
-    @pyqtSlot(str, int)
+    @Slot(str, int)
     def _on_item_progress(self, item_id: str, progress: int):
         """
         Handle item progress update signal
@@ -388,7 +388,7 @@ class QueueWidget(QWidget):
             progress_bar.setValue(progress)
             progress_bar.setFormat(f"{progress}%")
 
-    @pyqtSlot(str, dict)
+    @Slot(str, dict)
     def _on_item_completed(self, item_id: str, metadata: dict):
         """
         Handle item completed signal
@@ -400,7 +400,7 @@ class QueueWidget(QWidget):
         logger.info(f"Item completed: {item_id}")
         self.refresh_display()
 
-    @pyqtSlot(str, str)
+    @Slot(str, str)
     def _on_item_failed(self, item_id: str, error: str):
         """
         Handle item failed signal

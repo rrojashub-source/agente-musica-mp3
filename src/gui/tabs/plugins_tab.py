@@ -4,14 +4,14 @@ Allows users to view, enable, disable and configure plugins
 
 Created: November 24, 2025
 """
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QTableWidget, QTableWidgetItem, QGroupBox,
     QMessageBox, QHeaderView, QAbstractItemView,
     QDialog, QFormLayout, QLineEdit, QCheckBox, QTextEdit
 )
-from PyQt6.QtCore import Qt, pyqtSlot
-from PyQt6.QtGui import QColor, QFont
+from PySide6.QtCore import Qt, Slot
+from PySide6.QtGui import QColor, QFont
 import logging
 from typing import Optional, Dict, Any
 
@@ -388,17 +388,17 @@ class PluginsTab(QWidget):
                         plugin.get_all_settings()
                     )
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _on_plugin_enabled(self, plugin_name: str):
         """Handle plugin enabled signal"""
         self._refresh_plugins()
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _on_plugin_disabled(self, plugin_name: str):
         """Handle plugin disabled signal"""
         self._refresh_plugins()
 
-    @pyqtSlot(str, str)
+    @Slot(str, str)
     def _on_plugin_error(self, plugin_name: str, error: str):
         """Handle plugin error signal"""
         QMessageBox.warning(

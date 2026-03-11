@@ -8,11 +8,11 @@ visualizer signal callbacks.
 import logging
 from pathlib import Path
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QTabWidget, QVBoxLayout, QHBoxLayout, QWidget, QStatusBar,
     QMessageBox, QDialog, QPushButton
 )
-from PyQt6.QtCore import Qt
+from PySide6.QtCore import Qt
 
 from translations import tr, get_language, set_language, LANGUAGES
 
@@ -366,7 +366,7 @@ class UIComposer:
 
     def _change_language(self, lang_code: str):
         """Change application language"""
-        from PyQt6.QtCore import QSettings
+        from PySide6.QtCore import QSettings
 
         if set_language(lang_code):
             settings = QSettings("NEXUS", "MusicManager")
@@ -411,13 +411,13 @@ audio playback, playlists, and visualizer.</p>
 <li>Song Recommendations</li>
 </ul>
 <br>
-<p><small>Built with: Python, PyQt6, yt-dlp, pygame</small></p>
+<p><small>Built with: Python, PySide6, yt-dlp, pygame</small></p>
         """
         QMessageBox.about(self.window, "About - NEXUS Music Manager", about_text)
 
     def _show_api_guide(self):
         """Show API setup guide"""
-        from PyQt6.QtWidgets import QTextBrowser
+        from PySide6.QtWidgets import QTextBrowser
 
         dialog = QDialog(self.window)
         dialog.setWindowTitle("API Setup Guide")

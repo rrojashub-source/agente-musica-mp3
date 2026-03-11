@@ -17,12 +17,12 @@ Phase 2.2 — Structural Refactoring
 import logging
 from typing import Optional, List
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QProgressBar, QMessageBox, QPushButton, QGroupBox
 )
-from PyQt6.QtCore import Qt, QThread
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QThread
+from PySide6.QtGui import QFont
 
 logger = logging.getLogger(__name__)
 

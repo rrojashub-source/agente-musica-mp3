@@ -5,7 +5,7 @@ Handles library navigation: album selection, recommendations routing,
 search focus, tab switching, empty library check.
 """
 import logging
-from PyQt6.QtWidgets import QMessageBox, QTabWidget
+from PySide6.QtWidgets import QMessageBox, QTabWidget
 
 logger = logging.getLogger(__name__)
 

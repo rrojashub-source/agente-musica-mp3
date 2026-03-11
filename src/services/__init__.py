@@ -2,7 +2,7 @@
 NEXUS Music Manager - Service Layer
 Encapsulates business logic and provides clean API for GUI components
 
-Services follow singleton pattern and emit PyQt6 signals for UI updates.
+Services follow singleton pattern and emit PySide6 signals for UI updates.
 """
 
 from .library_service import LibraryService

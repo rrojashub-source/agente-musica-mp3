@@ -5,9 +5,9 @@ TDD: Write tests FIRST, then implement src/gui/tabs/search_tab.py
 import pytest
 import unittest
 from unittest.mock import Mock, patch, MagicMock
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
-from PyQt6.QtTest import QTest
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 import sys
 
 # Ensure QApplication exists for Qt tests
@@ -40,7 +40,7 @@ class TestSearchTab(unittest.TestCase):
         if self.tab_class is None:
             self.fail("SearchTab class not found - implement src/gui/tabs/search_tab.py")
 
-        from PyQt6.QtWidgets import QWidget
+        from PySide6.QtWidgets import QWidget
         self.assertTrue(issubclass(self.tab_class, QWidget))
 
     def test_search_tab_has_search_box(self):
@@ -50,7 +50,7 @@ class TestSearchTab(unittest.TestCase):
 
         # Should have search box (QLineEdit)
         self.assertTrue(hasattr(self.tab, 'search_box'))
-        from PyQt6.QtWidgets import QLineEdit
+        from PySide6.QtWidgets import QLineEdit
         self.assertIsInstance(self.tab.search_box, QLineEdit)
 
     def test_search_tab_has_search_button(self):
@@ -60,7 +60,7 @@ class TestSearchTab(unittest.TestCase):
 
         # Should have search button
         self.assertTrue(hasattr(self.tab, 'search_button'))
-        from PyQt6.QtWidgets import QPushButton
+        from PySide6.QtWidgets import QPushButton
         self.assertIsInstance(self.tab.search_button, QPushButton)
 
     def test_search_tab_has_youtube_checkbox(self):
@@ -70,7 +70,7 @@ class TestSearchTab(unittest.TestCase):
 
         # Should have YouTube checkbox
         self.assertTrue(hasattr(self.tab, 'youtube_checkbox'))
-        from PyQt6.QtWidgets import QCheckBox
+        from PySide6.QtWidgets import QCheckBox
         self.assertIsInstance(self.tab.youtube_checkbox, QCheckBox)
 
         # Should be checked by default
@@ -83,7 +83,7 @@ class TestSearchTab(unittest.TestCase):
 
         # Should have Spotify checkbox
         self.assertTrue(hasattr(self.tab, 'spotify_checkbox'))
-        from PyQt6.QtWidgets import QCheckBox
+        from PySide6.QtWidgets import QCheckBox
         self.assertIsInstance(self.tab.spotify_checkbox, QCheckBox)
 
         # Should be checked by default
@@ -107,7 +107,7 @@ class TestSearchTab(unittest.TestCase):
 
         # Should have add button
         self.assertTrue(hasattr(self.tab, 'add_to_library_button'))
-        from PyQt6.QtWidgets import QPushButton
+        from PySide6.QtWidgets import QPushButton
         self.assertIsInstance(self.tab.add_to_library_button, QPushButton)
 
     def test_search_button_click_triggers_search(self):

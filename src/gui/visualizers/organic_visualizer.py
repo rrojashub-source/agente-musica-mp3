@@ -40,14 +40,14 @@ def get_resource_path(relative_path: str) -> Path:
         base_path = Path(__file__).parent.parent.parent  # src/gui/visualizers -> src
     return base_path / relative_path
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QSurfaceFormat
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QSurfaceFormat
 from utils.constants import ANIMATION_FRAME_INTERVAL_MS
 
 # Try to import OpenGL - graceful fallback if not available
 try:
-    from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+    from PySide6.QtOpenGLWidgets import QOpenGLWidget
     from OpenGL.GL import *
     from OpenGL.GL import shaders
     OPENGL_AVAILABLE = True

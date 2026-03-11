@@ -15,11 +15,11 @@ Security:
 Author: NEXUS@CLI (Pre-Phase 5 Hardening)
 Date: November 13, 2025
 """
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget,
     QWidget, QLineEdit, QPushButton, QLabel, QGroupBox, QApplication, QFrame
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PySide6.QtCore import Qt, Signal
 import keyring
 import logging
 
@@ -503,7 +503,7 @@ class APISettingsDialog(QDialog):
         keys_saved: Emitted when keys are saved successfully
     """
 
-    keys_saved = pyqtSignal()
+    keys_saved = Signal()
 
     def __init__(self, parent=None):
         """
@@ -568,7 +568,7 @@ class APISettingsDialog(QDialog):
 
     def _on_help_clicked(self):
         """Show help dialog with instructions - Bilingual (ES/EN)"""
-        from PyQt6.QtWidgets import QMessageBox
+        from PySide6.QtWidgets import QMessageBox
 
         help_text = """
 <h3>Cómo obtener claves de API / How to Get API Keys:</h3>
@@ -627,7 +627,7 @@ class APISettingsDialog(QDialog):
                 saved_count += 1
             elif spotify_client_id or spotify_client_secret:
                 # Partial credentials - warn user
-                from PyQt6.QtWidgets import QMessageBox
+                from PySide6.QtWidgets import QMessageBox
                 QMessageBox.warning(
                     self,
                     "Credenciales Spotify Incompletas / Incomplete Spotify Credentials",
@@ -655,7 +655,7 @@ class APISettingsDialog(QDialog):
                 self.accept()
             else:
                 # No keys entered
-                from PyQt6.QtWidgets import QMessageBox
+                from PySide6.QtWidgets import QMessageBox
                 QMessageBox.warning(
                     self,
                     "Sin Claves / No Keys Entered",
@@ -665,7 +665,7 @@ class APISettingsDialog(QDialog):
 
         except (RuntimeError, OSError) as e:
             logger.error(f"Error saving keys to keyring: {e}")
-            from PyQt6.QtWidgets import QMessageBox
+            from PySide6.QtWidgets import QMessageBox
             QMessageBox.critical(
                 self,
                 "Error al Guardar / Error Saving Keys",

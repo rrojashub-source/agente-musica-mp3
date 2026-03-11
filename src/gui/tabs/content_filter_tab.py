@@ -12,14 +12,14 @@ Features:
 Created: December 8, 2025
 """
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QGroupBox, QTableWidget, QTableWidgetItem,
     QProgressBar, QComboBox, QFileDialog, QMessageBox,
     QHeaderView, QCheckBox, QSpinBox, QMenu, QAbstractItemView
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QColor, QAction
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QColor, QAction
 import logging
 import sqlite3
 from pathlib import Path
@@ -56,9 +56,9 @@ RATING_LABELS = {
 
 class ClassificationWorker(QThread):
     """Background worker for classification"""
-    progress = pyqtSignal(int, int, object)  # current, total, result
-    finished = pyqtSignal(list)  # all results
-    error = pyqtSignal(str)
+    progress = Signal(int, int, object)  # current, total, result
+    finished = Signal(list)  # all results
+    error = Signal(str)
 
     def __init__(self, file_paths: List[str], use_lyrics: bool = False,
                  use_audio: bool = False):

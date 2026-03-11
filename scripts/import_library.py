@@ -16,7 +16,7 @@ sys.path.insert(0, str(src_path))
 
 from database.manager import DatabaseManager
 from workers.library_import_worker import LibraryImportWorker
-from PyQt6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication
 
 
 def main():

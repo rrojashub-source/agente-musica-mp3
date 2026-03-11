@@ -1,10 +1,10 @@
 """
 NEXUS Music Manager - Download Service
-Encapsulates download operations with business logic and PyQt6 signals
+Encapsulates download operations with business logic and PySide6 signals
 
 Features:
 - Thread-safe singleton pattern
-- PyQt6 signals for UI updates
+- PySide6 signals for UI updates
 - Download queue management
 - Auto-import to library after download
 - Rate limiting integration
@@ -18,7 +18,7 @@ from datetime import datetime
 from enum import Enum
 import threading
 
-from PyQt6.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 logger = logging.getLogger(__name__)
 
@@ -99,15 +99,15 @@ class DownloadService(QObject):
     """
 
     # Signals
-    download_added = pyqtSignal(str)  # item_id
-    download_started = pyqtSignal(str)  # item_id
-    download_progress = pyqtSignal(str, float)  # item_id, progress
-    download_completed = pyqtSignal(str, str)  # item_id, file_path
-    download_failed = pyqtSignal(str, str)  # item_id, error_message
-    download_canceled = pyqtSignal(str)  # item_id
-    queue_changed = pyqtSignal()
-    auto_import_completed = pyqtSignal(int)  # song_id
-    error_occurred = pyqtSignal(str)  # error_message
+    download_added = Signal(str)  # item_id
+    download_started = Signal(str)  # item_id
+    download_progress = Signal(str, float)  # item_id, progress
+    download_completed = Signal(str, str)  # item_id, file_path
+    download_failed = Signal(str, str)  # item_id, error_message
+    download_canceled = Signal(str)  # item_id
+    queue_changed = Signal()
+    auto_import_completed = Signal(int)  # song_id
+    error_occurred = Signal(str)  # error_message
 
     # Singleton (class-level for QObject compatibility)
     _instance: Optional['DownloadService'] = None

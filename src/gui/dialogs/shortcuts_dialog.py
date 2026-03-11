@@ -4,11 +4,11 @@ Keyboard Shortcuts Help Dialog
 Displays a table of all available keyboard shortcuts for NEXUS Music Manager.
 """
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QHeaderView
 )
-from PyQt6.QtCore import Qt
+from PySide6.QtCore import Qt
 
 
 class ShortcutsDialog(QDialog):

@@ -5,9 +5,9 @@ TDD: Write tests FIRST, then implement src/gui/widgets/queue_widget.py
 import pytest
 import unittest
 from unittest.mock import Mock, patch, MagicMock
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
-from PyQt6.QtTest import QTest
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 import sys
 
 # Ensure QApplication exists for Qt tests
@@ -45,7 +45,7 @@ class TestQueueWidget(unittest.TestCase):
         if self.widget_class is None:
             self.fail("QueueWidget class not found - implement src/gui/widgets/queue_widget.py")
 
-        from PyQt6.QtWidgets import QWidget
+        from PySide6.QtWidgets import QWidget
         self.assertTrue(issubclass(self.widget_class, QWidget))
 
     def test_queue_widget_has_table(self):
@@ -55,7 +55,7 @@ class TestQueueWidget(unittest.TestCase):
 
         # Should have table widget
         self.assertTrue(hasattr(self.widget, 'table'))
-        from PyQt6.QtWidgets import QTableWidget
+        from PySide6.QtWidgets import QTableWidget
         self.assertIsInstance(self.widget.table, QTableWidget)
 
     def test_queue_widget_table_has_columns(self):
@@ -76,7 +76,7 @@ class TestQueueWidget(unittest.TestCase):
 
         # Should have refresh button
         self.assertTrue(hasattr(self.widget, 'refresh_button'))
-        from PyQt6.QtWidgets import QPushButton
+        from PySide6.QtWidgets import QPushButton
         self.assertIsInstance(self.widget.refresh_button, QPushButton)
 
     def test_queue_widget_displays_queue_items(self):
@@ -273,7 +273,7 @@ class TestQueueWidget(unittest.TestCase):
 
         # Should have clear completed button
         self.assertTrue(hasattr(self.widget, 'clear_completed_button'))
-        from PyQt6.QtWidgets import QPushButton
+        from PySide6.QtWidgets import QPushButton
         self.assertIsInstance(self.widget.clear_completed_button, QPushButton)
 
     def test_queue_widget_clear_completed_removes_items(self):

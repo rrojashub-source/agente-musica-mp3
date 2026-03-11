@@ -16,13 +16,13 @@ Created: December 11, 2025
 import logging
 from typing import Optional
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSlider, QLabel,
     QPushButton, QComboBox, QGroupBox, QCheckBox,
     QInputDialog, QMessageBox, QFrame
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFont
 
 from core.audio_equalizer import AudioEqualizer, BUILTIN_PRESETS
 
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 class BandSlider(QWidget):
     """Single frequency band slider with label"""
 
-    value_changed = pyqtSignal(int, float)  # frequency, gain
+    value_changed = Signal(int, float)  # frequency, gain
 
     def __init__(self, frequency: int, label: str, parent=None):
         super().__init__(parent)
@@ -107,8 +107,8 @@ class EqualizerWidget(QWidget):
     """
 
     # Signals
-    eq_changed = pyqtSignal(dict)  # Emitted when any band changes {freq: gain}
-    preset_changed = pyqtSignal(str)  # Emitted when preset changes
+    eq_changed = Signal(dict)  # Emitted when any band changes {freq: gain}
+    preset_changed = Signal(str)  # Emitted when preset changes
 
     def __init__(self, equalizer: AudioEqualizer = None, parent=None):
         super().__init__(parent)

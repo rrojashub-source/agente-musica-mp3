@@ -8,8 +8,8 @@ from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 import tempfile
 import shutil
-from PyQt6.QtCore import QThread, pyqtSignal
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtCore import QThread, Signal
+from PySide6.QtWidgets import QApplication
 import sys
 
 # Ensure QApplication exists for Qt tests
@@ -19,7 +19,7 @@ if app is None:
 
 
 class TestDownloadWorker(unittest.TestCase):
-    """Test DownloadWorker (yt-dlp integration with PyQt6)"""
+    """Test DownloadWorker (yt-dlp integration with PySide6)"""
 
     def setUp(self):
         """Setup test fixtures"""

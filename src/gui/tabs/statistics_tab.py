@@ -16,14 +16,14 @@ Created: December 11, 2025
 import logging
 from typing import Optional
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QGroupBox, QGridLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QScrollArea, QFrame, QProgressBar,
     QHeaderView, QSizePolicy
 )
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QFont
 
 from services.statistics_service import StatisticsService
 

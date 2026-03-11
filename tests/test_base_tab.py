@@ -12,8 +12,8 @@ Phase 2.2 — Structural Refactoring
 """
 import unittest
 from unittest.mock import Mock, patch, MagicMock
-from PyQt6.QtWidgets import QApplication, QVBoxLayout, QProgressBar, QLabel, QGroupBox
-from PyQt6.QtCore import Qt, pyqtSignal, QThread
+from PySide6.QtWidgets import QApplication, QVBoxLayout, QProgressBar, QLabel, QGroupBox
+from PySide6.QtCore import Qt, Signal, QThread
 import sys
 
 # Ensure QApplication exists
@@ -171,9 +171,9 @@ class TestBaseTabLayoutHelpers(unittest.TestCase):
 
 class MockWorker(QThread):
     """Mock worker with standard signals."""
-    progress = pyqtSignal(int, str)
-    finished = pyqtSignal(str)
-    error = pyqtSignal(str)
+    progress = Signal(int, str)
+    finished = Signal(str)
+    error = Signal(str)
 
     def run(self):
         pass
@@ -199,7 +199,7 @@ class TestBaseTabWorkerIntegration(unittest.TestCase):
         self.assertIs(self.tab._active_worker, self.worker)
 
     def test_connect_worker_disables_action_button(self):
-        from PyQt6.QtWidgets import QPushButton
+        from PySide6.QtWidgets import QPushButton
         btn = QPushButton("Test")
         btn.setEnabled(True)
         self.tab.connect_worker(self.worker, action_button=btn)
@@ -224,7 +224,7 @@ class TestBaseTabWorkerIntegration(unittest.TestCase):
         self.assertEqual(custom_called['msg'], "Custom")
 
     def test_connect_worker_finished_hides_progress(self):
-        from PyQt6.QtWidgets import QPushButton
+        from PySide6.QtWidgets import QPushButton
         btn = QPushButton("Test")
         results = {}
 
@@ -291,14 +291,14 @@ class TestBaseTabDialogs(unittest.TestCase):
             mock.assert_called_once_with(self.tab, "Success", "Done!")
 
     def test_show_confirm_yes(self):
-        from PyQt6.QtWidgets import QMessageBox
+        from PySide6.QtWidgets import QMessageBox
         with patch('gui.base.base_tab.QMessageBox.question',
                    return_value=QMessageBox.StandardButton.Yes):
             result = self.tab.show_confirm("Sure?")
             self.assertTrue(result)
 
     def test_show_confirm_no(self):
-        from PyQt6.QtWidgets import QMessageBox
+        from PySide6.QtWidgets import QMessageBox
         with patch('gui.base.base_tab.QMessageBox.question',
                    return_value=QMessageBox.StandardButton.No):
             result = self.tab.show_confirm("Sure?")

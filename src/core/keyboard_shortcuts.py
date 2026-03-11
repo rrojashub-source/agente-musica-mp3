@@ -15,9 +15,9 @@ Usage:
 """
 
 import logging
-from PyQt6.QtCore import QObject, Qt, QEvent, pyqtSignal
-from PyQt6.QtWidgets import QLineEdit, QTextEdit, QPlainTextEdit, QApplication
-from PyQt6.QtGui import QAction, QKeySequence
+from PySide6.QtCore import QObject, Qt, QEvent, Signal
+from PySide6.QtWidgets import QLineEdit, QTextEdit, QPlainTextEdit, QApplication
+from PySide6.QtGui import QAction, QKeySequence
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +34,13 @@ class KeyboardShortcutManager(QObject):
     """
 
     # Signals
-    play_pause_requested = pyqtSignal()
-    seek_backward_requested = pyqtSignal(int)  # seconds
-    seek_forward_requested = pyqtSignal(int)   # seconds
-    volume_change_requested = pyqtSignal(int)  # delta percentage
-    mute_toggled = pyqtSignal()
-    focus_search_requested = pyqtSignal()
-    switch_to_tab_requested = pyqtSignal(str)  # tab name
+    play_pause_requested = Signal()
+    seek_backward_requested = Signal(int)  # seconds
+    seek_forward_requested = Signal(int)   # seconds
+    volume_change_requested = Signal(int)  # delta percentage
+    mute_toggled = Signal()
+    focus_search_requested = Signal()
+    switch_to_tab_requested = Signal(str)  # tab name
 
     _instance = None  # For optional singleton at app level
 

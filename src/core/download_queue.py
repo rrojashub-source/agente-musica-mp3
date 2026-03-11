@@ -16,7 +16,7 @@ import logging
 import threading
 from pathlib import Path
 from typing import Dict, List, Optional, Callable
-from PyQt6.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 from workers.download_worker import DownloadWorker
 from utils.input_sanitizer import sanitize_filename, sanitize_url, sanitize_metadata
 from utils.constants import MAX_CONCURRENT_DOWNLOADS, MAX_DOWNLOAD_RETRIES
@@ -42,9 +42,9 @@ class DownloadQueue(QObject):
     """
 
     # Signals
-    item_completed = pyqtSignal(str, dict)  # item_id, metadata
-    item_failed = pyqtSignal(str, str)      # item_id, error
-    queue_completed = pyqtSignal()          # All items done
+    item_completed = Signal(str, dict)  # item_id, metadata
+    item_failed = Signal(str, str)      # item_id, error
+    queue_completed = Signal()          # All items done
 
     def __init__(self, max_concurrent=MAX_CONCURRENT_DOWNLOADS, max_retries=MAX_DOWNLOAD_RETRIES, db_manager=None, config_manager=None):
         """

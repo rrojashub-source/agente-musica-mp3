@@ -1,10 +1,10 @@
 """
 NEXUS Music Manager - Library Service
-Encapsulates library operations with business logic and PyQt6 signals
+Encapsulates library operations with business logic and PySide6 signals
 
 Features:
 - Thread-safe singleton pattern
-- PyQt6 signals for UI updates
+- PySide6 signals for UI updates
 - Cached statistics
 - Search with result transformation
 - Import/export operations
@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import threading
 
-from PyQt6.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 logger = logging.getLogger(__name__)
 
@@ -117,14 +117,14 @@ class LibraryService(QObject):
     """
 
     # Signals
-    song_added = pyqtSignal(int)  # song_id
-    song_updated = pyqtSignal(int)  # song_id
-    song_deleted = pyqtSignal(int)  # song_id
-    library_changed = pyqtSignal()
-    import_progress = pyqtSignal(int, int, str)  # current, total, message
-    import_completed = pyqtSignal(int, int)  # success_count, error_count
-    stats_updated = pyqtSignal(object)  # LibraryStats
-    error_occurred = pyqtSignal(str)  # error_message
+    song_added = Signal(int)  # song_id
+    song_updated = Signal(int)  # song_id
+    song_deleted = Signal(int)  # song_id
+    library_changed = Signal()
+    import_progress = Signal(int, int, str)  # current, total, message
+    import_completed = Signal(int, int)  # success_count, error_count
+    stats_updated = Signal(object)  # LibraryStats
+    error_occurred = Signal(str)  # error_message
 
     # Singleton (class-level, not instance-level for QObject compatibility)
     _instance: Optional['LibraryService'] = None

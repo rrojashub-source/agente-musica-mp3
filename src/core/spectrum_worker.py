@@ -7,7 +7,7 @@ Created: November 20, 2025
 """
 import logging
 from pathlib import Path
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +23,9 @@ class SpectrumWorker(QThread):
     """
 
     # Signals
-    progress = pyqtSignal(int)  # Progress percentage (0-100)
-    finished = pyqtSignal(object, float)  # (spectrum_data, duration)
-    error = pyqtSignal(str)  # Error message
+    progress = Signal(int)  # Progress percentage (0-100)
+    finished = Signal(object, float)  # (spectrum_data, duration)
+    error = Signal(str)  # Error message
 
     def __init__(self, waveform_extractor, file_path: str, num_bars: int = 60):
         """

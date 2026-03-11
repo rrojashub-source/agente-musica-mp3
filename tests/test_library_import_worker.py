@@ -8,7 +8,7 @@ import os
 import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from PyQt6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication
 from src.workers.library_import_worker import LibraryImportWorker, extract_metadata
 from src.database.manager import DatabaseManager
 

@@ -7,7 +7,7 @@
 # ========================================
 # Core GUI Framework
 # ========================================
-PyQt6>=6.5.0
+PySide6>=6.5.0
 
 # ========================================
 # Phase 3: Library Management
@@ -48,7 +48,7 @@ pyacoustid>=1.2.2
 # Phase 6: Player & Lyrics
 # ========================================
 # Audio playback engine
-pygame>=2.5.0
+python-mpv>=1.0.0
 
 # Audio visualization
 numpy>=1.24.0

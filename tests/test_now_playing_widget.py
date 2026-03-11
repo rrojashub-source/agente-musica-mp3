@@ -16,12 +16,12 @@ Expected Result: All tests FAIL initially (no implementation yet)
 import pytest
 import unittest
 from unittest.mock import Mock, patch, MagicMock
-from PyQt6.QtWidgets import QApplication, QPushButton, QSlider, QLabel
-from PyQt6.QtTest import QTest
-from PyQt6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QPushButton, QSlider, QLabel
+from PySide6.QtTest import QTest
+from PySide6.QtCore import Qt
 import sys
 
-# Ensure QApplication exists for PyQt6 tests
+# Ensure QApplication exists for PySide6 tests
 app = QApplication.instance()
 if app is None:
     app = QApplication(sys.argv)

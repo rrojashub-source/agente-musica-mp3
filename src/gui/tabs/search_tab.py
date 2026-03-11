@@ -1,6 +1,6 @@
 """
 Search Tab GUI - Phase 4.4
-PyQt6 widget for searching music on YouTube and Spotify
+PySide6 widget for searching music on YouTube and Spotify
 
 Features:
 - Dual source search (YouTube + Spotify)
@@ -8,12 +8,12 @@ Features:
 - Song selection
 - Add to download queue
 """
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
     QCheckBox, QListWidget, QLabel, QSplitter, QListWidgetItem
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QColor
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QColor
 import json
 import logging
 from api.youtube_search import YouTubeSearcher
@@ -395,7 +395,7 @@ class SearchTab(QWidget):
         """
         if not self.selected_songs:
             logger.warning("No songs selected")
-            from PyQt6.QtWidgets import QMessageBox
+            from PySide6.QtWidgets import QMessageBox
             QMessageBox.warning(
                 self,
                 "No Songs Selected",
@@ -405,7 +405,7 @@ class SearchTab(QWidget):
 
         if not self.download_queue:
             logger.warning("No download queue available")
-            from PyQt6.QtWidgets import QMessageBox
+            from PySide6.QtWidgets import QMessageBox
             QMessageBox.critical(
                 self,
                 "Download Queue Error",
@@ -474,7 +474,7 @@ class SearchTab(QWidget):
 
         # Show confirmation
         if added_count > 0:
-            from PyQt6.QtWidgets import QMessageBox
+            from PySide6.QtWidgets import QMessageBox
             message = f"Added {added_count} song(s) to download queue!\n\n"
 
             # Show conversion stats
@@ -491,7 +491,7 @@ class SearchTab(QWidget):
             QMessageBox.information(self, "Success", message)
             logger.info(f"Added {added_count} songs to download queue (Spotify converted: {spotify_converted}, failed: {spotify_failed})")
         else:
-            from PyQt6.QtWidgets import QMessageBox
+            from PySide6.QtWidgets import QMessageBox
             message = "No songs were added to the queue.\n\n"
 
             if spotify_failed > 0:
@@ -511,8 +511,8 @@ class SearchTab(QWidget):
 
         Uses QTimer to delay dialog until UI is fully initialized
         """
-        from PyQt6.QtCore import QTimer
-        from PyQt6.QtWidgets import QMessageBox
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QMessageBox
 
         def show_dialog():
             # Show informative message first
@@ -562,7 +562,7 @@ class SearchTab(QWidget):
 
                 logger.info("API searchers re-initialized successfully")
 
-                from PyQt6.QtWidgets import QMessageBox
+                from PySide6.QtWidgets import QMessageBox
                 QMessageBox.information(
                     self,
                     "Success",
@@ -573,7 +573,7 @@ class SearchTab(QWidget):
 
         except (RuntimeError, OSError) as e:
             logger.error(f"Error reloading credentials: {e}")
-            from PyQt6.QtWidgets import QMessageBox
+            from PySide6.QtWidgets import QMessageBox
             QMessageBox.warning(
                 self,
                 "Error",

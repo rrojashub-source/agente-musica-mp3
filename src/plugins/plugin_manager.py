@@ -22,7 +22,7 @@ def get_resource_path(relative_path: str) -> Path:
     return base_path / relative_path
 
 try:
-    from PyQt6.QtCore import QObject, pyqtSignal
+    from PySide6.QtCore import QObject, Signal
     HAS_QT = True
 except ImportError:
     HAS_QT = False
@@ -63,13 +63,13 @@ class PluginManager(QObject if HAS_QT else object):
     # Singleton instance
     _instance: Optional['PluginManager'] = None
 
-    # PyQt6 signals (if available)
+    # PySide6 signals (if available)
     if HAS_QT:
-        plugin_loaded = pyqtSignal(str)           # plugin_name
-        plugin_enabled = pyqtSignal(str)          # plugin_name
-        plugin_disabled = pyqtSignal(str)         # plugin_name
-        plugin_error = pyqtSignal(str, str)       # plugin_name, error_message
-        hook_executed = pyqtSignal(str, int)      # hook_name, handlers_count
+        plugin_loaded = Signal(str)           # plugin_name
+        plugin_enabled = Signal(str)          # plugin_name
+        plugin_disabled = Signal(str)         # plugin_name
+        plugin_error = Signal(str, str)       # plugin_name, error_message
+        hook_executed = Signal(str, int)      # hook_name, handlers_count
 
     def __init__(self, plugins_dir: str = None, data_dir: str = None):
         """

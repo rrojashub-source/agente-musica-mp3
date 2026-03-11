@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 
 
 def get_resource_path(relative_path: str) -> Path:

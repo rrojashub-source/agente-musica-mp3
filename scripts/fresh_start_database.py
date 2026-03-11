@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from database.manager import DatabaseManager
 from workers.library_import_worker import LibraryImportWorker
-from PyQt6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication
 
 # Setup logging
 logging.basicConfig(

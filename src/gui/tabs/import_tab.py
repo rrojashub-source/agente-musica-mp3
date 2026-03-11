@@ -10,12 +10,12 @@ Purpose: Import MP3 library into database with GUI
 
 Created: November 13, 2025
 """
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QLineEdit, QFileDialog,
     QTextEdit, QCheckBox, QGroupBox, QMessageBox
 )
-from PyQt6.QtCore import Qt
+from PySide6.QtCore import Qt
 import logging
 from pathlib import Path
 

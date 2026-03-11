@@ -4,14 +4,14 @@ Allows users to control NEXUS from their mobile devices
 
 Created: November 24, 2025
 """
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QGroupBox, QSpinBox, QMessageBox,
     QTextEdit, QFrame
 )
-from PyQt6.QtCore import Qt, pyqtSlot, QTimer
-from PyQt6.QtGui import QPixmap, QImage, QFont, QDesktopServices
-from PyQt6.QtCore import QUrl
+from PySide6.QtCore import Qt, Slot, QTimer
+from PySide6.QtGui import QPixmap, QImage, QFont, QDesktopServices
+from PySide6.QtCore import QUrl
 import logging
 from typing import Optional
 import base64
@@ -240,7 +240,7 @@ class RemoteTab(QWidget):
         if self._server and self._server.is_running:
             QDesktopServices.openUrl(QUrl(self._server.url))
 
-    @pyqtSlot(str, int)
+    @Slot(str, int)
     def _on_server_started(self, host: str, port: int):
         """Handle server started signal"""
         url = f"http://{host}:{port}"
@@ -250,13 +250,13 @@ class RemoteTab(QWidget):
         self.open_btn.setEnabled(True)
         self._log(f"Server started at {url}")
 
-    @pyqtSlot()
+    @Slot()
     def _on_server_stopped(self):
         """Handle server stopped signal"""
         self.status_label.setText("⚪ Server stopped")
         self.status_label.setStyleSheet("font-weight: bold; padding: 10px; color: #666;")
 
-    @pyqtSlot(str, dict)
+    @Slot(str, dict)
     def _on_command_received(self, command: str, params: dict):
         """Handle command received from mobile"""
         self._log(f"Command: {command} {params}")

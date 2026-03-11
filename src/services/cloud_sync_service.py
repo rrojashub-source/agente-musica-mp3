@@ -23,7 +23,7 @@ from enum import Enum
 from abc import ABC, abstractmethod
 import shutil
 
-from PyQt6.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 logger = logging.getLogger(__name__)
 
@@ -595,12 +595,12 @@ class CloudSyncService(QObject):
     """
 
     # Signals
-    sync_started = pyqtSignal()
-    sync_progress = pyqtSignal(str, str, int)  # status, message, percent
-    sync_completed = pyqtSignal(bool, str)  # success, message
-    sync_failed = pyqtSignal(str)  # error_message
-    conflict_detected = pyqtSignal(list)  # conflicts
-    status_changed = pyqtSignal(object)  # SyncStatus
+    sync_started = Signal()
+    sync_progress = Signal(str, str, int)  # status, message, percent
+    sync_completed = Signal(bool, str)  # success, message
+    sync_failed = Signal(str)  # error_message
+    conflict_detected = Signal(list)  # conflicts
+    status_changed = Signal(object)  # SyncStatus
 
     # Singleton
     _instance: Optional['CloudSyncService'] = None

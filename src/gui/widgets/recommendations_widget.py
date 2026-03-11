@@ -10,13 +10,13 @@ Updated: December 8, 2025 - Integrated AI audio embeddings for real similarity
 import logging
 from typing import Optional, Dict, List
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QListWidget, QListWidgetItem, QFrame,
     QApplication
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QColor
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor
 
 from core.audio_embeddings import AudioEmbeddings
 
@@ -31,7 +31,7 @@ class RecommendationsWidget(QWidget):
         song_selected: Emitted when a recommendation is clicked (song_data dict)
     """
 
-    song_selected = pyqtSignal(dict)
+    song_selected = Signal(dict)
 
     def __init__(self, db_manager, parent=None):
         """

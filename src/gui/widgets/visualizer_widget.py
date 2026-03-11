@@ -21,9 +21,9 @@ Updated: December 17, 2025 - Added Organic visualizer (Phase 10)
 import logging
 from typing import List, Optional
 import math
-from PyQt6.QtWidgets import QWidget, QComboBox, QStackedWidget, QVBoxLayout
-from PyQt6.QtCore import Qt, QRect, QPoint, QSettings
-from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QLinearGradient, QRadialGradient
+from PySide6.QtWidgets import QWidget, QComboBox, QStackedWidget, QVBoxLayout
+from PySide6.QtCore import Qt, QRect, QPoint, QSettings
+from PySide6.QtGui import QPainter, QColor, QPen, QPainterPath, QLinearGradient, QRadialGradient
 
 # Try to import Organic Visualizer (Phase 10)
 try:

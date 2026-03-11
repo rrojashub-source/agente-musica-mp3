@@ -28,10 +28,10 @@ logger = logging.getLogger(__name__)
 from translations import tr, set_language
 
 try:
-    from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox
-    from PyQt6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
+    from PySide6.QtCore import Qt
 except ImportError as e:
-    print("PyQt6 not installed. Install with: pip install PyQt6")
+    print("PySide6 not installed. Install with: pip install PySide6")
     sys.exit(1)
 
 # Add src to path
@@ -287,7 +287,7 @@ def main():
     app.setOrganizationName("NEXUS")
 
     # Load saved language preference
-    from PyQt6.QtCore import QSettings
+    from PySide6.QtCore import QSettings
     settings = QSettings("NEXUS", "MusicManager")
     saved_language = settings.value("language", "es")
     set_language(saved_language)

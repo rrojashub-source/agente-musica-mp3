@@ -6,8 +6,8 @@ Handles seek, volume, mute keyboard shortcuts.
 """
 import logging
 from pathlib import Path
-from PyQt6.QtCore import QObject
-from PyQt6.QtWidgets import QMessageBox
+from PySide6.QtCore import QObject
+from PySide6.QtWidgets import QMessageBox
 
 logger = logging.getLogger(__name__)
 

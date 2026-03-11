@@ -10,13 +10,13 @@ Purpose: Auto-organize music library into structured folders
 
 Created: November 13, 2025
 """
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QPushButton,
     QComboBox, QLabel, QTreeWidget, QTreeWidgetItem,
     QMessageBox, QGroupBox, QLineEdit,
     QFileDialog, QRadioButton, QButtonGroup
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QThread
+from PySide6.QtCore import Qt, Signal, QThread
 import logging
 import os
 
@@ -30,9 +30,9 @@ class OrganizeWorker(QThread):
     """Background worker for library organization"""
 
     # Signals
-    progress = pyqtSignal(int, str)  # (percentage, status_message)
-    finished = pyqtSignal(dict)  # Result dictionary
-    error = pyqtSignal(str)  # Error message
+    progress = Signal(int, str)  # (percentage, status_message)
+    finished = Signal(dict)  # Result dictionary
+    error = Signal(str)  # Error message
 
     def __init__(self, organizer, base_path, template, songs, move=True, dry_run=False):
         super().__init__()

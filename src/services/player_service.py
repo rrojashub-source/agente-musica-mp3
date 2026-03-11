@@ -1,10 +1,10 @@
 """
 NEXUS Music Manager - Player Service
-Encapsulates audio playback with business logic and PyQt6 signals
+Encapsulates audio playback with business logic and PySide6 signals
 
 Features:
 - Thread-safe singleton pattern
-- PyQt6 signals for UI updates
+- PySide6 signals for UI updates
 - Gapless playback support
 - Play queue management
 - Playback statistics tracking
@@ -19,7 +19,7 @@ from enum import Enum
 import threading
 import random
 
-from PyQt6.QtCore import QObject, pyqtSignal, QTimer
+from PySide6.QtCore import QObject, Signal, QTimer
 from utils.constants import POSITION_UPDATE_INTERVAL_MS
 
 logger = logging.getLogger(__name__)
@@ -80,13 +80,13 @@ class PlayerService(QObject):
     """
 
     # Signals
-    state_changed = pyqtSignal(object)  # PlaybackState
-    track_changed = pyqtSignal(object)  # NowPlaying
-    position_changed = pyqtSignal(float)  # position in seconds
-    volume_changed = pyqtSignal(int)  # volume 0-100
-    track_ended = pyqtSignal()
-    queue_changed = pyqtSignal()
-    error_occurred = pyqtSignal(str)
+    state_changed = Signal(object)  # PlaybackState
+    track_changed = Signal(object)  # NowPlaying
+    position_changed = Signal(float)  # position in seconds
+    volume_changed = Signal(int)  # volume 0-100
+    track_ended = Signal()
+    queue_changed = Signal()
+    error_occurred = Signal(str)
 
     # Singleton (class-level for QObject compatibility)
     _instance: Optional['PlayerService'] = None

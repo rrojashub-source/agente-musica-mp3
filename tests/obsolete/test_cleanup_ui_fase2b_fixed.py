@@ -3,7 +3,7 @@
 Test visual: Cleanup Assistant Tab con Fase 2B (bulk actions)
 """
 import sys
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from cleanup_assistant_tab import CleanupAssistantTab, MetadataIssue
 
 print("🧪 TEST: Cleanup Assistant UI - Fase 2B\n")

@@ -31,12 +31,11 @@ a = Analysis(
         ('src/plugins/available', 'plugins/available'),
     ],
     hiddenimports=[
-        # PyQt6 modules
-        'PyQt6.QtWidgets',
-        'PyQt6.QtCore',
-        'PyQt6.QtGui',
-        'PyQt6.QtOpenGLWidgets',
-        'PyQt6.sip',
+        # PySide6 modules
+        'PySide6.QtWidgets',
+        'PySide6.QtCore',
+        'PySide6.QtGui',
+        'PySide6.QtOpenGLWidgets',
         # OpenGL for Organic Visualizer
         'OpenGL',
         'OpenGL.GL',
@@ -48,8 +47,7 @@ a = Analysis(
         # Database
         'sqlite3',
         # Audio
-        'pygame',
-        'pygame.mixer',
+        'mpv',
         # Numpy for visualizer
         'numpy',
         # API clients

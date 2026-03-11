@@ -13,9 +13,9 @@ Features:
 Created: November 23, 2025
 """
 import logging
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, pyqtProperty
-from PyQt6.QtGui import QPainter, QColor, QLinearGradient, QPaintEvent
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame
+from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, Property
+from PySide6.QtGui import QPainter, QColor, QLinearGradient, QPaintEvent
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class SkeletonLine(QFrame):
         self._shimmer_position = value
         self.update()
 
-    shimmer_position = pyqtProperty(float, get_shimmer_position, set_shimmer_position)
+    shimmer_position = Property(float, get_shimmer_position, set_shimmer_position)
 
     def set_theme(self, is_dark: bool):
         """Update colors based on theme"""

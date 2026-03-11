@@ -5,7 +5,7 @@ TDD: Write tests FIRST, then implement src/gui/tabs/search_tab.py
 import pytest
 import unittest
 from unittest.mock import Mock, patch
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 import sys
 
 

@@ -16,7 +16,7 @@ Updated: November 18, 2025 (Added AcoustID fallback)
 import logging
 import sqlite3
 from typing import Dict, List, Optional
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 import keyring
 import requests
 
@@ -35,10 +35,10 @@ class CleanupWorkflowWorker(QThread):
     """
 
     # Signals
-    progress = pyqtSignal(int, str)  # (percentage, status_message)
-    step_completed = pyqtSignal(int, dict)  # (step_number, results)
-    finished = pyqtSignal(dict)  # Final summary
-    error = pyqtSignal(str)  # Error message
+    progress = Signal(int, str)  # (percentage, status_message)
+    step_completed = Signal(int, dict)  # (step_number, results)
+    finished = Signal(dict)  # Final summary
+    error = Signal(str)  # Error message
 
     def __init__(self, db_manager, cleaner, fetcher, songs_to_clean: List[Dict],
                  fetch_metadata: bool = True, min_confidence: float = 70.0,

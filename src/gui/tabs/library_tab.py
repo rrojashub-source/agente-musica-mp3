@@ -21,12 +21,12 @@ import logging
 import sqlite3
 from pathlib import Path
 from typing import Optional, Dict
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QHeaderView, QMessageBox, QMenu, QApplication
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl, QThread, pyqtSlot
-from PyQt6.QtGui import QColor, QDragEnterEvent, QDropEvent, QBrush
+from PySide6.QtCore import Qt, QTimer, Signal, QUrl, QThread, Slot
+from PySide6.QtGui import QColor, QDragEnterEvent, QDropEvent, QBrush
 
 from core.cover_art_manager import CoverArtManager
 from utils.constants import TRACK_END_CHECK_INTERVAL_MS
@@ -52,8 +52,8 @@ class LibraryTab(QWidget):
     """
 
     # Signals
-    playback_started = pyqtSignal()  # Emitted when a song starts playing from library
-    find_similar_requested = pyqtSignal(dict)  # Emitted when user requests similar songs (song_data)
+    playback_started = Signal()  # Emitted when a song starts playing from library
+    find_similar_requested = Signal(dict)  # Emitted when user requests similar songs (song_data)
 
     def __init__(self, db_manager, audio_player=None, now_playing_widget=None):
         """
@@ -536,7 +536,7 @@ class LibraryTab(QWidget):
         Args:
             row: Row index to highlight
         """
-        from PyQt6.QtGui import QBrush
+        from PySide6.QtGui import QBrush
 
         # Colors that work in both dark and light themes
         highlight_bg = QColor(0, 160, 200, 100)  # Semi-transparent cyan

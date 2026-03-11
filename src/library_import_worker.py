@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 
 try:
-    from PyQt6.QtCore import QThread, pyqtSignal
+    from PySide6.QtCore import QThread, Signal
 except ImportError:
-    print("❌ PyQt6 not installed")
+    print("❌ PySide6 not installed")
     exit(1)
 
 try:
@@ -39,10 +39,10 @@ class LibraryImportWorker(QThread):
     """
 
     # Señales
-    progress_update = pyqtSignal(int, str)  # (progress %, message)
-    file_processed = pyqtSignal(str, bool)  # (file_path, success)
-    import_complete = pyqtSignal(int, int)  # (total_imported, total_errors)
-    error_occurred = pyqtSignal(str)
+    progress_update = Signal(int, str)  # (progress %, message)
+    file_processed = Signal(str, bool)  # (file_path, success)
+    import_complete = Signal(int, int)  # (total_imported, total_errors)
+    error_occurred = Signal(str)
 
     def __init__(self, library_path: str, db_path: str):
         super().__init__()

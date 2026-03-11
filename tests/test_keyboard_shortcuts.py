@@ -13,10 +13,10 @@ Test Strategy:
 
 import unittest
 from unittest.mock import Mock, patch, MagicMock
-from PyQt6.QtWidgets import QApplication, QLineEdit, QWidget
-from PyQt6.QtCore import Qt, QEvent
-from PyQt6.QtGui import QKeyEvent
-from PyQt6.QtTest import QTest
+from PySide6.QtWidgets import QApplication, QLineEdit, QWidget
+from PySide6.QtCore import Qt, QEvent
+from PySide6.QtGui import QKeyEvent
+from PySide6.QtTest import QTest
 
 
 class TestKeyboardShortcutManager(unittest.TestCase):

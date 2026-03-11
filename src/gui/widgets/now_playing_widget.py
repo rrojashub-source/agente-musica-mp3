@@ -18,12 +18,12 @@ Created: November 13, 2025
 import logging
 from typing import Optional, Dict
 from pathlib import Path
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QSlider, QFrame, QMessageBox, QGraphicsDropShadowEffect
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QPointF
-from PyQt6.QtGui import QPixmap, QPainter, QColor, QPen, QBrush, QPolygonF, QPainterPath
+from PySide6.QtCore import Qt, QTimer, Signal, QPointF
+from PySide6.QtGui import QPixmap, QPainter, QColor, QPen, QBrush, QPolygonF, QPainterPath
 from core.audio_player import PlaybackState
 from core.cover_art_manager import CoverArtManager
 from utils.constants import VISUALIZER_FRAME_INTERVAL_MS, ALBUM_ART_THUMBNAIL_SIZE
@@ -260,7 +260,7 @@ class NeonIconButton(QPushButton):
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
         # Draw arc
-        from PyQt6.QtCore import QRectF
+        from PySide6.QtCore import QRectF
         rect = QRectF(cx - scale, cy - scale * 0.7, scale * 2, scale * 1.4)
         painter.drawArc(rect, 30 * 16, 280 * 16)  # Almost full circle
 
@@ -287,7 +287,7 @@ class NeonIconButton(QPushButton):
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
         # Draw arc (same as repeat)
-        from PyQt6.QtCore import QRectF
+        from PySide6.QtCore import QRectF
         rect = QRectF(cx - scale, cy - scale * 0.7, scale * 2, scale * 1.4)
         painter.drawArc(rect, 30 * 16, 280 * 16)
 
@@ -296,7 +296,7 @@ class NeonIconButton(QPushButton):
         self._draw_small_arrow(painter, cx + scale * 0.5, cy - scale * 0.7, -60)
 
         # Draw "1" in center
-        from PyQt6.QtGui import QFont
+        from PySide6.QtGui import QFont
         painter.setFont(QFont("Arial", int(scale * 0.9), QFont.Weight.Bold))
         painter.setPen(QPen(color))
         painter.drawText(int(cx - scale * 0.2), int(cy + scale * 0.35), "1")
@@ -351,20 +351,20 @@ class NowPlayingWidget(QWidget):
     """
 
     # Signals
-    play_clicked = pyqtSignal()
-    stop_clicked = pyqtSignal()
-    prev_clicked = pyqtSignal()
-    next_clicked = pyqtSignal()
-    seek_requested = pyqtSignal(float)
-    volume_changed = pyqtSignal(float)
-    position_changed = pyqtSignal(float)  # Emits current position in seconds
-    song_loaded = pyqtSignal(str)  # Emits file_path when new song loaded
-    song_metadata_changed = pyqtSignal(dict)  # Emits full song_info (for lyrics, stats, etc.)
-    shuffle_changed = pyqtSignal(bool)  # Emits shuffle state
-    continue_changed = pyqtSignal(bool)  # Emits continue/auto-play state
-    repeat_one_changed = pyqtSignal(bool)  # Emits repeat one song state
-    song_ended = pyqtSignal()  # Emits when song finishes (for auto-next)
-    repeat_song = pyqtSignal()  # Emits when song should repeat (for repeat one mode)
+    play_clicked = Signal()
+    stop_clicked = Signal()
+    prev_clicked = Signal()
+    next_clicked = Signal()
+    seek_requested = Signal(float)
+    volume_changed = Signal(float)
+    position_changed = Signal(float)  # Emits current position in seconds
+    song_loaded = Signal(str)  # Emits file_path when new song loaded
+    song_metadata_changed = Signal(dict)  # Emits full song_info (for lyrics, stats, etc.)
+    shuffle_changed = Signal(bool)  # Emits shuffle state
+    continue_changed = Signal(bool)  # Emits continue/auto-play state
+    repeat_one_changed = Signal(bool)  # Emits repeat one song state
+    song_ended = Signal()  # Emits when song finishes (for auto-next)
+    repeat_song = Signal()  # Emits when song should repeat (for repeat one mode)
 
     def __init__(self, audio_player=None):
         """

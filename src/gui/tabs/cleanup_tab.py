@@ -9,13 +9,13 @@ Purpose: GUI wizard for metadata cleanup workflow
 
 Created: November 18, 2025
 """
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QTreeWidget, QTreeWidgetItem, QMessageBox,
     QGroupBox, QCheckBox, QSpinBox
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QBrush
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QBrush
 import logging
 
 from database.manager import DatabaseManager

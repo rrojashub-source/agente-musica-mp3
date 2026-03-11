@@ -17,12 +17,12 @@ import unittest
 from unittest.mock import Mock, patch, MagicMock
 import sys
 from pathlib import Path
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-# Ensure QApplication exists for PyQt6 tests (module level, created once)
+# Ensure QApplication exists for PySide6 tests (module level, created once)
 app = QApplication.instance()
 if app is None:
     app = QApplication(sys.argv)
@@ -40,10 +40,13 @@ class TestPlaylistWidget(unittest.TestCase):
             self.mock_playlist_manager = Mock()
             self.mock_db_manager = Mock()
 
-            # Patch load_playlists to prevent it from running during __init__
-            with patch.object(PlaylistWidget, 'load_playlists'):
-                # Create widget (load_playlists is mocked, won't execute)
-                self.widget = PlaylistWidget(self.mock_playlist_manager, self.mock_db_manager)
+            # Subclass to prevent load_playlists from running during __init__
+            # (patch.object on PySide6 widget classes causes segfault due to shiboken6 metaclass)
+            class _TestablePlaylistWidget(PlaylistWidget):
+                def load_playlists(self):
+                    pass
+
+            self.widget = _TestablePlaylistWidget(self.mock_playlist_manager, self.mock_db_manager)
 
         except ImportError:
             self.widget = None

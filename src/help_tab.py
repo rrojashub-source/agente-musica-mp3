@@ -5,14 +5,14 @@ Project: AGENTE_MUSICA_MP3_001
 """
 
 try:
-    from PyQt6.QtWidgets import (
+    from PySide6.QtWidgets import (
         QWidget, QVBoxLayout, QTextBrowser, QComboBox,
         QHBoxLayout, QLabel, QPushButton
     )
-    from PyQt6.QtGui import QFont
-    from PyQt6.QtCore import Qt
+    from PySide6.QtGui import QFont
+    from PySide6.QtCore import Qt
 except ImportError:
-    print("❌ PyQt6 not installed")
+    print("❌ PySide6 not installed")
     exit(1)
 
 
@@ -538,8 +538,8 @@ CLIENT_SECRET = "TU_CLIENT_SECRET"
         <h3>🔧 Problemas Técnicos:</h3>
 
         <h4>Q: La app no inicia</h4>
-        <p><b>A:</b> Verifica que tengas PyQt6 instalado:<br>
-        <code>pip install PyQt6</code></p>
+        <p><b>A:</b> Verifica que tengas PySide6 instalado:<br>
+        <code>pip install PySide6</code></p>
 
         <h4>Q: Búsqueda YouTube/Spotify no funciona</h4>
         <p><b>A:</b> Configura API keys (ver sección Configuración API Keys).<br>

@@ -15,12 +15,12 @@ import logging
 from pathlib import Path
 from typing import Optional, List, Dict
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea,
     QLabel, QPushButton, QFrame, QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from PyQt6.QtGui import QPixmap, QImage, QPainter, QBrush, QColor
+from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtGui import QPixmap, QImage, QPainter, QBrush, QColor
 
 from core.cover_art_manager import CoverArtManager
 
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class AlbumCard(QFrame):
     """Single album card with cover art and info"""
 
-    clicked = pyqtSignal(dict)  # Emits album data when clicked
+    clicked = Signal(dict)  # Emits album data when clicked
 
     CARD_WIDTH = 160
     CARD_HEIGHT = 200
@@ -223,7 +223,7 @@ class AlbumGridWidget(QWidget):
         album_selected: Emitted when an album is clicked (album_data dict)
     """
 
-    album_selected = pyqtSignal(dict)
+    album_selected = Signal(dict)
 
     def __init__(self, db_manager, parent=None):
         """

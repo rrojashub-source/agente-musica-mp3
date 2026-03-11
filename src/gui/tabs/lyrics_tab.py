@@ -13,12 +13,12 @@ Created: November 17, 2025
 """
 import logging
 from typing import Optional, Dict
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QTextEdit, QLabel, QPushButton,
     QHBoxLayout, QFrame
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QThread
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, Signal, QThread
+from PySide6.QtGui import QFont
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +26,8 @@ logger = logging.getLogger(__name__)
 class LyricsSearchWorker(QThread):
     """Background worker for lyrics search (non-blocking)"""
 
-    finished = pyqtSignal(str)  # lyrics_text
-    error = pyqtSignal(str)  # error_message
+    finished = Signal(str)  # lyrics_text
+    error = Signal(str)  # error_message
 
     def __init__(self, genius_client, title: str, artist: str):
         """
@@ -302,7 +302,7 @@ class LyricsTab(QWidget):
 
     def _on_copy_lyrics(self):
         """Copy lyrics to clipboard"""
-        from PyQt6.QtWidgets import QApplication
+        from PySide6.QtWidgets import QApplication
 
         lyrics = self.lyrics_text.toPlainText()
         if lyrics and not lyrics.startswith("❌") and not lyrics.startswith("⏳"):

@@ -10,15 +10,15 @@ from pathlib import Path
 from typing import Optional
 
 try:
-    from PyQt6.QtWidgets import (
+    from PySide6.QtWidgets import (
         QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
         QLineEdit, QFileDialog, QProgressBar, QTextEdit, QMessageBox,
         QComboBox
     )
-    from PyQt6.QtCore import Qt, QThread, pyqtSignal
-    from PyQt6.QtGui import QFont
+    from PySide6.QtCore import Qt, QThread, Signal
+    from PySide6.QtGui import QFont
 except ImportError:
-    print("❌ PyQt6 not installed")
+    print("❌ PySide6 not installed")
     exit(1)
 
 from translations import t
@@ -26,9 +26,9 @@ from translations import t
 
 class LibraryScanWorker(QThread):
     """Worker para escanear archivos de música"""
-    progress_update = pyqtSignal(int, str)  # (progress, message)
-    scan_complete = pyqtSignal(int)  # total files found
-    error_occurred = pyqtSignal(str)
+    progress_update = Signal(int, str)  # (progress, message)
+    scan_complete = Signal(int)  # total files found
+    error_occurred = Signal(str)
 
     def __init__(self, library_path: str):
         super().__init__()

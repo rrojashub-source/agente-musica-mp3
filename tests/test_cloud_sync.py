@@ -13,14 +13,14 @@ from datetime import datetime
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-# Skip all if PyQt6 not available
+# Skip all if PySide6 not available
 try:
-    from PyQt6.QtCore import QCoreApplication
+    from PySide6.QtCore import QCoreApplication
     HAS_QT = True
 except ImportError:
     HAS_QT = False
 
-pytestmark = pytest.mark.skipif(not HAS_QT, reason="PyQt6 not available")
+pytestmark = pytest.mark.skipif(not HAS_QT, reason="PySide6 not available")
 
 
 @pytest.fixture(scope='module')

@@ -5,7 +5,7 @@ Manages RemoteServer integration: connects callbacks,
 handles commands from mobile interface, updates now playing info.
 """
 import logging
-from PyQt6.QtCore import QObject, QTimer
+from PySide6.QtCore import QObject, QTimer
 from utils.constants import REMOTE_UPDATE_INTERVAL_MS
 
 logger = logging.getLogger(__name__)

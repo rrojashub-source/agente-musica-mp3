@@ -30,7 +30,7 @@ setup(
 
     # Dependencies
     install_requires=[
-        "PyQt6>=6.5.0",
+        "PySide6>=6.5.0",
         "google-api-python-client>=2.100.0",
         "google-auth>=2.23.0",
         "google-auth-oauthlib>=1.1.0",
@@ -40,7 +40,7 @@ setup(
         "musicbrainzngs>=0.7.1",
         "mutagen>=1.47.0",
         "pydub>=0.25.1",
-        "pygame>=2.5.0",
+        "python-mpv>=1.0.0",
         "numpy>=1.24.0",
         "lyricsgenius>=3.0.1",
         "beautifulsoup4>=4.12.0",
@@ -88,7 +88,7 @@ setup(
     ],
 
     # Keywords for search
-    keywords="music manager youtube spotify download mp3 library pyqt6",
+    keywords="music manager youtube spotify download mp3 library pyside6",
 
     # Include additional files
     include_package_data=True,

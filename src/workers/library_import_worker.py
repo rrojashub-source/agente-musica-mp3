@@ -18,7 +18,7 @@ import os
 import logging
 from pathlib import Path
 from typing import Optional, Dict, List
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 
 logger = logging.getLogger(__name__)
 
@@ -119,10 +119,10 @@ class LibraryImportWorker(QThread):
     """
 
     # Signals
-    progress = pyqtSignal(int, str)  # (percentage, status_message)
-    song_imported = pyqtSignal(dict)  # Song data dictionary
-    finished = pyqtSignal(dict)  # Summary dictionary
-    error = pyqtSignal(str)  # Fatal error message
+    progress = Signal(int, str)  # (percentage, status_message)
+    song_imported = Signal(dict)  # Song data dictionary
+    finished = Signal(dict)  # Summary dictionary
+    error = Signal(str)  # Fatal error message
 
     def __init__(self, db_manager, folder_path: str, recursive: bool = True, max_duration: int = 900):
         """

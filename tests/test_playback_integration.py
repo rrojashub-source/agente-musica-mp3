@@ -16,12 +16,12 @@ Expected Result: All tests FAIL initially (no integration yet)
 import pytest
 import unittest
 from unittest.mock import Mock, patch, MagicMock
-from PyQt6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem
-from PyQt6.QtTest import QTest
-from PyQt6.QtCore import Qt, QPoint
+from PySide6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem
+from PySide6.QtTest import QTest
+from PySide6.QtCore import Qt, QPoint
 import sys
 
-# Ensure QApplication exists for PyQt6 tests
+# Ensure QApplication exists for PySide6 tests
 app = QApplication.instance()
 if app is None:
     app = QApplication(sys.argv)
@@ -197,7 +197,7 @@ class TestPlaybackIntegration(unittest.TestCase):
         # Play song (with mocked Path.exists and QMessageBox to avoid blocking)
         if hasattr(self.library_tab, '_play_song'):
             with patch('pathlib.Path.exists', return_value=True), \
-                 patch('PyQt6.QtWidgets.QMessageBox.warning'):
+                 patch('PySide6.QtWidgets.QMessageBox.warning'):
                 self.library_tab._play_song(song_info)
 
                 # Verify now_playing_widget.load_song was called
@@ -228,7 +228,7 @@ class TestPlaybackIntegration(unittest.TestCase):
         if hasattr(self.library_tab, '_play_song'):
             # Should not crash
             try:
-                with patch('PyQt6.QtWidgets.QMessageBox.warning'):
+                with patch('PySide6.QtWidgets.QMessageBox.warning'):
                     self.library_tab._play_song(song_info)
             except Exception as e:
                 self.fail(f"Should handle missing file gracefully: {e}")

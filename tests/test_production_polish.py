@@ -18,12 +18,12 @@ import sys
 import logging
 import os
 from pathlib import Path
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-# Ensure QApplication exists for PyQt6 tests
+# Ensure QApplication exists for PySide6 tests
 app = QApplication.instance()
 if app is None:
     app = QApplication(sys.argv)
@@ -169,22 +169,26 @@ class TestProductionPolish(unittest.TestCase):
         try:
             from gui.widgets.playlist_widget import PlaylistWidget
 
-            # Mock dependencies
+            # Subclass to prevent load_playlists during __init__
+            # (patch.object on PySide6 widget classes causes segfault due to shiboken6 metaclass)
+            class _TestablePlaylistWidget(PlaylistWidget):
+                def load_playlists(self):
+                    pass
+
             mock_playlist_manager = Mock()
             mock_db = Mock()
 
-            with patch.object(PlaylistWidget, 'load_playlists'):
-                widget = PlaylistWidget(mock_playlist_manager, mock_db)
+            widget = _TestablePlaylistWidget(mock_playlist_manager, mock_db)
 
-                # Check create button has tooltip
-                self.assertTrue(widget.create_button.toolTip())
-                self.assertGreater(len(widget.create_button.toolTip()), 0)
+            # Check create button has tooltip
+            self.assertTrue(widget.create_button.toolTip())
+            self.assertGreater(len(widget.create_button.toolTip()), 0)
 
-                # Check delete button has tooltip
-                self.assertTrue(widget.delete_button.toolTip())
-                self.assertGreater(len(widget.delete_button.toolTip()), 0)
+            # Check delete button has tooltip
+            self.assertTrue(widget.delete_button.toolTip())
+            self.assertGreater(len(widget.delete_button.toolTip()), 0)
 
-                widget.close()
+            widget.close()
 
         except ImportError:
             self.skipTest("PlaylistWidget not available")

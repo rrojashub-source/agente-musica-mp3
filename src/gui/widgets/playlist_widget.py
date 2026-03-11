@@ -19,15 +19,15 @@ Updated: November 22, 2025 (Fixed song selection dialog)
 import logging
 import sqlite3
 from typing import List, Optional
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem,
     QPushButton, QMessageBox, QInputDialog, QFileDialog,
     QHeaderView, QAbstractItemView, QLabel, QMenu, QDialog,
     QDialogButtonBox, QCheckBox, QScrollArea, QFrame
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QAction
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QAction
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -152,10 +152,10 @@ class PlaylistWidget(QWidget):
     """
 
     # Signals
-    playlist_selected = pyqtSignal(int)
-    playlist_created = pyqtSignal(int)
-    playlist_deleted = pyqtSignal(int)
-    play_song_requested = pyqtSignal(dict)  # Emitted when user wants to play a song from playlist
+    playlist_selected = Signal(int)
+    playlist_created = Signal(int)
+    playlist_deleted = Signal(int)
+    play_song_requested = Signal(dict)  # Emitted when user wants to play a song from playlist
 
     def __init__(self, playlist_manager, db_manager, parent=None):
         """
@@ -817,7 +817,7 @@ class PlaylistWidget(QWidget):
             row: Row index
             highlight: True to highlight, False to remove
         """
-        from PyQt6.QtGui import QColor, QBrush
+        from PySide6.QtGui import QColor, QBrush
 
         if highlight:
             # Neon cyan highlight (matches app theme)

@@ -16,13 +16,13 @@ import unittest
 from unittest.mock import Mock, patch, MagicMock
 import sys
 from pathlib import Path
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt, QSize
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt, QSize
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-# Ensure QApplication exists for PyQt6 tests (module level, created once)
+# Ensure QApplication exists for PySide6 tests (module level, created once)
 app = QApplication.instance()
 if app is None:
     app = QApplication(sys.argv)
@@ -106,7 +106,7 @@ class TestVisualizerWidget(unittest.TestCase):
             self.skipTest("VisualizerWidget not implemented")
 
         # Set color
-        from PyQt6.QtGui import QColor
+        from PySide6.QtGui import QColor
         red_color = QColor(255, 0, 0)
         self.widget.set_color(red_color)
 

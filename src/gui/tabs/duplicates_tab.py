@@ -10,13 +10,13 @@ Purpose: Find and manage duplicate songs in library
 Created: November 13, 2025
 Updated: November 20, 2025 (UX improvements: visual indicators, dark mode colors)
 """
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QPushButton,
     QComboBox, QSlider, QLabel, QTreeWidget, QTreeWidgetItem,
     QMessageBox, QGroupBox
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QThread
-from PyQt6.QtGui import QColor, QBrush, QFont
+from PySide6.QtCore import Qt, Signal, QThread
+from PySide6.QtGui import QColor, QBrush, QFont
 import logging
 import os
 
@@ -30,9 +30,9 @@ class ScanWorker(QThread):
     """Background worker for duplicate scanning"""
 
     # Signals
-    progress = pyqtSignal(int, str)  # (percentage, status_message)
-    finished = pyqtSignal(list)  # List of duplicate groups
-    error = pyqtSignal(str)  # Error message
+    progress = Signal(int, str)  # (percentage, status_message)
+    finished = Signal(list)  # List of duplicate groups
+    error = Signal(str)  # Error message
 
     def __init__(self, detector, method):
         super().__init__()

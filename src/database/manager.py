@@ -39,7 +39,7 @@ class DatabaseManager:
     Thread-safety:
     - Uses threading.local() for per-thread connections
     - Each thread automatically gets its own SQLite connection
-    - Safe for use with PyQt6 QThread workers
+    - Safe for use with PySide6 QThread workers
     - All connections tracked and closed on cleanup
     """
 

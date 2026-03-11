@@ -11,14 +11,14 @@ Purpose: Sync library metadata across devices via cloud storage
 
 Created: November 24, 2025
 """
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QLineEdit, QFileDialog, QProgressBar,
     QTextEdit, QCheckBox, QGroupBox, QMessageBox,
     QComboBox, QSpinBox, QFrame
 )
-from PyQt6.QtCore import Qt, pyqtSlot
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, Slot
+from PySide6.QtGui import QFont
 import json
 import logging
 from pathlib import Path
@@ -580,7 +580,7 @@ class CloudSyncTab(QWidget):
                 self._log(f"ERROR: Import failed - {e}")
                 QMessageBox.warning(self, "Import Error", str(e))
 
-    @pyqtSlot()
+    @Slot()
     def _on_sync_started(self):
         """Handle sync started signal"""
         self.progress_bar.setVisible(True)
@@ -588,14 +588,14 @@ class CloudSyncTab(QWidget):
         self.progress_label.setText("Syncing...")
         self._log("Sync started")
 
-    @pyqtSlot(str, str, int)
+    @Slot(str, str, int)
     def _on_sync_progress(self, status: str, message: str, percent: int):
         """Handle sync progress signal"""
         self.progress_bar.setValue(percent)
         self.progress_label.setText(f"{status}: {message}")
         self._log(f"[{percent}%] {message}")
 
-    @pyqtSlot(bool, str)
+    @Slot(bool, str)
     def _on_sync_completed(self, success: bool, message: str):
         """Handle sync completed signal"""
         self.progress_bar.setVisible(False)
@@ -607,7 +607,7 @@ class CloudSyncTab(QWidget):
             self.progress_label.setText(f"Sync completed with issues: {message}")
         self._log(f"Sync completed: {message}")
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _on_sync_failed(self, error: str):
         """Handle sync failed signal"""
         self.progress_bar.setVisible(False)

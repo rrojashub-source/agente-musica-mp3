@@ -42,7 +42,7 @@ except ImportError:
     HAS_QRCODE = False
 
 try:
-    from PyQt6.QtCore import QObject, pyqtSignal
+    from PySide6.QtCore import QObject, Signal
     HAS_QT = True
 except ImportError:
     HAS_QT = False
@@ -96,10 +96,10 @@ class RemoteServer(QObject if HAS_QT else object):
 
     # Signals
     if HAS_QT:
-        server_started = pyqtSignal(str, int)  # host, port
-        server_stopped = pyqtSignal()
-        command_received = pyqtSignal(str, dict)  # command, params
-        client_connected = pyqtSignal(str)  # client_ip
+        server_started = Signal(str, int)  # host, port
+        server_stopped = Signal()
+        command_received = Signal(str, dict)  # command, params
+        client_connected = Signal(str)  # client_ip
 
     def __init__(self):
         if HAS_QT:

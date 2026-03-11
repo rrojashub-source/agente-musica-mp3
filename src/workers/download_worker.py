@@ -1,6 +1,6 @@
 """
 Download Worker - Phase 4.2
-PyQt6 QThread worker for downloading music from YouTube using yt-dlp
+PySide6 QThread worker for downloading music from YouTube using yt-dlp
 
 Features:
 - Background downloads (non-blocking UI)
@@ -10,7 +10,7 @@ Features:
 - MP3 conversion (320kbps)
 """
 import yt_dlp
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 import logging
 from pathlib import Path
 from utils.input_sanitizer import validate_path
@@ -32,9 +32,9 @@ class DownloadWorker(QThread):
     """
 
     # Signals
-    progress = pyqtSignal(int)  # Progress percentage 0-100
-    finished = pyqtSignal(dict)  # Metadata when download completes
-    error = pyqtSignal(str)      # Error message on failure
+    progress = Signal(int)  # Progress percentage 0-100
+    finished = Signal(dict)  # Metadata when download completes
+    error = Signal(str)      # Error message on failure
 
     # Allowed base directories for downloads
     ALLOWED_BASE_DIRS = [
