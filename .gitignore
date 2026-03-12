@@ -317,3 +317,18 @@ tools/fpcalc
 tools/*.dll
 tools/*.so
 tools/*.dylib
+
+# === MPV / BINARY DEPENDENCIES ===
+# libmpv binary (download from https://sourceforge.net/projects/mpv-player-windows/)
+src/libmpv-2.dll
+*.7z
+mpv-dev/
+mpv-full/
+
+# === TEMP TEST FILES (not part of test suite) ===
+test_download.py
+test_launch.py
+test_pipeline.py
+
+# === USER DIRECTORIES (Windows paths that leak into WSL) ===
+C:\\Users/
