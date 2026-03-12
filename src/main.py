@@ -237,10 +237,6 @@ class MusicPlayerApp(QMainWindow):
                 self._playback.play_song_from_playlist
             )
 
-        # Remote server (after remote tab loaded)
-        if hasattr(self, 'remote_tab'):
-            self._remote.connect_server()
-
         # Keyboard shortcuts → Controllers
         sm = self.shortcuts_manager
         sm.play_pause_requested.connect(self._playback.handle_play_pause)
@@ -250,6 +246,14 @@ class MusicPlayerApp(QMainWindow):
         sm.mute_toggled.connect(self._playback.handle_mute_toggle)
         sm.focus_search_requested.connect(self._library_ctrl.handle_focus_search)
         sm.switch_to_tab_requested.connect(self._library_ctrl.handle_switch_tab)
+
+        # F11 → Fullscreen visualizer
+        from PySide6.QtGui import QAction, QKeySequence
+        fullscreen_action = QAction("Fullscreen Visualizer", self)
+        fullscreen_action.setShortcut(QKeySequence(Qt.Key.Key_F11))
+        fullscreen_action.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
+        fullscreen_action.triggered.connect(self.visualizer.toggle_fullscreen)
+        self.addAction(fullscreen_action)
 
         logger.info("All signals connected")
 

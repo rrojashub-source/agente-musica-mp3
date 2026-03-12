@@ -22,7 +22,7 @@ import logging
 from typing import List, Optional
 import math
 from PySide6.QtWidgets import QWidget, QComboBox, QStackedWidget, QVBoxLayout
-from PySide6.QtCore import Qt, QRect, QPoint, QSettings
+from PySide6.QtCore import Qt, QRect, QPoint, QSettings, QTimer
 from PySide6.QtGui import QPainter, QColor, QPen, QPainterPath, QLinearGradient, QRadialGradient
 
 # Try to import Organic Visualizer (Phase 10)
@@ -91,6 +91,9 @@ class VisualizerWidget(QWidget):
 
         # Widget settings
         self.setMinimumSize(200, 100)
+
+        # Fullscreen mode
+        self._fullscreen_window = None
 
         # Organic visualizer widget (Phase 10)
         self.organic_widget: Optional['OrganicVisualizerWidget'] = None
@@ -1139,8 +1142,105 @@ class VisualizerWidget(QWidget):
         self.update()
         logger.debug("Visualizer reset")
 
+    def mouseDoubleClickEvent(self, event):
+        """Double-click to toggle fullscreen organic visualizer"""
+        if self.viz_style == 'organic' and ORGANIC_AVAILABLE:
+            self.toggle_fullscreen()
+        else:
+            super().mouseDoubleClickEvent(event)
+
+    def toggle_fullscreen(self):
+        """Toggle fullscreen organic visualizer window"""
+        if self._fullscreen_window:
+            self._exit_fullscreen()
+        else:
+            self._enter_fullscreen()
+
+    def _enter_fullscreen(self):
+        """Open organic visualizer in fullscreen"""
+        if not ORGANIC_AVAILABLE:
+            return
+
+        from PySide6.QtWidgets import QApplication
+        from gui.visualizers import OrganicVisualizerWidget
+
+        self._fullscreen_window = _FullscreenVisualizer(self)
+        self._fullscreen_window.showFullScreen()
+        logger.info("Entered fullscreen visualizer")
+
+    def _exit_fullscreen(self):
+        """Close fullscreen visualizer"""
+        if self._fullscreen_window:
+            self._fullscreen_window.close()
+            self._fullscreen_window = None
+            logger.info("Exited fullscreen visualizer")
+
     def closeEvent(self, event):
         """Handle widget close - cleanup OpenGL resources"""
+        self._exit_fullscreen()
         if self.organic_widget:
             self.organic_widget.cleanup()
+        super().closeEvent(event)
+
+
+class _FullscreenVisualizer(QWidget):
+    """Fullscreen window wrapping an OrganicVisualizerWidget.
+
+    Receives real-time FFT data from the parent VisualizerWidget so the
+    dancing figure keeps responding to music in fullscreen mode.
+    Press ESC or double-click to exit.
+    """
+
+    def __init__(self, parent_visualizer: 'VisualizerWidget'):
+        super().__init__()
+        self._parent_viz = parent_visualizer
+
+        self.setWindowTitle("NEXUS Visualizer")
+        self.setStyleSheet("background-color: #000;")
+        self.setCursor(Qt.CursorShape.BlankCursor)
+
+        # Create dedicated organic widget for fullscreen
+        from gui.visualizers import OrganicVisualizerWidget
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.organic = OrganicVisualizerWidget(self)
+        self.organic.set_style('music')
+        layout.addWidget(self.organic)
+
+        # Mirror audio data from the parent's organic widget
+        self._mirror_timer = QTimer(self)
+        self._mirror_timer.timeout.connect(self._mirror_audio)
+        self._mirror_timer.start(33)  # 30 FPS
+
+    def _mirror_audio(self):
+        """Copy current audio values from parent organic widget"""
+        src = self._parent_viz.organic_widget
+        if src:
+            self.organic.update_audio(
+                src._target_bass,
+                src._target_mids,
+                src._target_highs,
+                src._target_amplitude,
+            )
+            # Mirror beat state directly
+            if src.beat > self.organic.beat:
+                self.organic._beat_decay = src._beat_decay
+                self.organic.beat = src.beat
+
+    def keyPressEvent(self, event):
+        """ESC or F11 to exit fullscreen"""
+        if event.key() in (Qt.Key.Key_Escape, Qt.Key.Key_F11):
+            self._parent_viz._exit_fullscreen()
+        else:
+            super().keyPressEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        """Double-click to exit fullscreen"""
+        self._parent_viz._exit_fullscreen()
+
+    def closeEvent(self, event):
+        """Cleanup on close"""
+        self._mirror_timer.stop()
+        self.organic.cleanup()
         super().closeEvent(event)

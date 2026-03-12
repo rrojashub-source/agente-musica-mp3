@@ -171,9 +171,6 @@ class UIComposer:
         from gui.tabs.rename_tab import RenameTab
         from gui.tabs.cleanup_tab import CleanupTab
         from gui.tabs.cloud_sync_tab import CloudSyncTab
-        from gui.tabs.plugins_tab import PluginsTab
-        from gui.tabs.remote_tab import RemoteTab
-        from gui.tabs.content_filter_tab import ContentFilterTab
         from gui.tabs.statistics_tab import StatisticsTab
         from gui.widgets.playlist_widget import PlaylistWidget
         from gui.widgets.queue_widget import QueueWidget
@@ -308,34 +305,7 @@ class UIComposer:
             logger.error(f"Failed to load Cloud Sync tab: {e}")
             tabs.addTab(QWidget(), tr("tab_cloud_sync") + " (Error)")
 
-        # Tab 13: Plugins
-        try:
-            w.plugins_tab = PluginsTab()
-            tabs.addTab(w.plugins_tab, tr("tab_plugins"))
-            logger.info("Plugins tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Plugins tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_plugins") + " (Error)")
-
-        # Tab 14: Remote Control
-        try:
-            w.remote_tab = RemoteTab()
-            tabs.addTab(w.remote_tab, tr("tab_remote"))
-            logger.info("Remote Control tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Remote Control tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_remote") + " (Error)")
-
-        # Tab 15: Content Filter
-        try:
-            w.content_filter_tab = ContentFilterTab(self.db_manager)
-            tabs.addTab(w.content_filter_tab, tr("tab_content_filter"))
-            logger.info("Content Filter tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Content Filter tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_content_filter") + " (Error)")
-
-        # Tab 16: Statistics Dashboard
+        # Tab 13: Statistics Dashboard
         try:
             w.statistics_tab = StatisticsTab(self.db_manager)
             tabs.addTab(w.statistics_tab, tr("tab_statistics"))
