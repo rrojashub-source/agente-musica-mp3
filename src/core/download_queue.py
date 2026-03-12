@@ -10,6 +10,8 @@ Features:
 - Automatic retry on failure
 """
 import json
+import os
+import re
 import sqlite3
 import uuid
 import logging
@@ -533,6 +535,23 @@ class DownloadQueue(QObject):
             item = pending[0]
             self._start_download(item)
 
+    @staticmethod
+    def _normalize_path_for_platform(path_str: str) -> Path:
+        """Convert cross-platform paths to current OS format.
+
+        Handles case where config was saved on Windows but app runs on WSL/Linux.
+        E.g., 'C:\\Users\\ricar\\Music' -> '/mnt/c/Users/ricar/Music' on WSL.
+        """
+        if os.name != 'nt':
+            match = re.match(r'^([A-Za-z]):[\\\/](.*)$', path_str)
+            if match:
+                drive = match.group(1).lower()
+                rest = match.group(2).replace('\\', '/')
+                wsl_path = Path(f"/mnt/{drive}/{rest}")
+                logger.info(f"Converted Windows path to WSL: {path_str} -> {wsl_path}")
+                return wsl_path
+        return Path(path_str)
+
     def _start_download(self, item: dict):
         """
         Start downloading item
@@ -544,7 +563,8 @@ class DownloadQueue(QObject):
 
         # Get download directory from config (or use fallback)
         if self.config_manager:
-            download_dir = Path(self.config_manager.get_download_directory())
+            raw_dir = self.config_manager.get_download_directory()
+            download_dir = self._normalize_path_for_platform(raw_dir)
         else:
             # Fallback to downloads/ in current directory
             download_dir = Path.cwd() / "downloads"
