@@ -118,7 +118,13 @@ class QueueWidget(QWidget):
         if not self.download_queue:
             return
 
-        # Connect queue signals (if they exist)
+        # Connect all queue signals
+        if hasattr(self.download_queue, 'item_added'):
+            self.download_queue.item_added.connect(self._on_item_added)
+
+        if hasattr(self.download_queue, 'item_started'):
+            self.download_queue.item_started.connect(self._on_item_started)
+
         if hasattr(self.download_queue, 'item_progress'):
             self.download_queue.item_progress.connect(self._on_item_progress)
 
@@ -366,6 +372,18 @@ class QueueWidget(QWidget):
                     self.download_queue.cancel(item_id)
 
         logger.info("Cleared completed items")
+        self.refresh_display()
+
+    @Slot(str, dict)
+    def _on_item_added(self, item_id: str, metadata: dict):
+        """Handle new item added to queue"""
+        logger.info(f"Item added to queue: {metadata.get('title', item_id)}")
+        self.refresh_display()
+
+    @Slot(str)
+    def _on_item_started(self, item_id: str):
+        """Handle download started"""
+        logger.info(f"Download started: {item_id}")
         self.refresh_display()
 
     @Slot(str, int)

@@ -42,6 +42,9 @@ class DownloadQueue(QObject):
     """
 
     # Signals
+    item_added = Signal(str, dict)      # item_id, metadata
+    item_started = Signal(str)          # item_id
+    item_progress = Signal(str, int)    # item_id, percentage
     item_completed = Signal(str, dict)  # item_id, metadata
     item_failed = Signal(str, str)      # item_id, error
     queue_completed = Signal()          # All items done
@@ -115,6 +118,9 @@ class DownloadQueue(QObject):
         with self._lock:
             self._items[item_id] = item
         logger.info(f"Added to queue: {metadata.get('title', video_url)} (id={item_id})")
+
+        # Emit signal for UI updates
+        self.item_added.emit(item_id, metadata)
 
         # Auto-start if already running
         if self._running:
@@ -545,9 +551,10 @@ class DownloadQueue(QObject):
             logger.warning("No config_manager provided, using fallback downloads/ directory")
 
         # Create output path with sanitized filename to prevent path traversal
+        # NOTE: Do NOT add .mp3 extension - FFmpegExtractAudio postprocessor adds it
         raw_title = item['metadata'].get('title', item_id)
         safe_title = sanitize_filename(raw_title)
-        output_path = download_dir / f"{safe_title}.mp3"
+        output_path = download_dir / safe_title
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Create worker with path validation
@@ -555,7 +562,7 @@ class DownloadQueue(QObject):
                                 allowed_base_dir=str(download_dir))
 
         # Connect signals (use default argument to capture item_id by value, not reference)
-        worker.progress.connect(lambda p, id=item_id: self.update_progress(id, p))
+        worker.progress.connect(lambda p, id=item_id: self._on_worker_progress(id, p))
         worker.finished.connect(lambda meta, id=item_id: self.mark_completed(id, meta))
         worker.error.connect(lambda err, id=item_id: self._mark_failed(id, err))
 
@@ -568,6 +575,14 @@ class DownloadQueue(QObject):
         # Start download
         worker.start()
         logger.info(f"Started download: {item['metadata'].get('title', item_id)}")
+
+        # Emit started signal for UI updates
+        self.item_started.emit(item_id)
+
+    def _on_worker_progress(self, item_id: str, percentage: int):
+        """Handle worker progress and re-emit as queue-level signal"""
+        self.update_progress(item_id, percentage)
+        self.item_progress.emit(item_id, percentage)
 
     def save(self, filepath: str):
         """

@@ -329,6 +329,16 @@ class UIComposer:
             logger.error(f"Failed to load Statistics tab: {e}")
             tabs.addTab(QWidget(), tr("tab_statistics") + " (Error)")
 
+        # Connect download queue signals to library refresh
+        try:
+            if hasattr(w, 'library_tab') and self.download_queue:
+                self.download_queue.item_completed.connect(
+                    lambda item_id, meta: w.library_tab._load_library()
+                )
+                logger.info("Connected download queue → library refresh")
+        except Exception as e:  # Signal connection can fail if widgets were replaced with error stubs
+            logger.warning(f"Could not connect queue→library signal: {e}")
+
         return self.window.tabs
 
     # ==========================================
