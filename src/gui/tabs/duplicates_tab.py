@@ -179,6 +179,20 @@ class DuplicatesTab(BaseTab):
             return
 
         method = self.method_combo.currentData()
+
+        # Warn if fingerprint method selected but fpcalc not available
+        if method == 'fingerprint' and not self.detector.fpcalc_checker.is_available():
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "fpcalc no disponible",
+                "El metodo de fingerprint requiere el binario fpcalc.\n\n"
+                "Descargalo de: https://acoustid.org/chromaprint\n"
+                "Y colocalo en la carpeta tools/ del proyecto.\n\n"
+                "Usa 'Metadata Comparison' como alternativa."
+            )
+            return
+
         logger.info(f"Starting duplicate scan (method: {method})")
 
         self.scan_worker = ScanWorker(self.detector, method)

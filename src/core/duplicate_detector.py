@@ -9,6 +9,7 @@ Detect duplicate songs using multiple methods:
 Created: November 13, 2025
 Updated: November 19, 2025 (Fixed fpcalc path passing)
 """
+import re
 import logging
 from typing import List, Dict, Optional
 from difflib import SequenceMatcher
@@ -39,7 +40,7 @@ class DuplicateDetector:
         ]
     """
 
-    def __init__(self, db_manager, similarity_threshold=0.85):
+    def __init__(self, db_manager, similarity_threshold=0.70):
         """
         Initialize duplicate detector
 
@@ -109,6 +110,7 @@ class DuplicateDetector:
                 continue
 
             duplicates = [song1]
+            similarities = []
 
             for j, song2 in enumerate(songs[i + 1:], start=i + 1):
                 if song2['id'] in processed:
@@ -119,6 +121,7 @@ class DuplicateDetector:
 
                 if similarity >= self.similarity_threshold:
                     duplicates.append(song2)
+                    similarities.append(similarity)
                     processed.add(song2['id'])
 
             # If found duplicates (more than original song)
@@ -128,9 +131,12 @@ class DuplicateDetector:
                 # Sort by quality (bitrate)
                 sorted_duplicates = self._sort_by_quality(duplicates)
 
+                # Use average similarity for group confidence
+                avg_confidence = sum(similarities) / len(similarities)
+
                 duplicate_groups.append({
                     'songs': sorted_duplicates,
-                    'confidence': similarity,
+                    'confidence': round(avg_confidence, 3),
                     'method': 'metadata'
                 })
 
@@ -226,6 +232,24 @@ class DuplicateDetector:
         logger.info(f"File size detection: Found {len(duplicate_groups)} duplicate groups")
         return duplicate_groups
 
+    @staticmethod
+    def _normalize_for_comparison(text: str) -> str:
+        """Strip YouTube noise and normalize text for comparison."""
+        text = text.lower().strip()
+        # Strip YouTube artifacts
+        text = re.sub(
+            r'\s*[\(\[](official\s*)?(music\s*)?video[\)\]]'
+            r'|\s*[\(\[]official\s*audio[\)\]]'
+            r'|\s*[\(\[]audio[\)\]]'
+            r'|\s*[\(\[]lyric[s]?\s*video[\)\]]'
+            r'|\s*[\(\[]visuali[zs]er[\)\]]'
+            r'|\s*[\(\[]live[\)\]]'
+            r'|\s*[\(\[](hd|hq|4k|1080p)[\)\]]'
+            r'|\s*[\(\[]remaster(ed)?[\)\]]',
+            '', text
+        )
+        return text.strip()
+
     def _calculate_metadata_similarity(self, song1: Dict, song2: Dict) -> float:
         """
         Calculate similarity score between two songs based on metadata
@@ -236,14 +260,14 @@ class DuplicateDetector:
         Returns:
             Similarity score (0.0 - 1.0)
         """
-        # Title similarity (50% weight)
-        title1 = song1.get('title', '').lower()
-        title2 = song2.get('title', '').lower()
+        # Title similarity (50% weight) — normalize YouTube noise first
+        title1 = self._normalize_for_comparison(song1.get('title', ''))
+        title2 = self._normalize_for_comparison(song2.get('title', ''))
         title_sim = SequenceMatcher(None, title1, title2).ratio()
 
         # Artist similarity (30% weight)
-        artist1 = song1.get('artist', '').lower()
-        artist2 = song2.get('artist', '').lower()
+        artist1 = song1.get('artist', '').lower().strip()
+        artist2 = song2.get('artist', '').lower().strip()
         artist_sim = SequenceMatcher(None, artist1, artist2).ratio()
 
         # Duration similarity (20% weight) - ±3 seconds tolerance

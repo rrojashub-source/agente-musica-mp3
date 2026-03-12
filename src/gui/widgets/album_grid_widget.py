@@ -346,13 +346,15 @@ class AlbumGridWidget(QWidget):
             # Query unique albums with song counts
             query = """
                 SELECT
-                    album,
-                    artist,
+                    TRIM(album) as album,
+                    TRIM(artist) as artist,
                     COUNT(*) as song_count,
                     MIN(file_path) as sample_file
                 FROM songs
-                WHERE album IS NOT NULL AND album != ''
-                GROUP BY album, artist
+                WHERE album IS NOT NULL
+                  AND TRIM(album) != ''
+                  AND LOWER(TRIM(album)) NOT IN ('unknown', 'unknown album')
+                GROUP BY LOWER(TRIM(album)), LOWER(TRIM(artist))
                 ORDER BY album ASC
             """
 
