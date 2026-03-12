@@ -81,6 +81,11 @@ class AudioPlayer:
 
         # Initialize mpv player
         try:
+            # Ensure libmpv-2.dll is findable on Windows
+            if os.name == 'nt':
+                src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if src_dir not in os.environ.get('PATH', ''):
+                    os.environ['PATH'] = src_dir + os.pathsep + os.environ.get('PATH', '')
             import mpv
             self._player = mpv.MPV(
                 ytdl=False,
