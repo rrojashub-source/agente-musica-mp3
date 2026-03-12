@@ -98,6 +98,9 @@ class MusicPlayerApp(QMainWindow):
         if hasattr(self, 'lyrics_tab') and self.lyrics_tab:
             self.now_playing.song_metadata_changed.connect(self.lyrics_tab.on_song_changed)
 
+        if hasattr(self, 'chords_tab') and self.chords_tab:
+            self.now_playing.song_metadata_changed.connect(self.chords_tab.on_song_changed)
+
         logger.info("Application started successfully")
         self._library_ctrl.check_empty_library(self)
 

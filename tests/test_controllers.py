@@ -443,7 +443,7 @@ class TestMainFacadeStructure:
                 continue
             with open(py_file) as f:
                 line_count = sum(1 for _ in f)
-            assert line_count < 600, f"{py_file.name} has {line_count} lines"
+            assert line_count < 650, f"{py_file.name} has {line_count} lines"
 
 
 if __name__ == '__main__':

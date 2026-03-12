@@ -164,6 +164,7 @@ class UIComposer:
         from gui.tabs.library_tab import LibraryTab
         from gui.tabs.search_tab import SearchTab
         from gui.tabs.lyrics_tab import LyricsTab
+        from gui.tabs.chords_tab import ChordsTab
         from gui.tabs.import_tab import ImportTab
         from gui.tabs.duplicates_tab import DuplicatesTab
         from gui.tabs.organize_tab import OrganizeTab
@@ -221,7 +222,21 @@ class UIComposer:
             logger.error(f"Failed to load Lyrics tab: {e}")
             tabs.addTab(QWidget(), tr("tab_lyrics") + " (Error)")
 
-        # Tab 5: Search & Download
+        # Tab 5: Chords
+        try:
+            from api.chords_client import ChordsClient
+            chords_client = ChordsClient(db_manager=self.db_manager)
+            w.chords_tab = ChordsTab(
+                chords_client=chords_client,
+                audio_player=self.audio_player
+            )
+            tabs.addTab(w.chords_tab, tr("tab_chords"))
+            logger.info("Chords tab loaded")
+        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
+            logger.error(f"Failed to load Chords tab: {e}")
+            tabs.addTab(QWidget(), tr("tab_chords") + " (Error)")
+
+        # Tab 6: Search & Download
         try:
             w.search_tab = SearchTab(self.download_queue)
             tabs.addTab(w.search_tab, tr("tab_search"))

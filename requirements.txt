@@ -64,6 +64,10 @@ lyricsgenius>=3.0.1
 beautifulsoup4>=4.12.0
 requests>=2.31.0
 
+# Chord detection from audio
+librosa>=0.10.0
+pychord>=1.0
+
 # ========================================
 # Plugin Dependencies
 # ========================================
