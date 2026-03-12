@@ -662,6 +662,11 @@ class CloudSyncService(QObject):
         """Public property to access device ID"""
         return self._device_id
 
+    @property
+    def sync_state(self) -> 'SyncState':
+        """Public property to access sync state"""
+        return self._state
+
     def _load_state(self):
         """Load sync state from disk"""
         state_file = self._data_dir / self.STATE_FILENAME
