@@ -1,7 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file for NEXUS Music Manager
+PyInstaller spec file for NEXUS Music Manager v2.1.0
 Build command: pyinstaller nexus_music.spec
+Stack: PySide6 + python-mpv + OpenGL
 """
 
 import sys
@@ -17,7 +18,10 @@ src_path = project_root / 'src'
 a = Analysis(
     [str(src_path / 'main.py')],
     pathex=[str(project_root), str(src_path)],
-    binaries=[],
+    binaries=[
+        # libmpv for audio playback
+        ('src/libmpv-2.dll', '.'),
+    ],
     datas=[
         # Include data files (artist database, etc.)
         ('src/data', 'data'),
@@ -31,12 +35,14 @@ a = Analysis(
         ('src/plugins/available', 'plugins/available'),
     ],
     hiddenimports=[
-        # PySide6 modules
+        # === PySide6 ===
         'PySide6.QtWidgets',
         'PySide6.QtCore',
         'PySide6.QtGui',
         'PySide6.QtOpenGLWidgets',
-        # OpenGL for Organic Visualizer
+        'shiboken6',
+
+        # === OpenGL for Organic Visualizer ===
         'OpenGL',
         'OpenGL.GL',
         'OpenGL.GL.shaders',
@@ -44,13 +50,19 @@ a = Analysis(
         'OpenGL.arrays.ctypesarrays',
         'OpenGL.platform',
         'OpenGL.platform.win32',
-        # Database
-        'sqlite3',
-        # Audio
+
+        # === Audio ===
         'mpv',
-        # Numpy for visualizer
+        'pydub',
         'numpy',
-        # API clients
+        'numpy.fft',
+        'librosa',
+        'pychord',
+
+        # === Database ===
+        'sqlite3',
+
+        # === API clients ===
         'googleapiclient',
         'googleapiclient.discovery',
         'google.auth',
@@ -59,26 +71,58 @@ a = Analysis(
         'spotipy.oauth2',
         'musicbrainzngs',
         'lyricsgenius',
-        # Download
         'yt_dlp',
-        # Metadata
+
+        # === Metadata ===
         'mutagen',
         'mutagen.mp3',
         'mutagen.id3',
         'mutagen.easyid3',
-        # Security
+        'mutagen.flac',
+        'mutagen.m4a',
+        'mutagen.oggvorbis',
+
+        # === Security ===
         'keyring',
         'keyring.backends',
-        # Utils
+
+        # === Web/HTTP ===
         'requests',
         'urllib3',
         'certifi',
-        # Our modules
+        'bs4',
+        'flask',
+        'flask_cors',
+
+        # === Plugins ===
+        'pypresence',
+        'qrcode',
+        'acoustid',
+
+        # === Config ===
+        'dotenv',
+
+        # === Our modules: controllers ===
+        'controllers',
+        'controllers.playback_controller',
+        'controllers.ui_composer',
+        'controllers.library_controller',
+        'controllers.remote_controller',
+
+        # === Our modules: database ===
         'database',
         'database.manager',
+
+        # === Our modules: core ===
         'core',
         'core.audio_player',
+        'core.audio_equalizer',
+        'core.audio_embeddings',
+        'core.audio_feature_extractor',
+        'core.bpm_detector',
+        'core.mood_classifier',
         'core.playlist_manager',
+        'core.smart_playlist',
         'core.download_queue',
         'core.theme_manager',
         'core.keyboard_shortcuts',
@@ -90,40 +134,94 @@ a = Analysis(
         'core.metadata_tagger',
         'core.metadata_cleaner',
         'core.metadata_fetcher',
+        'core.metadata_autocompleter',
         'core.cover_art_manager',
+        'core.recommendation_engine',
+        'core.lrc_parser',
+        'core.api_adapters',
+        'core.acoustid_client',
+        'core.cleanup_workflow',
+
+        # === Our modules: API ===
         'api',
         'api.youtube_search',
         'api.spotify_search',
         'api.musicbrainz_client',
         'api.genius_client',
+        'api.chords_client',
+
+        # === Our modules: GUI tabs ===
         'gui',
+        'gui.base',
+        'gui.base.base_tab',
         'gui.tabs',
         'gui.tabs.library_tab',
         'gui.tabs.search_tab',
         'gui.tabs.lyrics_tab',
+        'gui.tabs.chords_tab',
         'gui.tabs.import_tab',
         'gui.tabs.duplicates_tab',
         'gui.tabs.organize_tab',
         'gui.tabs.rename_tab',
         'gui.tabs.cleanup_tab',
+        'gui.tabs.cloud_sync_tab',
+        'gui.tabs.statistics_tab',
+
+        # === Our modules: GUI widgets ===
         'gui.widgets',
         'gui.widgets.now_playing_widget',
         'gui.widgets.playlist_widget',
         'gui.widgets.visualizer_widget',
         'gui.widgets.queue_widget',
+        'gui.widgets.album_grid_widget',
+        'gui.widgets.chord_diagram_widget',
+        'gui.widgets.equalizer_widget',
+        'gui.widgets.recommendations_widget',
+        'gui.widgets.skeleton_widget',
+
+        # === Our modules: GUI other ===
         'gui.visualizers',
         'gui.visualizers.organic_visualizer',
         'gui.dialogs',
         'gui.dialogs.api_settings_dialog',
         'gui.dialogs.shortcuts_dialog',
+        'gui.themes',
+
+        # === Our modules: services ===
+        'services',
+        'services.cloud_sync_service',
+        'services.remote_server',
+        'services.statistics_service',
+        'services.download_service',
+        'services.library_service',
+        'services.player_service',
+        'services.spotify_playlist_importer',
+
+        # === Our modules: utils ===
         'utils',
         'utils.input_sanitizer',
         'utils.subprocess_patch',
+        'utils.constants',
+        'utils.rate_limiter',
+        'utils.fpcalc_checker',
+
+        # === Our modules: workers ===
         'workers',
         'workers.download_worker',
         'workers.library_import_worker',
+
+        # === Our modules: plugins ===
+        'plugins',
+        'plugins.plugin_base',
+        'plugins.plugin_manager',
+
+        # === Our modules: top-level ===
         'config_manager',
         'translations',
+        'api_config_wizard',
+        'correction_engine',
+        'folder_manager',
+        'help_tab',
     ],
     hookspath=[],
     hooksconfig={},
@@ -138,6 +236,9 @@ a = Analysis(
         'cv2',
         'tensorflow',
         'torch',
+        'IPython',
+        'jupyter',
+        'notebook',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -171,30 +272,3 @@ exe = EXE(
     entitlements_file=None,
     icon=None,  # Add icon path: 'assets/icon.ico'
 )
-
-# For creating a directory distribution instead of single file:
-# Uncomment below and comment out the EXE section above
-#
-# exe = EXE(
-#     pyz,
-#     a.scripts,
-#     [],
-#     exclude_binaries=True,
-#     name='NEXUS_Music_Manager',
-#     debug=False,
-#     bootloader_ignore_signals=False,
-#     strip=False,
-#     upx=True,
-#     console=False,
-# )
-#
-# coll = COLLECT(
-#     exe,
-#     a.binaries,
-#     a.zipfiles,
-#     a.datas,
-#     strip=False,
-#     upx=True,
-#     upx_exclude=[],
-#     name='NEXUS_Music_Manager',
-# )

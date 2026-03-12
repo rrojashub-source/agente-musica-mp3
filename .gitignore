@@ -329,6 +329,11 @@ mpv-full/
 test_download.py
 test_launch.py
 test_pipeline.py
+scripts/test_imports.py
+
+# === BUILD ARTIFACTS ===
+build.log
+build/
 
 # === USER DIRECTORIES (Windows paths that leak into WSL) ===
 C\\Users/
