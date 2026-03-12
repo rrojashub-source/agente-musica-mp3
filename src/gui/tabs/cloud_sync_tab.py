@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QCheckBox, QGroupBox, QMessageBox,
     QComboBox, QSpinBox, QFrame
 )
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QFont
 import json
 import logging
@@ -46,6 +46,9 @@ class CloudSyncTab(QWidget):
     - Conflict strategy selection
     - Last sync info
     """
+
+    # Emitted when sync/import modifies DB data (library refresh trigger)
+    data_changed = Signal()
 
     def __init__(self, db_manager=None, parent=None):
         """
@@ -499,6 +502,7 @@ class CloudSyncTab(QWidget):
                 self._log("Sync completed successfully")
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 self.last_sync_status.setText(now)
+                self.data_changed.emit()
             else:
                 self._log("Sync failed")
         except (OSError, RuntimeError) as e:
@@ -568,6 +572,7 @@ class CloudSyncTab(QWidget):
                         result = self.sync_service.import_library(data, self.db_manager)
                         if result:
                             self._log(f"Library imported from: {file_path}")
+                            self.data_changed.emit()
                             QMessageBox.information(
                                 self,
                                 "Import Complete",

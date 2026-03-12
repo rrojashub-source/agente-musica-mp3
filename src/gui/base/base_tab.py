@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QProgressBar, QMessageBox, QPushButton, QGroupBox
 )
-from PySide6.QtCore import Qt, QThread
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QFont
 
 logger = logging.getLogger(__name__)
@@ -42,6 +42,9 @@ class BaseTab(QWidget):
                 layout = self.create_main_layout()
                 # ... build UI using layout ...
     """
+
+    # Emitted when this tab modifies DB data (library refresh trigger)
+    data_changed = Signal()
 
     def __init__(self, db_manager=None, parent=None):
         super().__init__(parent)

@@ -339,7 +339,25 @@ class UIComposer:
         except Exception as e:  # Signal connection can fail if widgets were replaced with error stubs
             logger.warning(f"Could not connect queue→library signal: {e}")
 
+        # Connect data_changed signals → library refresh + statistics refresh
+        self._connect_data_changed_signals(w)
+
         return self.window.tabs
+
+    def _connect_data_changed_signals(self, w):
+        """Connect data_changed from all tabs that modify DB → library + statistics refresh"""
+        data_tabs = ['import_tab', 'cleanup_tab', 'organize_tab', 'cloud_sync_tab']
+        library = getattr(w, 'library_tab', None)
+        stats = getattr(w, 'statistics_tab', None)
+
+        for tab_name in data_tabs:
+            tab = getattr(w, tab_name, None)
+            if tab and hasattr(tab, 'data_changed'):
+                if library:
+                    tab.data_changed.connect(library._load_library)
+                if stats:
+                    tab.data_changed.connect(stats.refresh_stats)
+                logger.info(f"Connected {tab_name}.data_changed → library/statistics refresh")
 
     # ==========================================
     # Dialog Handlers
@@ -369,7 +387,7 @@ class UIComposer:
         layout.addWidget(equalizer)
 
         if hasattr(self.audio_player, 'set_equalizer_gains'):
-            equalizer.gains_changed.connect(self.audio_player.set_equalizer_gains)
+            equalizer.eq_changed.connect(self.audio_player.set_equalizer_gains)
 
         dialog.exec()
         logger.info("Equalizer dialog closed")
@@ -421,7 +439,7 @@ audio playback, playlists, and visualizer.</p>
 <li>Song Recommendations</li>
 </ul>
 <br>
-<p><small>Built with: Python, PySide6, yt-dlp, pygame</small></p>
+<p><small>Built with: Python, PySide6, yt-dlp, python-mpv</small></p>
         """
         QMessageBox.about(self.window, "About - NEXUS Music Manager", about_text)
 

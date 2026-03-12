@@ -399,6 +399,7 @@ class CleanupTab(BaseTab):
 
         # Show results
         self._show_apply_results(results)
+        self.data_changed.emit()
 
         # Clear preview
         self.preview_tree.clear()

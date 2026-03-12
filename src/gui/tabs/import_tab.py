@@ -243,6 +243,7 @@ class ImportTab(BaseTab):
         self._log(f"📊 Total songs in library: {total}")
 
         self._set_controls_enabled(True)
+        self.data_changed.emit()
 
         if failed == 0:
             QMessageBox.information(

@@ -307,6 +307,7 @@ class OrganizeTab(BaseTab):
         """Handle execution completion"""
         self.last_result = result
         self._show_results(result)
+        self.data_changed.emit()
 
         if result['success'] > 0:
             self.rollback_button.setEnabled(True)

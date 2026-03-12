@@ -5,6 +5,7 @@ Routes playback commands between library and playlist sources.
 Handles seek, volume, mute keyboard shortcuts.
 """
 import logging
+import sqlite3
 from pathlib import Path
 from PySide6.QtCore import QObject
 from PySide6.QtWidgets import QMessageBox
@@ -34,6 +35,9 @@ class PlaybackController(QObject):
         self._current_playlist_index = -1
         self._previous_volume = 0.7
 
+        # Register for track-end events from mpv (callback runs on Qt main thread)
+        self.audio_player.on_track_end(self._on_mpv_track_end)
+
     def set_widgets(self, library_tab=None, playlist_widget=None, status_bar=None):
         """Set widget references created after controller init"""
         if library_tab is not None:
@@ -43,12 +47,31 @@ class PlaybackController(QObject):
         if status_bar is not None:
             self.status_bar = status_bar
 
+    def _on_mpv_track_end(self, file_path: str):
+        """Handle track end event from mpv (runs on Qt main thread via QTimer)"""
+        logger.info(f"Track ended (mpv callback): {file_path}")
+        # Delegate to now_playing's song-ended logic
+        if self.now_playing and self.now_playing._is_playing:
+            if self.now_playing.is_repeat_one_enabled():
+                logger.info("Repeat One: replaying same song")
+                self.audio_player.seek(0)
+                self.audio_player.play()
+                self.now_playing.repeat_song.emit()
+            elif self.now_playing.is_continue_enabled():
+                logger.info("Continue mode: playing next song")
+                self.now_playing._is_playing = False
+                self.now_playing.play_button.set_playing(False)
+                self.now_playing.position_timer.stop()
+                self.on_global_song_ended()
+            else:
+                self.now_playing._on_stop_clicked()
+
     # ==========================================
     # Playback Source Routing
     # ==========================================
 
     def on_library_playback_started(self):
-        """Handle playback started from library — update source tracking"""
+        """Handle playback started from library — update source tracking + play count"""
         self._playback_source = 'library'
         self._current_playlist_id = None
         self._current_playlist_songs = []

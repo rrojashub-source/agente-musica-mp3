@@ -166,8 +166,8 @@ class AudioPlayer:
                 # Stop current playback if any
                 try:
                     self._player.command('stop')
-                except Exception:
-                    pass
+                except (RuntimeError, OSError):
+                    pass  # mpv may not be in a stoppable state
 
                 self._current_file = file_path
                 self._state = PlaybackState.STOPPED
@@ -225,8 +225,8 @@ class AudioPlayer:
                     self._duration = dur
                     break
                 time.sleep(0.05)
-        except Exception:
-            pass
+        except (RuntimeError, OSError):
+            pass  # mpv property access can fail during startup
 
     def pause(self):
         """Pause playback"""
@@ -318,7 +318,7 @@ class AudioPlayer:
             try:
                 pos = self._player.time_pos
                 return pos if pos is not None else 0.0
-            except Exception:
+            except (RuntimeError, OSError):
                 return 0.0
 
     def get_duration(self) -> float:
@@ -335,8 +335,8 @@ class AudioPlayer:
                     dur = self._player.duration
                     if dur is not None and dur > 0:
                         self._duration = dur
-                except Exception:
-                    pass
+                except (RuntimeError, OSError):
+                    pass  # mpv property may be unavailable during transitions
             return self._duration
 
     def set_volume(self, level: float):
@@ -370,7 +370,7 @@ class AudioPlayer:
         try:
             vol = self._player.volume
             return (vol / 100.0) if vol is not None else self._volume
-        except Exception:
+        except (RuntimeError, OSError):
             return self._volume
 
     def is_playing(self) -> bool:
@@ -451,11 +451,8 @@ class AudioPlayer:
         if self._player:
             try:
                 self._player.playlist_clear()
-                # Re-add current file if playing
-                if self._current_file and self._state != PlaybackState.STOPPED:
-                    pass  # mpv handles this
-            except Exception:
-                pass
+            except (RuntimeError, OSError):
+                pass  # mpv may not support playlist ops in current state
         self._queued_file = None
         self._queued_duration = 0.0
         logger.debug("Queue cleared")
@@ -470,8 +467,8 @@ class AudioPlayer:
         if self._player:
             try:
                 self._player['gapless-audio'] = 'yes' if enabled else 'no'
-            except Exception:
-                pass
+            except (RuntimeError, OSError):
+                pass  # mpv property may not be settable
         logger.info(f"Gapless playback: {'enabled' if enabled else 'disabled'}")
 
     def is_gapless_enabled(self) -> bool:
@@ -489,13 +486,49 @@ class AudioPlayer:
         if self._player and duration_ms > 0:
             try:
                 self._player['audio-crossfade'] = duration_ms / 1000.0
-            except Exception:
-                pass
+            except (RuntimeError, OSError):
+                pass  # mpv may not support crossfade property
         logger.info(f"Crossfade set to {self._crossfade_ms}ms")
 
     def get_crossfade(self) -> int:
         """Get current crossfade duration in milliseconds"""
         return self._crossfade_ms
+
+    # ==========================================
+    # Equalizer
+    # ==========================================
+
+    def set_equalizer_gains(self, gains: dict):
+        """Apply equalizer gains via mpv's audio filter.
+
+        Args:
+            gains: Dict of {frequency_hz: gain_db}, e.g. {31: 0.0, 62: 2.5, ...}
+        """
+        if not self._player:
+            return
+
+        try:
+            # Build mpv equalizer filter string
+            # mpv uses superequalizer af filter: superequalizer=1b=g1:2b=g2:...
+            # Band mapping: superequalizer has 18 bands, we map our 10 to the closest
+            # Simpler approach: use 'equalizer' audio filter with individual bands
+            band_filters = []
+            for freq, gain in gains.items():
+                if gain != 0.0:
+                    # mpv equalizer filter: equalizer=f=freq:width_type=o:width=2:g=gain
+                    band_filters.append(
+                        f"equalizer=f={freq}:width_type=o:width=2:g={gain}"
+                    )
+
+            if band_filters:
+                filter_str = ','.join(band_filters)
+                self._player['af'] = filter_str
+            else:
+                self._player['af'] = ''
+
+            logger.debug(f"Equalizer applied: {len(gains)} bands")
+        except Exception as e:
+            logger.error(f"Failed to apply equalizer: {e}")
 
     # ==========================================
     # Track End Event Handling
@@ -551,18 +584,41 @@ class AudioPlayer:
                             daemon=True
                         ).start()
                         return True
-                except Exception:
-                    pass
+                except (RuntimeError, OSError):
+                    pass  # mpv property access can fail
 
         return False
 
     def _notify_track_end(self, file_path: str):
-        """Notify all registered callbacks that track ended"""
+        """Notify all registered callbacks that track ended.
+
+        When called from a non-main thread (mpv event thread), uses
+        QTimer.singleShot to marshal to Qt main thread. When called
+        from the main thread (tests, polling), calls directly.
+        """
+        use_timer = False
+        try:
+            from PySide6.QtWidgets import QApplication
+            from PySide6.QtCore import QTimer
+            app = QApplication.instance()
+            if app and threading.current_thread() is not threading.main_thread():
+                use_timer = True
+        except ImportError:
+            pass
+
         for callback in self._on_track_end_callbacks:
-            try:
-                callback(file_path)
-            except Exception as e:
-                logger.error(f"Track end callback error: {e}")
+            if use_timer:
+                QTimer.singleShot(0, lambda cb=callback, fp=file_path: self._safe_callback(cb, fp))
+            else:
+                self._safe_callback(callback, file_path)
+
+    @staticmethod
+    def _safe_callback(callback, file_path):
+        """Execute a callback with error handling"""
+        try:
+            callback(file_path)
+        except Exception as e:
+            logger.error(f"Track end callback error: {e}")
 
     def start_end_detection(self, interval_ms: int = 100):
         """

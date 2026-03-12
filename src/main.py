@@ -210,6 +210,9 @@ class MusicPlayerApp(QMainWindow):
         # Now Playing → Library Controller (recommendations)
         self.now_playing.song_metadata_changed.connect(self._library_ctrl.update_recommendations)
 
+        # Now Playing → Play count increment + Statistics refresh
+        self.now_playing.song_metadata_changed.connect(self._on_song_play_started)
+
         # Recommendations → Playback Controller
         if hasattr(self, 'recommendations_widget'):
             self.recommendations_widget.song_selected.connect(self._playback.play_recommended_song)
@@ -246,6 +249,25 @@ class MusicPlayerApp(QMainWindow):
         sm.switch_to_tab_requested.connect(self._library_ctrl.handle_switch_tab)
 
         logger.info("All signals connected")
+
+    def _on_song_play_started(self, song_info: dict):
+        """Increment play count when a song starts playing"""
+        song_id = song_info.get('id')
+        if song_id:
+            try:
+                self.db_manager.execute_query(
+                    """UPDATE songs
+                       SET play_count = COALESCE(play_count, 0) + 1,
+                           last_played = CURRENT_TIMESTAMP
+                       WHERE id = ?""",
+                    (song_id,)
+                )
+                logger.debug(f"Play count incremented for song {song_id}")
+                # Refresh statistics if tab exists
+                if hasattr(self, 'statistics_tab') and self.statistics_tab:
+                    self.statistics_tab.refresh_stats()
+            except sqlite3.Error as e:
+                logger.error(f"Failed to increment play count: {e}")
 
     def closeEvent(self, event):
         """Handle application close event"""
@@ -294,6 +316,12 @@ def main():
     logger.info(f"Language loaded: {saved_language}")
 
     app.setStyle("Fusion")
+
+    # Set font with emoji fallback for Windows PySide6
+    from PySide6.QtGui import QFont, QFontDatabase
+    font = QFont("Segoe UI", 10)
+    font.setFamilies(["Segoe UI", "Segoe UI Emoji", "Noto Color Emoji", "Arial"])
+    app.setFont(font)
 
     window = MusicPlayerApp()
     window.show()

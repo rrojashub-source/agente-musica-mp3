@@ -908,7 +908,12 @@ class NowPlayingWidget(QWidget):
             self.audio_player.set_volume(volume_float)
 
     def _update_position(self):
-        """Update position display (called by timer)"""
+        """Update position display (called by timer).
+
+        Note: Track-end detection is handled by mpv's end-file callback
+        (registered in PlaybackController), NOT by polling here.
+        This timer only updates the UI (position, slider, visualizer).
+        """
         if not self.audio_player or not self.current_song or self._is_seeking:
             return
 
@@ -928,31 +933,7 @@ class NowPlayingWidget(QWidget):
             # Emit position changed signal (for visualizer sync)
             self.position_changed.emit(position)
 
-            # Check if song ended
-            if not self.audio_player.is_playing() and self._is_playing:
-                # Song ended
-                logger.info("Song ended")
-
-                if self._repeat_one_enabled:
-                    # Repeat One mode - replay same song from beginning
-                    logger.info("Repeat One: replaying same song")
-                    self.audio_player.seek(0)
-                    self.audio_player.play()
-                    self.repeat_song.emit()
-
-                elif self._continue_enabled:
-                    # Continue mode - emit signal to play next song
-                    logger.info("Continue mode: playing next song")
-                    self._is_playing = False
-                    self.play_button.set_playing(False)
-                    self.position_timer.stop()
-                    self.song_ended.emit()  # Signal to play next song
-
-                else:
-                    # Normal mode - just stop
-                    self._on_stop_clicked()
-
-        except Exception as e:
+        except RuntimeError as e:
             logger.error(f"Position update error: {e}")
 
     def _format_time(self, seconds: float) -> str:
