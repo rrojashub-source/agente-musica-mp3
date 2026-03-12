@@ -314,6 +314,41 @@ class DatabaseManager:
             sql = "SELECT * FROM songs ORDER BY added_date DESC"
             return self.fetch_all(sql)
 
+    def batch_clean_titles(self) -> int:
+        """
+        Clean YouTube artifacts from all song titles and artists in the database.
+
+        Returns:
+            Number of songs that were cleaned
+        """
+        from core.metadata_cleaner import MetadataCleaner
+        cleaner = MetadataCleaner()
+        songs = self.get_all_songs()
+        cleaned_count = 0
+
+        for song in songs:
+            title = song.get('title', '')
+            artist = song.get('artist', '')
+            song_id = song.get('id')
+
+            clean_title, title_issues = cleaner.clean_title(title, artist)
+            clean_artist, artist_issues = cleaner.clean_artist(artist)
+
+            if clean_title != title or clean_artist != artist:
+                self.execute_query(
+                    "UPDATE songs SET title = ?, artist = ? WHERE id = ?",
+                    (clean_title, clean_artist, song_id)
+                )
+                cleaned_count += 1
+                logger.debug(
+                    f"Cleaned song {song_id}: "
+                    f"'{title}' → '{clean_title}', '{artist}' → '{clean_artist}'"
+                )
+
+        if cleaned_count:
+            logger.info(f"Batch cleaned {cleaned_count}/{len(songs)} songs")
+        return cleaned_count
+
     def get_song_by_id(self, song_id: int) -> Optional[Dict[str, Any]]:
         """
         Get song by ID

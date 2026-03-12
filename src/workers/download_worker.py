@@ -134,16 +134,25 @@ class DownloadWorker(QThread):
                 logger.debug(f"Downloaded file path: {actual_filepath}")
 
                 # Build metadata dict
+                raw_title = info.get('title', 'Unknown')
+                raw_artist = info.get('uploader', 'Unknown')
+
+                # Clean YouTube artifacts from title and artist
+                from core.metadata_cleaner import MetadataCleaner
+                cleaner = MetadataCleaner()
+                clean_title, _ = cleaner.clean_title(raw_title, raw_artist)
+                clean_artist, _ = cleaner.clean_artist(raw_artist)
+
                 metadata = {
-                    'title': info.get('title', 'Unknown'),
-                    'artist': info.get('uploader', 'Unknown'),
+                    'title': clean_title,
+                    'artist': clean_artist,
                     'duration': info.get('duration', 0),
                     'upload_date': info.get('upload_date', None),
                     'output_path': actual_filepath  # Use ACTUAL path, not template
                 }
 
                 # Emit finished signal
-                logger.info(f"Download complete: {metadata['title']}")
+                logger.info(f"Download complete: {metadata['title']} (raw: {raw_title})")
                 self.finished.emit(metadata)
 
         except yt_dlp.utils.DownloadError as e:

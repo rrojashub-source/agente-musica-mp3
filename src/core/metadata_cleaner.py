@@ -35,9 +35,21 @@ class MetadataCleaner:
         self.timestamp_pattern = re.compile(r'_\d{8}_\d{6}')
         self.repeated_track_pattern = re.compile(r'^(\d+\s*-\s*)+')
         self.youtube_artifacts_pattern = re.compile(
-            r'\[(Official\s+)?(Video|Audio|Music Video|Lyric Video)\]|'
-            r'\((Official\s+)?(Video|Audio|Music Video|Lyric Video)\)|'
-            r'\[HD\]|\[4K\]|\[1080p\]',
+            r'\s*[\(\[](Official\s*)?(Music\s*)?Video[\)\]]|'
+            r'\s*[\(\[]Official\s*Audio[\)\]]|'
+            r'\s*[\(\[]Audio[\)\]]|'
+            r'\s*[\(\[]Lyric[s]?\s*Video[\)\]]|'
+            r'\s*[\(\[]Visuali[zs]er[\)\]]|'
+            r'\s*[\(\[]Live[\)\]]|'
+            r'\s*[\(\[]Remaster(ed)?[\)\]]|'
+            r'\s*[\(\[](HD|HQ|4K|1080p)[\)\]]',
+            re.IGNORECASE
+        )
+
+        # Artist suffix patterns to clean (YouTube channel names)
+        self.artist_suffix_pattern = re.compile(
+            r'\s*(Official|VEVO)$|'
+            r'\s*-\s*Topic$',
             re.IGNORECASE
         )
 
@@ -52,12 +64,13 @@ class MetadataCleaner:
 
         logger.info("MetadataCleaner initialized")
 
-    def clean_title(self, title: str) -> Tuple[str, List[str]]:
+    def clean_title(self, title: str, artist: str = None) -> Tuple[str, List[str]]:
         """
         Clean corrupted title field
 
         Args:
             title: Original title string
+            artist: Artist name (optional) — used to strip "Artist - Title" prefix
 
         Returns:
             Tuple of (cleaned_title, list_of_issues_found)
@@ -83,6 +96,19 @@ class MetadataCleaner:
             if title.startswith(garbage):
                 title = title[len(garbage):]
                 issues.append("garbage_prefix")
+
+        # Strip "Artist - Title" prefix when artist is known
+        if artist and artist.lower() not in ('unknown', 'unknown artist'):
+            # Clean artist first (strip VEVO/Official) for matching
+            clean_artist = self.artist_suffix_pattern.sub('', artist).strip()
+            prefix = re.compile(
+                r'^' + re.escape(clean_artist) + r'\s*[-\u2013\u2014:]\s*',
+                re.IGNORECASE
+            )
+            new_title = prefix.sub('', title)
+            if new_title != title and new_title.strip():
+                title = new_title
+                issues.append("artist_prefix")
 
         # Remove YouTube artifacts
         if self.youtube_artifacts_pattern.search(title):
@@ -123,6 +149,12 @@ class MetadataCleaner:
         if self.timestamp_pattern.search(artist):
             artist = self.timestamp_pattern.sub('', artist)
             issues.append("timestamp_suffix")
+
+        # Remove YouTube channel suffixes (Official, VEVO, - Topic)
+        new_artist = self.artist_suffix_pattern.sub('', artist).strip()
+        if new_artist and new_artist != artist:
+            artist = new_artist
+            issues.append("youtube_channel_suffix")
 
         # Clean up spacing
         artist = re.sub(r'\s+', ' ', artist).strip()

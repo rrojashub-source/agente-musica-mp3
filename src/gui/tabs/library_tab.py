@@ -177,6 +177,14 @@ class LibraryTab(QWidget):
         )
         buttons_layout.addWidget(self.clean_db_button)
 
+        self.clean_titles_button = QPushButton("✨ Clean Titles")
+        self.clean_titles_button.setFixedWidth(120)
+        self.clean_titles_button.setToolTip(
+            "Clean YouTube artifacts from song titles\n"
+            "Removes: (Official Video), Artist prefix, [Audio], etc."
+        )
+        buttons_layout.addWidget(self.clean_titles_button)
+
         buttons_layout.addStretch()
 
         self.status_label = QLabel("No song selected")
@@ -197,6 +205,7 @@ class LibraryTab(QWidget):
         self.play_button.clicked.connect(self._on_play_button_clicked)
         self.refresh_button.clicked.connect(self._load_library)
         self.clean_db_button.clicked.connect(self._on_clean_database_clicked)
+        self.clean_titles_button.clicked.connect(self._on_clean_titles_clicked)
 
         # Now Playing Widget prev/next/stop buttons
         # NOTE: prev_clicked, next_clicked and song_ended are now handled by main.py
@@ -1003,6 +1012,31 @@ class LibraryTab(QWidget):
         finally:
             # Re-enable button
             self.clean_db_button.setEnabled(True)
+
+    def _on_clean_titles_clicked(self):
+        """Clean YouTube artifacts from all song titles in the database."""
+        self.clean_titles_button.setEnabled(False)
+        self.status_label.setText("Cleaning titles...")
+
+        try:
+            count = self.db_manager.batch_clean_titles()
+            if count > 0:
+                self._load_library()
+                self.status_label.setText(f"✅ {count} titles cleaned")
+                QMessageBox.information(
+                    self,
+                    "Titles Cleaned",
+                    f"Cleaned {count} song titles.\n\n"
+                    "Removed: YouTube artifacts (Official Video, Audio, etc.),\n"
+                    "artist prefixes, and channel suffixes."
+                )
+            else:
+                self.status_label.setText("✅ All titles are already clean")
+        except Exception as e:
+            logger.error(f"Clean titles error: {e}")
+            self.status_label.setText("Error cleaning titles")
+        finally:
+            self.clean_titles_button.setEnabled(True)
 
     # ==================== Drag & Drop Support ====================
 
