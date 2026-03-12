@@ -2,7 +2,7 @@
   "project": "NEXUS Music Manager",
   "version": "2.1.0",
   "status": "refactoring_in_progress",
-  "phase": "Phase 1+2+3 COMPLETE (code). Phase 4 partial. Pending: Nuitka EXE build on Windows.",
+  "phase": "Phase 1+2+3 COMPLETE (code). Phase 4 partial. Tests: 823 pass, 38 skip, 1 env. Pending: Nuitka EXE build on Windows.",
   "commercial_score": 99,
   "audit_score": 6.8,
   "target_score": 8.5,
@@ -34,7 +34,7 @@
     "source_lines": 36488,
     "test_files": 56,
     "test_lines": 15720,
-    "tests_count": "450+",
+    "tests_count": "862 (823 pass, 38 skip, 1 env failure)",
     "development_period": "2025-09 to 2025-12"
   },
 
@@ -127,8 +127,8 @@
   "git": {
     "remote": "https://github.com/rrojashub-source/agente-musica-mp3.git",
     "branch": "main",
-    "total_commits": 234,
-    "last_commit": "refactor(phase-3.3): add Nuitka compatibility to resource path resolution"
+    "total_commits": 240,
+    "last_commit": "fix(tests): resolve 7 hanging test files + cloud_sync failures"
   },
 
   "decisions": [
@@ -211,6 +211,11 @@
       "date": "2026-03-11",
       "decision": "Phase 3.3 COMPLETE: Nuitka compatibility for resource paths (5 files).",
       "reason": "Added '__compiled__' in globals() check alongside hasattr(sys, '_MEIPASS') in database/manager.py, core/theme_manager.py, plugins/plugin_manager.py, services/content_filter/classifier.py, gui/visualizers/organic_visualizer.py. requirements-dev.txt updated pyinstaller→nuitka. setup.py and spec file updated. Actual EXE build pending Windows session."
+    },
+    {
+      "date": "2026-03-11",
+      "decision": "All preexisting test issues resolved: 30+ failures/hangs fixed across 12 test files.",
+      "reason": "Block 1 (10 failures): genius_client mock sys.modules, library_import_worker synthetic MP3, new_plugins skipif, playlist_widget grid layout + dialog patches, production_polish tooltips. Block 2 (7 hangs + 3 cloud_sync failures): SearchTab/LibraryTab subclass overrides for modal dialogs and processEvents() shiboken6 segfaults, import prefix fixes (src. removal), mock patch location fixes, cloud_sync fetch_all side_effect for query-aware mocks, GoogleDriveProvider OAuth mock. Final: 823 pass, 38 skip, 1 env (fpcalc not installed)."
     }
   ]
 }
