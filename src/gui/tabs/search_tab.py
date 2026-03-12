@@ -284,7 +284,7 @@ class SearchTab(QWidget):
         """
         for result in results:
             # Add visual indicator for YouTube
-            item = QListWidgetItem(f"▶️ {result['title']}")
+            item = QListWidgetItem(f"\u25b6 {result['title']}")
             item.setData(Qt.ItemDataRole.UserRole, result)
             item.setToolTip("YouTube video - Click 'Add to Library' to download")
             self.youtube_results.addItem(item)
@@ -300,7 +300,7 @@ class SearchTab(QWidget):
         """
         for result in results:
             # Add visual indicator for Spotify (now with auto-conversion)
-            item = QListWidgetItem(f"🎵 {result['artist']} - {result['title']}")
+            item = QListWidgetItem(f"\u266b {result['artist']} - {result['title']}")
             item.setData(Qt.ItemDataRole.UserRole, result)
             item.setToolTip("Spotify track - Will auto-convert to YouTube for download")
             self.spotify_results.addItem(item)

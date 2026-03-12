@@ -83,6 +83,30 @@ QTabBar::tab:hover {
     background-color: #3f3f3f;
 }
 
+/* ===== List Widget (Search Results, Queue) ===== */
+QListWidget {
+    background-color: #1e1e1e;
+    alternate-background-color: #252525;
+    color: #ffffff;
+    selection-background-color: #094771;
+    selection-color: #ffffff;
+    border: 1px solid #3f3f3f;
+}
+
+QListWidget::item {
+    padding: 6px 4px;
+    color: #ffffff;
+}
+
+QListWidget::item:selected {
+    background-color: #094771;
+    color: #ffffff;
+}
+
+QListWidget::item:hover {
+    background-color: #2d2d2d;
+}
+
 /* ===== Table Widget (Library, Search Results) ===== */
 QTableWidget {
     background-color: #1e1e1e;
