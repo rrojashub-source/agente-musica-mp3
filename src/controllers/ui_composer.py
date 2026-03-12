@@ -518,6 +518,9 @@ audio playback, playlists, and visualizer.</p>
             self._spectrum_worker.progress.connect(
                 lambda pct: self.window.statusBar.showMessage(f"Analyzing audio... {pct}%", 0)
             )
+            self._spectrum_worker.raw_audio_ready.connect(
+                lambda samples, sr: self.window.visualizer.set_raw_audio(samples, sr)
+            )
 
             self._spectrum_worker.start()
 

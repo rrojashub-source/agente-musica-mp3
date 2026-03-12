@@ -25,6 +25,7 @@ class SpectrumWorker(QThread):
     # Signals
     progress = Signal(int)  # Progress percentage (0-100)
     finished = Signal(object, float)  # (spectrum_data, duration)
+    raw_audio_ready = Signal(object, int)  # (samples_ndarray, sample_rate)
     error = Signal(str)  # Error message
 
     def __init__(self, waveform_extractor, file_path: str, num_bars: int = 60):
@@ -66,8 +67,17 @@ class SpectrumWorker(QThread):
                     f"Spectrum extracted: {len(spectrum_data)} windows, "
                     f"{duration:.1f}s, {self.num_bars} bars"
                 )
-                self.progress.emit(100)
+                self.progress.emit(95)
                 self.finished.emit(spectrum_data, duration)
+
+                # Also extract raw samples for real-time FFT (organic visualizer)
+                raw_result = self.waveform_extractor.extract_raw_samples(self.file_path)
+                if raw_result:
+                    samples, sample_rate = raw_result
+                    self.raw_audio_ready.emit(samples, sample_rate)
+                    logger.info(f"Raw audio ready for real-time FFT ({sample_rate}Hz)")
+
+                self.progress.emit(100)
             else:
                 error_msg = "Failed to extract spectrum data"
                 logger.warning(error_msg)

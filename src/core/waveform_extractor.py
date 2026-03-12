@@ -388,6 +388,55 @@ class WaveformExtractor:
 
         return bar_magnitudes
 
+    def extract_raw_samples(self, file_path: str):
+        """
+        Load raw mono audio samples for real-time FFT visualization.
+
+        Returns normalized float32 samples and sample rate, suitable for
+        computing FFT on arbitrary windows during playback.
+
+        Args:
+            file_path: Path to audio file
+
+        Returns:
+            Tuple of (samples_array, sample_rate) or None if failed.
+            samples_array: numpy float32 array normalized to [-1.0, 1.0]
+            sample_rate: int (e.g. 44100)
+        """
+        cache_key = f"raw_{file_path}"
+        if cache_key in self.cache:
+            return self.cache[cache_key]
+
+        if not Path(file_path).exists():
+            logger.error(f"File not found: {file_path}")
+            return None
+
+        if not PYDUB_AVAILABLE:
+            logger.warning("pydub not available - raw sample extraction unavailable")
+            return None
+
+        try:
+            audio = AudioSegment.from_file(file_path)
+            if audio.channels > 1:
+                audio = audio.set_channels(1)
+
+            samples = np.array(audio.get_array_of_samples(), dtype=np.float32)
+            max_amplitude = 2 ** (audio.sample_width * 8 - 1)
+            samples = samples / max_amplitude
+
+            result = (samples, audio.frame_rate)
+            self.cache[cache_key] = result
+
+            logger.info(
+                f"Raw samples extracted: {Path(file_path).name} "
+                f"({len(samples)} samples, {audio.frame_rate}Hz)"
+            )
+            return result
+
+        except (OSError, ValueError) as e:
+            logger.error(f"Failed to extract raw samples from {file_path}: {e}")
+            return None
+
     def clear_cache(self):
         """Clear waveform cache"""
         self.cache.clear()

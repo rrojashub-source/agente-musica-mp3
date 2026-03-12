@@ -69,6 +69,11 @@ class VisualizerWidget(QWidget):
         self.spectrum_data: Optional[List[List[float]]] = None  # [time_window][frequency_bar]
         self.spectrum_duration: float = 0.0  # Duration for spectrum data
 
+        # Raw audio samples for real-time FFT (organic visualizer)
+        self._raw_samples = None  # numpy float32 array
+        self._raw_sample_rate: int = 0
+        self._adaptive_max: float = 1.0  # Adaptive gain normalization
+
         self.position: float = 0.0  # Current position (0.0 to 1.0)
         self.duration: float = 0.0  # Total duration in seconds (for position conversion)
 
@@ -254,12 +259,16 @@ class VisualizerWidget(QWidget):
             self.position = 0.0
 
         # Forward FFT data to organic visualizer if active
-        if self.organic_widget and self.viz_style == 'organic' and self.spectrum_data:
-            # Get current spectrum frame based on position
-            time_index = int(self.position * len(self.spectrum_data))
-            time_index = max(0, min(time_index, len(self.spectrum_data) - 1))
-            current_fft = self.spectrum_data[time_index]
-            self.organic_widget.update_from_fft(current_fft)
+        if self.organic_widget and self.viz_style == 'organic':
+            # Prefer real-time FFT from raw samples (much more dynamic)
+            if self._raw_samples is not None:
+                self._compute_realtime_fft(position)
+            elif self.spectrum_data:
+                # Fallback to pre-computed spectrum
+                time_index = int(self.position * len(self.spectrum_data))
+                time_index = max(0, min(time_index, len(self.spectrum_data) - 1))
+                current_fft = self.spectrum_data[time_index]
+                self.organic_widget.update_from_fft(current_fft)
 
         self.update()  # Trigger repaint
 
@@ -276,6 +285,86 @@ class VisualizerWidget(QWidget):
         self.spectrum_duration = duration
         self.update()  # Trigger repaint
         logger.debug(f"Spectrum data set: {len(spectrum_data)} windows, {duration:.2f}s")
+
+    def set_raw_audio(self, samples, sample_rate: int):
+        """
+        Set raw audio samples for real-time FFT computation.
+
+        When available, the organic visualizer computes FFT on-the-fly at
+        each position update instead of using pre-computed spectrum data.
+        This gives much better dynamic range and responsiveness.
+
+        Args:
+            samples: numpy float32 array of mono audio samples [-1.0, 1.0]
+            sample_rate: Sample rate in Hz (e.g. 44100)
+        """
+        self._raw_samples = samples
+        self._raw_sample_rate = sample_rate
+        self._adaptive_max = 1.0  # Reset adaptive gain
+        logger.info(f"Raw audio set for real-time FFT ({len(samples)} samples, {sample_rate}Hz)")
+
+    def _compute_realtime_fft(self, position_seconds: float):
+        """
+        Compute FFT at current playback position from raw audio samples.
+
+        Uses a 50ms Hanning window centered at the current position.
+        Distributes magnitudes into 60 logarithmic frequency bars.
+        Applies adaptive gain normalization for consistent visual dynamics.
+
+        Args:
+            position_seconds: Current playback position in seconds
+        """
+        import numpy as np
+
+        samples = self._raw_samples
+        sr = self._raw_sample_rate
+
+        # 50ms analysis window
+        window_size = int(sr * 0.05)
+        center = int(position_seconds * sr)
+        start = max(0, center - window_size // 2)
+        end = min(len(samples), start + window_size)
+
+        if end - start < 256:
+            return
+
+        # Extract and window
+        window = samples[start:end].copy()
+        window *= np.hanning(len(window))
+
+        # FFT — raw linear magnitudes (NOT dB)
+        fft_result = np.fft.rfft(window)
+        magnitudes = np.abs(fft_result)
+
+        # Logarithmic distribution into 60 bars (more resolution for bass)
+        num_bars = 60
+        n = len(magnitudes)
+        log_boundaries = np.logspace(
+            np.log10(max(1, 1)), np.log10(n), num_bars + 1, base=10
+        ).astype(int)
+        log_boundaries = np.clip(log_boundaries, 0, n - 1)
+
+        bars = []
+        for i in range(num_bars):
+            s, e = log_boundaries[i], log_boundaries[i + 1]
+            if s >= e:
+                e = s + 1
+            bars.append(float(np.mean(magnitudes[s:min(e, n)])))
+
+        # Adaptive gain normalization — preserves dynamics across passages
+        # Fast attack (0.3): loud sections are captured immediately
+        # Slow decay (0.995): quiet sections gradually reduce the reference
+        frame_max = max(bars) if bars else 0.001
+        if frame_max > self._adaptive_max:
+            self._adaptive_max = self._adaptive_max * 0.3 + frame_max * 0.7
+        else:
+            self._adaptive_max = self._adaptive_max * 0.995 + frame_max * 0.005
+
+        # Normalize bars to 0-1 range using adaptive max
+        safe_max = max(self._adaptive_max, 0.001)
+        bars = [min(1.0, b / safe_max) for b in bars]
+
+        self.organic_widget.update_from_fft(bars)
 
     def update_organic_audio(self, fft_data: List[float]):
         """
@@ -1030,6 +1119,9 @@ class VisualizerWidget(QWidget):
         self.spectrum_data = None
         self.spectrum_duration = 0.0
         self.position = 0.0
+        self._raw_samples = None
+        self._raw_sample_rate = 0
+        self._adaptive_max = 1.0
 
         # Reset organic visualizer audio state
         if self.organic_widget:
