@@ -201,15 +201,18 @@ class PlaylistWidget(QWidget):
 
         # Buttons with clear text
         self.create_button = QPushButton("➕ Create Playlist")
+        self.create_button.setToolTip("Create a new empty playlist")
         self.create_button.clicked.connect(self.create_playlist)
         header_layout.addWidget(self.create_button)
 
         self.delete_button = QPushButton("🗑️ Delete Playlist")
+        self.delete_button.setToolTip("Delete the selected playlist")
         self.delete_button.clicked.connect(self.delete_playlist)
         self.delete_button.setEnabled(False)
         header_layout.addWidget(self.delete_button)
 
         self.rename_button = QPushButton("✏️ Rename Playlist")
+        self.rename_button.setToolTip("Rename the selected playlist")
         self.rename_button.clicked.connect(self.rename_playlist)
         self.rename_button.setEnabled(False)
         header_layout.addWidget(self.rename_button)

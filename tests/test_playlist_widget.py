@@ -96,17 +96,26 @@ class TestPlaylistWidget(unittest.TestCase):
         if self.widget is None:
             self.skipTest("PlaylistWidget not implemented")
 
+        from gui.widgets.playlist_widget import PlaylistWidget
+
         # Mock playlist data
         self.mock_playlist_manager.get_playlists.return_value = [
             {'id': 1, 'name': 'Favorites', 'description': 'My favorites', 'song_count': 10},
             {'id': 2, 'name': 'Rock', 'description': 'Rock songs', 'song_count': 25},
         ]
 
-        # Load playlists
-        self.widget.load_playlists()
+        # Call real load_playlists (bypassing the no-op override)
+        PlaylistWidget.load_playlists(self.widget)
 
-        # Should display 2 playlists
-        self.assertEqual(self.widget.playlists_table.rowCount(), 2)
+        # Grid layout uses 4 columns, so 2 playlists = 1 row
+        self.assertEqual(self.widget.playlists_table.rowCount(), 1)
+        # Verify both playlists are in the grid
+        item0 = self.widget.playlists_table.item(0, 0)
+        item1 = self.widget.playlists_table.item(0, 1)
+        self.assertIsNotNone(item0)
+        self.assertIsNotNone(item1)
+        self.assertIn('Favorites', item0.text())
+        self.assertIn('Rock', item1.text())
 
     def test_06_create_new_playlist(self):
         """Test creating new playlist"""
@@ -131,19 +140,17 @@ class TestPlaylistWidget(unittest.TestCase):
         if self.widget is None:
             self.skipTest("PlaylistWidget not implemented")
 
-        # Mock playlists
-        self.mock_playlist_manager.get_playlists.return_value = [
-            {'id': 1, 'name': 'Favorites', 'song_count': 10},
-        ]
-        self.widget.load_playlists()
+        from PySide6.QtWidgets import QMessageBox
 
-        # Select first playlist
-        self.widget.playlists_table.selectRow(0)
+        # Set up state as if a playlist is selected
+        self.widget.current_playlist_id = 1
+        self.mock_playlist_manager.get_playlists.return_value = []
 
-        # Mock confirmation dialogs
+        # Mock ALL dialog methods to prevent real modal dialogs
         with patch('gui.widgets.playlist_widget.QMessageBox.question') as mock_question, \
-             patch('gui.widgets.playlist_widget.QMessageBox.information') as mock_info:
-            mock_question.return_value = 16384  # QMessageBox.StandardButton.Yes
+             patch('gui.widgets.playlist_widget.QMessageBox.information') as mock_info, \
+             patch('gui.widgets.playlist_widget.QMessageBox.warning') as mock_warn:
+            mock_question.return_value = QMessageBox.StandardButton.Yes
 
             # Delete playlist
             self.widget.delete_playlist()
@@ -201,18 +208,13 @@ class TestPlaylistWidget(unittest.TestCase):
         if self.widget is None:
             self.skipTest("PlaylistWidget not implemented")
 
-        # Mock playlists
-        self.mock_playlist_manager.get_playlists.return_value = [
-            {'id': 1, 'name': 'Favorites', 'song_count': 10},
-        ]
-        self.widget.load_playlists()
+        # Set up state as if a playlist is selected
+        self.widget.current_playlist_id = 1
 
-        # Select playlist
-        self.widget.playlists_table.selectRow(0)
-
-        # Mock file dialog and message box
+        # Mock file dialog and ALL message boxes to prevent modal dialogs
         with patch('gui.widgets.playlist_widget.QFileDialog.getSaveFileName') as mock_dialog, \
-             patch('gui.widgets.playlist_widget.QMessageBox.information') as mock_msg:
+             patch('gui.widgets.playlist_widget.QMessageBox.information') as mock_msg, \
+             patch('gui.widgets.playlist_widget.QMessageBox.warning') as mock_warn:
             mock_dialog.return_value = ('/path/to/export.m3u8', 'M3U8 Files (*.m3u8)')
             self.mock_playlist_manager.save_playlist.return_value = True
 
