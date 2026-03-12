@@ -16,17 +16,41 @@ if app is None:
     app = QApplication(sys.argv)
 
 
+try:
+    from gui.tabs.search_tab import SearchTab as _SearchTab
+    from unittest.mock import patch as _patch
+
+    class _TestableSearchTab(_SearchTab):
+        """SearchTab subclass that suppresses all modal dialogs for test environments."""
+
+        def _show_missing_credentials_prompt(self):
+            pass
+
+        def on_add_to_library_clicked(self):
+            # QMessageBox is imported locally inside the method, so patch the
+            # class directly in PySide6.QtWidgets to prevent modal dialogs.
+            with _patch("PySide6.QtWidgets.QMessageBox"):
+                super().on_add_to_library_clicked()
+
+        def on_search_clicked(self):
+            with _patch("PySide6.QtWidgets.QMessageBox"):
+                return super().on_search_clicked()
+
+    _IMPORT_OK = True
+except ImportError:
+    _TestableSearchTab = None  # type: ignore[assignment,misc]
+    _IMPORT_OK = False
+
+
 class TestSearchTab(unittest.TestCase):
     """Test SearchTab GUI component"""
 
     def setUp(self):
         """Setup test fixtures"""
-        # Import the class we're testing (will fail initially - expected in TDD Red phase)
-        try:
-            from src.gui.tabs.search_tab import SearchTab
-            self.tab_class = SearchTab
-            self.tab = SearchTab()
-        except ImportError:
+        if _IMPORT_OK:
+            self.tab_class = _TestableSearchTab
+            self.tab = _TestableSearchTab()
+        else:
             self.tab_class = None
             self.tab = None
 

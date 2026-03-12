@@ -58,6 +58,12 @@ class TestLibraryTabE2E:
         """Create library tab with mock database"""
         from gui.tabs.library_tab import LibraryTab
 
+        # Subclass to suppress _show_skeleton_loading which calls
+        # QApplication.processEvents() and segfaults in headless shiboken6
+        class _TestableLibraryTab(LibraryTab):
+            def _show_skeleton_loading(self, rows=8):
+                pass  # Skip processEvents() in headless
+
         # Create mock database manager
         mock_db = MagicMock()
         mock_db.get_all_songs.return_value = [
@@ -68,8 +74,9 @@ class TestLibraryTabE2E:
         mock_db.search.return_value = [
             {'id': 3, 'title': 'Test Song', 'artist': 'Test Artist', 'album': 'Test Album', 'duration': 240, 'path': '/path/3.mp3'},
         ]
+        mock_db.get_song_count.return_value = 3
 
-        tab = LibraryTab(db_manager=mock_db)
+        tab = _TestableLibraryTab(db_manager=mock_db)
         yield tab
         tab.close()
 
@@ -115,8 +122,20 @@ class TestSearchTabE2E:
         from gui.tabs.search_tab import SearchTab
         from core.download_queue import DownloadQueue
 
+        from unittest.mock import patch as _patch
+
+        class _TestableSearchTab(SearchTab):
+            """Subclass that suppresses all modal dialogs for testing."""
+            def _show_missing_credentials_prompt(self):
+                pass
+
+            def on_add_to_library_clicked(self):
+                """Call parent but patch out QMessageBox to avoid modal blocks."""
+                with _patch('PySide6.QtWidgets.QMessageBox'):
+                    super().on_add_to_library_clicked()
+
         queue = DownloadQueue(max_concurrent=2)
-        tab = SearchTab(download_queue=queue)
+        tab = _TestableSearchTab(download_queue=queue)
 
         # Mock the searchers
         tab.youtube_searcher = MagicMock()
@@ -308,9 +327,9 @@ class TestPlayerE2E:
 
     def test_player_queue_next(self, player, tmp_path):
         """Test queuing next track"""
-        # Skip if pygame not available
-        if player._pygame is None:
-            pytest.skip("pygame not available for queue test")
+        # Skip if mpv not available (migrated from pygame to python-mpv)
+        if player._player is None:
+            pytest.skip("python-mpv not available for queue test")
 
         # Create fake mp3 file
         fake_mp3 = tmp_path / "test.mp3"

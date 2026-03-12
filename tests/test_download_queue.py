@@ -21,7 +21,7 @@ class TestDownloadQueue(unittest.TestCase):
 
         # Import the class we're testing (will fail initially - expected in TDD Red phase)
         try:
-            from src.core.download_queue import DownloadQueue
+            from core.download_queue import DownloadQueue
             self.queue_class = DownloadQueue
         except ImportError:
             self.queue_class = None  # Expected to fail initially
@@ -108,7 +108,7 @@ class TestDownloadQueue(unittest.TestCase):
         )
 
         # Mock DownloadWorker to prevent actual downloads
-        with patch('src.workers.download_worker.DownloadWorker'):
+        with patch('core.download_queue.DownloadWorker'):
             # Start processing
             queue.start()
 
@@ -131,7 +131,7 @@ class TestDownloadQueue(unittest.TestCase):
             )
 
         # Mock DownloadWorker
-        with patch('src.workers.download_worker.DownloadWorker'):
+        with patch('core.download_queue.DownloadWorker'):
             # Start processing
             queue.start()
 
@@ -153,7 +153,7 @@ class TestDownloadQueue(unittest.TestCase):
         )
 
         # Mock worker
-        with patch('src.workers.download_worker.DownloadWorker') as mock_worker:
+        with patch('core.download_queue.DownloadWorker') as mock_worker:
             queue.start()
 
             # Pause the download
@@ -179,7 +179,7 @@ class TestDownloadQueue(unittest.TestCase):
             metadata={'title': 'Song 1'}
         )
 
-        with patch('src.workers.download_worker.DownloadWorker'):
+        with patch('core.download_queue.DownloadWorker'):
             queue.start()
             queue.pause(item_id)
 
@@ -206,7 +206,7 @@ class TestDownloadQueue(unittest.TestCase):
             metadata={'title': 'Song 1'}
         )
 
-        with patch('src.workers.download_worker.DownloadWorker'):
+        with patch('core.download_queue.DownloadWorker'):
             queue.start()
 
             # Cancel the download
@@ -328,7 +328,7 @@ class TestDownloadQueueSecurity(unittest.TestCase):
         """Setup test fixtures"""
         self.test_dir = tempfile.mkdtemp()
         try:
-            from src.core.download_queue import DownloadQueue
+            from core.download_queue import DownloadQueue
             self.queue_class = DownloadQueue
         except ImportError:
             self.queue_class = None

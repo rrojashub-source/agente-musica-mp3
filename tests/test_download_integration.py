@@ -24,15 +24,25 @@ class TestDownloadIntegration(unittest.TestCase):
         """Setup test fixtures"""
         # Import classes
         try:
-            from src.core.download_queue import DownloadQueue
-            from src.gui.tabs.search_tab import SearchTab
-            from src.gui.widgets.queue_widget import QueueWidget
+            from core.download_queue import DownloadQueue
+            from gui.tabs.search_tab import SearchTab
+            from gui.widgets.queue_widget import QueueWidget
+
+            class _TestableSearchTab(SearchTab):
+                """Subclass that suppresses all modal dialogs for testing."""
+                def _show_missing_credentials_prompt(self):
+                    pass
+
+                def on_add_to_library_clicked(self):
+                    """Call parent but patch out QMessageBox to avoid modal blocks."""
+                    with patch('PySide6.QtWidgets.QMessageBox'):
+                        super().on_add_to_library_clicked()
 
             # Create download queue
             self.download_queue = DownloadQueue(max_concurrent=3)
 
-            # Create search tab with queue
-            self.search_tab = SearchTab(download_queue=self.download_queue)
+            # Create search tab with queue (using testable subclass to avoid modal dialog)
+            self.search_tab = _TestableSearchTab(download_queue=self.download_queue)
 
             # Create queue widget with queue
             self.queue_widget = QueueWidget(download_queue=self.download_queue)

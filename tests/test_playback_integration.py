@@ -39,8 +39,19 @@ class TestPlaybackIntegration(unittest.TestCase):
 
         # Try to import library tab (which should have playback integration)
         try:
-            from src.gui.tabs.library_tab import LibraryTab
-            self.library_tab = LibraryTab(self.mock_db)
+            from gui.tabs.library_tab import LibraryTab
+
+            # Subclass to suppress _show_skeleton_loading which calls
+            # QApplication.processEvents() and segfaults in headless shiboken6
+            class _TestableLibraryTab(LibraryTab):
+                def _show_skeleton_loading(self, rows=8):
+                    pass
+
+            # Mock DB methods that LibraryTab calls during __init__
+            self.mock_db.get_all_songs.return_value = []
+            self.mock_db.get_song_count.return_value = 0
+
+            self.library_tab = _TestableLibraryTab(self.mock_db)
 
             # Inject mocks
             self.library_tab.audio_player = self.mock_player
