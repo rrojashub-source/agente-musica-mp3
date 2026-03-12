@@ -272,6 +272,8 @@ class VisualizerWidget(QWidget):
                 time_index = max(0, min(time_index, len(self.spectrum_data) - 1))
                 current_fft = self.spectrum_data[time_index]
                 self.organic_widget.update_from_fft(current_fft)
+                if self._fullscreen_window and self._fullscreen_window.organic:
+                    self._fullscreen_window.organic.update_from_fft(current_fft)
 
         self.update()  # Trigger repaint
 
@@ -368,6 +370,10 @@ class VisualizerWidget(QWidget):
         bars = [min(1.0, b / safe_max) for b in bars]
 
         self.organic_widget.update_from_fft(bars)
+
+        # Also feed fullscreen visualizer if active
+        if self._fullscreen_window and self._fullscreen_window.organic:
+            self._fullscreen_window.organic.update_from_fft(bars)
 
     def update_organic_audio(self, fft_data: List[float]):
         """
@@ -1186,9 +1192,9 @@ class VisualizerWidget(QWidget):
 class _FullscreenVisualizer(QWidget):
     """Fullscreen window wrapping an OrganicVisualizerWidget.
 
-    Receives real-time FFT data from the parent VisualizerWidget so the
-    dancing figure keeps responding to music in fullscreen mode.
-    Press ESC or double-click to exit.
+    FFT data is pushed directly from VisualizerWidget._compute_realtime_fft()
+    so the dancing figure reacts to music identically to the inline widget.
+    Press ESC, F11, or double-click to exit.
     """
 
     def __init__(self, parent_visualizer: 'VisualizerWidget'):
@@ -1208,26 +1214,6 @@ class _FullscreenVisualizer(QWidget):
         self.organic.set_style('music')
         layout.addWidget(self.organic)
 
-        # Mirror audio data from the parent's organic widget
-        self._mirror_timer = QTimer(self)
-        self._mirror_timer.timeout.connect(self._mirror_audio)
-        self._mirror_timer.start(33)  # 30 FPS
-
-    def _mirror_audio(self):
-        """Copy current audio values from parent organic widget"""
-        src = self._parent_viz.organic_widget
-        if src:
-            self.organic.update_audio(
-                src._target_bass,
-                src._target_mids,
-                src._target_highs,
-                src._target_amplitude,
-            )
-            # Mirror beat state directly
-            if src.beat > self.organic.beat:
-                self.organic._beat_decay = src._beat_decay
-                self.organic.beat = src.beat
-
     def keyPressEvent(self, event):
         """ESC or F11 to exit fullscreen"""
         if event.key() in (Qt.Key.Key_Escape, Qt.Key.Key_F11):
@@ -1241,6 +1227,5 @@ class _FullscreenVisualizer(QWidget):
 
     def closeEvent(self, event):
         """Cleanup on close"""
-        self._mirror_timer.stop()
         self.organic.cleanup()
         super().closeEvent(event)
