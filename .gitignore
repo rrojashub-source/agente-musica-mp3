@@ -331,4 +331,7 @@ test_launch.py
 test_pipeline.py
 
 # === USER DIRECTORIES (Windows paths that leak into WSL) ===
-C:\\Users/
+C\\Users/
+C:/Users/
+# Partial downloads
+*.part
