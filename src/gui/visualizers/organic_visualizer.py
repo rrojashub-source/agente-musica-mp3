@@ -351,15 +351,15 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
         self._target_amplitude = max(0.0, min(1.0, amplitude))
 
         # Beat detection: instant response (no smoothing for beats!)
-        # After 200x amplification, typical values: 0.08 mean, 0.2 peaks
+        # With normalized data: typical amplitude 0.3-0.6, beats cause 0.05-0.15 jumps
         amp_jump = amplitude - self._last_amplitude
-        if amp_jump > 0.06 and amplitude > 0.12:  # Strong beat - more sensitive
+        if amp_jump > 0.08 and amplitude > 0.4:  # Strong beat
             self._beat_decay = 1.0
             self.beat = 1.0
-        elif amp_jump > 0.03 and amplitude > 0.08:  # Medium beat
+        elif amp_jump > 0.04 and amplitude > 0.25:  # Medium beat
             self._beat_decay = max(self._beat_decay, 0.7)
             self.beat = max(self.beat, 0.7)
-        elif amp_jump > 0.015 and amplitude > 0.04:  # Soft beat
+        elif amp_jump > 0.02 and amplitude > 0.15:  # Soft beat
             self._beat_decay = max(self._beat_decay, 0.4)
             self.beat = max(self.beat, 0.4)
         self._last_amplitude = amplitude
@@ -368,22 +368,22 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
         """
         Update audio parameters from FFT data.
 
-        Maps FFT bins to frequency ranges:
-        - Bass: bins 0-5% (~20-250 Hz) - AMPLIFIED for punchy response
-        - Mids: bins 5-25% (~250-4000 Hz) - Main body of music
-        - Highs: bins 25-100% (~4000+ Hz) - Cymbals, hi-hats
+        Expects pre-normalized data (0.0-1.0) from WaveformExtractor which
+        converts to dB scale and normalizes. Maps logarithmic bars to:
+        - Bass: first 8% of bars (~20-300 Hz) — punchy low end
+        - Mids: 8-30% (~300-3000 Hz) — body of music
+        - Highs: 30-100% (~3000+ Hz) — cymbals, brightness
 
         Args:
-            fft_data: List of FFT magnitude values
+            fft_data: List of FFT magnitude values (0.0-1.0 normalized)
             num_bins: Total number of FFT bins (default: 512)
         """
         if not fft_data:
             return
 
         n = len(fft_data)
-        # Wider frequency ranges for better response
-        bass_end = max(3, int(n * 0.05))     # 5% for bass (was 2%)
-        mids_end = int(n * 0.25)              # 25% for mids (was 20%)
+        bass_end = max(3, int(n * 0.08))      # 8% for bass
+        mids_end = int(n * 0.30)               # 30% for mids
         # Rest is highs
 
         # Calculate averages for each range
@@ -392,12 +392,13 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
         highs = self._average_bins(fft_data, mids_end, n)
         amplitude = sum(fft_data) / n
 
-        # MASSIVE AMPLIFICATION based on FFT analysis:
-        # Raw FFT values are ~0.001-0.05, need to reach 0.0-1.0 range
-        bass = min(1.0, bass * 50.0)       # 50x amplification (raw ~0.007 -> 0.35)
-        mids = min(1.0, mids * 150.0)      # 150x amplification (raw ~0.0016 -> 0.24)
-        highs = min(1.0, highs * 500.0)    # 500x amplification (raw ~0.0001 -> 0.05)
-        amplitude = min(1.0, amplitude * 200.0)  # 200x (raw ~0.0004 -> 0.08)
+        # Data is already normalized 0.0-1.0 from WaveformExtractor (dB scale).
+        # Apply power curve (x^0.7) to expand quiet values + mild boost.
+        # This gives visual dynamic range: quiet ~0.2, normal ~0.5, loud ~0.9
+        bass = min(1.0, bass ** 0.7 * 1.2)
+        mids = min(1.0, mids ** 0.7 * 1.5)
+        highs = min(1.0, highs ** 0.6 * 2.5)
+        amplitude = min(1.0, amplitude ** 0.7 * 1.8)
 
         self.update_audio(bass, mids, highs, amplitude)
 
