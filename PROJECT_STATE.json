@@ -1,8 +1,8 @@
 {
   "project": "NEXUS Music Manager",
-  "version": "2.1.0",
-  "status": "refactoring_in_progress",
-  "phase": "Phase 1+2+3 COMPLETE (code). Phase 4 partial. Tests: 823 pass, 38 skip, 1 env. Pending: Nuitka EXE build on Windows.",
+  "version": "2.2.0",
+  "status": "functional_audit_in_progress",
+  "phase": "Phase 1+2+3 COMPLETE. Phase 4 partial. Functional audit: 6 bug groups fixed (34+ instances). Tests: 815 pass, 38 skip, 10 env-only. Pending: Nuitka EXE build on Windows.",
   "commercial_score": 99,
   "audit_score": 6.8,
   "target_score": 8.5,
@@ -29,12 +29,12 @@
   },
 
   "metrics": {
-    "commits": 234,
-    "source_files": 111,
-    "source_lines": 36488,
+    "commits": 241,
+    "source_files": 112,
+    "source_lines": 36700,
     "test_files": 56,
     "test_lines": 15720,
-    "tests_count": "862 (823 pass, 38 skip, 1 env failure)",
+    "tests_count": "862 (815 pass, 38 skip, 10 env failures — keyring, fpcalc, API keys)",
     "development_period": "2025-09 to 2025-12"
   },
 
@@ -127,8 +127,8 @@
   "git": {
     "remote": "https://github.com/rrojashub-source/agente-musica-mp3.git",
     "branch": "main",
-    "total_commits": 240,
-    "last_commit": "fix(tests): resolve 7 hanging test files + cloud_sync failures"
+    "total_commits": 241,
+    "last_commit": "fix(integration): 6 functional bug groups — library refresh, play count, track-end, EQ, emoji, misc"
   },
 
   "decisions": [
@@ -216,6 +216,11 @@
       "date": "2026-03-11",
       "decision": "All preexisting test issues resolved: 30+ failures/hangs fixed across 12 test files.",
       "reason": "Block 1 (10 failures): genius_client mock sys.modules, library_import_worker synthetic MP3, new_plugins skipif, playlist_widget grid layout + dialog patches, production_polish tooltips. Block 2 (7 hangs + 3 cloud_sync failures): SearchTab/LibraryTab subclass overrides for modal dialogs and processEvents() shiboken6 segfaults, import prefix fixes (src. removal), mock patch location fixes, cloud_sync fetch_all side_effect for query-aware mocks, GoogleDriveProvider OAuth mock. Final: 823 pass, 38 skip, 1 env (fpcalc not installed)."
+    },
+    {
+      "date": "2026-03-12",
+      "decision": "Functional audit: 6 bug groups fixed (34+ instances across 12 files).",
+      "reason": "G1: Library refresh via data_changed Signal (import/cleanup/organize/cloud_sync → library+statistics). G2: Play count increment on song start + statistics auto-refresh. G3: Track-end via mpv callback (thread-safe QTimer.singleShot) replacing NowPlayingWidget polling. G4: Equalizer fixed (signal name gains_changed→eq_changed + set_equalizer_gains via mpv af filter). G5: Emoji font fallback (Segoe UI Emoji/Noto Color Emoji in QSS + app.setFont). G6: About dialog pygame→python-mpv, 8x except Exception→specific types."
     }
   ]
 }
