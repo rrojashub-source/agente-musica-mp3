@@ -36,7 +36,7 @@ class ChordsClient:
 
     # Analysis parameters
     HOP_LENGTH = 8192          # ~0.37s per frame at 22050Hz
-    BLOCK_SECONDS = 2.0        # Group frames into 2-second blocks
+    BLOCK_SECONDS = 4.0        # Group frames into 4-second blocks (smoother)
     SAMPLE_RATE = 22050        # Standard for analysis
     MIN_ENERGY = 0.01          # Skip silence
 
@@ -170,46 +170,60 @@ class ChordsClient:
         """
         Detect chord from a 12-bin chroma vector.
 
-        Uses template matching against major, minor, and 7th chord profiles.
+        Uses normalized template matching against major, minor, and 7th chords.
+        Cosine similarity ensures fair comparison between templates of different sizes.
         """
         np = self._np
         best_score = -1
         best_chord = "N"  # No chord
 
+        # Normalize input vector
+        norm = np.linalg.norm(chroma_vector)
+        if norm < 1e-8:
+            return "N"
+        chroma_norm = chroma_vector / norm
+
         for root_idx in range(12):
             root_name = self.CHROMA_LABELS[root_idx]
 
-            # Major triad template: root, major 3rd (+4), fifth (+7)
-            major_template = np.zeros(12)
-            major_template[root_idx] = 1.0
-            major_template[(root_idx + 4) % 12] = 0.8
-            major_template[(root_idx + 7) % 12] = 0.7
+            # Major triad: root, major 3rd (+4), fifth (+7)
+            major_t = np.zeros(12)
+            major_t[root_idx] = 1.0
+            major_t[(root_idx + 4) % 12] = 0.9
+            major_t[(root_idx + 7) % 12] = 0.8
+            major_t /= np.linalg.norm(major_t)
 
-            score = np.dot(chroma_vector, major_template)
+            score = np.dot(chroma_norm, major_t)
             if score > best_score:
                 best_score = score
                 best_chord = root_name
 
-            # Minor triad template: root, minor 3rd (+3), fifth (+7)
-            minor_template = np.zeros(12)
-            minor_template[root_idx] = 1.0
-            minor_template[(root_idx + 3) % 12] = 0.8
-            minor_template[(root_idx + 7) % 12] = 0.7
+            # Minor triad: root, minor 3rd (+3), fifth (+7)
+            minor_t = np.zeros(12)
+            minor_t[root_idx] = 1.0
+            minor_t[(root_idx + 3) % 12] = 0.9
+            minor_t[(root_idx + 7) % 12] = 0.8
+            minor_t /= np.linalg.norm(minor_t)
 
-            score = np.dot(chroma_vector, minor_template)
+            score = np.dot(chroma_norm, minor_t)
             if score > best_score:
                 best_score = score
                 best_chord = f"{root_name}m"
 
-            # Dominant 7th template: root, major 3rd, fifth, minor 7th (+10)
-            dom7_template = np.zeros(12)
-            dom7_template[root_idx] = 1.0
-            dom7_template[(root_idx + 4) % 12] = 0.7
-            dom7_template[(root_idx + 7) % 12] = 0.6
-            dom7_template[(root_idx + 10) % 12] = 0.5
+            # Dominant 7th: root, major 3rd, fifth, minor 7th (+10)
+            # Only wins if the 7th note is actually present in the signal
+            dom7_t = np.zeros(12)
+            dom7_t[root_idx] = 1.0
+            dom7_t[(root_idx + 4) % 12] = 0.8
+            dom7_t[(root_idx + 7) % 12] = 0.7
+            dom7_t[(root_idx + 10) % 12] = 0.6
+            dom7_t /= np.linalg.norm(dom7_t)
 
-            score = np.dot(chroma_vector, dom7_template)
-            if score > best_score:
+            score = np.dot(chroma_norm, dom7_t)
+            # Require the 7th note to actually be significant
+            seventh_energy = chroma_vector[(root_idx + 10) % 12]
+            root_energy = chroma_vector[root_idx]
+            if score > best_score and seventh_energy > 0.3 * root_energy:
                 best_score = score
                 best_chord = f"{root_name}7"
 
