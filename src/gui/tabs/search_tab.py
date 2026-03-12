@@ -205,21 +205,27 @@ class SearchTab(QWidget):
         splitter.addWidget(youtube_widget)
         splitter.addWidget(spotify_widget)
 
-        layout.addWidget(splitter)
+        layout.addWidget(splitter, stretch=1)
 
-        # Bottom bar
-        bottom_layout = QHBoxLayout()
+        # Bottom bar — always visible
+        bottom_widget = QWidget()
+        bottom_widget.setMinimumHeight(50)
+        bottom_widget.setMaximumHeight(60)
+        bottom_layout = QHBoxLayout(bottom_widget)
+        bottom_layout.setContentsMargins(4, 4, 4, 4)
 
         self.selected_count_label = QLabel("Selected: 0 songs")
 
-        self.add_to_library_button = QPushButton("Add to Library")
+        self.add_to_library_button = QPushButton("Download Selected")
+        self.add_to_library_button.setMinimumHeight(36)
+        self.add_to_library_button.setMinimumWidth(180)
         self.add_to_library_button.clicked.connect(self.on_add_to_library_clicked)
 
         bottom_layout.addWidget(self.selected_count_label)
         bottom_layout.addStretch()
         bottom_layout.addWidget(self.add_to_library_button)
 
-        layout.addLayout(bottom_layout)
+        layout.addWidget(bottom_widget, stretch=0)
 
         self.setLayout(layout)
 
@@ -286,7 +292,7 @@ class SearchTab(QWidget):
             # Add visual indicator for YouTube
             item = QListWidgetItem(f"\u25b6 {result['title']}")
             item.setData(Qt.ItemDataRole.UserRole, result)
-            item.setToolTip("YouTube video - Click 'Add to Library' to download")
+            item.setToolTip("Double-click to download")
             self.youtube_results.addItem(item)
 
         logger.info(f"Displayed {len(results)} YouTube results")
@@ -302,22 +308,52 @@ class SearchTab(QWidget):
             # Add visual indicator for Spotify (now with auto-conversion)
             item = QListWidgetItem(f"\u266b {result['artist']} - {result['title']}")
             item.setData(Qt.ItemDataRole.UserRole, result)
-            item.setToolTip("Spotify track - Will auto-convert to YouTube for download")
+            item.setToolTip("Double-click to download")
             self.spotify_results.addItem(item)
 
         logger.info(f"Displayed {len(results)} Spotify results")
 
     def _on_youtube_item_clicked(self, item):
-        """Handle YouTube item selection"""
+        """Handle YouTube item double-click — download directly"""
         data = item.data(Qt.ItemDataRole.UserRole)
         data['source'] = 'youtube'
-        self._add_to_selection(data)
+        self._download_single(data)
 
     def _on_spotify_item_clicked(self, item):
-        """Handle Spotify item selection"""
+        """Handle Spotify item double-click — download directly"""
         data = item.data(Qt.ItemDataRole.UserRole)
         data['source'] = 'spotify'
-        self._add_to_selection(data)
+        self._download_single(data)
+
+    def _download_single(self, song_data: dict):
+        """Download a single song immediately on double-click"""
+        if not self.download_queue:
+            logger.warning("No download queue available")
+            return
+
+        try:
+            video_url = None
+            metadata = song_data
+
+            if song_data['source'] == 'youtube':
+                video_url = f"https://www.youtube.com/watch?v={song_data['video_id']}"
+            elif song_data['source'] == 'spotify':
+                converted = self._convert_spotify_to_youtube(song_data)
+                if converted:
+                    video_url = f"https://www.youtube.com/watch?v={converted['video_id']}"
+                    metadata = converted
+                else:
+                    logger.warning(f"Could not convert Spotify song: {song_data.get('title')}")
+                    return
+
+            if video_url:
+                self.download_queue.add(video_url=video_url, metadata=metadata)
+                title = metadata.get('title', 'Unknown')
+                logger.info(f"Direct download queued: {title}")
+                self.selected_count_label.setText(f"Downloading: {title}")
+
+        except (KeyError, ValueError, TypeError) as e:
+            logger.error(f"Failed to queue download: {e}")
 
     def _add_to_selection(self, song_data: dict):
         """
