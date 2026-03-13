@@ -18,6 +18,7 @@ Updated: March 11, 2026 - Migrated from pygame.mixer to python-mpv
 """
 import logging
 import os
+import sys
 import threading
 import time
 from typing import Optional, Callable, List
@@ -83,9 +84,17 @@ class AudioPlayer:
         try:
             # Ensure libmpv-2.dll is findable on Windows
             if os.name == 'nt':
-                src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                if src_dir not in os.environ.get('PATH', ''):
-                    os.environ['PATH'] = src_dir + os.pathsep + os.environ.get('PATH', '')
+                if hasattr(sys, '_MEIPASS'):
+                    # PyInstaller: DLL is in extraction root
+                    dll_dir = sys._MEIPASS
+                elif '__compiled__' in globals():
+                    # Nuitka: DLL is next to executable
+                    dll_dir = os.path.dirname(sys.argv[0])
+                else:
+                    # Development: DLL is in src/
+                    dll_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if dll_dir not in os.environ.get('PATH', ''):
+                    os.environ['PATH'] = dll_dir + os.pathsep + os.environ.get('PATH', '')
             import mpv
             self._player = mpv.MPV(
                 ytdl=False,
