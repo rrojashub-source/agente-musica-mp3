@@ -1,8 +1,8 @@
 {
   "project": "NEXUS Music Manager",
-  "version": "2.2.0",
-  "status": "functional_audit_in_progress",
-  "phase": "Phase 1+2+3 COMPLETE. Phase 4 partial. Functional audit: 6 bug groups fixed (34+ instances). Tests: 815 pass, 38 skip, 10 env-only. Pending: Nuitka EXE build on Windows.",
+  "version": "2.1.0",
+  "status": "release_ready",
+  "phase": "Phase 1+2+3 COMPLETE. Phase 4 partial. EXE built (151MB PyInstaller). Visualizer real-time FFT. 15→12 tabs. Fullscreen F11. GitHub synced.",
   "commercial_score": 99,
   "audit_score": 6.8,
   "target_score": 8.5,
@@ -14,28 +14,28 @@
 
   "stack": {
     "current": {
-      "language": "Python 3.11+",
+      "language": "Python 3.13",
       "gui": "PySide6",
       "database": "SQLite + FTS5 + WAL",
       "audio": "python-mpv (libmpv) + numpy FFT",
       "visualizer": "OpenGL 3.3 + GLSL shaders",
       "apis": ["YouTube Data API v3", "Spotify Web API", "MusicBrainz", "Genius"],
-      "packaging": "Nuitka (pending build) / PyInstaller (legacy spec)",
+      "packaging": "PyInstaller 6.19.0 + UPX (151MB exe)",
       "remote": "Flask REST API"
     },
     "target": {
-      "packaging": "Nuitka + UPX (~90MB vs 164MB actual) — needs Windows build session"
+      "packaging": "Nuitka when yt_dlp issue #2879 resolved (currently blocks compilation)"
     }
   },
 
   "metrics": {
-    "commits": 241,
+    "commits": 252,
     "source_files": 112,
-    "source_lines": 36700,
+    "source_lines": 37000,
     "test_files": 56,
     "test_lines": 15720,
-    "tests_count": "862 (815 pass, 38 skip, 10 env failures — keyring, fpcalc, API keys)",
-    "development_period": "2025-09 to 2025-12"
+    "tests_count": "263 (258 pass, 4 skip, 1 pre-existing failure — test_download_integration)",
+    "development_period": "2025-09 to 2025-12, refactoring 2026-03"
   },
 
   "audit_summary": {
@@ -97,8 +97,8 @@
           "DONE: PyQt6 -> PySide6 — 74 files migrated, Signal/Slot/Property renamed, shiboken6 segfault fix in tests",
           "DONE: pygame -> python-mpv — AudioPlayer rewritten, native gapless, all audio formats, 28 tests passing",
           "DONE: Nuitka compat — 5 resource path files updated (__compiled__ check), requirements updated",
-          "PENDING: Build EXE with Nuitka on Windows — spec file ready, needs Windows session",
-          "PENDING: UPX compression — post Nuitka build"
+          "DONE: Build EXE with PyInstaller 6.19 + UPX — 151MB (Nuitka blocked by yt_dlp #2879)",
+          "DONE: UPX compression — integrated in PyInstaller build"
         ]
       },
       {
@@ -118,17 +118,19 @@
 
   "executable": {
     "path": "dist/NEXUS_Music_Manager.exe",
-    "size_mb": 164,
+    "size_mb": 151,
     "platform": "Windows 10/11",
-    "type": "single-file",
-    "note": "Version funcional pre-refactoring. No recompilar hasta Fase 3."
+    "type": "single-file (PyInstaller 6.19 + UPX)",
+    "built": "2026-03-12",
+    "python": "3.13.7",
+    "note": "Post-refactoring v2.1.0 build. PySide6 + python-mpv + OpenGL. Verified launches OK."
   },
 
   "git": {
     "remote": "https://github.com/rrojashub-source/agente-musica-mp3.git",
     "branch": "main",
-    "total_commits": 241,
-    "last_commit": "fix(integration): 6 functional bug groups — library refresh, play count, track-end, EQ, emoji, misc"
+    "total_commits": 252,
+    "last_commit": "feat(build): update spec for v2.1 + add build scripts (PyInstaller + Nuitka)"
   },
 
   "decisions": [
@@ -221,6 +223,31 @@
       "date": "2026-03-12",
       "decision": "Functional audit: 6 bug groups fixed (34+ instances across 12 files).",
       "reason": "G1: Library refresh via data_changed Signal (import/cleanup/organize/cloud_sync → library+statistics). G2: Play count increment on song start + statistics auto-refresh. G3: Track-end via mpv callback (thread-safe QTimer.singleShot) replacing NowPlayingWidget polling. G4: Equalizer fixed (signal name gains_changed→eq_changed + set_equalizer_gains via mpv af filter). G5: Emoji font fallback (Segoe UI Emoji/Noto Color Emoji in QSS + app.setFont). G6: About dialog pygame→python-mpv, 8x except Exception→specific types."
+    },
+    {
+      "date": "2026-03-12",
+      "decision": "Visualizer real-time FFT: raw audio samples → 50ms Hanning window → logarithmic bars → adaptive gain normalization.",
+      "reason": "Pre-computed dB-normalized spectrum lacked frame-to-frame dynamics. Real-time FFT with fast attack (0.7) / slow decay (0.995) gives natural music-reactive movement."
+    },
+    {
+      "date": "2026-03-12",
+      "decision": "Tabs reduced 15→12: removed Plugins, Remote, Content Filter.",
+      "reason": "Ricardo approved. Plugins tab unused (3 plugins auto-load). Remote server runs headless (no tab needed). Content filter too basic — lyrics tab serves same purpose. Chord tab and visualizer add more value."
+    },
+    {
+      "date": "2026-03-12",
+      "decision": "Fullscreen visualizer added (F11 / double-click). Separate QWidget window with independent OrganicVisualizerWidget.",
+      "reason": "Ricardo loved the idea. FFT data pushed directly to both inline and fullscreen widgets. OpenGL may show black via RustDesk (GPU capture issue), works locally."
+    },
+    {
+      "date": "2026-03-12",
+      "decision": "EXE built with PyInstaller 6.19 + UPX instead of Nuitka.",
+      "reason": "Nuitka blocked by yt_dlp issue #2879 — lazy_extractors imports 2000+ extractors, causes infinite optimization loop (2.5GB RAM, no progress). PyInstaller handles yt_dlp fine. 151MB exe verified working. Nuitka build scripts preserved for future use."
+    },
+    {
+      "date": "2026-03-12",
+      "decision": "GitHub repo synced: 62 commits pushed to origin/main.",
+      "reason": "All phases, migrations, bug fixes, visualizer, and build config now on GitHub. Secrets verified clean (all via keyring)."
     }
   ]
 }
