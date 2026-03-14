@@ -230,7 +230,6 @@ a = Analysis(
         # Exclude unnecessary modules to reduce size
         'tkinter',
         'matplotlib',
-        'scipy',
         'pandas',
         'PIL',
         'cv2',
@@ -239,6 +238,7 @@ a = Analysis(
         'IPython',
         'jupyter',
         'notebook',
+        # NOTE: scipy is NOT excluded — librosa needs it for chords (chroma_cqt)
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
