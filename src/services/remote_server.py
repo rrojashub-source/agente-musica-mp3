@@ -9,6 +9,16 @@ Features:
 - Now playing info
 - Mobile-friendly web interface
 
+Security:
+- Bearer token authentication (24h expiry + refresh)
+- Rate limiting (60 req/min per IP)
+- CORS restricted to local network
+- Token removed from browser history via replaceState
+
+Known limitation: HTTP only (no TLS). Auth token is visible in plaintext
+on the local network. Acceptable for LAN-only music remote control;
+do not expose this server to the public internet.
+
 Usage:
     server = RemoteServer.get_instance()
     server.start(port=8080)

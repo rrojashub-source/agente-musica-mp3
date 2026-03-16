@@ -83,12 +83,8 @@ class DownloadWorker(BaseWorker):
                         path_valid = True
                         break
 
-            # If no base dir matched, ensure parent exists and is within CWD
             if not path_valid:
-                resolved = Path(output_path_str).resolve()
-                parent = resolved.parent
-                parent.mkdir(parents=True, exist_ok=True)
-                logger.warning(f"Output path {resolved} not in known safe dirs, allowing as fallback")
+                raise ValueError(f"Output path '{output_path_str}' is outside all allowed directories")
 
         self.video_url: str = video_url
         self.output_path: str = output_path_str

@@ -281,7 +281,14 @@ class DatabaseManager:
                 WHERE title LIKE ? OR artist LIKE ? OR album LIKE ?
                 LIMIT ?
             """
-            pattern = f"%{query}%"
+            # Escape LIKE wildcards to prevent unintended pattern matching
+            escaped = query.replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{escaped}%"
+            sql = """
+                SELECT * FROM songs
+                WHERE title LIKE ? ESCAPE '\\' OR artist LIKE ? ESCAPE '\\' OR album LIKE ? ESCAPE '\\'
+                LIMIT ?
+            """
             return self.fetch_all(sql, (pattern, pattern, pattern, limit))
 
     # ==========================================

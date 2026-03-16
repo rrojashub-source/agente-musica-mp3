@@ -135,12 +135,26 @@ class PluginManager(QObject if HAS_QT else object):  # type: ignore[misc]
     # ==========================================
 
     def _load_whitelist(self) -> None:
-        """Load plugin whitelist from file"""
+        """Load plugin whitelist from file.
+
+        SECURITY: Validates entries against bundled plugins. Unknown plugin
+        names are stripped and logged as warnings (defense against file tampering).
+        """
         if self._whitelist_file.exists():
             try:
                 with open(self._whitelist_file, "r") as f:
                     data = json.load(f)
-                    self._whitelist = data.get("allowed_plugins", None)
+                    raw_list = data.get("allowed_plugins", None)
+
+                    if raw_list is not None:
+                        # Filter out unknown plugin names (tamper protection)
+                        unknown = [p for p in raw_list if p not in self._bundled_plugins]
+                        if unknown:
+                            logger.warning(f"Whitelist contains unknown plugins (removed): {unknown}")
+                        self._whitelist = [p for p in raw_list if p in self._bundled_plugins]
+                    else:
+                        self._whitelist = None
+
                     logger.info(f"Plugin whitelist loaded: {self._whitelist}")
             except (json.JSONDecodeError, IOError) as e:
                 logger.error(f"Failed to load plugin whitelist: {e}")

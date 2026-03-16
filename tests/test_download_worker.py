@@ -2,15 +2,17 @@
 Tests for Download Worker (Phase 4.2)
 TDD: Write tests FIRST, then implement src/workers/download_worker.py
 """
-import pytest
-import unittest
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
-import tempfile
+
 import shutil
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import QApplication
-import sys
 
 # Ensure QApplication exists for Qt tests
 app = QApplication.instance()
@@ -33,6 +35,7 @@ class TestDownloadWorker(unittest.TestCase):
         # Import the class we're testing (will fail initially - expected in TDD Red phase)
         try:
             from src.workers.download_worker import DownloadWorker
+
             self.worker_class = DownloadWorker
         except ImportError:
             self.worker_class = None  # Expected to fail initially
@@ -48,10 +51,7 @@ class TestDownloadWorker(unittest.TestCase):
             self.fail("DownloadWorker class not found - implement src/workers/download_worker.py")
 
         # Verify it inherits from QThread
-        self.assertTrue(
-            issubclass(self.worker_class, QThread),
-            "DownloadWorker must inherit from QThread"
-        )
+        self.assertTrue(issubclass(self.worker_class, QThread), "DownloadWorker must inherit from QThread")
 
     def test_worker_initialization(self):
         """Test DownloadWorker initializes with video_url and output_path"""
@@ -59,7 +59,7 @@ class TestDownloadWorker(unittest.TestCase):
             self.fail("DownloadWorker class not found")
 
         # Create worker instance
-        worker = self.worker_class(self.test_video_url, str(self.output_path))
+        worker = self.worker_class(self.test_video_url, str(self.output_path), allowed_base_dir=self.test_dir)
 
         # Verify attributes set correctly
         self.assertEqual(worker.video_url, self.test_video_url)
@@ -71,12 +71,12 @@ class TestDownloadWorker(unittest.TestCase):
             self.fail("DownloadWorker class not found")
 
         # Create worker instance
-        worker = self.worker_class(self.test_video_url, str(self.output_path))
+        worker = self.worker_class(self.test_video_url, str(self.output_path), allowed_base_dir=self.test_dir)
 
         # Verify signals exist (they should be class attributes)
-        self.assertTrue(hasattr(self.worker_class, 'progress'))
-        self.assertTrue(hasattr(self.worker_class, 'finished'))
-        self.assertTrue(hasattr(self.worker_class, 'error'))
+        self.assertTrue(hasattr(self.worker_class, "progress"))
+        self.assertTrue(hasattr(self.worker_class, "finished"))
+        self.assertTrue(hasattr(self.worker_class, "error"))
 
     def test_worker_progress_signal_emits(self):
         """Test progress signal emits values 0-100 during download"""
@@ -84,7 +84,7 @@ class TestDownloadWorker(unittest.TestCase):
             self.fail("DownloadWorker class not found")
 
         # Mock the download to emit progress
-        worker = self.worker_class(self.test_video_url, str(self.output_path))
+        worker = self.worker_class(self.test_video_url, str(self.output_path), allowed_base_dir=self.test_dir)
 
         # Collect progress values
         progress_values = []
@@ -95,21 +95,17 @@ class TestDownloadWorker(unittest.TestCase):
         worker.progress.connect(collect_progress)
 
         # Mock yt-dlp to simulate progress
-        with patch('src.workers.download_worker.yt_dlp.YoutubeDL') as mock_ytdl:
+        with patch("src.workers.download_worker.yt_dlp.YoutubeDL") as mock_ytdl:
             # Setup mock to call progress hooks
             def mock_extract_info(url, download=False):
                 # Call progress hooks
-                if worker.yt_opts.get('progress_hooks'):
-                    for hook in worker.yt_opts['progress_hooks']:
-                        hook({'status': 'downloading', 'downloaded_bytes': 50, 'total_bytes': 100})
-                        hook({'status': 'downloading', 'downloaded_bytes': 100, 'total_bytes': 100})
-                        hook({'status': 'finished'})
+                if worker.yt_opts.get("progress_hooks"):
+                    for hook in worker.yt_opts["progress_hooks"]:
+                        hook({"status": "downloading", "downloaded_bytes": 50, "total_bytes": 100})
+                        hook({"status": "downloading", "downloaded_bytes": 100, "total_bytes": 100})
+                        hook({"status": "finished"})
 
-                return {
-                    'title': 'Test Video',
-                    'uploader': 'Test Artist',
-                    'duration': 180
-                }
+                return {"title": "Test Video", "uploader": "Test Artist", "duration": 180}
 
             mock_ytdl.return_value.__enter__.return_value.extract_info = mock_extract_info
 
@@ -130,7 +126,7 @@ class TestDownloadWorker(unittest.TestCase):
         if self.worker_class is None:
             self.fail("DownloadWorker class not found")
 
-        worker = self.worker_class(self.test_video_url, str(self.output_path))
+        worker = self.worker_class(self.test_video_url, str(self.output_path), allowed_base_dir=self.test_dir)
 
         # Collect finished data
         finished_data = []
@@ -141,14 +137,14 @@ class TestDownloadWorker(unittest.TestCase):
         worker.finished.connect(collect_finished)
 
         # Mock successful download
-        with patch('yt_dlp.YoutubeDL') as mock_ytdl:
+        with patch("yt_dlp.YoutubeDL") as mock_ytdl:
             mock_instance = MagicMock()
             mock_ytdl.return_value.__enter__.return_value = mock_instance
             mock_instance.download.return_value = 0  # Success
             mock_instance.extract_info.return_value = {
-                'title': 'Test Video',
-                'uploader': 'Test Artist',
-                'duration': 180
+                "title": "Test Video",
+                "uploader": "Test Artist",
+                "duration": 180,
             }
 
             # Run worker
@@ -157,14 +153,14 @@ class TestDownloadWorker(unittest.TestCase):
         # Verify finished signal was emitted with metadata
         self.assertEqual(len(finished_data), 1)
         self.assertIsInstance(finished_data[0], dict)
-        self.assertIn('title', finished_data[0])
+        self.assertIn("title", finished_data[0])
 
     def test_worker_error_signal_on_download_failure(self):
         """Test error signal emits error message on download failure"""
         if self.worker_class is None:
             self.fail("DownloadWorker class not found")
 
-        worker = self.worker_class(self.test_video_url, str(self.output_path))
+        worker = self.worker_class(self.test_video_url, str(self.output_path), allowed_base_dir=self.test_dir)
 
         # Collect errors
         errors = []
@@ -175,7 +171,7 @@ class TestDownloadWorker(unittest.TestCase):
         worker.error.connect(collect_error)
 
         # Mock failed download
-        with patch('src.workers.download_worker.yt_dlp.YoutubeDL') as mock_ytdl:
+        with patch("src.workers.download_worker.yt_dlp.YoutubeDL") as mock_ytdl:
             mock_instance = MagicMock()
             mock_ytdl.return_value.__enter__.return_value = mock_instance
             mock_instance.extract_info.side_effect = Exception("Download failed")
@@ -194,7 +190,7 @@ class TestDownloadWorker(unittest.TestCase):
             self.fail("DownloadWorker class not found")
 
         invalid_url = "https://invalid-url.com/not-youtube"
-        worker = self.worker_class(invalid_url, str(self.output_path))
+        worker = self.worker_class(invalid_url, str(self.output_path), allowed_base_dir=self.test_dir)
 
         # Collect errors
         errors = []
@@ -211,16 +207,16 @@ class TestDownloadWorker(unittest.TestCase):
         if self.worker_class is None:
             self.fail("DownloadWorker class not found")
 
-        worker = self.worker_class(self.test_video_url, str(self.output_path))
+        worker = self.worker_class(self.test_video_url, str(self.output_path), allowed_base_dir=self.test_dir)
 
         # Verify worker has yt_opts attribute
-        self.assertTrue(hasattr(worker, 'yt_opts'), "Worker should have yt_opts attribute")
+        self.assertTrue(hasattr(worker, "yt_opts"), "Worker should have yt_opts attribute")
 
         # Verify essential options are set
         yt_opts = worker.yt_opts
-        self.assertIn('format', yt_opts, "Should specify audio format")
-        self.assertIn('outtmpl', yt_opts, "Should specify output template")
-        self.assertIn('progress_hooks', yt_opts, "Should have progress hooks")
+        self.assertIn("format", yt_opts, "Should specify audio format")
+        self.assertIn("outtmpl", yt_opts, "Should specify output template")
+        self.assertIn("progress_hooks", yt_opts, "Should have progress hooks")
 
 
 if __name__ == "__main__":

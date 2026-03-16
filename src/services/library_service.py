@@ -345,8 +345,10 @@ class LibraryService(QObject):
     def get_by_genre(self, genre: str) -> List[Song]:
         """Get all songs of a genre"""
         try:
+            escaped_genre = genre.replace("%", "\\%").replace("_", "\\_")
             results = self.db.fetch_all(
-                "SELECT * FROM songs WHERE genre LIKE ? ORDER BY artist, album, title", (f"%{genre}%",)
+                "SELECT * FROM songs WHERE genre LIKE ? ESCAPE '\\' ORDER BY artist, album, title",
+                (f"%{escaped_genre}%",),
             )
             return [Song.from_dict(r) for r in results]
         except sqlite3.Error as e:
