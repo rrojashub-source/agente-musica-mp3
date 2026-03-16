@@ -8,7 +8,6 @@ Handles seek, volume, mute keyboard shortcuts.
 from __future__ import annotations
 
 import logging
-import sqlite3
 from pathlib import Path
 from typing import Any, Optional
 
@@ -137,127 +136,123 @@ class PlaybackController(QObject):
     # Playlist Playback
     # ==========================================
 
+    def _play_song(self, song_data: dict[str, Any]) -> bool:
+        """Validate, load, and start playback for a song. Returns True on success."""
+        file_path = song_data.get("file_path")
+        if not file_path:
+            logger.error("Song has no file path")
+            return False
+
+        if not Path(file_path).exists():
+            logger.error(f"File not found: {file_path}")
+            QMessageBox.warning(self.parent(), "File Not Found", f"The music file could not be found:\n{file_path}")
+            return False
+
+        success = self.audio_player.load(file_path)
+        if success:
+            self.audio_player.play()
+            self.now_playing.load_song(song_data)
+            self.now_playing.set_playing(True)
+            return True
+
+        logger.error(f"Failed to load: {file_path}")
+        return False
+
     def play_song_from_playlist(self, song_info: dict[str, Any]) -> None:
         """Play song from playlist widget"""
         try:
-            file_path = song_info.get("file_path")
-            if not file_path:
-                logger.error("Song has no file path")
+            if not self._play_song(song_info):
                 return
 
-            if not Path(file_path).exists():
-                logger.error(f"File not found: {file_path}")
-                QMessageBox.warning(self.parent(), "File Not Found", f"The music file could not be found:\n{file_path}")
-                return
+            # Track playback source as playlist
+            self._playback_source = "playlist"
+            self._current_playlist_id = self.playlist_widget.current_playlist_id if self.playlist_widget else None
 
-            success = self.audio_player.load(file_path)
-            if success:
-                self.audio_player.play()
-                self.now_playing.load_song(song_info)
-                self.now_playing.set_playing(True)
+            # Get current playlist songs and find index
+            if self._current_playlist_id:
+                self._current_playlist_songs = self.playlist_manager.get_playlist_songs(self._current_playlist_id)
+                song_id = song_info.get("id")
+                for i, s in enumerate(self._current_playlist_songs):
+                    if s.get("id") == song_id:
+                        self._current_playlist_index = i
+                        break
 
-                # Track playback source as playlist
-                self._playback_source = "playlist"
-                self._current_playlist_id = self.playlist_widget.current_playlist_id if self.playlist_widget else None
+                if song_id and self.playlist_widget:
+                    self.playlist_widget.highlight_playing_song(song_id)
 
-                # Get current playlist songs and find index
-                if self._current_playlist_id:
-                    self._current_playlist_songs = self.playlist_manager.get_playlist_songs(self._current_playlist_id)
-                    song_id = song_info.get("id")
-                    for i, s in enumerate(self._current_playlist_songs):
-                        if s.get("id") == song_id:
-                            self._current_playlist_index = i
-                            break
-
-                    if song_id and self.playlist_widget:
-                        self.playlist_widget.highlight_playing_song(song_id)
-
-                logger.info(
-                    f"Playing from playlist: {song_info.get('title', 'Unknown')} "
-                    f"(index {self._current_playlist_index}/{len(self._current_playlist_songs)})"
-                )
-            else:
-                logger.error(f"Failed to load: {file_path}")
+            logger.info(
+                f"Playing from playlist: {song_info.get('title', 'Unknown')} "
+                f"(index {self._current_playlist_index}/{len(self._current_playlist_songs)})"
+            )
 
         except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error playing song from playlist: {e}")
 
-    def _play_next_from_playlist(self) -> None:
-        """Play next song in current playlist"""
+    def _play_adjacent_in_playlist(self, direction: int) -> None:
+        """Play next (direction=1) or previous (direction=-1) song in playlist."""
         if not self._current_playlist_songs:
             logger.warning("No playlist songs loaded")
             return
 
-        next_index = self._current_playlist_index + 1
+        new_index = self._current_playlist_index + direction
 
-        if next_index >= len(self._current_playlist_songs):
+        if new_index >= len(self._current_playlist_songs):
             logger.info("Reached end of playlist")
             if self.status_bar:
                 self.status_bar.showMessage("End of playlist", 2000)
             return
 
-        next_song = self._current_playlist_songs[next_index]
-        song_info = self.db_manager.get_song_by_id(next_song["id"])
-
-        if song_info:
-            self._current_playlist_index = next_index
-            self.play_song_from_playlist(song_info)
-            logger.info(f"Playing next in playlist: {song_info.get('title')}")
-        else:
-            logger.error(f"Song not found: {next_song['id']}")
-
-    def _play_prev_from_playlist(self) -> None:
-        """Play previous song in current playlist"""
-        if not self._current_playlist_songs:
-            logger.warning("No playlist songs loaded")
-            return
-
-        prev_index = self._current_playlist_index - 1
-
-        if prev_index < 0:
+        if new_index < 0:
             logger.info("Already at beginning of playlist")
             if self.status_bar:
                 self.status_bar.showMessage("Beginning of playlist", 2000)
             return
 
-        prev_song = self._current_playlist_songs[prev_index]
-        song_info = self.db_manager.get_song_by_id(prev_song["id"])
+        song_entry = self._current_playlist_songs[new_index]
+        song_info = self.db_manager.get_song_by_id(song_entry["id"])
 
         if song_info:
-            self._current_playlist_index = prev_index
+            self._current_playlist_index = new_index
             self.play_song_from_playlist(song_info)
-            logger.info(f"Playing previous in playlist: {song_info.get('title')}")
+            label = "next" if direction > 0 else "previous"
+            logger.info(f"Playing {label} in playlist: {song_info.get('title')}")
         else:
-            logger.error(f"Song not found: {prev_song['id']}")
+            logger.error(f"Song not found: {song_entry['id']}")
+
+    def _play_next_from_playlist(self) -> None:
+        """Play next song in current playlist."""
+        self._play_adjacent_in_playlist(1)
+
+    def _play_prev_from_playlist(self) -> None:
+        """Play previous song in current playlist."""
+        self._play_adjacent_in_playlist(-1)
 
     def play_recommended_song(self, song_data: dict[str, Any]) -> None:
         """Play a song selected from recommendations"""
         try:
-            file_path = song_data.get("file_path")
-            if not file_path:
-                logger.error("Recommended song has no file path")
+            if not self._play_song(song_data):
                 return
 
-            if not Path(file_path).exists():
-                logger.error(f"File not found: {file_path}")
-                QMessageBox.warning(self.parent(), "File Not Found", f"The music file could not be found:\n{file_path}")
-                return
-
-            success = self.audio_player.load(file_path)
-            if success:
-                self.audio_player.play()
-                self.now_playing.load_song(song_data)
-                self.now_playing.set_playing(True)
-                self._playback_source = "library"
-
-                logger.info(f"Playing recommended: {song_data.get('title')}")
-                if self.status_bar:
-                    self.status_bar.showMessage(f"Playing recommendation: {song_data.get('title')}", 3000)
-            else:
-                logger.error(f"Failed to load: {file_path}")
+            self._playback_source = "library"
+            logger.info(f"Playing recommended: {song_data.get('title')}")
+            if self.status_bar:
+                self.status_bar.showMessage(f"Playing recommendation: {song_data.get('title')}", 3000)
 
         except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error playing recommended song: {e}")
+
+    # ==========================================
+    # UI Sync Helpers
+    # ==========================================
+
+    def _sync_volume_ui(self, percentage: int) -> None:
+        """Update volume slider and label in NowPlayingWidget without triggering signals."""
+        if hasattr(self.now_playing, "volume_slider"):
+            self.now_playing.volume_slider.blockSignals(True)
+            self.now_playing.volume_slider.setValue(percentage)
+            self.now_playing.volume_slider.blockSignals(False)
+            if hasattr(self.now_playing, "volume_label_value"):
+                self.now_playing.volume_label_value.setText(f"{percentage}%")
 
     # ==========================================
     # Keyboard Shortcut Handlers
@@ -291,12 +286,7 @@ class PlaybackController(QObject):
             self.audio_player.set_volume(new_volume)
 
             percentage = int(new_volume * 100)
-            if hasattr(self.now_playing, "volume_slider"):
-                self.now_playing.volume_slider.blockSignals(True)
-                self.now_playing.volume_slider.setValue(percentage)
-                self.now_playing.volume_slider.blockSignals(False)
-                if hasattr(self.now_playing, "volume_label_value"):
-                    self.now_playing.volume_label_value.setText(f"{percentage}%")
+            self._sync_volume_ui(percentage)
 
             if self.status_bar:
                 self.status_bar.showMessage(f"Volume: {percentage}%", 1000)
@@ -313,12 +303,7 @@ class PlaybackController(QObject):
                 self._previous_volume = current
                 self.audio_player.set_volume(0.0)
 
-                if hasattr(self.now_playing, "volume_slider"):
-                    self.now_playing.volume_slider.blockSignals(True)
-                    self.now_playing.volume_slider.setValue(0)
-                    self.now_playing.volume_slider.blockSignals(False)
-                    if hasattr(self.now_playing, "volume_label_value"):
-                        self.now_playing.volume_label_value.setText("0%")
+                self._sync_volume_ui(0)
 
                 if self.status_bar:
                     self.status_bar.showMessage("Muted", 1000)
@@ -328,12 +313,7 @@ class PlaybackController(QObject):
                 self.audio_player.set_volume(volume)
 
                 percentage = int(volume * 100)
-                if hasattr(self.now_playing, "volume_slider"):
-                    self.now_playing.volume_slider.blockSignals(True)
-                    self.now_playing.volume_slider.setValue(percentage)
-                    self.now_playing.volume_slider.blockSignals(False)
-                    if hasattr(self.now_playing, "volume_label_value"):
-                        self.now_playing.volume_label_value.setText(f"{percentage}%")
+                self._sync_volume_ui(percentage)
 
                 if self.status_bar:
                     self.status_bar.showMessage(f"Volume: {percentage}%", 1000)

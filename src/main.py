@@ -31,15 +31,13 @@ from translations import set_language, tr
 try:
     from PySide6.QtCore import Qt
     from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
-except ImportError as e:
+except ImportError:
     print("PySide6 not installed. Install with: pip install PySide6")
     sys.exit(1)
 
 # Add src to path
 src_path = Path(__file__).parent
 sys.path.insert(0, str(src_path))
-
-import keyring
 
 from api.genius_client import GeniusClient
 from config_manager import ConfigManager
@@ -327,7 +325,7 @@ def main() -> None:
     app.setStyle("Fusion")
 
     # Set font with emoji fallback for Windows PySide6
-    from PySide6.QtGui import QFont, QFontDatabase
+    from PySide6.QtGui import QFont
 
     font = QFont("Segoe UI", 10)
     font.setFamilies(["Segoe UI", "Segoe UI Emoji", "Noto Color Emoji", "Arial"])

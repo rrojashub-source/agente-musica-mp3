@@ -38,6 +38,15 @@ class RemoteController(QObject):
         self._global_next_callback = next_callback
         self._global_prev_callback = prev_callback
 
+    def _sync_volume_ui(self, percentage: int) -> None:
+        """Update volume slider and label in NowPlayingWidget without triggering signals."""
+        if hasattr(self.now_playing, "volume_slider"):
+            self.now_playing.volume_slider.blockSignals(True)
+            self.now_playing.volume_slider.setValue(percentage)
+            self.now_playing.volume_slider.blockSignals(False)
+            if hasattr(self.now_playing, "volume_label_value"):
+                self.now_playing.volume_label_value.setText(f"{percentage}%")
+
     def connect_server(self) -> None:
         """Connect RemoteServer callbacks to audio player and controls"""
         try:
@@ -100,13 +109,7 @@ class RemoteController(QObject):
             elif command == "volume":
                 volume = params.get("volume", 100)
                 self.audio_player.set_volume(volume / 100.0)
-                # Sync volume slider and label in now_playing widget
-                if hasattr(self.now_playing, "volume_slider"):
-                    self.now_playing.volume_slider.blockSignals(True)
-                    self.now_playing.volume_slider.setValue(volume)
-                    self.now_playing.volume_slider.blockSignals(False)
-                if hasattr(self.now_playing, "volume_label_value"):
-                    self.now_playing.volume_label_value.setText(f"{volume}%")
+                self._sync_volume_ui(volume)
 
             elif command == "seek":
                 position = params.get("position", 0)

@@ -25,7 +25,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QPoint, Qt, QThread, QTimer, QUrl, Signal, Slot
+from PySide6.QtCore import QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import QBrush, QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent, QKeyEvent
 from PySide6.QtWidgets import (
     QApplication,
@@ -431,7 +431,7 @@ class LibraryTab(BaseTab):
         # Check if file exists
         if not Path(file_path).exists():
             logger.error(f"File not found: {file_path}")
-            self.status_label.setText(f"Error: File not found")
+            self.status_label.setText("Error: File not found")
             QMessageBox.warning(self, "File Not Found", f"The music file could not be found:\n{file_path}")
             return
 
@@ -551,8 +551,6 @@ class LibraryTab(BaseTab):
         Args:
             row: Row index to highlight
         """
-        from PySide6.QtGui import QBrush
-
         # Colors that work in both dark and light themes
         highlight_bg = QColor(0, 160, 200, 100)  # Semi-transparent cyan
         highlight_text = QColor(0, 80, 120)  # Dark cyan text (readable in both themes)
@@ -858,8 +856,8 @@ class LibraryTab(BaseTab):
                 message += f"  ... and {len(songs) - 5} more\n"
 
             message += (
-                f"\nNote: This will only remove songs from the library database.\n"
-                f"The MP3 files will remain on your disk."
+                "\nNote: This will only remove songs from the library database.\n"
+                "The MP3 files will remain on your disk."
             )
             title = f"Delete {len(songs)} Songs"
 

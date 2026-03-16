@@ -18,7 +18,6 @@ import logging
 import sqlite3
 from typing import Any, Dict, List, Optional
 
-import keyring
 import requests  # type: ignore[import-untyped]
 from PySide6.QtCore import Signal
 
@@ -415,9 +414,6 @@ class CleanupApplier:
                             except (requests.RequestException, OSError) as e:
                                 logger.warning(f"Failed to download cover for {artist} - {album}: {e}")
 
-                    # TODO: Update MP3 file ID3 tags
-                    # self._update_id3_tags(song_id, new_metadata)
-
                 else:
                     results["failed"] += 1  # type: ignore[operator]
                     results["errors"].append(f"Failed to update song {song_id}")  # type: ignore[union-attr]
@@ -431,18 +427,3 @@ class CleanupApplier:
         logger.info(f"Applied changes: {results['success']} success, {results['failed']} failed")
 
         return results
-
-    def _update_id3_tags(self, song_id: int, metadata: Dict[str, Any]) -> None:
-        """
-        Update ID3 tags in MP3 file
-
-        Args:
-            song_id: Song ID
-            metadata: New metadata to write
-        """
-        # TODO: Implement ID3 tag writing with mutagen
-        # Get file path from database
-        # Open with mutagen
-        # Update TIT2, TPE1, TALB, TDRC tags
-        # Save file
-        pass

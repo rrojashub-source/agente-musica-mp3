@@ -98,9 +98,8 @@ def sample_songs():
 
 @pytest.fixture
 def workflow_worker(mock_db_manager, mock_cleaner, mock_fetcher, sample_songs):
-    """CleanupWorkflowWorker with mocked dependencies, keyring, and AcoustID disabled"""
-    with patch.object(cw_module, "keyring") as mock_keyring:
-        mock_keyring.get_password.return_value = None  # No AcoustID key
+    """CleanupWorkflowWorker with mocked dependencies and AcoustID disabled"""
+    with patch("utils.credentials.load_credential", return_value=None):
         worker = CleanupWorkflowWorker(
             db_manager=mock_db_manager,
             cleaner=mock_cleaner,
