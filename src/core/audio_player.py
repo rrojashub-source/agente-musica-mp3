@@ -16,19 +16,21 @@ Features:
 Created: November 13, 2025
 Updated: March 11, 2026 - Migrated from pygame.mixer to python-mpv
 """
+
 import logging
 import os
 import sys
 import threading
 import time
-from typing import Optional, Callable, List
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class PlaybackState(Enum):
     """Playback state enumeration"""
+
     STOPPED = "stopped"
     PLAYING = "playing"
     PAUSED = "paused"
@@ -62,72 +64,73 @@ class AudioPlayer:
         is_playing = player.is_playing()
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize audio player"""
         # Thread safety: RLock protects all mutable state fields
-        self._lock = threading.RLock()
+        self._lock: threading.RLock = threading.RLock()
 
-        self._current_file = None
-        self._duration = 0.0
-        self._state = PlaybackState.STOPPED
-        self._volume = 1.0  # 0.0-1.0 scale (mpv uses 0-100 internally)
+        self._current_file: Optional[str] = None
+        self._duration: float = 0.0
+        self._state: PlaybackState = PlaybackState.STOPPED
+        self._volume: float = 1.0  # 0.0-1.0 scale (mpv uses 0-100 internally)
 
         # Gapless playback support
-        self._queued_file = None
-        self._queued_duration = 0.0
-        self._gapless_enabled = True
+        self._queued_file: Optional[str] = None
+        self._queued_duration: float = 0.0
+        self._gapless_enabled: bool = True
         self._on_track_end_callbacks: List[Callable[[str], None]] = []
-        self._end_event_timer = None
-        self._crossfade_ms = 0
+        self._end_event_timer: Optional[threading.Timer] = None
+        self._crossfade_ms: int = 0
 
         # Initialize mpv player
         try:
             # Ensure libmpv-2.dll is findable on Windows
-            if os.name == 'nt':
-                if hasattr(sys, '_MEIPASS'):
+            if os.name == "nt":
+                if hasattr(sys, "_MEIPASS"):
                     # PyInstaller: DLL is in extraction root
                     dll_dir = sys._MEIPASS
-                elif '__compiled__' in globals():
+                elif "__compiled__" in globals():
                     # Nuitka: DLL is next to executable
                     dll_dir = os.path.dirname(sys.argv[0])
                 else:
                     # Development: DLL is in src/
                     dll_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                if dll_dir not in os.environ.get('PATH', ''):
-                    os.environ['PATH'] = dll_dir + os.pathsep + os.environ.get('PATH', '')
+                if dll_dir not in os.environ.get("PATH", ""):
+                    os.environ["PATH"] = dll_dir + os.pathsep + os.environ.get("PATH", "")
             import mpv
-            self._player = mpv.MPV(
+
+            self._player: Optional[Any] = mpv.MPV(
                 ytdl=False,
-                video=False,         # Audio only
-                terminal=False,      # No terminal output
+                video=False,  # Audio only
+                terminal=False,  # No terminal output
                 input_default_bindings=False,
                 input_vo_keyboard=False,
             )
             # Configure for gapless audio
-            self._player['gapless-audio'] = 'yes'
-            self._player['audio-display'] = 'no'
+            self._player["gapless-audio"] = "yes"
+            self._player["audio-display"] = "no"
 
             # Register end-of-file event handler
-            @self._player.event_callback('end-file')
-            def _on_end_file(event):
+            @self._player.event_callback("end-file")
+            def _on_end_file(event: Any) -> None:
                 self._handle_track_end(event)
 
-            self._mpv = mpv  # Keep module reference
+            self._mpv: Optional[Any] = mpv  # Keep module reference
             logger.info("AudioPlayer initialized with python-mpv (gapless enabled)")
         except ImportError:
             logger.error("python-mpv not installed - audio playback unavailable")
             self._player = None
             self._mpv = None
-        except Exception as e:
+        except Exception as e:  # mpv raises RuntimeError/OSError for various init failures
             logger.error(f"Failed to initialize mpv: {e}")
             self._player = None
             self._mpv = None
 
-    def _handle_track_end(self, event):
+    def _handle_track_end(self, event: Any) -> None:
         """Handle mpv end-file event for track transitions"""
         try:
             # event['reason'] can be 'eof', 'stop', 'quit', 'error', etc.
-            reason = event.get('event', {}).get('reason', None) if isinstance(event, dict) else None
+            reason = event.get("event", {}).get("reason", None) if isinstance(event, dict) else None
 
             with self._lock:
                 if self._state != PlaybackState.PLAYING:
@@ -149,7 +152,7 @@ class AudioPlayer:
             # Notify callbacks outside lock
             if ended_file:
                 self._notify_track_end(ended_file)
-        except Exception as e:
+        except Exception as e:  # mpv event callback - must not crash event thread
             logger.error(f"Error handling track end: {e}")
 
     def load(self, file_path: str) -> bool:
@@ -174,7 +177,7 @@ class AudioPlayer:
             with self._lock:
                 # Stop current playback if any
                 try:
-                    self._player.command('stop')
+                    self._player.command("stop")
                 except (RuntimeError, OSError):
                     pass  # mpv may not be in a stoppable state
 
@@ -187,7 +190,7 @@ class AudioPlayer:
             logger.info(f"Loaded: {file_path} (duration: {self._duration:.2f}s)")
             return True
 
-        except Exception as e:
+        except Exception as e:  # mpv/mutagen can raise diverse errors on corrupt files
             logger.error(f"Failed to load {file_path}: {e}")
             return False
 
@@ -195,16 +198,17 @@ class AudioPlayer:
         """Get audio file duration using mutagen"""
         try:
             from mutagen import File as MutagenFile
+
             audio = MutagenFile(file_path)
             if audio and audio.info:
-                return audio.info.length
+                return audio.info.length  # type: ignore[no-any-return]
         except ImportError:
             logger.warning("mutagen not installed - duration unavailable")
-        except Exception as e:
+        except Exception as e:  # mutagen raises diverse errors on corrupt/unknown formats
             logger.warning(f"Failed to get duration: {e}")
         return 0.0
 
-    def play(self):
+    def play(self) -> None:
         """Start playback from beginning"""
         if not self._player or not self._current_file:
             logger.warning("No file loaded")
@@ -221,15 +225,15 @@ class AudioPlayer:
                     self._update_duration_from_mpv()
 
             logger.debug("Playback started")
-        except Exception as e:
+        except Exception as e:  # mpv raises RuntimeError for various playback failures
             logger.error(f"Failed to play: {e}")
 
-    def _update_duration_from_mpv(self):
+    def _update_duration_from_mpv(self) -> None:
         """Try to get duration from mpv (call within lock)"""
         try:
             # mpv needs a moment to parse the file
             for _ in range(10):
-                dur = self._player.duration
+                dur = self._player.duration  # type: ignore[union-attr]
                 if dur is not None and dur > 0:
                     self._duration = dur
                     break
@@ -237,7 +241,7 @@ class AudioPlayer:
         except (RuntimeError, OSError):
             pass  # mpv property access can fail during startup
 
-    def pause(self):
+    def pause(self) -> None:
         """Pause playback"""
         if not self._player:
             return
@@ -248,10 +252,10 @@ class AudioPlayer:
                     self._player.pause = True
                     self._state = PlaybackState.PAUSED
             logger.debug("Playback paused")
-        except Exception as e:
+        except Exception as e:  # mpv raises RuntimeError for various state errors
             logger.error(f"Failed to pause: {e}")
 
-    def resume(self):
+    def resume(self) -> None:
         """Resume playback from pause"""
         if not self._player:
             return
@@ -262,23 +266,23 @@ class AudioPlayer:
                     self._player.pause = False
                     self._state = PlaybackState.PLAYING
             logger.debug("Playback resumed")
-        except Exception as e:
+        except Exception as e:  # mpv raises RuntimeError for various state errors
             logger.error(f"Failed to resume: {e}")
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop playback and reset position"""
         if not self._player:
             return
 
         try:
             with self._lock:
-                self._player.command('stop')
+                self._player.command("stop")
                 self._state = PlaybackState.STOPPED
             logger.debug("Playback stopped")
-        except Exception as e:
+        except Exception as e:  # mpv raises RuntimeError for various state errors
             logger.error(f"Failed to stop: {e}")
 
-    def seek(self, position: float):
+    def seek(self, position: float) -> None:
         """
         Seek to position in seconds
 
@@ -300,14 +304,14 @@ class AudioPlayer:
                     # Wait for mpv to be ready
                     time.sleep(0.05)
 
-                self._player.seek(position, reference='absolute')
+                self._player.seek(position, reference="absolute")
 
                 if was_paused:
                     self._player.pause = True
                     self._state = PlaybackState.PAUSED
 
             logger.debug(f"Seek completed to {position:.2f}s")
-        except Exception as e:
+        except Exception as e:  # mpv raises RuntimeError for various seek/state errors
             logger.error(f"Seek failed: {e}")
 
     def get_position(self) -> float:
@@ -348,7 +352,7 @@ class AudioPlayer:
                     pass  # mpv property may be unavailable during transitions
             return self._duration
 
-    def set_volume(self, level: float):
+    def set_volume(self, level: float) -> None:
         """
         Set playback volume
 
@@ -363,7 +367,7 @@ class AudioPlayer:
             self._volume = level
             self._player.volume = level * 100  # mpv uses 0-100 scale
             logger.debug(f"Volume set to {level:.2f}")
-        except Exception as e:
+        except Exception as e:  # mpv raises RuntimeError if player is in invalid state
             logger.error(f"Failed to set volume: {e}")
 
     def get_volume(self) -> float:
@@ -405,7 +409,7 @@ class AudioPlayer:
         with self._lock:
             return self._state
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup resources"""
         if self._end_event_timer:
             self._end_event_timer.cancel()
@@ -414,7 +418,7 @@ class AudioPlayer:
             try:
                 self._player.terminate()
                 logger.info("AudioPlayer cleaned up")
-            except Exception as e:
+            except Exception as e:  # mpv terminate can raise during shutdown
                 logger.error(f"Cleanup error: {e}")
 
     # ==========================================
@@ -451,11 +455,11 @@ class AudioPlayer:
             logger.info(f"Queued for gapless: {file_path}")
             return True
 
-        except Exception as e:
+        except Exception as e:  # mpv playlist ops raise RuntimeError for various failures
             logger.error(f"Failed to queue {file_path}: {e}")
             return False
 
-    def clear_queue(self):
+    def clear_queue(self) -> None:
         """Clear the queued next track"""
         if self._player:
             try:
@@ -470,12 +474,12 @@ class AudioPlayer:
         """Get the currently queued file path"""
         return self._queued_file
 
-    def set_gapless_enabled(self, enabled: bool):
+    def set_gapless_enabled(self, enabled: bool) -> None:
         """Enable or disable gapless playback"""
         self._gapless_enabled = enabled
         if self._player:
             try:
-                self._player['gapless-audio'] = 'yes' if enabled else 'no'
+                self._player["gapless-audio"] = "yes" if enabled else "no"
             except (RuntimeError, OSError):
                 pass  # mpv property may not be settable
         logger.info(f"Gapless playback: {'enabled' if enabled else 'disabled'}")
@@ -484,7 +488,7 @@ class AudioPlayer:
         """Check if gapless playback is enabled"""
         return self._gapless_enabled
 
-    def set_crossfade(self, duration_ms: int):
+    def set_crossfade(self, duration_ms: int) -> None:
         """
         Set crossfade duration between tracks
 
@@ -494,7 +498,7 @@ class AudioPlayer:
         self._crossfade_ms = max(0, duration_ms)
         if self._player and duration_ms > 0:
             try:
-                self._player['audio-crossfade'] = duration_ms / 1000.0
+                self._player["audio-crossfade"] = duration_ms / 1000.0
             except (RuntimeError, OSError):
                 pass  # mpv may not support crossfade property
         logger.info(f"Crossfade set to {self._crossfade_ms}ms")
@@ -507,7 +511,7 @@ class AudioPlayer:
     # Equalizer
     # ==========================================
 
-    def set_equalizer_gains(self, gains: dict):
+    def set_equalizer_gains(self, gains: Dict[int, float]) -> None:
         """Apply equalizer gains via mpv's audio filter.
 
         Args:
@@ -525,31 +529,29 @@ class AudioPlayer:
             for freq, gain in gains.items():
                 if gain != 0.0:
                     # mpv equalizer filter: equalizer=f=freq:width_type=o:width=2:g=gain
-                    band_filters.append(
-                        f"equalizer=f={freq}:width_type=o:width=2:g={gain}"
-                    )
+                    band_filters.append(f"equalizer=f={freq}:width_type=o:width=2:g={gain}")
 
             if band_filters:
-                filter_str = ','.join(band_filters)
-                self._player['af'] = filter_str
+                filter_str = ",".join(band_filters)
+                self._player["af"] = filter_str
             else:
-                self._player['af'] = ''
+                self._player["af"] = ""
 
             logger.debug(f"Equalizer applied: {len(gains)} bands")
-        except Exception as e:
+        except Exception as e:  # mpv af filter can raise RuntimeError for unsupported configs
             logger.error(f"Failed to apply equalizer: {e}")
 
     # ==========================================
     # Track End Event Handling
     # ==========================================
 
-    def on_track_end(self, callback: Callable[[str], None]):
+    def on_track_end(self, callback: Callable[[str], None]) -> None:
         """Register callback for track end event"""
         if callback not in self._on_track_end_callbacks:
             self._on_track_end_callbacks.append(callback)
             logger.debug(f"Track end callback registered (total: {len(self._on_track_end_callbacks)})")
 
-    def remove_track_end_callback(self, callback: Callable[[str], None]):
+    def remove_track_end_callback(self, callback: Callable[[str], None]) -> None:
         """Remove a track end callback"""
         if callback in self._on_track_end_callbacks:
             self._on_track_end_callbacks.remove(callback)
@@ -587,18 +589,14 @@ class AudioPlayer:
                             logger.info(f"Track ended: {ended_file}")
 
                         # Notify outside lock
-                        threading.Thread(
-                            target=self._notify_track_end,
-                            args=(ended_file,),
-                            daemon=True
-                        ).start()
+                        threading.Thread(target=self._notify_track_end, args=(ended_file,), daemon=True).start()
                         return True
                 except (RuntimeError, OSError):
                     pass  # mpv property access can fail
 
         return False
 
-    def _notify_track_end(self, file_path: str):
+    def _notify_track_end(self, file_path: str) -> None:
         """Notify all registered callbacks that track ended.
 
         When called from a non-main thread (mpv event thread), uses
@@ -607,8 +605,9 @@ class AudioPlayer:
         """
         use_timer = False
         try:
-            from PySide6.QtWidgets import QApplication
             from PySide6.QtCore import QTimer
+            from PySide6.QtWidgets import QApplication
+
             app = QApplication.instance()
             if app and threading.current_thread() is not threading.main_thread():
                 use_timer = True
@@ -622,36 +621,34 @@ class AudioPlayer:
                 self._safe_callback(callback, file_path)
 
     @staticmethod
-    def _safe_callback(callback, file_path):
+    def _safe_callback(callback: Callable[[str], None], file_path: str) -> None:
         """Execute a callback with error handling"""
         try:
             callback(file_path)
-        except Exception as e:
+        except Exception as e:  # user callback isolation - must not crash player
             logger.error(f"Track end callback error: {e}")
 
-    def start_end_detection(self, interval_ms: int = 100):
+    def start_end_detection(self, interval_ms: int = 100) -> None:
         """
         Start automatic track end detection
 
         Args:
             interval_ms: Check interval in milliseconds (default: 100ms)
         """
-        def check_loop():
+
+        def check_loop() -> None:
             if self._state == PlaybackState.PLAYING:
                 self.check_track_end()
 
             if self._player and self._state != PlaybackState.STOPPED:
-                self._end_event_timer = threading.Timer(
-                    interval_ms / 1000.0,
-                    check_loop
-                )
+                self._end_event_timer = threading.Timer(interval_ms / 1000.0, check_loop)
                 self._end_event_timer.daemon = True
                 self._end_event_timer.start()
 
         check_loop()
         logger.debug(f"Track end detection started (interval: {interval_ms}ms)")
 
-    def stop_end_detection(self):
+    def stop_end_detection(self) -> None:
         """Stop automatic track end detection"""
         if self._end_event_timer:
             self._end_event_timer.cancel()

@@ -12,23 +12,40 @@ Features:
 Created: December 8, 2025
 """
 
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QGroupBox, QTableWidget, QTableWidgetItem,
-    QProgressBar, QComboBox, QFileDialog, QMessageBox,
-    QHeaderView, QCheckBox, QSpinBox, QMenu, QAbstractItemView
-)
-from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QColor, QAction
+from __future__ import annotations
+
 import logging
+import shutil
 import sqlite3
 from pathlib import Path
-from typing import List, Optional
-import shutil
+from typing import Any, Dict, List, Optional
 
-from services.content_filter import (
-    ContentClassifier, ContentRating, ClassificationResult, get_classifier
+from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtGui import QAction, QColor
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMenu,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
+
+from gui.base import BaseTab
+from gui.base.base_worker import BaseWorker
+from gui.themes.style_constants import Styles
+from services.content_filter import ClassificationResult, ContentClassifier, ContentRating, get_classifier
 from translations import tr
 
 logger = logging.getLogger(__name__)
@@ -36,12 +53,12 @@ logger = logging.getLogger(__name__)
 
 # Rating colors
 RATING_COLORS = {
-    ContentRating.EXPLICIT: QColor("#e74c3c"),      # Red
-    ContentRating.SUGGESTIVE: QColor("#f39c12"),    # Orange
-    ContentRating.CLEAN: QColor("#27ae60"),         # Green
-    ContentRating.CHILDREN: QColor("#3498db"),      # Blue
-    ContentRating.CHRISTIAN: QColor("#9b59b6"),     # Purple
-    ContentRating.UNKNOWN: QColor("#95a5a6"),       # Gray
+    ContentRating.EXPLICIT: QColor("#e74c3c"),  # Red
+    ContentRating.SUGGESTIVE: QColor("#f39c12"),  # Orange
+    ContentRating.CLEAN: QColor("#27ae60"),  # Green
+    ContentRating.CHILDREN: QColor("#3498db"),  # Blue
+    ContentRating.CHRISTIAN: QColor("#9b59b6"),  # Purple
+    ContentRating.UNKNOWN: QColor("#95a5a6"),  # Gray
 }
 
 RATING_LABELS = {
@@ -54,46 +71,33 @@ RATING_LABELS = {
 }
 
 
-class ClassificationWorker(QThread):
+class ClassificationWorker(BaseWorker):
     """Background worker for classification"""
+
     progress = Signal(int, int, object)  # current, total, result
-    finished = Signal(list)  # all results
-    error = Signal(str)
 
-    def __init__(self, file_paths: List[str], use_lyrics: bool = False,
-                 use_audio: bool = False):
+    def __init__(self, file_paths: List[str], use_lyrics: bool = False, use_audio: bool = False) -> None:
         super().__init__()
-        self.file_paths = file_paths
-        self.use_lyrics = use_lyrics
-        self.use_audio = use_audio
-        self._cancelled = False
+        self.file_paths: List[str] = file_paths
+        self.use_lyrics: bool = use_lyrics
+        self.use_audio: bool = use_audio
 
-    def run(self):
-        try:
-            classifier = get_classifier()
-            results = []
+    def do_work(self) -> Any:
+        classifier = get_classifier()
+        results = []
 
-            for i, path in enumerate(self.file_paths):
-                if self._cancelled:
-                    break
+        for i, path in enumerate(self.file_paths):
+            if self.is_cancelled:
+                break
 
-                result = classifier.classify_file(
-                    path,
-                    use_lyrics=self.use_lyrics,
-                    use_audio=self.use_audio
-                )
-                results.append(result)
-                self.progress.emit(i + 1, len(self.file_paths), result)
+            result = classifier.classify_file(path, use_lyrics=self.use_lyrics, use_audio=self.use_audio)
+            results.append(result)
+            self.progress.emit(i + 1, len(self.file_paths), result)
 
-            self.finished.emit(results)
-        except Exception as e:  # GUI error boundary - must not crash
-            self.error.emit(str(e))
-
-    def cancel(self):
-        self._cancelled = True
+        return results
 
 
-class ContentFilterTab(QWidget):
+class ContentFilterTab(BaseTab):
     """
     Content Filter Tab
 
@@ -113,41 +117,40 @@ class ContentFilterTab(QWidget):
             "name": "Kids Mode",
             "icon": "👶",
             "allowed": [ContentRating.CHILDREN],
-            "description": "Solo música infantil"
+            "description": "Solo música infantil",
         },
         "family": {
             "name": "Family Mode",
             "icon": "👨‍👩‍👧‍👦",
             "allowed": [ContentRating.CHILDREN, ContentRating.CLEAN, ContentRating.CHRISTIAN],
-            "description": "Música familiar (sin contenido explícito)"
+            "description": "Música familiar (sin contenido explícito)",
         },
         "clean": {
             "name": "Clean Mode",
             "icon": "✨",
             "allowed": [ContentRating.CLEAN, ContentRating.CHRISTIAN],
-            "description": "Música limpia para adultos"
+            "description": "Música limpia para adultos",
         },
     }
 
-    def __init__(self, db_manager=None, parent=None):
-        super().__init__(parent)
-        self.db_manager = db_manager
+    def __init__(self, db_manager: Any = None, parent: Optional[QWidget] = None) -> None:
+        self.db_manager: Any = db_manager
         self._results: List[ClassificationResult] = []
         self._worker: Optional[ClassificationWorker] = None
-        self._init_ui()
+        super().__init__(db_manager=db_manager, parent=parent)
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize user interface"""
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(10)
 
         # Header
         header = QLabel(tr("content_filter_title"))
-        header.setStyleSheet("font-size: 18px; font-weight: bold;")
+        header.setStyleSheet(Styles.HEADER_TITLE)
         main_layout.addWidget(header)
 
         description = QLabel(tr("content_filter_description"))
-        description.setStyleSheet("color: #888; font-size: 11px;")
+        description.setStyleSheet(Styles.TEXT_INFO_SMALL)
         description.setWordWrap(True)
         main_layout.addWidget(description)
 
@@ -160,10 +163,12 @@ class ContentFilterTab(QWidget):
 
         options_row.addWidget(QLabel(tr("content_filter_source")))
         self.source_combo = QComboBox()
-        self.source_combo.addItems([
-            tr("content_filter_source_folder"),
-            tr("content_filter_source_library"),
-        ])
+        self.source_combo.addItems(
+            [
+                tr("content_filter_source_folder"),
+                tr("content_filter_source_library"),
+            ]
+        )
         self.source_combo.setFixedWidth(150)
         options_row.addWidget(self.source_combo)
 
@@ -184,7 +189,7 @@ class ContentFilterTab(QWidget):
         btn_row = QHBoxLayout()
         self.scan_btn = QPushButton(tr("content_filter_scan_btn"))
         self.scan_btn.setFixedHeight(35)
-        self.scan_btn.setStyleSheet("background: #3498db; color: white; font-weight: bold;")
+        self.scan_btn.setStyleSheet(Styles.BTN_PRIMARY)
         self.scan_btn.clicked.connect(self._start_scan)
         btn_row.addWidget(self.scan_btn)
 
@@ -203,7 +208,7 @@ class ContentFilterTab(QWidget):
         scan_layout.addWidget(self.progress_bar)
 
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet("color: #888;")
+        self.status_label.setStyleSheet(Styles.TEXT_MUTED)
         scan_layout.addWidget(self.status_label)
 
         main_layout.addWidget(scan_group)
@@ -215,21 +220,21 @@ class ContentFilterTab(QWidget):
         # Kids Mode
         kids_btn = QPushButton(tr("content_filter_kids_mode"))
         kids_btn.setToolTip(tr("content_filter_kids_mode_tooltip"))
-        kids_btn.setStyleSheet("background: #3498db; color: white; padding: 8px 16px;")
+        kids_btn.setStyleSheet(Styles.BTN_INFO_PADDED)
         kids_btn.clicked.connect(lambda: self._export_safe_zone("kids"))
         zones_layout.addWidget(kids_btn)
 
         # Family Mode
         family_btn = QPushButton(tr("content_filter_family_mode"))
         family_btn.setToolTip(tr("content_filter_family_mode_tooltip"))
-        family_btn.setStyleSheet("background: #27ae60; color: white; padding: 8px 16px;")
+        family_btn.setStyleSheet(Styles.BTN_SUCCESS)
         family_btn.clicked.connect(lambda: self._export_safe_zone("family"))
         zones_layout.addWidget(family_btn)
 
         # Clean Mode
         clean_btn = QPushButton(tr("content_filter_clean_mode"))
         clean_btn.setToolTip(tr("content_filter_clean_mode_tooltip"))
-        clean_btn.setStyleSheet("background: #9b59b6; color: white; padding: 8px 16px;")
+        clean_btn.setStyleSheet(Styles.BTN_PURPLE)
         clean_btn.clicked.connect(lambda: self._export_safe_zone("clean"))
         zones_layout.addWidget(clean_btn)
 
@@ -238,7 +243,7 @@ class ContentFilterTab(QWidget):
         # USB Export button
         usb_btn = QPushButton(tr("content_filter_export_usb"))
         usb_btn.setToolTip(tr("content_filter_export_usb_tooltip"))
-        usb_btn.setStyleSheet("background: #e67e22; color: white; padding: 8px 16px;")
+        usb_btn.setStyleSheet(Styles.BTN_WARNING)
         usb_btn.clicked.connect(self._export_to_usb)
         zones_layout.addWidget(usb_btn)
 
@@ -257,14 +262,14 @@ class ContentFilterTab(QWidget):
         actions_layout.addWidget(self.copy_btn)
 
         self.delete_btn = QPushButton(tr("content_filter_delete"))
-        self.delete_btn.setStyleSheet("background: #e74c3c; color: white;")
+        self.delete_btn.setStyleSheet(Styles.BTN_DANGER)
         self.delete_btn.clicked.connect(self._delete_selected)
         actions_layout.addWidget(self.delete_btn)
 
         actions_layout.addStretch()
 
         self.export_btn = QPushButton(tr("content_filter_export_safe"))
-        self.export_btn.setStyleSheet("background: #27ae60; color: white;")
+        self.export_btn.setStyleSheet(Styles.BTN_SUCCESS)
         self.export_btn.clicked.connect(self._export_safe)
         actions_layout.addWidget(self.export_btn)
 
@@ -279,13 +284,15 @@ class ContentFilterTab(QWidget):
         filter_row.addWidget(QLabel(tr("content_filter_show")))
 
         self.filter_combo = QComboBox()
-        self.filter_combo.addItems([
-            tr("content_filter_all"),
-            tr("content_filter_explicit_only"),
-            tr("content_filter_clean_only"),
-            tr("content_filter_children_only"),
-            tr("content_filter_unknown_only"),
-        ])
+        self.filter_combo.addItems(
+            [
+                tr("content_filter_all"),
+                tr("content_filter_explicit_only"),
+                tr("content_filter_clean_only"),
+                tr("content_filter_children_only"),
+                tr("content_filter_unknown_only"),
+            ]
+        )
         self.filter_combo.currentIndexChanged.connect(self._apply_filter)
         filter_row.addWidget(self.filter_combo)
 
@@ -293,7 +300,7 @@ class ContentFilterTab(QWidget):
 
         # Stats
         self.stats_label = QLabel("")
-        self.stats_label.setStyleSheet("color: #666;")
+        self.stats_label.setStyleSheet(Styles.TEXT_DIMMED)
         filter_row.addWidget(self.stats_label)
 
         results_layout.addLayout(filter_row)
@@ -301,14 +308,16 @@ class ContentFilterTab(QWidget):
         # Results table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels([
-            tr("content_filter_col_artist"),
-            tr("content_filter_col_title"),
-            tr("content_filter_col_rating"),
-            tr("content_filter_col_confidence"),
-            tr("content_filter_col_reasons"),
-            tr("content_filter_col_path"),
-        ])
+        self.table.setHorizontalHeaderLabels(
+            [
+                tr("content_filter_col_artist"),
+                tr("content_filter_col_title"),
+                tr("content_filter_col_rating"),
+                tr("content_filter_col_confidence"),
+                tr("content_filter_col_reasons"),
+                tr("content_filter_col_path"),
+            ]
+        )
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table.setSortingEnabled(True)
@@ -321,7 +330,7 @@ class ContentFilterTab(QWidget):
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)  # Title
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)  # Rating
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)  # Confidence
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)      # Reasons (fills space)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)  # Reasons (fills space)
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.Interactive)  # Path
 
         self.table.setColumnWidth(0, 150)
@@ -334,14 +343,12 @@ class ContentFilterTab(QWidget):
 
         main_layout.addWidget(results_group)
 
-    def _start_scan(self):
+    def _start_scan(self) -> None:
         """Start classification scan"""
         source = self.source_combo.currentIndex()
 
         if source == 0:  # Folder
-            folder = QFileDialog.getExistingDirectory(
-                self, tr("content_filter_select_folder")
-            )
+            folder = QFileDialog.getExistingDirectory(self, tr("content_filter_select_folder"))
             if not folder:
                 return
             file_paths = self._get_audio_files(folder)
@@ -351,10 +358,7 @@ class ContentFilterTab(QWidget):
                 return
 
         if not file_paths:
-            QMessageBox.warning(
-                self, tr("content_filter_no_files_title"),
-                tr("content_filter_no_files_msg")
-            )
+            QMessageBox.warning(self, tr("content_filter_no_files_title"), tr("content_filter_no_files_msg"))
             return
 
         # Start worker
@@ -368,16 +372,14 @@ class ContentFilterTab(QWidget):
         self.status_label.setText(f"Scanning {len(file_paths)} files...")
 
         self._worker = ClassificationWorker(
-            file_paths,
-            use_lyrics=self.lyrics_check.isChecked(),
-            use_audio=self.audio_check.isChecked()
+            file_paths, use_lyrics=self.lyrics_check.isChecked(), use_audio=self.audio_check.isChecked()
         )
         self._worker.progress.connect(self._on_progress)
         self._worker.finished.connect(self._on_finished)
         self._worker.error.connect(self._on_error)
         self._worker.start()
 
-    def _cancel_scan(self):
+    def _cancel_scan(self) -> None:
         """Cancel ongoing scan"""
         if self._worker:
             self._worker.cancel()
@@ -385,25 +387,23 @@ class ContentFilterTab(QWidget):
 
     def _get_audio_files(self, folder: str) -> List[str]:
         """Get all audio files in folder"""
-        extensions = {'.mp3', '.m4a', '.flac', '.wav', '.ogg', '.wma', '.aac'}
+        extensions = {".mp3", ".m4a", ".flac", ".wav", ".ogg", ".wma", ".aac"}
         files = []
 
-        for path in Path(folder).rglob('*'):
+        for path in Path(folder).rglob("*"):
             if path.suffix.lower() in extensions:
                 files.append(str(path))
 
         return files
 
-    def _on_progress(self, current: int, total: int, result: ClassificationResult):
+    def _on_progress(self, current: int, total: int, result: ClassificationResult) -> None:
         """Handle progress update"""
         self.progress_bar.setValue(current)
-        self.status_label.setText(
-            f"Scanning: {current}/{total} - {result.artist} - {result.title}"
-        )
+        self.status_label.setText(f"Scanning: {current}/{total} - {result.artist} - {result.title}")
         self._results.append(result)
         self._add_result_to_table(result)
 
-    def _on_finished(self, results: List[ClassificationResult]):
+    def _on_finished(self, results: List[ClassificationResult]) -> None:
         """Handle scan completion"""
         self.progress_bar.setVisible(False)
         self.scan_btn.setEnabled(True)
@@ -411,7 +411,7 @@ class ContentFilterTab(QWidget):
         self._update_stats()
         self.status_label.setText(f"Scan complete: {len(results)} files classified")
 
-    def _on_error(self, error: str):
+    def _on_error(self, error: str) -> None:
         """Handle error"""
         self.progress_bar.setVisible(False)
         self.scan_btn.setEnabled(True)
@@ -419,7 +419,7 @@ class ContentFilterTab(QWidget):
         self.status_label.setText(f"Error: {error}")
         QMessageBox.critical(self, "Error", error)
 
-    def _add_result_to_table(self, result: ClassificationResult):
+    def _add_result_to_table(self, result: ClassificationResult) -> None:
         """Add classification result to table"""
         row = self.table.rowCount()
         self.table.insertRow(row)
@@ -449,7 +449,7 @@ class ContentFilterTab(QWidget):
         # Path
         self.table.setItem(row, 5, QTableWidgetItem(result.file_path))
 
-    def _apply_filter(self):
+    def _apply_filter(self) -> None:
         """Apply rating filter to table"""
         filter_idx = self.filter_combo.currentIndex()
 
@@ -469,13 +469,13 @@ class ContentFilterTab(QWidget):
 
             self.table.setRowHidden(row, not show)
 
-    def _update_stats(self):
+    def _update_stats(self) -> None:
         """Update statistics label"""
         if not self._results:
             self.stats_label.setText("")
             return
 
-        counts = {}
+        counts: dict[str, int] = {}
         for result in self._results:
             rating = result.rating
             counts[rating] = counts.get(rating, 0) + 1
@@ -487,7 +487,7 @@ class ContentFilterTab(QWidget):
 
         self.stats_label.setText(" | ".join(parts))
 
-    def _show_context_menu(self, pos):
+    def _show_context_menu(self, pos: QPoint) -> None:
         """Show context menu for selected rows"""
         menu = QMenu(self)
 
@@ -517,15 +517,13 @@ class ContentFilterTab(QWidget):
                     selected.append(self._results[row])
         return selected
 
-    def _move_selected(self):
+    def _move_selected(self) -> None:
         """Move selected files to folder"""
         selected = self._get_selected_results()
         if not selected:
             return
 
-        folder = QFileDialog.getExistingDirectory(
-            self, tr("content_filter_select_dest")
-        )
+        folder = QFileDialog.getExistingDirectory(self, tr("content_filter_select_dest"))
         if not folder:
             return
 
@@ -540,19 +538,16 @@ class ContentFilterTab(QWidget):
                 logger.error(f"Move failed: {e}")
 
         QMessageBox.information(
-            self, tr("content_filter_move_complete"),
-            tr("content_filter_moved_count").format(count=moved)
+            self, tr("content_filter_move_complete"), tr("content_filter_moved_count").format(count=moved)
         )
 
-    def _copy_selected(self):
+    def _copy_selected(self) -> None:
         """Copy selected files to folder"""
         selected = self._get_selected_results()
         if not selected:
             return
 
-        folder = QFileDialog.getExistingDirectory(
-            self, tr("content_filter_select_dest")
-        )
+        folder = QFileDialog.getExistingDirectory(self, tr("content_filter_select_dest"))
         if not folder:
             return
 
@@ -567,11 +562,10 @@ class ContentFilterTab(QWidget):
                 logger.error(f"Copy failed: {e}")
 
         QMessageBox.information(
-            self, tr("content_filter_copy_complete"),
-            tr("content_filter_copied_count").format(count=copied)
+            self, tr("content_filter_copy_complete"), tr("content_filter_copied_count").format(count=copied)
         )
 
-    def _delete_selected(self):
+    def _delete_selected(self) -> None:
         """Delete selected files"""
         selected = self._get_selected_results()
         if not selected:
@@ -581,7 +575,7 @@ class ContentFilterTab(QWidget):
             self,
             tr("content_filter_confirm_delete"),
             tr("content_filter_delete_confirm_msg").format(count=len(selected)),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if reply != QMessageBox.StandardButton.Yes:
@@ -596,25 +590,19 @@ class ContentFilterTab(QWidget):
                 logger.error(f"Delete failed: {e}")
 
         QMessageBox.information(
-            self, tr("content_filter_delete_complete"),
-            tr("content_filter_deleted_count").format(count=deleted)
+            self, tr("content_filter_delete_complete"), tr("content_filter_deleted_count").format(count=deleted)
         )
 
         # Refresh table
         self._start_scan()
 
-    def _export_safe(self):
+    def _export_safe(self) -> None:
         """Export safe (clean + children) music to folder"""
         if not self._results:
-            QMessageBox.warning(
-                self, "Warning",
-                tr("content_filter_scan_first")
-            )
+            QMessageBox.warning(self, "Warning", tr("content_filter_scan_first"))
             return
 
-        folder = QFileDialog.getExistingDirectory(
-            self, tr("content_filter_select_export_dest")
-        )
+        folder = QFileDialog.getExistingDirectory(self, tr("content_filter_select_export_dest"))
         if not folder:
             return
 
@@ -623,10 +611,7 @@ class ContentFilterTab(QWidget):
         safe_results = [r for r in self._results if r.rating in safe_ratings]
 
         if not safe_results:
-            QMessageBox.information(
-                self, "Info",
-                tr("content_filter_no_safe_content")
-            )
+            QMessageBox.information(self, "Info", tr("content_filter_no_safe_content"))
             return
 
         copied = 0
@@ -640,43 +625,41 @@ class ContentFilterTab(QWidget):
                 logger.error(f"Export failed: {e}")
 
         QMessageBox.information(
-            self, tr("content_filter_export_complete"),
-            tr("content_filter_exported_count").format(count=copied, total=len(safe_results))
+            self,
+            tr("content_filter_export_complete"),
+            tr("content_filter_exported_count").format(count=copied, total=len(safe_results)),
         )
 
-    def _export_safe_zone(self, zone_id: str):
+    def _export_safe_zone(self, zone_id: str) -> None:
         """Export music matching a Safe Zone profile"""
         if not self._results:
-            QMessageBox.warning(
-                self, "Warning",
-                tr("content_filter_scan_first")
-            )
+            QMessageBox.warning(self, "Warning", tr("content_filter_scan_first"))
             return
 
         zone = self.SAFE_ZONES.get(zone_id)
         if not zone:
             return
 
-        folder = QFileDialog.getExistingDirectory(
-            self, f"Select destination for {zone['name']}"
-        )
+        folder = QFileDialog.getExistingDirectory(self, f"Select destination for {zone['name']}")
         if not folder:
             return
 
         # Filter by allowed ratings
-        allowed = zone['allowed']
+        allowed = zone["allowed"]
         matching = [r for r in self._results if r.rating in allowed]
 
         if not matching:
             QMessageBox.information(
-                self, "Info",
+                self,
+                "Info",
                 f"No songs match {zone['name']} criteria.\n"
-                f"Allowed: {', '.join([RATING_LABELS[r] for r in allowed])}"
+                f"Allowed: {', '.join([RATING_LABELS[r] for r in allowed])}",
             )
             return
 
         # Create zone subfolder
-        dest_folder = Path(folder) / zone['name'].replace(" ", "_")
+        zone_name: str = zone["name"]  # type: ignore[assignment]
+        dest_folder = Path(folder) / zone_name.replace(" ", "_")
         dest_folder.mkdir(exist_ok=True)
 
         copied = 0
@@ -691,23 +674,17 @@ class ContentFilterTab(QWidget):
                 logger.error(f"Export failed: {e}")
 
         QMessageBox.information(
-            self, f"{zone['icon']} {zone['name']} Export Complete",
-            f"Exported {copied} songs to:\n{dest_folder}"
+            self, f"{zone['icon']} {zone['name']} Export Complete", f"Exported {copied} songs to:\n{dest_folder}"
         )
 
-    def _export_to_usb(self):
+    def _export_to_usb(self) -> None:
         """Export organized music to USB drive"""
         if not self._results:
-            QMessageBox.warning(
-                self, "Warning",
-                tr("content_filter_scan_first")
-            )
+            QMessageBox.warning(self, "Warning", tr("content_filter_scan_first"))
             return
 
         # Select USB drive
-        usb_path = QFileDialog.getExistingDirectory(
-            self, "Select USB Drive or Destination"
-        )
+        usb_path = QFileDialog.getExistingDirectory(self, "Select USB Drive or Destination")
         if not usb_path:
             return
 
@@ -743,11 +720,11 @@ class ContentFilterTab(QWidget):
 
         # Create summary file
         summary_path = base / "NEXUS_Summary.txt"
-        with open(summary_path, 'w', encoding='utf-8') as f:
+        with open(summary_path, "w", encoding="utf-8") as f:
             f.write("NEXUS Music Manager - Content Classification Summary\n")
             f.write("=" * 50 + "\n\n")
 
-            counts = {}
+            counts: dict[str, int] = {}
             for result in self._results:
                 rating = result.rating
                 counts[rating] = counts.get(rating, 0) + 1
@@ -762,29 +739,27 @@ class ContentFilterTab(QWidget):
             f.write(f"Skipped (already exists): {skipped}\n")
 
         QMessageBox.information(
-            self, "USB Export Complete",
+            self,
+            "USB Export Complete",
             f"Exported {copied} songs to USB.\n\n"
             f"Folder structure:\n"
             f"  {base}/Infantil - Children's music\n"
             f"  {base}/Clean - Clean music\n"
             f"  {base}/Christian - Christian music\n"
             f"  {base}/Explicit - Explicit content\n\n"
-            f"Summary saved to: {summary_path}"
+            f"Summary saved to: {summary_path}",
         )
 
-    def _scan_library(self):
+    def _scan_library(self) -> List[str]:
         """Scan songs from database library"""
         if not self.db_manager:
-            QMessageBox.warning(
-                self, "Warning",
-                "Database not available. Use folder scan instead."
-            )
+            QMessageBox.warning(self, "Warning", "Database not available. Use folder scan instead.")
             return []
 
         try:
             # Get all songs from database
             songs = self.db_manager.get_all_songs()
-            file_paths = [s.get('file_path') for s in songs if s.get('file_path')]
+            file_paths = [s.get("file_path") for s in songs if s.get("file_path")]
 
             # Filter existing files
             existing = [p for p in file_paths if Path(p).exists()]

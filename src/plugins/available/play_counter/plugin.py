@@ -7,18 +7,20 @@ This is an example plugin demonstrating:
 - Plugin settings
 - Data persistence
 """
+
 import json
 import logging
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any, Optional
-from collections import defaultdict
 
 # Import from parent plugins package
 import sys
+from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from plugins.plugin_base import Plugin, PluginMetadata, PluginHook
+from plugins.plugin_base import Plugin, PluginHook, PluginMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +31,7 @@ class PlayCounterPlugin(Plugin):
     Provides statistics and most-played songs list.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._play_counts: Dict[str, int] = defaultdict(int)
         self._last_played: Dict[str, str] = {}
@@ -43,7 +45,7 @@ class PlayCounterPlugin(Plugin):
             version="1.0.0",
             author="NEXUS Team",
             description="Tracks play counts and provides listening statistics",
-            hooks=[PluginHook.ON_SONG_PLAY, PluginHook.ON_SONG_END]
+            hooks=[PluginHook.ON_SONG_PLAY, PluginHook.ON_SONG_END],
         )
 
     def on_enable(self) -> bool:
@@ -101,11 +103,11 @@ class PlayCounterPlugin(Plugin):
     def _get_song_id(self, song_data: Dict[str, Any]) -> Optional[str]:
         """Get unique identifier for a song"""
         # Try different keys for song identification
-        if 'id' in song_data:
-            return str(song_data['id'])
-        elif 'file_path' in song_data:
-            return song_data['file_path']
-        elif 'title' in song_data and 'artist' in song_data:
+        if "id" in song_data:
+            return str(song_data["id"])
+        elif "file_path" in song_data:
+            return song_data["file_path"]  # type: ignore[no-any-return]
+        elif "title" in song_data and "artist" in song_data:
             return f"{song_data['artist']}|{song_data['title']}"
         return None
 
@@ -113,10 +115,10 @@ class PlayCounterPlugin(Plugin):
         """Load play data from file"""
         if self._data_file and self._data_file.exists():
             try:
-                with open(self._data_file, 'r') as f:
+                with open(self._data_file, "r") as f:
                     data = json.load(f)
-                    self._play_counts = defaultdict(int, data.get('play_counts', {}))
-                    self._last_played = data.get('last_played', {})
+                    self._play_counts = defaultdict(int, data.get("play_counts", {}))
+                    self._last_played = data.get("last_played", {})
             except (json.JSONDecodeError, OSError) as e:
                 logger.error(f"Failed to load play data: {e}")
 
@@ -124,11 +126,8 @@ class PlayCounterPlugin(Plugin):
         """Save play data to file"""
         if self._data_file:
             try:
-                data = {
-                    'play_counts': dict(self._play_counts),
-                    'last_played': self._last_played
-                }
-                with open(self._data_file, 'w') as f:
+                data = {"play_counts": dict(self._play_counts), "last_played": self._last_played}
+                with open(self._data_file, "w") as f:
                     json.dump(data, f, indent=2)
             except OSError as e:
                 logger.error(f"Failed to save play data: {e}")
@@ -147,11 +146,7 @@ class PlayCounterPlugin(Plugin):
 
     def get_most_played(self, limit: int = 10) -> list:
         """Get most played songs"""
-        sorted_songs = sorted(
-            self._play_counts.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
+        sorted_songs = sorted(self._play_counts.items(), key=lambda x: x[1], reverse=True)
         return sorted_songs[:limit]
 
     def get_total_plays(self) -> int:
@@ -165,11 +160,10 @@ class PlayCounterPlugin(Plugin):
     def get_statistics(self) -> Dict[str, Any]:
         """Get complete statistics"""
         return {
-            'total_plays': self.get_total_plays(),
-            'unique_songs': self.get_unique_songs_played(),
-            'most_played': self.get_most_played(5),
-            'average_plays': (
-                self.get_total_plays() / self.get_unique_songs_played()
-                if self.get_unique_songs_played() > 0 else 0
-            )
+            "total_plays": self.get_total_plays(),
+            "unique_songs": self.get_unique_songs_played(),
+            "most_played": self.get_most_played(5),
+            "average_plays": (
+                self.get_total_plays() / self.get_unique_songs_played() if self.get_unique_songs_played() > 0 else 0
+            ),
         }

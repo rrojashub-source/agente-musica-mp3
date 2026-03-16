@@ -38,7 +38,7 @@ musicbrainzngs>=0.7.1
 # Audio metadata
 mutagen>=1.47.0
 
-# Audio processing
+# Audio processing (used by embeddings, BPM, mood, waveform)
 pydub>=0.25.1
 
 # Audio fingerprinting (optional - for duplicate detection)
@@ -60,13 +60,13 @@ PyOpenGL-accelerate>=3.1.7
 # Lyrics API (Genius)
 lyricsgenius>=3.0.1
 
-# Web scraping for lyrics (fallback)
-beautifulsoup4>=4.12.0
+# HTTP requests
 requests>=2.31.0
 
 # Chord detection from audio
 librosa>=0.10.0
 pychord>=1.0
+scipy>=1.11.0
 
 # ========================================
 # Plugin Dependencies
@@ -122,5 +122,5 @@ keyring>=24.0.0
 #
 # 4. Launch application:
 #    Windows: LAUNCH_NEXUS_MUSIC.bat
-#    Linux/Mac: python main_window_complete.py
+#    Linux/Mac: python src/main.py
 # ============================================

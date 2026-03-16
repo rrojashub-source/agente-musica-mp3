@@ -8,15 +8,20 @@ Part of the AudioEmbeddings split (Phase 2.3).
 
 Created: 2026-03-11 (extracted from audio_embeddings.py)
 """
+
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
 try:
     from pydub import AudioSegment
+
     PYDUB_AVAILABLE = True
 except ImportError:
     PYDUB_AVAILABLE = False
@@ -32,8 +37,8 @@ class BPMDetector:
     Returns BPM in the 60-200 range with octave correction.
     """
 
-    def __init__(self, sample_rate: int = SAMPLE_RATE):
-        self.sample_rate = sample_rate
+    def __init__(self, sample_rate: int = SAMPLE_RATE) -> None:
+        self.sample_rate: int = sample_rate
 
     def detect(self, file_path: str) -> Optional[int]:
         """
@@ -59,13 +64,13 @@ class BPMDetector:
             audio = audio.set_frame_rate(self.sample_rate)
 
             samples = np.array(audio.get_array_of_samples(), dtype=np.float32)
-            samples = samples / (2 ** 15)
+            samples = samples / (2**15)  # type: ignore[assignment]
 
             # Use middle 30 seconds for more stable BPM
             sample_duration = 30 * self.sample_rate
             if len(samples) > sample_duration:
                 start = (len(samples) - sample_duration) // 2
-                samples = samples[start:start + sample_duration]
+                samples = samples[start : start + sample_duration]
 
             bpm = self.estimate_bpm(samples)
 
@@ -76,7 +81,7 @@ class BPMDetector:
             logger.error(f"BPM detection failed for {file_path}: {e}")
             return None
 
-    def estimate_bpm(self, samples: np.ndarray) -> Optional[int]:
+    def estimate_bpm(self, samples: Any) -> Optional[int]:
         """
         Estimate BPM using onset detection and autocorrelation.
 
@@ -100,19 +105,19 @@ class BPMDetector:
                 end = start + frame_length
                 frame = samples[start:end]
 
-                energy = np.sqrt(np.mean(frame ** 2))
+                energy = np.sqrt(np.mean(frame**2))
                 onset = max(0, energy - prev_energy)
                 onset_env.append(onset)
                 prev_energy = energy
 
-            onset_env = np.array(onset_env)
+            onset_env = np.array(onset_env)  # type: ignore[assignment]
 
             if np.max(onset_env) > 0:
                 onset_env = onset_env / np.max(onset_env)
 
             # Autocorrelation for periodicity detection
-            autocorr = np.correlate(onset_env, onset_env, mode='full')
-            autocorr = autocorr[len(autocorr)//2:]
+            autocorr = np.correlate(onset_env, onset_env, mode="full")
+            autocorr = autocorr[len(autocorr) // 2 :]
 
             if autocorr[0] > 0:
                 autocorr = autocorr / autocorr[0]

@@ -4,26 +4,38 @@ Allows users to control NEXUS from their mobile devices
 
 Created: November 24, 2025
 """
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QGroupBox, QSpinBox, QMessageBox,
-    QTextEdit, QFrame
-)
-from PySide6.QtCore import Qt, Slot, QTimer
-from PySide6.QtGui import QPixmap, QImage, QFont, QDesktopServices
-from PySide6.QtCore import QUrl
-import logging
-from typing import Optional
-import base64
 
+from __future__ import annotations
+
+import base64
+import logging
+from typing import Any, Dict, Optional
+
+from PySide6.QtCore import Qt, QTimer, QUrl, Slot
+from PySide6.QtGui import QDesktopServices, QFont, QImage, QPixmap
+from PySide6.QtWidgets import (
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
+from gui.base import BaseTab
+from gui.themes.style_constants import Styles
 from services.remote_server import RemoteServer
 from translations import tr
-from utils.constants import DEFAULT_REMOTE_PORT, PORT_RANGE_MIN, PORT_RANGE_MAX
+from utils.constants import DEFAULT_REMOTE_PORT, PORT_RANGE_MAX, PORT_RANGE_MIN
 
 logger = logging.getLogger(__name__)
 
 
-class RemoteTab(QWidget):
+class RemoteTab(BaseTab):
     """
     Remote Control Tab
 
@@ -35,13 +47,12 @@ class RemoteTab(QWidget):
     - Activity log
     """
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         self._server: Optional[RemoteServer] = None
-        self._init_ui()
+        super().__init__(db_manager=None, parent=parent)
         self._init_server()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize user interface"""
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(10)  # Reduced from 15 to 10
@@ -49,12 +60,12 @@ class RemoteTab(QWidget):
 
         # Header
         header = QLabel(tr("remote_title"))
-        header.setStyleSheet("font-size: 18px; font-weight: bold;")
+        header.setStyleSheet(Styles.HEADER_TITLE)
         main_layout.addWidget(header)
 
         # Instructions (moved from bottom)
         instructions = QLabel(tr("remote_instructions"))
-        instructions.setStyleSheet("color: #888; font-size: 11px; padding: 5px 0;")
+        instructions.setStyleSheet(Styles.TEXT_INFO_SMALL + " padding: 5px 0;")
         main_layout.addWidget(instructions)
 
         main_layout.addSpacing(5)  # Reduced from 10 to 5
@@ -65,13 +76,13 @@ class RemoteTab(QWidget):
 
         qr_frame = QFrame()
         qr_frame.setFixedSize(280, 280)
-        qr_frame.setStyleSheet("background: white; border: 2px solid #666; border-radius: 6px;")
+        qr_frame.setStyleSheet(Styles.QR_FRAME)
         qr_layout = QVBoxLayout(qr_frame)
         qr_layout.setContentsMargins(0, 0, 0, 0)
 
         self.qr_label = QLabel("QR Code")
         self.qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.qr_label.setStyleSheet("color: #999;")
+        self.qr_label.setStyleSheet(Styles.TEXT_FAINT)
         qr_layout.addWidget(self.qr_label)
 
         qr_row.addWidget(qr_frame)
@@ -101,14 +112,14 @@ class RemoteTab(QWidget):
         btn_row = QHBoxLayout()
         self.start_btn = QPushButton(tr("remote_start"))
         self.start_btn.setFixedHeight(35)
-        self.start_btn.setStyleSheet("background: #4CAF50; color: white; font-weight: bold;")
+        self.start_btn.setStyleSheet(Styles.BTN_SUCCESS)
         self.start_btn.clicked.connect(self._start_server)
         btn_row.addWidget(self.start_btn)
 
         self.stop_btn = QPushButton(tr("remote_stop"))
         self.stop_btn.setFixedHeight(35)
         self.stop_btn.setEnabled(False)
-        self.stop_btn.setStyleSheet("background: #f44336; color: white; font-weight: bold;")
+        self.stop_btn.setStyleSheet(Styles.BTN_DANGER)
         self.stop_btn.clicked.connect(self._stop_server)
         btn_row.addWidget(self.stop_btn)
         server_layout.addLayout(btn_row)
@@ -120,7 +131,7 @@ class RemoteTab(QWidget):
         conn_layout = QVBoxLayout(conn_group)
 
         self.url_label = QLabel(tr("remote_url_not_running"))
-        self.url_label.setStyleSheet("background: #2d2d2d; color: #ffffff; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 10px;")
+        self.url_label.setStyleSheet(Styles.URL_LABEL)
         self.url_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         conn_layout.addWidget(self.url_label)
 
@@ -131,7 +142,7 @@ class RemoteTab(QWidget):
         conn_layout.addWidget(self.open_btn)
 
         self.status_label = QLabel(tr("remote_status_stopped"))
-        self.status_label.setStyleSheet("font-weight: bold;")
+        self.status_label.setStyleSheet(Styles.STATUS_BOLD)
         conn_layout.addWidget(self.status_label)
 
         controls_row.addWidget(conn_group)
@@ -145,19 +156,19 @@ class RemoteTab(QWidget):
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setFixedHeight(80)  # Fixed height to prevent pushing content
-        self.log_text.setStyleSheet("font-family: monospace; font-size: 10px; background: #1e1e1e; color: #cccccc;")
+        self.log_text.setStyleSheet(Styles.LOG_TEXT)
         log_layout.addWidget(self.log_text)
 
         main_layout.addWidget(log_group)
         main_layout.addStretch()
 
-    def _init_server(self):
+    def _init_server(self) -> None:
         """Initialize remote server"""
         try:
             self._server = RemoteServer.get_instance()
 
             # Connect signals
-            if hasattr(self._server, 'server_started'):
+            if hasattr(self._server, "server_started"):
                 self._server.server_started.connect(self._on_server_started)
                 self._server.server_stopped.connect(self._on_server_stopped)
                 self._server.command_received.connect(self._on_command_received)
@@ -168,7 +179,7 @@ class RemoteTab(QWidget):
             logger.error(f"Failed to init remote server: {e}")
             self._log(f"ERROR: {e}")
 
-    def _start_server(self):
+    def _start_server(self) -> None:
         """Start the remote server"""
         if not self._server:
             return
@@ -185,14 +196,13 @@ class RemoteTab(QWidget):
                 QMessageBox.warning(
                     self,
                     "Server Error",
-                    "Failed to start server.\n"
-                    "Make sure Flask is installed: pip install flask flask-cors"
+                    "Failed to start server.\n" "Make sure Flask is installed: pip install flask flask-cors",
                 )
         except (OSError, RuntimeError) as e:
             logger.error(f"Server start error: {e}")
             self._log(f"ERROR: {e}")
 
-    def _stop_server(self):
+    def _stop_server(self) -> None:
         """Stop the remote server"""
         if self._server:
             self._server.stop()
@@ -203,26 +213,27 @@ class RemoteTab(QWidget):
 
             self.url_label.setText("URL: Not running")
             self.status_label.setText("⚪ Server stopped")
-            self.status_label.setStyleSheet("font-weight: bold; padding: 10px; color: #666;")
+            self.status_label.setStyleSheet(Styles.STATUS_BOLD_DIMMED + " padding: 10px;")
             self.qr_label.setText("QR Code")
             self.qr_label.setPixmap(QPixmap())
 
             self._log("Server stopped")
 
-    def _update_qr_code(self):
+    def _update_qr_code(self) -> None:
         """Update QR code display"""
         if not self._server or not self._server.is_running:
             return
 
         try:
             # Try to get QR code from server
-            import requests
+            import requests  # type: ignore[import-untyped]
+
             response = requests.get(f"http://127.0.0.1:{self.port_spin.value()}/qr", timeout=5)
             data = response.json()
 
-            if 'qr_image' in data:
+            if "qr_image" in data:
                 # Decode base64 image
-                img_data = data['qr_image'].split(',')[1]
+                img_data = data["qr_image"].split(",")[1]
                 img_bytes = base64.b64decode(img_data)
 
                 # Create QPixmap
@@ -235,34 +246,35 @@ class RemoteTab(QWidget):
             logger.debug(f"QR code fetch failed (expected if qrcode not installed): {e}")
             self.qr_label.setText("QR not available\n(install qrcode)")
 
-    def _open_in_browser(self):
+    def _open_in_browser(self) -> None:
         """Open remote URL in browser"""
         if self._server and self._server.is_running:
             QDesktopServices.openUrl(QUrl(self._server.url))
 
     @Slot(str, int)
-    def _on_server_started(self, host: str, port: int):
+    def _on_server_started(self, host: str, port: int) -> None:
         """Handle server started signal"""
         url = f"http://{host}:{port}"
         self.url_label.setText(f"URL: {url}")
         self.status_label.setText("🟢 Server running")
-        self.status_label.setStyleSheet("font-weight: bold; padding: 10px; color: #4CAF50;")
+        self.status_label.setStyleSheet(Styles.STATUS_BOLD_GREEN + " padding: 10px;")
         self.open_btn.setEnabled(True)
         self._log(f"Server started at {url}")
 
     @Slot()
-    def _on_server_stopped(self):
+    def _on_server_stopped(self) -> None:
         """Handle server stopped signal"""
         self.status_label.setText("⚪ Server stopped")
-        self.status_label.setStyleSheet("font-weight: bold; padding: 10px; color: #666;")
+        self.status_label.setStyleSheet(Styles.STATUS_BOLD_DIMMED + " padding: 10px;")
 
     @Slot(str, dict)
-    def _on_command_received(self, command: str, params: dict):
+    def _on_command_received(self, command: str, params: Dict[str, Any]) -> None:
         """Handle command received from mobile"""
         self._log(f"Command: {command} {params}")
 
-    def _log(self, message: str):
+    def _log(self, message: str) -> None:
         """Add message to log"""
         from datetime import datetime
+
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.log_text.append(f"[{timestamp}] {message}")

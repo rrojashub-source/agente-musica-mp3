@@ -9,19 +9,22 @@ Features:
 - Pause/resume/cancel individual downloads
 - Automatic retry on failure
 """
+
 import json
+import logging
 import os
 import re
 import sqlite3
-import uuid
-import logging
 import threading
+import uuid
 from pathlib import Path
-from typing import Dict, List, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 from PySide6.QtCore import QObject, Signal
-from workers.download_worker import DownloadWorker
-from utils.input_sanitizer import sanitize_filename, sanitize_url, sanitize_metadata
+
 from utils.constants import MAX_CONCURRENT_DOWNLOADS, MAX_DOWNLOAD_RETRIES
+from utils.input_sanitizer import sanitize_filename, sanitize_metadata, sanitize_url
+from workers.download_worker import DownloadWorker
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -44,14 +47,20 @@ class DownloadQueue(QObject):
     """
 
     # Signals
-    item_added = Signal(str, dict)      # item_id, metadata
-    item_started = Signal(str)          # item_id
-    item_progress = Signal(str, int)    # item_id, percentage
+    item_added = Signal(str, dict)  # item_id, metadata
+    item_started = Signal(str)  # item_id
+    item_progress = Signal(str, int)  # item_id, percentage
     item_completed = Signal(str, dict)  # item_id, metadata
-    item_failed = Signal(str, str)      # item_id, error
-    queue_completed = Signal()          # All items done
+    item_failed = Signal(str, str)  # item_id, error
+    queue_completed = Signal()  # All items done
 
-    def __init__(self, max_concurrent=MAX_CONCURRENT_DOWNLOADS, max_retries=MAX_DOWNLOAD_RETRIES, db_manager=None, config_manager=None):
+    def __init__(
+        self,
+        max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
+        max_retries: int = MAX_DOWNLOAD_RETRIES,
+        db_manager: Optional[Any] = None,
+        config_manager: Optional[Any] = None,
+    ) -> None:
         """
         Initialize download queue
 
@@ -63,24 +72,26 @@ class DownloadQueue(QObject):
         """
         super().__init__()
 
-        self.max_concurrent = max_concurrent
-        self.max_retries = max_retries
-        self.db_manager = db_manager
-        self.config_manager = config_manager
-        self._items = {}  # item_id -> item_dict
-        self._workers = {}  # item_id -> DownloadWorker
-        self._running = False
-        self._lock = threading.RLock()  # Protects _items and _workers dicts
+        self.max_concurrent: int = max_concurrent
+        self.max_retries: int = max_retries
+        self.db_manager: Optional[Any] = db_manager
+        self.config_manager: Optional[Any] = config_manager
+        self._items: Dict[str, Dict[str, Any]] = {}  # item_id -> item_dict
+        self._workers: Dict[str, DownloadWorker] = {}  # item_id -> DownloadWorker
+        self._running: bool = False
+        self._lock: threading.RLock = threading.RLock()  # Protects _items and _workers dicts
 
         # Allowed YouTube domains for URL validation
-        self._allowed_domains = ["youtube.com", "youtu.be", "music.youtube.com"]
+        self._allowed_domains: List[str] = ["youtube.com", "youtu.be", "music.youtube.com"]
 
         # Callback for completion (optional)
-        self.on_complete = None
+        self.on_complete: Optional[Callable[[str, Dict[str, Any]], None]] = None
 
-        logger.info(f"DownloadQueue initialized (max_concurrent={max_concurrent}, max_retries={max_retries}, db_integration={'enabled' if db_manager else 'disabled'})")
+        logger.info(
+            f"DownloadQueue initialized (max_concurrent={max_concurrent}, max_retries={max_retries}, db_integration={'enabled' if db_manager else 'disabled'})"
+        )
 
-    def add(self, video_url: str, metadata: dict) -> str:
+    def add(self, video_url: str, metadata: Dict[str, Any]) -> str:
         """
         Add download to queue
 
@@ -108,13 +119,13 @@ class DownloadQueue(QObject):
 
         # Create item
         item = {
-            'id': item_id,
-            'video_url': video_url,
-            'metadata': metadata,
-            'status': 'pending',  # pending, downloading, paused, completed, canceled, failed
-            'progress': 0,
-            'error': None,
-            'retry_count': 0
+            "id": item_id,
+            "video_url": video_url,
+            "metadata": metadata,
+            "status": "pending",  # pending, downloading, paused, completed, canceled, failed
+            "progress": 0,
+            "error": None,
+            "retry_count": 0,
         }
 
         with self._lock:
@@ -130,7 +141,7 @@ class DownloadQueue(QObject):
 
         return item_id
 
-    def get_all(self) -> List[dict]:
+    def get_all(self) -> List[Dict[str, Any]]:
         """
         Get all items in queue
 
@@ -140,7 +151,7 @@ class DownloadQueue(QObject):
         with self._lock:
             return list(self._items.values())
 
-    def get_all_items(self) -> Dict[str, dict]:
+    def get_all_items(self) -> Dict[str, Dict[str, Any]]:
         """
         Get all items in queue as dictionary
 
@@ -150,7 +161,7 @@ class DownloadQueue(QObject):
         with self._lock:
             return self._items.copy()
 
-    def get_item(self, item_id: str) -> Optional[dict]:
+    def get_item(self, item_id: str) -> Optional[Dict[str, Any]]:
         """
         Get specific item by ID
 
@@ -163,7 +174,7 @@ class DownloadQueue(QObject):
         with self._lock:
             return self._items.get(item_id)
 
-    def start(self):
+    def start(self) -> None:
         """
         Start processing queue
         """
@@ -173,7 +184,7 @@ class DownloadQueue(QObject):
         # Start processing pending items
         self._process_next()
 
-    def stop(self):
+    def stop(self) -> None:
         """
         Stop processing queue (pauses all active downloads)
         """
@@ -189,7 +200,7 @@ class DownloadQueue(QObject):
         """
         return self._running
 
-    def get_active_downloads(self) -> List[dict]:
+    def get_active_downloads(self) -> List[Dict[str, Any]]:
         """
         Get currently downloading items
 
@@ -197,7 +208,7 @@ class DownloadQueue(QObject):
             list: Items with status='downloading'
         """
         with self._lock:
-            return [item for item in self._items.values() if item['status'] == 'downloading']
+            return [item for item in self._items.values() if item["status"] == "downloading"]
 
     def pause(self, item_id: str) -> bool:
         """
@@ -222,7 +233,7 @@ class DownloadQueue(QObject):
                 del self._workers[item_id]
 
             # Update status
-            item['status'] = 'paused'
+            item["status"] = "paused"
 
         logger.info(f"Paused: {item_id}")
         return True
@@ -239,11 +250,11 @@ class DownloadQueue(QObject):
         """
         with self._lock:
             item = self._items.get(item_id)
-            if not item or item['status'] != 'paused':
+            if not item or item["status"] != "paused":
                 return False
 
             # Reset to pending
-            item['status'] = 'pending'
+            item["status"] = "pending"
 
         logger.info(f"Resumed: {item_id}")
 
@@ -276,7 +287,7 @@ class DownloadQueue(QObject):
                 del self._workers[item_id]
 
             # Update status
-            item['status'] = 'canceled'
+            item["status"] = "canceled"
 
         logger.info(f"Canceled: {item_id}")
 
@@ -286,7 +297,7 @@ class DownloadQueue(QObject):
 
         return True
 
-    def clear_completed(self):
+    def clear_completed(self) -> int:
         """
         Remove all completed items from queue
 
@@ -294,10 +305,7 @@ class DownloadQueue(QObject):
             int: Number of items removed
         """
         with self._lock:
-            completed_ids = [
-                item_id for item_id, item in self._items.items()
-                if item['status'] == 'completed'
-            ]
+            completed_ids = [item_id for item_id, item in self._items.items() if item["status"] == "completed"]
 
             for item_id in completed_ids:
                 del self._items[item_id]
@@ -306,7 +314,7 @@ class DownloadQueue(QObject):
         logger.info(f"Cleared {count} completed items")
         return count
 
-    def update_progress(self, item_id: str, percentage: int):
+    def update_progress(self, item_id: str, percentage: int) -> None:
         """
         Update download progress
 
@@ -314,11 +322,12 @@ class DownloadQueue(QObject):
             item_id (str): Item ID
             percentage (int): Progress 0-100
         """
-        item = self._items.get(item_id)
-        if item:
-            item['progress'] = percentage
+        with self._lock:
+            item = self._items.get(item_id)
+            if item:
+                item["progress"] = percentage
 
-    def mark_completed(self, item_id: str, metadata: dict):
+    def mark_completed(self, item_id: str, metadata: Dict[str, Any]) -> None:
         """
         Mark download as completed
 
@@ -332,10 +341,10 @@ class DownloadQueue(QObject):
                 return
 
             # Update status
-            item['status'] = 'completed'
-            item['progress'] = 100
-            item['metadata'].update(metadata)
-            title = item['metadata'].get('title', item_id)
+            item["status"] = "completed"
+            item["progress"] = 100
+            item["metadata"].update(metadata)
+            title = item["metadata"].get("title", item_id)
 
             # Cleanup worker
             if item_id in self._workers:
@@ -344,8 +353,8 @@ class DownloadQueue(QObject):
         logger.info(f"Completed: {title}")
 
         # Auto-import to database if available
-        if self.db_manager and 'output_path' in metadata:
-            self._import_to_database(metadata['output_path'], metadata)
+        if self.db_manager and "output_path" in metadata:
+            self._import_to_database(metadata["output_path"], metadata)
 
         # Fire callback
         if self.on_complete:
@@ -409,7 +418,7 @@ class DownloadQueue(QObject):
         logger.debug(f"Attempted paths: {file_path}, {double_ext_path}")
         return None
 
-    def _import_to_database(self, file_path: str, metadata: dict):
+    def _import_to_database(self, file_path: str, metadata: Dict[str, Any]) -> None:
         """
         Import downloaded song to database
 
@@ -418,8 +427,8 @@ class DownloadQueue(QObject):
             metadata (dict): Song metadata
         """
         try:
-            from mutagen.mp3 import MP3
             from mutagen.id3 import ID3
+            from mutagen.mp3 import MP3
 
             # Find actual file (handles yt-dlp quirks)
             file_path_obj = self._find_downloaded_file(file_path)
@@ -437,32 +446,34 @@ class DownloadQueue(QObject):
                 id3 = None
 
             # Extract metadata
-            title = metadata.get('title', file_path_obj.stem)
-            artist = metadata.get('artist', 'Unknown Artist')
-            album = metadata.get('album', '')
-            year = metadata.get('year', '')
-            genre = metadata.get('genre', '')
-            duration = int(audio.info.length) if audio else 0
+            title = metadata.get("title", file_path_obj.stem)
+            artist = metadata.get("artist", "Unknown Artist")
+            album = metadata.get("album", "")
+            year = metadata.get("year", "")
+            genre = metadata.get("genre", "")
+            duration = int(audio.info.length) if audio and audio.info else 0  # type: ignore[attr-defined]
 
             # Get file info
             file_size = file_path_obj.stat().st_size
-            bitrate = int(audio.info.bitrate / 1000) if audio else 0  # kbps
+            bitrate = (
+                int(audio.info.bitrate / 1000) if audio and audio.info else 0
+            )  # kbps  # type: ignore[attr-defined]
 
             # Prepare song data dictionary
             song_data = {
-                'title': title,
-                'artist': artist,
-                'album': album,
-                'year': year,
-                'genre': genre,
-                'duration': duration,
-                'file_path': str(file_path_obj.absolute()),
-                'file_size': file_size,
-                'bitrate': bitrate
+                "title": title,
+                "artist": artist,
+                "album": album,
+                "year": year,
+                "genre": genre,
+                "duration": duration,
+                "file_path": str(file_path_obj.absolute()),
+                "file_size": file_size,
+                "bitrate": bitrate,
             }
 
             # Insert into database
-            song_id = self.db_manager.add_song(song_data)
+            song_id = self.db_manager.add_song(song_data)  # type: ignore[union-attr]
 
             if song_id:
                 logger.info(f"Imported to database (id={song_id}): {artist} - {title}")
@@ -472,7 +483,7 @@ class DownloadQueue(QObject):
         except (OSError, sqlite3.Error, ValueError) as e:
             logger.error(f"Failed to import to database: {e}")
 
-    def _mark_failed(self, item_id: str, error: str):
+    def _mark_failed(self, item_id: str, error: str) -> None:
         """
         Mark download as failed (with auto-retry if attempts remaining)
 
@@ -487,21 +498,21 @@ class DownloadQueue(QObject):
                 return
 
             # Increment retry count
-            item['retry_count'] += 1
-            item['error'] = error
+            item["retry_count"] += 1
+            item["error"] = error
 
             # Cleanup worker
             if item_id in self._workers:
                 del self._workers[item_id]
 
             # Check if should retry
-            if item['retry_count'] < self.max_retries:
-                item['status'] = 'pending'
-                item['progress'] = 0
+            if item["retry_count"] < self.max_retries:
+                item["status"] = "pending"
+                item["progress"] = 0
                 should_retry = True
                 logger.warning(f"Retry {item['retry_count']}/{self.max_retries}: {item_id} - {error}")
             else:
-                item['status'] = 'failed'
+                item["status"] = "failed"
                 logger.error(f"Failed (max retries): {item_id} - {error}")
 
         if not should_retry:
@@ -511,22 +522,24 @@ class DownloadQueue(QObject):
         if self._running:
             self._process_next()
 
-    def _process_next(self):
+    def _process_next(self) -> None:
         """
         Process next pending item if under max_concurrent limit
         """
         with self._lock:
             # Check if we can start more downloads
-            active_count = len([i for i in self._items.values() if i['status'] == 'downloading'])
+            active_count = len([i for i in self._items.values() if i["status"] == "downloading"])
             if active_count >= self.max_concurrent:
                 logger.debug(f"Max concurrent reached ({active_count}/{self.max_concurrent})")
                 return
 
             # Find next pending item
-            pending = [item for item in self._items.values() if item['status'] == 'pending']
+            pending = [item for item in self._items.values() if item["status"] == "pending"]
             if not pending:
                 # Check if queue completed
-                if active_count == 0 and all(item['status'] in ['completed', 'canceled', 'failed'] for item in self._items.values()):
+                if active_count == 0 and all(
+                    item["status"] in ["completed", "canceled", "failed"] for item in self._items.values()
+                ):
                     logger.info("Queue completed")
                     self.queue_completed.emit()
                 return
@@ -542,24 +555,24 @@ class DownloadQueue(QObject):
         Handles case where config was saved on Windows but app runs on WSL/Linux.
         E.g., 'C:\\Users\\ricar\\Music' -> '/mnt/c/Users/ricar/Music' on WSL.
         """
-        if os.name != 'nt':
-            match = re.match(r'^([A-Za-z]):[\\\/](.*)$', path_str)
+        if os.name != "nt":
+            match = re.match(r"^([A-Za-z]):[\\\/](.*)$", path_str)
             if match:
                 drive = match.group(1).lower()
-                rest = match.group(2).replace('\\', '/')
+                rest = match.group(2).replace("\\", "/")
                 wsl_path = Path(f"/mnt/{drive}/{rest}")
                 logger.info(f"Converted Windows path to WSL: {path_str} -> {wsl_path}")
                 return wsl_path
         return Path(path_str)
 
-    def _start_download(self, item: dict):
+    def _start_download(self, item: Dict[str, Any]) -> None:
         """
         Start downloading item
 
         Args:
             item (dict): Item to download
         """
-        item_id = item['id']
+        item_id = item["id"]
 
         # Get download directory from config (or use fallback)
         if self.config_manager:
@@ -572,14 +585,13 @@ class DownloadQueue(QObject):
 
         # Create output path with sanitized filename to prevent path traversal
         # NOTE: Do NOT add .mp3 extension - FFmpegExtractAudio postprocessor adds it
-        raw_title = item['metadata'].get('title', item_id)
+        raw_title = item["metadata"].get("title", item_id)
         safe_title = sanitize_filename(raw_title)
         output_path = download_dir / safe_title
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Create worker with path validation
-        worker = DownloadWorker(item['video_url'], str(output_path),
-                                allowed_base_dir=str(download_dir))
+        worker = DownloadWorker(item["video_url"], str(output_path), allowed_base_dir=str(download_dir))
 
         # Connect signals (use default argument to capture item_id by value, not reference)
         worker.progress.connect(lambda p, id=item_id: self._on_worker_progress(id, p))
@@ -590,7 +602,7 @@ class DownloadQueue(QObject):
         self._workers[item_id] = worker
 
         # Update status
-        item['status'] = 'downloading'
+        item["status"] = "downloading"
 
         # Start download
         worker.start()
@@ -599,12 +611,12 @@ class DownloadQueue(QObject):
         # Emit started signal for UI updates
         self.item_started.emit(item_id)
 
-    def _on_worker_progress(self, item_id: str, percentage: int):
+    def _on_worker_progress(self, item_id: str, percentage: int) -> None:
         """Handle worker progress and re-emit as queue-level signal"""
         self.update_progress(item_id, percentage)
         self.item_progress.emit(item_id, percentage)
 
-    def save(self, filepath: str):
+    def save(self, filepath: str) -> None:
         """
         Save queue to JSON file (persistence)
 
@@ -612,33 +624,27 @@ class DownloadQueue(QObject):
             filepath (str): Path to JSON file
         """
         # Only save items that are not actively downloading
-        saveable_items = [
-            item for item in self._items.values()
-            if item['status'] != 'downloading'
-        ]
+        saveable_items = [item for item in self._items.values() if item["status"] != "downloading"]
 
-        data = {
-            'max_concurrent': self.max_concurrent,
-            'items': saveable_items
-        }
+        data = {"max_concurrent": self.max_concurrent, "items": saveable_items}
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(data, f, indent=2)
 
         logger.info(f"Queue saved to {filepath} ({len(saveable_items)} items)")
 
-    def load(self, filepath: str):
+    def load(self, filepath: str) -> None:
         """
         Load queue from JSON file
 
         Args:
             filepath (str): Path to JSON file
         """
-        with open(filepath, 'r') as f:
+        with open(filepath, "r") as f:
             data = json.load(f)
 
         # Restore items
-        for item in data.get('items', []):
-            self._items[item['id']] = item
+        for item in data.get("items", []):
+            self._items[item["id"]] = item
 
         logger.info(f"Queue loaded from {filepath} ({len(self._items)} items)")

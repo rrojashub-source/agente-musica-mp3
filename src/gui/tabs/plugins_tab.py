@@ -4,18 +4,36 @@ Allows users to view, enable, disable and configure plugins
 
 Created: November 24, 2025
 """
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QTableWidget, QTableWidgetItem, QGroupBox,
-    QMessageBox, QHeaderView, QAbstractItemView,
-    QDialog, QFormLayout, QLineEdit, QCheckBox, QTextEdit
-)
+
+from __future__ import annotations
+
+import logging
+from typing import Any, Dict, Optional
+
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QColor, QFont
-import logging
-from typing import Optional, Dict, Any
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QCheckBox,
+    QDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
-from plugins import PluginManager, Plugin
+from gui.base import BaseTab
+from gui.themes.style_constants import Styles
+from plugins import Plugin, PluginManager
 from translations import tr
 
 logger = logging.getLogger(__name__)
@@ -24,12 +42,12 @@ logger = logging.getLogger(__name__)
 class PluginSettingsDialog(QDialog):
     """Dialog for editing plugin settings"""
 
-    def __init__(self, plugin: Plugin, parent=None):
+    def __init__(self, plugin: Plugin, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
-        self.plugin = plugin
+        self.plugin: Plugin = plugin
         self._init_ui()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize dialog UI"""
         self.setWindowTitle(f"Settings - {self.plugin.metadata.display_name}")
         self.setMinimumWidth(400)
@@ -38,8 +56,7 @@ class PluginSettingsDialog(QDialog):
 
         # Plugin info
         info_label = QLabel(
-            f"<b>{self.plugin.metadata.display_name}</b> v{self.plugin.version}<br>"
-            f"by {self.plugin.metadata.author}"
+            f"<b>{self.plugin.metadata.display_name}</b> v{self.plugin.version}<br>" f"by {self.plugin.metadata.author}"
         )
         layout.addWidget(info_label)
 
@@ -50,12 +67,12 @@ class PluginSettingsDialog(QDialog):
         self._setting_widgets: Dict[str, QWidget] = {}
 
         # Check if plugin has settings schema
-        if hasattr(self.plugin, 'get_settings_schema'):
+        if hasattr(self.plugin, "get_settings_schema"):
             schema = self.plugin.get_settings_schema()
             for key, config in schema.items():
                 widget = self._create_widget(key, config)
                 if widget:
-                    label = config.get('label', key)
+                    label = config.get("label", key)
                     form_layout.addRow(label + ":", widget)
                     self._setting_widgets[key] = widget
         else:
@@ -85,34 +102,34 @@ class PluginSettingsDialog(QDialog):
 
         self.setLayout(layout)
 
-    def _create_widget(self, key: str, config: Dict[str, Any]) -> Optional[QWidget]:
+    def _create_widget(self, key: str, config: Dict[str, Any]) -> QWidget:
         """Create widget based on config type"""
-        widget_type = config.get('type', 'text')
-        current_value = self.plugin.get_setting(key, config.get('default', ''))
+        widget_type = config.get("type", "text")
+        current_value = self.plugin.get_setting(key, config.get("default", ""))
 
-        if widget_type == 'text':
+        if widget_type == "text":
             widget = QLineEdit(str(current_value))
-            if 'description' in config:
-                widget.setPlaceholderText(config['description'])
+            if "description" in config:
+                widget.setPlaceholderText(config["description"])
             return widget
 
-        elif widget_type == 'password':
+        elif widget_type == "password":
             widget = QLineEdit(str(current_value))
             widget.setEchoMode(QLineEdit.EchoMode.Password)
             return widget
 
-        elif widget_type == 'checkbox':
+        elif widget_type == "checkbox":
             widget = QCheckBox()
             widget.setChecked(bool(current_value))
             return widget
 
-        elif widget_type == 'number':
+        elif widget_type == "number":
             widget = QLineEdit(str(current_value))
             return widget
 
         return QLineEdit(str(current_value))
 
-    def _save_settings(self):
+    def _save_settings(self) -> None:
         """Save settings and close dialog"""
         settings = {}
         for key, widget in self._setting_widgets.items():
@@ -125,7 +142,7 @@ class PluginSettingsDialog(QDialog):
         self.accept()
 
 
-class PluginsTab(QWidget):
+class PluginsTab(BaseTab):
     """
     Plugins Management Tab
 
@@ -136,25 +153,24 @@ class PluginsTab(QWidget):
     - Access plugin settings
     """
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         self._plugin_manager: Optional[PluginManager] = None
-        self._init_ui()
+        super().__init__(db_manager=None, parent=parent)
         self._init_plugin_manager()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize user interface"""
         layout = QVBoxLayout()
         layout.setSpacing(15)
 
         # Header
         header_label = QLabel(tr("plugins_title"))
-        header_label.setStyleSheet("font-size: 18px; font-weight: bold;")
+        header_label.setStyleSheet(Styles.HEADER_TITLE)
         layout.addWidget(header_label)
 
         # Info
         info_label = QLabel(tr("plugins_info"))
-        info_label.setStyleSheet("color: #666;")
+        info_label.setStyleSheet(Styles.TEXT_DIMMED)
         layout.addWidget(info_label)
 
         # Plugins table
@@ -163,18 +179,12 @@ class PluginsTab(QWidget):
 
         self.plugins_table = QTableWidget()
         self.plugins_table.setColumnCount(5)
-        self.plugins_table.setHorizontalHeaderLabels([
-            tr("plugins_status"), tr("plugins_name"), tr("plugins_version"), "Author", tr("plugins_description")
-        ])
-        self.plugins_table.horizontalHeader().setSectionResizeMode(
-            4, QHeaderView.ResizeMode.Stretch
+        self.plugins_table.setHorizontalHeaderLabels(
+            [tr("plugins_status"), tr("plugins_name"), tr("plugins_version"), "Author", tr("plugins_description")]
         )
-        self.plugins_table.setSelectionBehavior(
-            QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.plugins_table.setSelectionMode(
-            QAbstractItemView.SelectionMode.SingleSelection
-        )
+        self.plugins_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        self.plugins_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.plugins_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.plugins_table.setAlternatingRowColors(True)
         self.plugins_table.itemSelectionChanged.connect(self._on_selection_changed)
         table_layout.addWidget(self.plugins_table)
@@ -214,7 +224,7 @@ class PluginsTab(QWidget):
         self.details_text = QTextEdit()
         self.details_text.setReadOnly(True)
         self.details_text.setMaximumHeight(150)
-        self.details_text.setStyleSheet("font-family: monospace;")
+        self.details_text.setStyleSheet(Styles.FONT_MONOSPACE)
         self.details_text.setPlaceholderText("Select a plugin to view details...")
         details_layout.addWidget(self.details_text)
 
@@ -223,30 +233,30 @@ class PluginsTab(QWidget):
 
         # Stats
         self.stats_label = QLabel("Loaded: 0 | Enabled: 0")
-        self.stats_label.setStyleSheet("color: #666;")
+        self.stats_label.setStyleSheet(Styles.TEXT_DIMMED)
         layout.addWidget(self.stats_label)
 
         layout.addStretch()
         self.setLayout(layout)
 
-    def _init_plugin_manager(self):
+    def _init_plugin_manager(self) -> None:
         """Initialize plugin manager"""
         try:
             self._plugin_manager = PluginManager.get_instance()
             self._plugin_manager.load_plugins()
 
             # Connect signals
-            if hasattr(self._plugin_manager, 'plugin_enabled'):
+            if hasattr(self._plugin_manager, "plugin_enabled"):
                 self._plugin_manager.plugin_enabled.connect(self._on_plugin_enabled)
                 self._plugin_manager.plugin_disabled.connect(self._on_plugin_disabled)
                 self._plugin_manager.plugin_error.connect(self._on_plugin_error)
 
             self._refresh_plugins()
 
-        except Exception as e:
+        except Exception as e:  # plugin system init - must not crash GUI if plugins fail
             logger.error(f"Failed to init plugin manager: {e}")
 
-    def _refresh_plugins(self):
+    def _refresh_plugins(self) -> None:
         """Refresh plugins list"""
         if not self._plugin_manager:
             return
@@ -259,12 +269,12 @@ class PluginsTab(QWidget):
             row = self.plugins_table.rowCount()
             self.plugins_table.insertRow(row)
 
-            metadata = info['metadata']
-            enabled = info['enabled']
+            metadata = info["metadata"]
+            enabled = info["enabled"]
 
             # Status
             status_item = QTableWidgetItem("✅ Enabled" if enabled else "⏸️ Disabled")
-            status_item.setData(Qt.ItemDataRole.UserRole, metadata['name'])
+            status_item.setData(Qt.ItemDataRole.UserRole, metadata["name"])
             if enabled:
                 status_item.setForeground(QColor("#4CAF50"))
             else:
@@ -272,25 +282,25 @@ class PluginsTab(QWidget):
             self.plugins_table.setItem(row, 0, status_item)
 
             # Name
-            name_item = QTableWidgetItem(metadata['display_name'])
+            name_item = QTableWidgetItem(metadata["display_name"])
             name_item.setFont(QFont("", -1, QFont.Weight.Bold))
             self.plugins_table.setItem(row, 1, name_item)
 
             # Version
-            self.plugins_table.setItem(row, 2, QTableWidgetItem(metadata['version']))
+            self.plugins_table.setItem(row, 2, QTableWidgetItem(metadata["version"]))
 
             # Author
-            self.plugins_table.setItem(row, 3, QTableWidgetItem(metadata['author']))
+            self.plugins_table.setItem(row, 3, QTableWidgetItem(metadata["author"]))
 
             # Description
-            self.plugins_table.setItem(row, 4, QTableWidgetItem(metadata['description']))
+            self.plugins_table.setItem(row, 4, QTableWidgetItem(metadata["description"]))
 
         # Update stats
         total = len(plugins_info)
-        enabled = len([p for p in plugins_info if p['enabled']])
+        enabled = len([p for p in plugins_info if p["enabled"]])
         self.stats_label.setText(f"Loaded: {total} | Enabled: {enabled}")
 
-    def _on_selection_changed(self):
+    def _on_selection_changed(self) -> None:
         """Handle selection change"""
         selected = self.plugins_table.selectedItems()
         if not selected:
@@ -329,7 +339,7 @@ class PluginsTab(QWidget):
             )
 
             # Show plugin-specific data if available
-            if hasattr(plugin, 'get_statistics') and is_enabled:
+            if hasattr(plugin, "get_statistics") and is_enabled:
                 try:
                     stats = plugin.get_statistics()
                     details += "\n\n" + "=" * 40 + "\n"
@@ -337,17 +347,17 @@ class PluginsTab(QWidget):
                     details += "=" * 40 + "\n"
                     details += f"{tr('plugins_total_plays')}: {stats.get('total_plays', 0)}\n"
                     details += f"{tr('plugins_unique_songs')}: {stats.get('unique_songs', 0)}\n"
-                    avg = stats.get('average_plays', 0)
+                    avg = stats.get("average_plays", 0)
                     details += f"{tr('plugins_avg_plays')}: {avg:.1f}\n"
 
-                    most_played = stats.get('most_played', [])
+                    most_played = stats.get("most_played", [])
                     if most_played:
                         details += f"\n{tr('plugins_most_played')}:\n"
                         for i, (song_id, count) in enumerate(most_played[:5], 1):
                             # Truncate long song IDs
                             display_id = song_id if len(song_id) < 40 else song_id[:37] + "..."
                             details += f"  {i}. {display_id} ({count}x)\n"
-                except Exception as e:
+                except Exception as e:  # plugin isolation - third-party code may raise anything
                     logger.debug(f"Could not get plugin statistics: {e}")
 
             self.details_text.setText(details)
@@ -357,24 +367,24 @@ class PluginsTab(QWidget):
         selected = self.plugins_table.selectedItems()
         if selected:
             row = selected[0].row()
-            return self.plugins_table.item(row, 0).data(Qt.ItemDataRole.UserRole)
+            return self.plugins_table.item(row, 0).data(Qt.ItemDataRole.UserRole)  # type: ignore[no-any-return]
         return None
 
-    def _enable_selected(self):
+    def _enable_selected(self) -> None:
         """Enable selected plugin"""
         plugin_name = self._get_selected_plugin_name()
         if plugin_name and self._plugin_manager:
             if self._plugin_manager.enable_plugin(plugin_name):
                 self._refresh_plugins()
 
-    def _disable_selected(self):
+    def _disable_selected(self) -> None:
         """Disable selected plugin"""
         plugin_name = self._get_selected_plugin_name()
         if plugin_name and self._plugin_manager:
             if self._plugin_manager.disable_plugin(plugin_name):
                 self._refresh_plugins()
 
-    def _open_settings(self):
+    def _open_settings(self) -> None:
         """Open settings dialog for selected plugin"""
         plugin_name = self._get_selected_plugin_name()
         if plugin_name and self._plugin_manager:
@@ -383,26 +393,19 @@ class PluginsTab(QWidget):
                 dialog = PluginSettingsDialog(plugin, self)
                 if dialog.exec():
                     # Save settings
-                    self._plugin_manager.save_plugin_settings(
-                        plugin_name,
-                        plugin.get_all_settings()
-                    )
+                    self._plugin_manager.save_plugin_settings(plugin_name, plugin.get_all_settings())
 
     @Slot(str)
-    def _on_plugin_enabled(self, plugin_name: str):
+    def _on_plugin_enabled(self, plugin_name: str) -> None:
         """Handle plugin enabled signal"""
         self._refresh_plugins()
 
     @Slot(str)
-    def _on_plugin_disabled(self, plugin_name: str):
+    def _on_plugin_disabled(self, plugin_name: str) -> None:
         """Handle plugin disabled signal"""
         self._refresh_plugins()
 
     @Slot(str, str)
-    def _on_plugin_error(self, plugin_name: str, error: str):
+    def _on_plugin_error(self, plugin_name: str, error: str) -> None:
         """Handle plugin error signal"""
-        QMessageBox.warning(
-            self,
-            "Plugin Error",
-            f"Error with plugin '{plugin_name}':\n{error}"
-        )
+        QMessageBox.warning(self, "Plugin Error", f"Error with plugin '{plugin_name}':\n{error}")

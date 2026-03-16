@@ -18,15 +18,16 @@ Created: November 24, 2025
 import logging
 import threading
 import time
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
-from plugins.plugin_base import Plugin, PluginMetadata, PluginHook
+from plugins.plugin_base import Plugin, PluginHook, PluginMetadata
 
 logger = logging.getLogger(__name__)
 
 # Check for pypresence
 try:
-    from pypresence import Presence, InvalidID, InvalidPipe
+    from pypresence import InvalidID, InvalidPipe, Presence
+
     HAS_PYPRESENCE = True
 except ImportError:
     HAS_PYPRESENCE = False
@@ -45,16 +46,16 @@ class DiscordRPCPlugin(Plugin):
     # This is a public ID for NEXUS Music Manager
     DISCORD_APP_ID = "1234567890123456789"  # Placeholder - needs real ID
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
-        self._rpc: Optional['Presence'] = None
-        self._connected = False
-        self._current_song: Optional[Dict] = None
+        self._rpc: Optional["Presence"] = None
+        self._connected: bool = False
+        self._current_song: Optional[Dict[str, Any]] = None
         self._update_thread: Optional[threading.Thread] = None
-        self._running = False
-        self._last_update_time = 0
-        self._update_interval = 15  # Seconds between updates (Discord rate limit)
+        self._running: bool = False
+        self._last_update_time: float = 0
+        self._update_interval: int = 15  # Seconds between updates (Discord rate limit)
 
     # Settings schema (used by GUI)
     SETTINGS_SCHEMA = {
@@ -62,26 +63,26 @@ class DiscordRPCPlugin(Plugin):
             "type": "string",
             "label": "Discord App ID",
             "description": "Your Discord application ID (optional)",
-            "default": DISCORD_APP_ID
+            "default": DISCORD_APP_ID,
         },
         "show_album": {
             "type": "bool",
             "label": "Show Album Name",
             "description": "Display album name in status",
-            "default": True
+            "default": True,
         },
         "show_elapsed": {
             "type": "bool",
             "label": "Show Elapsed Time",
             "description": "Display playback progress",
-            "default": True
+            "default": True,
         },
         "idle_message": {
             "type": "string",
             "label": "Idle Message",
             "description": "Message when not playing",
-            "default": "Browsing music library"
-        }
+            "default": "Browsing music library",
+        },
     }
 
     @property
@@ -93,8 +94,7 @@ class DiscordRPCPlugin(Plugin):
             author="NEXUS Team",
             description="Show currently playing song in Discord status",
             dependencies=[],
-            hooks=[PluginHook.ON_SONG_PLAY, PluginHook.ON_SONG_PAUSE,
-                   PluginHook.ON_SONG_END, PluginHook.ON_APP_CLOSE]
+            hooks=[PluginHook.ON_SONG_PLAY, PluginHook.ON_SONG_PAUSE, PluginHook.ON_SONG_END, PluginHook.ON_APP_CLOSE],
         )
 
     def on_enable(self) -> bool:
@@ -115,11 +115,7 @@ class DiscordRPCPlugin(Plugin):
         if success:
             # Start update thread
             self._running = True
-            self._update_thread = threading.Thread(
-                target=self._update_loop,
-                daemon=True,
-                name="DiscordRPC-Update"
-            )
+            self._update_thread = threading.Thread(target=self._update_loop, daemon=True, name="DiscordRPC-Update")
             self._update_thread.start()
             logger.info("Discord RPC plugin enabled")
 
@@ -159,7 +155,7 @@ class DiscordRPCPlugin(Plugin):
             logger.error(f"Failed to connect to Discord: {e}")
             return False
 
-    def _disconnect_discord(self):
+    def _disconnect_discord(self) -> None:
         """Disconnect from Discord RPC"""
         if self._rpc and self._connected:
             try:
@@ -171,7 +167,7 @@ class DiscordRPCPlugin(Plugin):
                 self._connected = False
                 self._rpc = None
 
-    def _update_loop(self):
+    def _update_loop(self) -> None:
         """Background thread to periodically update presence"""
         while self._running:
             try:
@@ -192,7 +188,7 @@ class DiscordRPCPlugin(Plugin):
 
             time.sleep(1)
 
-    def _update_presence(self, idle: bool = False):
+    def _update_presence(self, idle: bool = False) -> None:
         """Update Discord presence"""
         if not self._rpc or not self._connected:
             return
@@ -205,19 +201,19 @@ class DiscordRPCPlugin(Plugin):
                     state=idle_msg,
                     details="NEXUS Music Manager",
                     large_image="nexus_logo",
-                    large_text="NEXUS Music Manager"
+                    large_text="NEXUS Music Manager",
                 )
             else:
                 # Playing song
                 song = self._current_song
-                title = song.get('title', 'Unknown Title')
-                artist = song.get('artist', 'Unknown Artist')
+                title = song.get("title", "Unknown Title")
+                artist = song.get("artist", "Unknown Artist")
 
                 details = f"{title}"
                 state = f"by {artist}"
 
                 # Add album if enabled
-                if self.get_setting("show_album", True) and song.get('album'):
+                if self.get_setting("show_album", True) and song.get("album"):
                     state += f" ({song['album']})"
 
                 # Build presence data
@@ -227,45 +223,45 @@ class DiscordRPCPlugin(Plugin):
                     "large_image": "nexus_logo",
                     "large_text": "NEXUS Music Manager",
                     "small_image": "play_icon",
-                    "small_text": "Playing"
+                    "small_text": "Playing",
                 }
 
                 # Add elapsed time if enabled
-                if self.get_setting("show_elapsed", True) and song.get('start_time'):
-                    presence_data["start"] = int(song['start_time'])
+                if self.get_setting("show_elapsed", True) and song.get("start_time"):
+                    presence_data["start"] = str(int(song["start_time"]))  # type: ignore[arg-type]
 
-                self._rpc.update(**presence_data)
+                self._rpc.update(**presence_data)  # type: ignore[arg-type]
 
         except Exception as e:  # Plugin isolation - must not crash host
             logger.debug(f"Failed to update Discord presence: {e}")
             self._connected = False
 
-    def _on_song_play(self, song_data: Dict[str, Any]):
+    def _on_song_play(self, song_data: Dict[str, Any]) -> None:
         """Handle song play event"""
         self._current_song = {
-            'title': song_data.get('title', 'Unknown'),
-            'artist': song_data.get('artist', 'Unknown'),
-            'album': song_data.get('album', ''),
-            'duration': song_data.get('duration', 0),
-            'start_time': time.time()
+            "title": str(song_data.get("title", "Unknown")),
+            "artist": str(song_data.get("artist", "Unknown")),
+            "album": str(song_data.get("album", "")),
+            "duration": song_data.get("duration", 0),
+            "start_time": time.time(),
         }
         self._update_presence()
         logger.debug(f"Discord RPC: Now playing {self._current_song['title']}")
 
-    def _on_song_pause(self, song_data: Dict[str, Any] = None):
+    def _on_song_pause(self, song_data: Optional[Dict[str, Any]] = None) -> None:
         """Handle song pause event"""
         if self._current_song:
-            self._current_song['start_time'] = None  # Remove elapsed time
+            self._current_song["start_time"] = None  # Remove elapsed time
         self._update_presence()
         logger.debug("Discord RPC: Playback paused")
 
-    def _on_song_end(self, song_data: Dict[str, Any] = None):
+    def _on_song_end(self, song_data: Optional[Dict[str, Any]] = None) -> None:
         """Handle song end event"""
         self._current_song = None
         self._update_presence(idle=True)
         logger.debug("Discord RPC: Song ended")
 
-    def _on_app_close(self):
+    def _on_app_close(self) -> None:
         """Handle app close event"""
         self._disconnect_discord()
 

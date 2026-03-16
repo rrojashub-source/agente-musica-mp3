@@ -9,12 +9,13 @@ Detect duplicate songs using multiple methods:
 Created: November 13, 2025
 Updated: November 19, 2025 (Fixed fpcalc path passing)
 """
-import re
+
 import logging
-from typing import List, Dict, Optional
-from difflib import SequenceMatcher
-from collections import defaultdict
 import os
+import re
+from collections import defaultdict
+from difflib import SequenceMatcher
+from typing import Any, Dict, List, Optional, Set
 
 from utils.fpcalc_checker import FpcalcChecker
 
@@ -40,7 +41,7 @@ class DuplicateDetector:
         ]
     """
 
-    def __init__(self, db_manager, similarity_threshold=0.70):
+    def __init__(self, db_manager: Any, similarity_threshold: float = 0.70) -> None:
         """
         Initialize duplicate detector
 
@@ -48,17 +49,19 @@ class DuplicateDetector:
             db_manager: Database manager instance
             similarity_threshold: Minimum similarity for fuzzy matching (0.0-1.0)
         """
-        self.db = db_manager
-        self.similarity_threshold = similarity_threshold
+        self.db: Any = db_manager
+        self.similarity_threshold: float = similarity_threshold
 
         # Initialize fpcalc checker for audio fingerprinting
-        self.fpcalc_checker = FpcalcChecker()
+        self.fpcalc_checker: FpcalcChecker = FpcalcChecker()
         if self.fpcalc_checker.is_available():
-            logger.info(f"DuplicateDetector initialized (threshold: {similarity_threshold}, fpcalc: {self.fpcalc_checker.fpcalc_path})")
+            logger.info(
+                f"DuplicateDetector initialized (threshold: {similarity_threshold}, fpcalc: {self.fpcalc_checker.fpcalc_path})"
+            )
         else:
             logger.info(f"DuplicateDetector initialized (threshold: {similarity_threshold}, fpcalc: NOT AVAILABLE)")
 
-    def scan_library(self, method='metadata') -> List[Dict]:
+    def scan_library(self, method: str = "metadata") -> List[Dict[str, Any]]:
         """
         Scan entire library for duplicates
 
@@ -71,17 +74,17 @@ class DuplicateDetector:
             - confidence: Similarity score
             - method: Detection method used
         """
-        if method == 'metadata':
+        if method == "metadata":
             return self.detect_by_metadata()
-        elif method == 'fingerprint':
+        elif method == "fingerprint":
             return self.detect_by_fingerprint()
-        elif method == 'filesize':
+        elif method == "filesize":
             return self.detect_by_filesize()
         else:
             logger.error(f"Unknown detection method: {method}")
             return []
 
-    def detect_by_metadata(self) -> List[Dict]:
+    def detect_by_metadata(self) -> List[Dict[str, Any]]:
         """
         Detect duplicates by comparing metadata (title, artist, duration)
 
@@ -106,14 +109,14 @@ class DuplicateDetector:
 
         # Compare each song with every other song
         for i, song1 in enumerate(songs):
-            if song1['id'] in processed:
+            if song1["id"] in processed:
                 continue
 
             duplicates = [song1]
             similarities = []
 
-            for j, song2 in enumerate(songs[i + 1:], start=i + 1):
-                if song2['id'] in processed:
+            for j, song2 in enumerate(songs[i + 1 :], start=i + 1):
+                if song2["id"] in processed:
                     continue
 
                 # Calculate similarity
@@ -122,11 +125,11 @@ class DuplicateDetector:
                 if similarity >= self.similarity_threshold:
                     duplicates.append(song2)
                     similarities.append(similarity)
-                    processed.add(song2['id'])
+                    processed.add(song2["id"])
 
             # If found duplicates (more than original song)
             if len(duplicates) > 1:
-                processed.add(song1['id'])
+                processed.add(song1["id"])
 
                 # Sort by quality (bitrate)
                 sorted_duplicates = self._sort_by_quality(duplicates)
@@ -134,16 +137,14 @@ class DuplicateDetector:
                 # Use average similarity for group confidence
                 avg_confidence = sum(similarities) / len(similarities)
 
-                duplicate_groups.append({
-                    'songs': sorted_duplicates,
-                    'confidence': round(avg_confidence, 3),
-                    'method': 'metadata'
-                })
+                duplicate_groups.append(
+                    {"songs": sorted_duplicates, "confidence": round(avg_confidence, 3), "method": "metadata"}
+                )
 
         logger.info(f"Metadata detection: Found {len(duplicate_groups)} duplicate groups")
         return duplicate_groups
 
-    def detect_by_fingerprint(self) -> List[Dict]:
+    def detect_by_fingerprint(self) -> List[Dict[str, Any]]:
         """
         Detect duplicates using audio fingerprinting
 
@@ -162,9 +163,9 @@ class DuplicateDetector:
         fingerprints = {}
         for song in songs:
             try:
-                fp = self._generate_fingerprint(song['file_path'])
+                fp = self._generate_fingerprint(song["file_path"])
                 if fp:
-                    fingerprints[song['id']] = fp
+                    fingerprints[song["id"]] = fp
             except (OSError, ImportError) as e:
                 logger.warning(f"Failed to generate fingerprint for {song['file_path']}: {e}")
                 continue
@@ -172,8 +173,8 @@ class DuplicateDetector:
         # Group songs by fingerprint
         fp_groups = defaultdict(list)
         for song in songs:
-            if song['id'] in fingerprints:
-                fp = fingerprints[song['id']]
+            if song["id"] in fingerprints:
+                fp = fingerprints[song["id"]]
                 fp_groups[fp].append(song)
 
         # Build duplicate groups
@@ -181,16 +182,18 @@ class DuplicateDetector:
         for fp, songs_list in fp_groups.items():
             if len(songs_list) > 1:
                 sorted_songs = self._sort_by_quality(songs_list)
-                duplicate_groups.append({
-                    'songs': sorted_songs,
-                    'confidence': 0.99,  # Fingerprint is highly accurate
-                    'method': 'fingerprint'
-                })
+                duplicate_groups.append(
+                    {
+                        "songs": sorted_songs,
+                        "confidence": 0.99,  # Fingerprint is highly accurate
+                        "method": "fingerprint",
+                    }
+                )
 
         logger.info(f"Fingerprint detection: Found {len(duplicate_groups)} duplicate groups")
         return duplicate_groups
 
-    def detect_by_filesize(self) -> List[Dict]:
+    def detect_by_filesize(self) -> List[Dict[str, Any]]:
         """
         Detect duplicates by comparing file sizes
 
@@ -210,7 +213,7 @@ class DuplicateDetector:
 
         for song in songs:
             try:
-                file_path = song['file_path']
+                file_path = song["file_path"]
                 if os.path.exists(file_path):
                     size = os.path.getsize(file_path)
                     size_groups[size].append(song)
@@ -223,11 +226,9 @@ class DuplicateDetector:
         for size, songs_list in size_groups.items():
             if len(songs_list) > 1:
                 sorted_songs = self._sort_by_quality(songs_list)
-                duplicate_groups.append({
-                    'songs': sorted_songs,
-                    'confidence': 0.70,  # File size is less reliable
-                    'method': 'filesize'
-                })
+                duplicate_groups.append(
+                    {"songs": sorted_songs, "confidence": 0.70, "method": "filesize"}  # File size is less reliable
+                )
 
         logger.info(f"File size detection: Found {len(duplicate_groups)} duplicate groups")
         return duplicate_groups
@@ -238,19 +239,20 @@ class DuplicateDetector:
         text = text.lower().strip()
         # Strip YouTube artifacts
         text = re.sub(
-            r'\s*[\(\[](official\s*)?(music\s*)?video[\)\]]'
-            r'|\s*[\(\[]official\s*audio[\)\]]'
-            r'|\s*[\(\[]audio[\)\]]'
-            r'|\s*[\(\[]lyric[s]?\s*video[\)\]]'
-            r'|\s*[\(\[]visuali[zs]er[\)\]]'
-            r'|\s*[\(\[]live[\)\]]'
-            r'|\s*[\(\[](hd|hq|4k|1080p)[\)\]]'
-            r'|\s*[\(\[]remaster(ed)?[\)\]]',
-            '', text
+            r"\s*[\(\[](official\s*)?(music\s*)?video[\)\]]"
+            r"|\s*[\(\[]official\s*audio[\)\]]"
+            r"|\s*[\(\[]audio[\)\]]"
+            r"|\s*[\(\[]lyric[s]?\s*video[\)\]]"
+            r"|\s*[\(\[]visuali[zs]er[\)\]]"
+            r"|\s*[\(\[]live[\)\]]"
+            r"|\s*[\(\[](hd|hq|4k|1080p)[\)\]]"
+            r"|\s*[\(\[]remaster(ed)?[\)\]]",
+            "",
+            text,
         )
         return text.strip()
 
-    def _calculate_metadata_similarity(self, song1: Dict, song2: Dict) -> float:
+    def _calculate_metadata_similarity(self, song1: Dict[str, Any], song2: Dict[str, Any]) -> float:
         """
         Calculate similarity score between two songs based on metadata
 
@@ -261,18 +263,18 @@ class DuplicateDetector:
             Similarity score (0.0 - 1.0)
         """
         # Title similarity (50% weight) — normalize YouTube noise first
-        title1 = self._normalize_for_comparison(song1.get('title', ''))
-        title2 = self._normalize_for_comparison(song2.get('title', ''))
+        title1 = self._normalize_for_comparison(song1.get("title", ""))
+        title2 = self._normalize_for_comparison(song2.get("title", ""))
         title_sim = SequenceMatcher(None, title1, title2).ratio()
 
         # Artist similarity (30% weight)
-        artist1 = song1.get('artist', '').lower().strip()
-        artist2 = song2.get('artist', '').lower().strip()
+        artist1 = song1.get("artist", "").lower().strip()
+        artist2 = song2.get("artist", "").lower().strip()
         artist_sim = SequenceMatcher(None, artist1, artist2).ratio()
 
         # Duration similarity (20% weight) - ±3 seconds tolerance
-        duration1 = song1.get('duration', 0)
-        duration2 = song2.get('duration', 0)
+        duration1 = song1.get("duration", 0)
+        duration2 = song2.get("duration", 0)
         duration_diff = abs(duration1 - duration2)
 
         if duration_diff <= 3:
@@ -313,27 +315,27 @@ class DuplicateDetector:
             # CRITICAL: acoustid.fingerprint_file() doesn't accept fpcalc parameter
             # Instead, it reads from FPCALC environment variable
             # Set it temporarily for this call
-            old_fpcalc = os.environ.get('FPCALC')
-            os.environ['FPCALC'] = self.fpcalc_checker.fpcalc_path
+            old_fpcalc = os.environ.get("FPCALC")
+            os.environ["FPCALC"] = self.fpcalc_checker.fpcalc_path
 
             try:
                 duration, fingerprint = acoustid.fingerprint_file(file_path)
-                return fingerprint
+                return fingerprint  # type: ignore[no-any-return]
             except (acoustid.FingerprintGenerationError, acoustid.NoBackendError, OSError) as e:
                 logger.warning(f"Failed to generate fingerprint: {e}")
                 return None
             finally:
                 # Restore original environment variable
                 if old_fpcalc is not None:
-                    os.environ['FPCALC'] = old_fpcalc
+                    os.environ["FPCALC"] = old_fpcalc
                 else:
-                    os.environ.pop('FPCALC', None)
+                    os.environ.pop("FPCALC", None)
 
         except ImportError:
             logger.warning("acoustid not installed - fingerprint detection unavailable")
             return None
 
-    def _sort_by_quality(self, songs: List[Dict]) -> List[Dict]:
+    def _sort_by_quality(self, songs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Sort songs by quality (highest bitrate first)
 
@@ -343,4 +345,4 @@ class DuplicateDetector:
         Returns:
             Sorted list (highest quality first)
         """
-        return sorted(songs, key=lambda s: s.get('bitrate', 0), reverse=True)
+        return sorted(songs, key=lambda s: s.get("bitrate", 0), reverse=True)

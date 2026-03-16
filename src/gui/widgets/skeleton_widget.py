@@ -12,10 +12,15 @@ Features:
 
 Created: November 23, 2025
 """
+
+from __future__ import annotations
+
 import logging
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame
-from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, Property
-from PySide6.QtGui import QPainter, QColor, QLinearGradient, QPaintEvent
+from typing import List, Optional
+
+from PySide6.QtCore import Property, QEasingCurve, QPropertyAnimation, Qt, QTimer
+from PySide6.QtGui import QColor, QHideEvent, QLinearGradient, QPainter, QPaintEvent, QShowEvent
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout, QWidget
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +28,7 @@ logger = logging.getLogger(__name__)
 class SkeletonLine(QFrame):
     """Single skeleton line with shimmer animation"""
 
-    def __init__(self, width_percent: int = 100, height: int = 16, parent=None):
+    def __init__(self, width_percent: int = 100, height: int = 16, parent: Optional[QWidget] = None) -> None:
         """
         Initialize skeleton line
 
@@ -33,10 +38,10 @@ class SkeletonLine(QFrame):
             parent: Parent widget
         """
         super().__init__(parent)
-        self._width_percent = width_percent
-        self._shimmer_position = 0.0
-        self._base_color = QColor(60, 60, 60)
-        self._shimmer_color = QColor(80, 80, 80)
+        self._width_percent: int = width_percent
+        self._shimmer_position: float = 0.0
+        self._base_color: QColor = QColor(60, 60, 60)
+        self._shimmer_color: QColor = QColor(80, 80, 80)
 
         self.setFixedHeight(height)
         self.setMinimumWidth(50)
@@ -53,13 +58,13 @@ class SkeletonLine(QFrame):
     def get_shimmer_position(self) -> float:
         return self._shimmer_position
 
-    def set_shimmer_position(self, value: float):
+    def set_shimmer_position(self, value: float) -> None:
         self._shimmer_position = value
         self.update()
 
     shimmer_position = Property(float, get_shimmer_position, set_shimmer_position)
 
-    def set_theme(self, is_dark: bool):
+    def set_theme(self, is_dark: bool) -> None:
         """Update colors based on theme"""
         if is_dark:
             self._base_color = QColor(60, 60, 60)
@@ -69,7 +74,7 @@ class SkeletonLine(QFrame):
             self._shimmer_color = QColor(240, 240, 240)
         self.update()
 
-    def paintEvent(self, event: QPaintEvent):
+    def paintEvent(self, event: QPaintEvent) -> None:  # type: ignore[override]
         """Custom paint with shimmer effect"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -95,11 +100,11 @@ class SkeletonLine(QFrame):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(0, 0, actual_width, self.height(), 4, 4)
 
-    def stop_animation(self):
+    def stop_animation(self) -> None:
         """Stop the shimmer animation"""
         self._animation.stop()
 
-    def start_animation(self):
+    def start_animation(self) -> None:
         """Start the shimmer animation"""
         self._animation.start()
 
@@ -107,7 +112,7 @@ class SkeletonLine(QFrame):
 class SkeletonRow(QWidget):
     """Single skeleton row representing a table row"""
 
-    def __init__(self, columns: list = None, parent=None):
+    def __init__(self, columns: Optional[List[int]] = None, parent: Optional[QWidget] = None) -> None:
         """
         Initialize skeleton row
 
@@ -116,7 +121,7 @@ class SkeletonRow(QWidget):
             parent: Parent widget
         """
         super().__init__(parent)
-        self._lines = []
+        self._lines: List[SkeletonLine] = []
 
         if columns is None:
             columns = [30, 25, 20, 15, 10]  # Default column widths
@@ -130,17 +135,17 @@ class SkeletonRow(QWidget):
             self._lines.append(line)
             layout.addWidget(line, stretch=width)
 
-    def set_theme(self, is_dark: bool):
+    def set_theme(self, is_dark: bool) -> None:
         """Update theme for all lines"""
         for line in self._lines:
             line.set_theme(is_dark)
 
-    def stop_animation(self):
+    def stop_animation(self) -> None:
         """Stop all animations"""
         for line in self._lines:
             line.stop_animation()
 
-    def start_animation(self):
+    def start_animation(self) -> None:
         """Start all animations"""
         for line in self._lines:
             line.start_animation()
@@ -154,7 +159,7 @@ class SkeletonTableWidget(QWidget):
     Replace with actual content once data is ready.
     """
 
-    def __init__(self, rows: int = 10, columns: list = None, parent=None):
+    def __init__(self, rows: int = 10, columns: Optional[List[int]] = None, parent: Optional[QWidget] = None) -> None:
         """
         Initialize skeleton table
 
@@ -164,8 +169,8 @@ class SkeletonTableWidget(QWidget):
             parent: Parent widget
         """
         super().__init__(parent)
-        self._rows = []
-        self._is_dark = True
+        self._rows: List[SkeletonRow] = []
+        self._is_dark: bool = True
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -182,28 +187,28 @@ class SkeletonTableWidget(QWidget):
 
         logger.debug(f"SkeletonTableWidget created with {rows} rows")
 
-    def set_theme(self, is_dark: bool):
+    def set_theme(self, is_dark: bool) -> None:
         """Update theme for all rows"""
         self._is_dark = is_dark
         for row in self._rows:
             row.set_theme(is_dark)
 
-    def stop_animation(self):
+    def stop_animation(self) -> None:
         """Stop all animations (call when hiding)"""
         for row in self._rows:
             row.stop_animation()
 
-    def start_animation(self):
+    def start_animation(self) -> None:
         """Start all animations (call when showing)"""
         for row in self._rows:
             row.start_animation()
 
-    def showEvent(self, event):
+    def showEvent(self, event: QShowEvent) -> None:
         """Start animations when shown"""
         super().showEvent(event)
         self.start_animation()
 
-    def hideEvent(self, event):
+    def hideEvent(self, event: QHideEvent) -> None:
         """Stop animations when hidden"""
         super().hideEvent(event)
         self.stop_animation()
@@ -212,7 +217,7 @@ class SkeletonTableWidget(QWidget):
 class SkeletonCard(QWidget):
     """Skeleton placeholder for card-style content"""
 
-    def __init__(self, width: int = 200, height: int = 250, parent=None):
+    def __init__(self, width: int = 200, height: int = 250, parent: Optional[QWidget] = None) -> None:
         """
         Initialize skeleton card (e.g., for album grid view)
 
@@ -243,19 +248,19 @@ class SkeletonCard(QWidget):
 
         layout.addStretch()
 
-    def set_theme(self, is_dark: bool):
+    def set_theme(self, is_dark: bool) -> None:
         """Update theme"""
         self._art_skeleton.set_theme(is_dark)
         self._title_skeleton.set_theme(is_dark)
         self._artist_skeleton.set_theme(is_dark)
 
-    def stop_animation(self):
+    def stop_animation(self) -> None:
         """Stop animations"""
         self._art_skeleton.stop_animation()
         self._title_skeleton.stop_animation()
         self._artist_skeleton.stop_animation()
 
-    def start_animation(self):
+    def start_animation(self) -> None:
         """Start animations"""
         self._art_skeleton.start_animation()
         self._title_skeleton.start_animation()
@@ -263,7 +268,7 @@ class SkeletonCard(QWidget):
 
 
 # Convenience function for creating skeleton loaders
-def create_table_skeleton(rows: int = 10, columns: list = None) -> SkeletonTableWidget:
+def create_table_skeleton(rows: int = 10, columns: Optional[List[int]] = None) -> SkeletonTableWidget:
     """
     Create a skeleton table widget
 

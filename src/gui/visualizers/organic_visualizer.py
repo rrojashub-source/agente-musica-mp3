@@ -21,35 +21,44 @@ Created: December 17, 2025
 Origin: NEXUS Avatar project (nexus-avatar/src/shaders/nexusCore.ts)
 """
 
+# mypy: disable-error-code="name-defined, misc"
+
+from __future__ import annotations
+
+import ctypes
 import logging
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 
 
 def get_resource_path(relative_path: str) -> Path:
     """Get absolute path to resource, works for dev and PyInstaller bundle."""
-    if hasattr(sys, '_MEIPASS') or '__compiled__' in globals():
+    if hasattr(sys, "_MEIPASS") or "__compiled__" in globals():
         # Running from PyInstaller bundle
-        base_path = Path(sys._MEIPASS) if hasattr(sys, '_MEIPASS') else Path(__file__).parent.parent
+        base_path = Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else Path(__file__).parent.parent
     else:
         # Running from source
         base_path = Path(__file__).parent.parent.parent  # src/gui/visualizers -> src
     return base_path / relative_path
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
+
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QSurfaceFormat
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+
+from gui.themes.style_constants import Styles
 from utils.constants import ANIMATION_FRAME_INTERVAL_MS
 
 # Try to import OpenGL - graceful fallback if not available
 try:
-    from PySide6.QtOpenGLWidgets import QOpenGLWidget
     from OpenGL.GL import *
     from OpenGL.GL import shaders
+    from PySide6.QtOpenGLWidgets import QOpenGLWidget
+
     OPENGL_AVAILABLE = True
 except ImportError:
     OPENGL_AVAILABLE = False
@@ -77,10 +86,10 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
     """
 
     # Brain AI color palette (matches other visualizers)
-    DEFAULT_BASE_COLOR = (0.0, 0.78, 1.0)    # Cyan (0, 200, 255)
-    DEFAULT_ACCENT_COLOR = (0.39, 0.0, 1.0)  # Purple (100, 0, 255)
+    DEFAULT_BASE_COLOR: Tuple[float, float, float] = (0.0, 0.78, 1.0)  # Cyan (0, 200, 255)
+    DEFAULT_ACCENT_COLOR: Tuple[float, float, float] = (0.39, 0.0, 1.0)  # Purple (100, 0, 255)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         """Initialize the Organic Visualizer Widget."""
         if not OPENGL_AVAILABLE:
             super().__init__(parent)
@@ -97,33 +106,33 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
         super().__init__(parent)
 
         # Shader program
-        self.shader_program = None
-        self.vao = None
-        self.vbo = None
+        self.shader_program: Optional[int] = None
+        self.vao: Optional[int] = None
+        self.vbo: Optional[int] = None
 
         # Audio uniforms (0.0 to 1.0)
-        self.bass = 0.0
-        self.mids = 0.0
-        self.highs = 0.0
-        self.amplitude = 0.0
-        self.beat = 0.0  # 0 = fluid, 1 = crystal
+        self.bass: float = 0.0
+        self.mids: float = 0.0
+        self.highs: float = 0.0
+        self.amplitude: float = 0.0
+        self.beat: float = 0.0  # 0 = fluid, 1 = crystal
 
         # Smoothing targets (for responsive but smooth animation)
-        self._target_bass = 0.0
-        self._target_mids = 0.0
-        self._target_highs = 0.0
-        self._target_amplitude = 0.0
+        self._target_bass: float = 0.0
+        self._target_mids: float = 0.0
+        self._target_highs: float = 0.0
+        self._target_amplitude: float = 0.0
 
         # Time tracking
-        self.start_time = time.time()
+        self.start_time: float = time.time()
 
         # Colors
-        self.base_color = self.DEFAULT_BASE_COLOR
-        self.accent_color = self.DEFAULT_ACCENT_COLOR
+        self.base_color: Tuple[float, float, float] = self.DEFAULT_BASE_COLOR
+        self.accent_color: Tuple[float, float, float] = self.DEFAULT_ACCENT_COLOR
 
         # Beat detection state
-        self._last_amplitude = 0.0
-        self._beat_decay = 0.0
+        self._last_amplitude: float = 0.0
+        self._beat_decay: float = 0.0
 
         # Animation timer (60 FPS)
         self.timer = QTimer(self)
@@ -135,7 +144,7 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
 
         logger.info("OrganicVisualizerWidget initialized (OpenGL)")
 
-    def _init_fallback_ui(self):
+    def _init_fallback_ui(self) -> None:
         """Initialize fallback UI when OpenGL is not available."""
         # Initialize audio state (needed even in fallback mode)
         self.bass = 0.0
@@ -153,11 +162,11 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
         layout = QVBoxLayout(self)
         label = QLabel("OpenGL not available\nInstall PyOpenGL for organic visualizer")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet("color: #888; font-size: 14px;")
+        label.setStyleSheet(Styles.FALLBACK_LABEL)
         layout.addWidget(label)
         logger.warning("OrganicVisualizerWidget: OpenGL not available, using fallback")
 
-    def initializeGL(self):
+    def initializeGL(self) -> None:
         """Initialize OpenGL resources."""
         if not OPENGL_AVAILABLE:
             return
@@ -168,9 +177,9 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
             vertex_path = shader_dir / "vertex.glsl"
             fragment_path = shader_dir / "fragment_music.glsl"
 
-            with open(vertex_path, 'r') as f:
+            with open(vertex_path, "r") as f:
                 vertex_src = f.read()
-            with open(fragment_path, 'r') as f:
+            with open(fragment_path, "r") as f:
                 fragment_src = f.read()
 
             # Compile shaders
@@ -186,22 +195,43 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
 
             logger.info("OpenGL initialized successfully")
 
-        except Exception as e:
+        except Exception as e:  # OpenGL init can fail with diverse driver/GPU errors
             logger.error(f"Failed to initialize OpenGL: {e}")
             self.shader_program = None
 
-    def _setup_quad(self):
+    def _setup_quad(self) -> None:
         """Setup fullscreen quad geometry."""
         # Fullscreen quad vertices (position + texcoord)
         # Format: x, y, u, v
-        vertices = np.array([
-            -1.0, -1.0, 0.0, 0.0,  # Bottom-left
-             1.0, -1.0, 1.0, 0.0,  # Bottom-right
-             1.0,  1.0, 1.0, 1.0,  # Top-right
-            -1.0, -1.0, 0.0, 0.0,  # Bottom-left
-             1.0,  1.0, 1.0, 1.0,  # Top-right
-            -1.0,  1.0, 0.0, 1.0,  # Top-left
-        ], dtype=np.float32)
+        vertices = np.array(
+            [
+                -1.0,
+                -1.0,
+                0.0,
+                0.0,  # Bottom-left
+                1.0,
+                -1.0,
+                1.0,
+                0.0,  # Bottom-right
+                1.0,
+                1.0,
+                1.0,
+                1.0,  # Top-right
+                -1.0,
+                -1.0,
+                0.0,
+                0.0,  # Bottom-left
+                1.0,
+                1.0,
+                1.0,
+                1.0,  # Top-right
+                -1.0,
+                1.0,
+                0.0,
+                1.0,  # Top-left
+            ],
+            dtype=np.float32,
+        )
 
         # Create VAO
         self.vao = glGenVertexArrays(1)
@@ -229,13 +259,13 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
 
         glBindVertexArray(0)
 
-    def resizeGL(self, width: int, height: int):
+    def resizeGL(self, width: int, height: int) -> None:
         """Handle widget resize."""
         if not OPENGL_AVAILABLE:
             return
         glViewport(0, 0, width, height)
 
-    def paintGL(self):
+    def paintGL(self) -> None:
         """Render the visualizer."""
         if not OPENGL_AVAILABLE or not self.shader_program:
             return
@@ -294,7 +324,7 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
 
         glUseProgram(0)
 
-    def _on_timer(self):
+    def _on_timer(self) -> None:
         """Timer callback for animation."""
         # FAST smoothing toward targets (responsive but not jerky)
         # Attack: 0.5 = very fast response to increases
@@ -333,8 +363,7 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
 
         self.update()  # Trigger repaint
 
-    def update_audio(self, bass: float = 0.0, mids: float = 0.0,
-                     highs: float = 0.0, amplitude: float = 0.0):
+    def update_audio(self, bass: float = 0.0, mids: float = 0.0, highs: float = 0.0, amplitude: float = 0.0) -> None:
         """
         Update audio parameters (sets targets for smooth animation).
 
@@ -364,7 +393,7 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
             self.beat = max(self.beat, 0.4)
         self._last_amplitude = amplitude
 
-    def update_from_fft(self, fft_data: List[float], num_bins: int = 512):
+    def update_from_fft(self, fft_data: List[float], num_bins: int = 512) -> None:
         """
         Update audio parameters from FFT data.
 
@@ -382,8 +411,8 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
             return
 
         n = len(fft_data)
-        bass_end = max(3, int(n * 0.08))      # 8% for bass
-        mids_end = int(n * 0.30)               # 30% for mids
+        bass_end = max(3, int(n * 0.08))  # 8% for bass
+        mids_end = int(n * 0.30)  # 30% for mids
         # Rest is highs
 
         # Calculate averages for each range
@@ -395,10 +424,10 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
         # Data is already normalized 0.0-1.0 from WaveformExtractor (dB scale).
         # Apply power curve (x^0.7) to expand quiet values + mild boost.
         # This gives visual dynamic range: quiet ~0.2, normal ~0.5, loud ~0.9
-        bass = min(1.0, bass ** 0.7 * 1.2)
-        mids = min(1.0, mids ** 0.7 * 1.5)
-        highs = min(1.0, highs ** 0.6 * 2.5)
-        amplitude = min(1.0, amplitude ** 0.7 * 1.8)
+        bass = min(1.0, bass**0.7 * 1.2)
+        mids = min(1.0, mids**0.7 * 1.5)
+        highs = min(1.0, highs**0.6 * 2.5)
+        amplitude = min(1.0, amplitude**0.7 * 1.8)
 
         self.update_audio(bass, mids, highs, amplitude)
 
@@ -410,7 +439,7 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
         bins = data[start:end]
         return sum(bins) / len(bins) if bins else 0.0
 
-    def set_colors(self, base_color: tuple, accent_color: tuple):
+    def set_colors(self, base_color: Tuple[float, float, float], accent_color: Tuple[float, float, float]) -> None:
         """
         Set visualizer colors.
 
@@ -421,7 +450,7 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
         self.base_color = base_color
         self.accent_color = accent_color
 
-    def set_style(self, style: str):
+    def set_style(self, style: str) -> None:
         """
         Set visual style preset.
 
@@ -429,17 +458,17 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
             style: 'nexus', 'aria', 'echo', or 'music'
         """
         styles = {
-            'nexus': ((0.0, 0.78, 1.0), (1.0, 0.0, 0.78)),      # Cyan/Magenta
-            'aria': ((1.0, 0.4, 0.6), (1.0, 0.8, 0.4)),         # Pink/Gold
-            'echo': ((0.7, 0.7, 0.8), (0.4, 0.6, 1.0)),         # Silver/Blue
-            'music': ((0.2, 0.8, 0.4), (0.8, 0.2, 1.0)),        # Green/Purple
+            "nexus": ((0.0, 0.78, 1.0), (1.0, 0.0, 0.78)),  # Cyan/Magenta
+            "aria": ((1.0, 0.4, 0.6), (1.0, 0.8, 0.4)),  # Pink/Gold
+            "echo": ((0.7, 0.7, 0.8), (0.4, 0.6, 1.0)),  # Silver/Blue
+            "music": ((0.2, 0.8, 0.4), (0.8, 0.2, 1.0)),  # Green/Purple
         }
 
         if style in styles:
             self.base_color, self.accent_color = styles[style]
             logger.info(f"Organic visualizer style set to: {style}")
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup OpenGL resources."""
         if not OPENGL_AVAILABLE:
             return
@@ -456,7 +485,7 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
             glDeleteProgram(self.shader_program)
         self.doneCurrent()
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: Any) -> None:
         """Handle widget close."""
         self.cleanup()
         super().closeEvent(event)

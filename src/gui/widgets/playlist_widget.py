@@ -16,19 +16,41 @@ Features:
 Created: November 13, 2025
 Updated: November 22, 2025 (Fixed song selection dialog)
 """
+
+from __future__ import annotations
+
 import logging
 import sqlite3
-from typing import List, Optional
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
-    QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem,
-    QPushButton, QMessageBox, QInputDialog, QFileDialog,
-    QHeaderView, QAbstractItemView, QLabel, QMenu, QDialog,
-    QDialogButtonBox, QCheckBox, QScrollArea, QFrame
-)
+from pathlib import Path
+from typing import Any, List, Optional
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction
-from pathlib import Path
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QCheckBox,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QInputDialog,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
+from gui.themes.style_constants import Styles
 
 logger = logging.getLogger(__name__)
 
@@ -36,17 +58,20 @@ logger = logging.getLogger(__name__)
 class SongSelectionDialog(QDialog):
     """Dialog to select songs from library to add to playlist"""
 
-    def __init__(self, db_manager, parent=None):
+    def __init__(self, db_manager: Any, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
-        self.db_manager = db_manager
-        self.selected_song_ids = []
+        self.db_manager: Any = db_manager
+        self.selected_song_ids: List[int] = []
+        self.songs_table: QTableWidget
+        self.select_all_btn: QPushButton
+        self.select_none_btn: QPushButton
 
         self.setWindowTitle("Select Songs to Add")
         self.setMinimumSize(600, 400)
         self._init_ui()
         self._load_songs()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         layout = QVBoxLayout()
         self.setLayout(layout)
 
@@ -57,7 +82,7 @@ class SongSelectionDialog(QDialog):
         # Songs table with checkboxes
         self.songs_table = QTableWidget()
         self.songs_table.setColumnCount(4)
-        self.songs_table.setHorizontalHeaderLabels(['Select', 'Title', 'Artist', 'Album'])
+        self.songs_table.setHorizontalHeaderLabels(["Select", "Title", "Artist", "Album"])
         self.songs_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.songs_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.songs_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -77,14 +102,12 @@ class SongSelectionDialog(QDialog):
         layout.addLayout(select_layout)
 
         # Dialog buttons
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         button_box.accepted.connect(self._on_accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
-    def _load_songs(self):
+    def _load_songs(self) -> None:
         """Load all songs from database"""
         try:
             songs = self.db_manager.get_all_songs()
@@ -93,42 +116,42 @@ class SongSelectionDialog(QDialog):
             for row, song in enumerate(songs):
                 # Checkbox
                 checkbox = QCheckBox()
-                checkbox.setProperty('song_id', song.get('id'))
+                checkbox.setProperty("song_id", song.get("id"))
                 self.songs_table.setCellWidget(row, 0, checkbox)
 
                 # Title
-                self.songs_table.setItem(row, 1, QTableWidgetItem(song.get('title', 'Unknown')))
+                self.songs_table.setItem(row, 1, QTableWidgetItem(song.get("title", "Unknown")))
 
                 # Artist
-                self.songs_table.setItem(row, 2, QTableWidgetItem(song.get('artist', 'Unknown')))
+                self.songs_table.setItem(row, 2, QTableWidgetItem(song.get("artist", "Unknown")))
 
                 # Album
-                self.songs_table.setItem(row, 3, QTableWidgetItem(song.get('album', 'Unknown')))
+                self.songs_table.setItem(row, 3, QTableWidgetItem(song.get("album", "Unknown")))
 
         except sqlite3.Error as e:
             logger.error(f"Failed to load songs: {e}")
 
-    def _select_all(self):
+    def _select_all(self) -> None:
         """Select all songs"""
         for row in range(self.songs_table.rowCount()):
             checkbox = self.songs_table.cellWidget(row, 0)
             if checkbox:
                 checkbox.setChecked(True)
 
-    def _select_none(self):
+    def _select_none(self) -> None:
         """Deselect all songs"""
         for row in range(self.songs_table.rowCount()):
             checkbox = self.songs_table.cellWidget(row, 0)
             if checkbox:
                 checkbox.setChecked(False)
 
-    def _on_accept(self):
+    def _on_accept(self) -> None:
         """Collect selected song IDs and accept"""
         self.selected_song_ids = []
         for row in range(self.songs_table.rowCount()):
             checkbox = self.songs_table.cellWidget(row, 0)
             if checkbox and checkbox.isChecked():
-                song_id = checkbox.property('song_id')
+                song_id = checkbox.property("song_id")
                 if song_id:
                     self.selected_song_ids.append(song_id)
         self.accept()
@@ -157,7 +180,7 @@ class PlaylistWidget(QWidget):
     playlist_deleted = Signal(int)
     play_song_requested = Signal(dict)  # Emitted when user wants to play a song from playlist
 
-    def __init__(self, playlist_manager, db_manager, parent=None):
+    def __init__(self, playlist_manager: Any, db_manager: Any, parent: Optional[QWidget] = None) -> None:
         """
         Initialize Playlist Widget
 
@@ -167,10 +190,10 @@ class PlaylistWidget(QWidget):
             parent: Parent widget (optional)
         """
         super().__init__(parent)
-        self.playlist_manager = playlist_manager
-        self.db_manager = db_manager
-        self.current_playlist_id = None
-        self._current_playing_song_id = None  # Track currently playing song for highlight
+        self.playlist_manager: Any = playlist_manager
+        self.db_manager: Any = db_manager
+        self.current_playlist_id: Optional[int] = None
+        self._current_playing_song_id: Optional[int] = None  # Track currently playing song for highlight
 
         # No size restrictions - this is now a full tab
 
@@ -179,7 +202,7 @@ class PlaylistWidget(QWidget):
 
         logger.info("PlaylistWidget initialized")
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize UI components - Grid layout for playlists"""
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -194,7 +217,7 @@ class PlaylistWidget(QWidget):
         header_layout = QHBoxLayout()
 
         title = QLabel("🎵 Your Playlists")
-        title.setStyleSheet("font-size: 14pt; font-weight: bold;")
+        title.setStyleSheet(Styles.SUBSECTION_TITLE)
         header_layout.addWidget(title)
 
         header_layout.addStretch()
@@ -266,7 +289,7 @@ class PlaylistWidget(QWidget):
         header_layout = QHBoxLayout()
 
         self.songs_label = QLabel("📋 Select a playlist above to see its songs")
-        self.songs_label.setStyleSheet("font-weight: bold; font-size: 12pt;")
+        self.songs_label.setStyleSheet(Styles.LABEL_BOLD_PT)
         header_layout.addWidget(self.songs_label)
 
         header_layout.addStretch()
@@ -282,7 +305,7 @@ class PlaylistWidget(QWidget):
         # Songs table
         self.songs_table = QTableWidget()
         self.songs_table.setColumnCount(4)
-        self.songs_table.setHorizontalHeaderLabels(['Title', 'Artist', 'Album', 'Duration'])
+        self.songs_table.setHorizontalHeaderLabels(["Title", "Artist", "Album", "Duration"])
         self.songs_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.songs_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.songs_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -304,7 +327,7 @@ class PlaylistWidget(QWidget):
 
     # ========== PLAYLIST OPERATIONS ==========
 
-    def load_playlists(self):
+    def load_playlists(self) -> None:
         """Load all playlists from database into grid"""
         try:
             playlists = self.playlist_manager.get_playlists()
@@ -318,9 +341,7 @@ class PlaylistWidget(QWidget):
 
             # Set column widths to stretch
             for col in range(num_cols):
-                self.playlists_table.horizontalHeader().setSectionResizeMode(
-                    col, QHeaderView.ResizeMode.Stretch
-                )
+                self.playlists_table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
 
             # Fill grid with playlists
             for i, playlist in enumerate(playlists):
@@ -329,7 +350,7 @@ class PlaylistWidget(QWidget):
 
                 item_text = f"{playlist['name']}\n({playlist['song_count']} songs)"
                 item = QTableWidgetItem(item_text)
-                item.setData(Qt.ItemDataRole.UserRole, playlist['id'])
+                item.setData(Qt.ItemDataRole.UserRole, playlist["id"])
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.playlists_table.setItem(row, col, item)
 
@@ -343,7 +364,7 @@ class PlaylistWidget(QWidget):
             logger.error(f"Failed to load playlists: {e}")
             QMessageBox.warning(self, "Error", f"Failed to load playlists: {e}")
 
-    def create_playlist(self):
+    def create_playlist(self) -> None:
         """Create new playlist"""
         try:
             # Get playlist name from user
@@ -366,7 +387,7 @@ class PlaylistWidget(QWidget):
             logger.error(f"Failed to create playlist: {e}")
             QMessageBox.warning(self, "Error", f"Failed to create playlist: {e}")
 
-    def delete_playlist(self):
+    def delete_playlist(self) -> None:
         """Delete selected playlist"""
         try:
             if not self.current_playlist_id:
@@ -380,7 +401,7 @@ class PlaylistWidget(QWidget):
                 self,
                 "Delete Playlist",
                 f"Are you sure you want to delete '{playlist_name}'?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
 
             if reply == QMessageBox.StandardButton.Yes:
@@ -414,7 +435,7 @@ class PlaylistWidget(QWidget):
             logger.error(f"Failed to delete playlist: {e}")
             QMessageBox.warning(self, "Error", f"Failed to delete playlist: {e}")
 
-    def rename_playlist(self):
+    def rename_playlist(self) -> None:
         """Rename selected playlist"""
         try:
             if not self.current_playlist_id:
@@ -424,12 +445,7 @@ class PlaylistWidget(QWidget):
             old_name = self._get_current_playlist_name()
 
             # Get new name from user
-            new_name, ok = QInputDialog.getText(
-                self,
-                "Rename Playlist",
-                "New playlist name:",
-                text=old_name
-            )
+            new_name, ok = QInputDialog.getText(self, "Rename Playlist", "New playlist name:", text=old_name)
 
             if ok and new_name:
                 # Update playlist name using manager
@@ -449,15 +465,12 @@ class PlaylistWidget(QWidget):
             logger.error(f"Failed to rename playlist: {e}")
             QMessageBox.warning(self, "Error", f"Failed to rename playlist: {e}")
 
-    def import_playlist(self):
+    def import_playlist(self) -> None:
         """Import playlist from .m3u8 file"""
         try:
             # Get file path from user
             file_path, _ = QFileDialog.getOpenFileName(
-                self,
-                "Import Playlist",
-                "",
-                "M3U8 Files (*.m3u8);;All Files (*)"
+                self, "Import Playlist", "", "M3U8 Files (*.m3u8);;All Files (*)"
             )
 
             if file_path:
@@ -480,7 +493,7 @@ class PlaylistWidget(QWidget):
             logger.error(f"Failed to import playlist: {e}")
             QMessageBox.warning(self, "Error", f"Failed to import playlist: {e}")
 
-    def export_playlist(self):
+    def export_playlist(self) -> None:
         """Export selected playlist to .m3u8 file"""
         try:
             if not self.current_playlist_id:
@@ -491,10 +504,7 @@ class PlaylistWidget(QWidget):
 
             # Get save path from user
             file_path, _ = QFileDialog.getSaveFileName(
-                self,
-                "Export Playlist",
-                f"{playlist_name}.m3u8",
-                "M3U8 Files (*.m3u8);;All Files (*)"
+                self, "Export Playlist", f"{playlist_name}.m3u8", "M3U8 Files (*.m3u8);;All Files (*)"
             )
 
             if file_path:
@@ -513,7 +523,7 @@ class PlaylistWidget(QWidget):
 
     # ========== SONG OPERATIONS ==========
 
-    def add_songs_to_playlist(self):
+    def add_songs_to_playlist(self) -> None:
         """Add songs to current playlist from library"""
         try:
             if not self.current_playlist_id:
@@ -557,7 +567,7 @@ class PlaylistWidget(QWidget):
 
     # ========== EVENT HANDLERS ==========
 
-    def _on_playlist_cell_clicked(self, item: QTableWidgetItem):
+    def _on_playlist_cell_clicked(self, item: QTableWidgetItem) -> None:
         """Handle playlist selection from grid"""
         if item is None:
             return
@@ -587,13 +597,13 @@ class PlaylistWidget(QWidget):
 
     def _get_current_playlist_name(self) -> str:
         """Get name of currently selected playlist"""
-        if hasattr(self, '_current_playlist_item') and self._current_playlist_item:
+        if hasattr(self, "_current_playlist_item") and self._current_playlist_item:
             text = self._current_playlist_item.text()
             # Name is before the newline
-            return text.split('\n')[0] if '\n' in text else text.split(' (')[0]
+            return text.split("\n")[0] if "\n" in text else text.split(" (")[0]
         return "Unknown"
 
-    def load_playlist_songs(self, playlist_id: int):
+    def load_playlist_songs(self, playlist_id: int) -> None:
         """Load songs for selected playlist"""
         try:
             # Update label
@@ -607,21 +617,21 @@ class PlaylistWidget(QWidget):
             self.songs_table.setRowCount(len(songs))
 
             for row, song in enumerate(songs):
-                song_id = song.get('id')
+                song_id = song.get("id")
 
                 # Title (store song_id in UserRole for later reference)
-                title_item = QTableWidgetItem(song.get('title', 'Unknown'))
+                title_item = QTableWidgetItem(song.get("title", "Unknown"))
                 title_item.setData(Qt.ItemDataRole.UserRole, song_id)
                 self.songs_table.setItem(row, 0, title_item)
 
                 # Artist
-                self.songs_table.setItem(row, 1, QTableWidgetItem(song.get('artist', 'Unknown')))
+                self.songs_table.setItem(row, 1, QTableWidgetItem(song.get("artist", "Unknown")))
 
                 # Album
-                self.songs_table.setItem(row, 2, QTableWidgetItem(song.get('album', 'Unknown')))
+                self.songs_table.setItem(row, 2, QTableWidgetItem(song.get("album", "Unknown")))
 
                 # Duration (convert seconds to MM:SS)
-                duration_sec = song.get('duration', 0)
+                duration_sec = song.get("duration", 0)
                 minutes = int(duration_sec // 60)
                 seconds = int(duration_sec % 60)
                 duration_str = f"{minutes}:{seconds:02d}"
@@ -637,7 +647,7 @@ class PlaylistWidget(QWidget):
             logger.error(f"Failed to load playlist songs: {e}")
             QMessageBox.warning(self, "Error", f"Failed to load songs: {e}")
 
-    def _show_context_menu(self, position):
+    def _show_context_menu(self, position: Any) -> None:
         """Show context menu for playlists grid"""
         try:
             item = self.playlists_table.itemAt(position)
@@ -672,7 +682,7 @@ class PlaylistWidget(QWidget):
         except Exception as e:  # GUI error boundary - must not crash
             logger.error(f"Failed to show context menu: {e}")
 
-    def _on_song_double_clicked(self, item: QTableWidgetItem):
+    def _on_song_double_clicked(self, item: QTableWidgetItem) -> None:
         """Handle double-click on song to play it"""
         try:
             row = item.row()
@@ -681,7 +691,7 @@ class PlaylistWidget(QWidget):
             if row < len(songs):
                 song = songs[row]
                 # Get full song info from database
-                song_info = self.db_manager.get_song_by_id(song['id'])
+                song_info = self.db_manager.get_song_by_id(song["id"])
                 if song_info:
                     logger.info(f"Playing song from playlist: {song_info.get('title')}")
                     self.play_song_requested.emit(song_info)
@@ -691,7 +701,7 @@ class PlaylistWidget(QWidget):
         except Exception as e:  # GUI error boundary - must not crash
             logger.error(f"Failed to play song: {e}")
 
-    def _show_songs_context_menu(self, position):
+    def _show_songs_context_menu(self, position: Any) -> None:
         """Show context menu for songs table"""
         try:
             item = self.songs_table.itemAt(position)
@@ -717,7 +727,7 @@ class PlaylistWidget(QWidget):
 
             # Remove from playlist action
             remove_action = QAction("🗑️ Remove from Playlist", self)
-            remove_action.triggered.connect(lambda: self._remove_song_from_playlist(song['id'], row))
+            remove_action.triggered.connect(lambda: self._remove_song_from_playlist(song["id"], row))
             menu.addAction(remove_action)
 
             # Show menu at cursor position
@@ -726,14 +736,14 @@ class PlaylistWidget(QWidget):
         except Exception as e:  # GUI error boundary - must not crash
             logger.error(f"Failed to show songs context menu: {e}")
 
-    def _play_song_at_row(self, row: int):
+    def _play_song_at_row(self, row: int) -> None:
         """Play song at specified row"""
         try:
             songs = self.playlist_manager.get_playlist_songs(self.current_playlist_id)
 
             if row < len(songs):
                 song = songs[row]
-                song_info = self.db_manager.get_song_by_id(song['id'])
+                song_info = self.db_manager.get_song_by_id(song["id"])
                 if song_info:
                     logger.info(f"Playing song from playlist: {song_info.get('title')}")
                     self.play_song_requested.emit(song_info)
@@ -741,7 +751,7 @@ class PlaylistWidget(QWidget):
         except sqlite3.Error as e:
             logger.error(f"Failed to play song at row {row}: {e}")
 
-    def _remove_song_from_playlist(self, song_id: int, row: int):
+    def _remove_song_from_playlist(self, song_id: int, row: int) -> None:
         """Remove song from current playlist"""
         try:
             # Confirm removal
@@ -752,7 +762,7 @@ class PlaylistWidget(QWidget):
                 self,
                 "Remove Song",
                 f"Remove '{song_title}' from this playlist?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
 
             if reply == QMessageBox.StandardButton.Yes:
@@ -760,7 +770,7 @@ class PlaylistWidget(QWidget):
 
                 if success:
                     # Reload songs
-                    self.load_playlist_songs(self.current_playlist_id)
+                    self.load_playlist_songs(self.current_playlist_id)  # type: ignore[arg-type]
                     # Reload playlists to update song count
                     self.load_playlists()
                     logger.info(f"Removed song {song_id} from playlist {self.current_playlist_id}")
@@ -773,7 +783,7 @@ class PlaylistWidget(QWidget):
 
     # ========== PLAYBACK HIGHLIGHT ==========
 
-    def highlight_playing_song(self, song_id: int):
+    def highlight_playing_song(self, song_id: int) -> None:
         """
         Highlight the currently playing song in the songs table.
 
@@ -800,7 +810,7 @@ class PlaylistWidget(QWidget):
                     logger.info(f"Highlighted playing song: row {row}, song_id {song_id}")
                     break
 
-    def clear_playing_highlight(self):
+    def clear_playing_highlight(self) -> None:
         """
         Clear the playing song highlight.
 
@@ -812,7 +822,7 @@ class PlaylistWidget(QWidget):
         for row in range(self.songs_table.rowCount()):
             self._highlight_row(row, False)
 
-    def _highlight_row(self, row: int, highlight: bool):
+    def _highlight_row(self, row: int, highlight: bool) -> None:
         """
         Apply or remove highlight styling from a row.
 
@@ -820,12 +830,12 @@ class PlaylistWidget(QWidget):
             row: Row index
             highlight: True to highlight, False to remove
         """
-        from PySide6.QtGui import QColor, QBrush
+        from PySide6.QtGui import QBrush, QColor
 
         if highlight:
             # Neon cyan highlight (matches app theme)
             bg_color = QColor(0, 180, 220, 60)  # Semi-transparent cyan
-            text_color = QColor(0, 220, 255)     # Bright cyan text
+            text_color = QColor(0, 220, 255)  # Bright cyan text
         else:
             # Default colors (let theme handle it)
             bg_color = QColor(0, 0, 0, 0)  # Transparent

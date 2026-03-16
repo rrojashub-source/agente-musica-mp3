@@ -9,10 +9,14 @@ Purpose: Search correct metadata from multiple sources
 
 Created: November 18, 2025
 """
+
+from __future__ import annotations
+
 import logging
-import requests
-from typing import Dict, List, Optional, Tuple
 from difflib import SequenceMatcher
+from typing import Any, Dict, List, Optional, Tuple
+
+import requests  # type: ignore[import-untyped]
 
 from utils.input_sanitizer import sanitize_query
 
@@ -30,7 +34,7 @@ class MetadataFetcher:
     4. Return best match with confidence level
     """
 
-    def __init__(self, musicbrainz_client=None, spotify_client=None):
+    def __init__(self, musicbrainz_client: Any = None, spotify_client: Any = None) -> None:
         """
         Initialize metadata fetcher
 
@@ -38,13 +42,12 @@ class MetadataFetcher:
             musicbrainz_client: MusicBrainzClient instance (optional)
             spotify_client: SpotifyClient instance (optional)
         """
-        self.musicbrainz_client = musicbrainz_client
-        self.spotify_client = spotify_client
+        self.musicbrainz_client: Any = musicbrainz_client
+        self.spotify_client: Any = spotify_client
 
         logger.info("MetadataFetcher initialized")
 
-    def search_by_title_artist(self, title: str, artist: str,
-                                duration: Optional[int] = None) -> List[Dict]:
+    def search_by_title_artist(self, title: str, artist: str, duration: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Search metadata by title + artist
 
@@ -87,12 +90,11 @@ class MetadataFetcher:
                 logger.warning(f"Spotify search failed: {e}")
 
         # Sort by score (highest first)
-        results.sort(key=lambda x: x['score'], reverse=True)
+        results.sort(key=lambda x: x["score"], reverse=True)
 
         return results
 
-    def _search_musicbrainz(self, title: str, artist: str,
-                           duration: Optional[int] = None) -> List[Dict]:
+    def _search_musicbrainz(self, title: str, artist: str, duration: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Search MusicBrainz API
 
@@ -127,19 +129,19 @@ class MetadataFetcher:
             # Process results
             for mb_recording in mb_results:
                 # Extract metadata (handle both adapter and raw formats)
-                mb_title = mb_recording.get('title', '')
+                mb_title = mb_recording.get("title", "")
                 mb_artist = self._extract_artist_name(mb_recording)
                 mb_album = self._extract_album_name(mb_recording)
                 mb_year = self._extract_year(mb_recording)
 
                 # Handle duration (may be missing or in different formats)
                 mb_duration = 0
-                if 'length' in mb_recording:
+                if "length" in mb_recording:
                     # Raw format: milliseconds
-                    mb_duration = mb_recording.get('length', 0) // 1000
-                elif 'duration' in mb_recording:
+                    mb_duration = mb_recording.get("length", 0) // 1000
+                elif "duration" in mb_recording:
                     # Adapter format: seconds
-                    mb_duration = mb_recording.get('duration', 0)
+                    mb_duration = mb_recording.get("duration", 0)
 
                 # Calculate match score
                 score = self._calculate_match_score(
@@ -148,27 +150,28 @@ class MetadataFetcher:
                     query_duration=duration,
                     result_title=mb_title,
                     result_artist=mb_artist,
-                    result_duration=mb_duration
+                    result_duration=mb_duration,
                 )
 
-                results.append({
-                    'title': mb_title,
-                    'artist': mb_artist,
-                    'album': mb_album,
-                    'year': mb_year,
-                    'duration': mb_duration,
-                    'score': score,
-                    'source': 'musicbrainz',
-                    'raw': mb_recording
-                })
+                results.append(
+                    {
+                        "title": mb_title,
+                        "artist": mb_artist,
+                        "album": mb_album,
+                        "year": mb_year,
+                        "duration": mb_duration,
+                        "score": score,
+                        "source": "musicbrainz",
+                        "raw": mb_recording,
+                    }
+                )
 
         except (KeyError, TypeError, ValueError) as e:
             logger.error(f"MusicBrainz search error: {e}")
 
         return results
 
-    def _search_spotify(self, title: str, artist: str,
-                       duration: Optional[int] = None) -> List[Dict]:
+    def _search_spotify(self, title: str, artist: str, duration: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Search Spotify API
 
@@ -199,34 +202,34 @@ class MetadataFetcher:
             # Process results
             for track in spotify_results:
                 # Extract metadata (handle both adapter and raw formats)
-                sp_title = track.get('name', '') or track.get('title', '')
+                sp_title = track.get("name", "") or track.get("title", "")
 
                 # Handle artists (different formats)
-                sp_artist = ''
-                if 'artists' in track and track['artists']:
-                    sp_artist = track['artists'][0].get('name', '')
-                elif 'artist' in track:
-                    sp_artist = track.get('artist', '')
+                sp_artist = ""
+                if "artists" in track and track["artists"]:
+                    sp_artist = track["artists"][0].get("name", "")
+                elif "artist" in track:
+                    sp_artist = track.get("artist", "")
 
                 # Handle album (different formats)
-                sp_album = ''
-                if 'album' in track:
-                    if isinstance(track['album'], dict):
-                        sp_album = track['album'].get('name', '')
+                sp_album = ""
+                if "album" in track:
+                    if isinstance(track["album"], dict):
+                        sp_album = track["album"].get("name", "")
                     else:
-                        sp_album = track['album']
+                        sp_album = track["album"]
 
                 # Handle year
                 sp_year = self._extract_spotify_year(track)
 
                 # Handle duration (may be in different formats)
                 sp_duration = 0
-                if 'duration_ms' in track:
+                if "duration_ms" in track:
                     # Raw format: milliseconds
-                    sp_duration = track.get('duration_ms', 0) // 1000
-                elif 'duration' in track:
+                    sp_duration = track.get("duration_ms", 0) // 1000
+                elif "duration" in track:
                     # Adapter format: seconds
-                    sp_duration = track.get('duration', 0)
+                    sp_duration = track.get("duration", 0)
 
                 # Calculate match score
                 score = self._calculate_match_score(
@@ -235,29 +238,36 @@ class MetadataFetcher:
                     query_duration=duration,
                     result_title=sp_title,
                     result_artist=sp_artist,
-                    result_duration=sp_duration
+                    result_duration=sp_duration,
                 )
 
-                results.append({
-                    'title': sp_title,
-                    'artist': sp_artist,
-                    'album': sp_album,
-                    'year': sp_year,
-                    'duration': sp_duration,
-                    'score': score,
-                    'source': 'spotify',
-                    'raw': track
-                })
+                results.append(
+                    {
+                        "title": sp_title,
+                        "artist": sp_artist,
+                        "album": sp_album,
+                        "year": sp_year,
+                        "duration": sp_duration,
+                        "score": score,
+                        "source": "spotify",
+                        "raw": track,
+                    }
+                )
 
         except (KeyError, TypeError, ValueError) as e:
             logger.error(f"Spotify search error: {e}")
 
         return results
 
-    def _calculate_match_score(self, query_title: str, query_artist: str,
-                               query_duration: Optional[int],
-                               result_title: str, result_artist: str,
-                               result_duration: int) -> float:
+    def _calculate_match_score(
+        self,
+        query_title: str,
+        query_artist: str,
+        query_duration: Optional[int],
+        result_title: str,
+        result_artist: str,
+        result_duration: int,
+    ) -> float:
         """
         Calculate match confidence score (0-100)
 
@@ -317,50 +327,50 @@ class MetadataFetcher:
 
         return SequenceMatcher(None, str1, str2).ratio()
 
-    def _extract_artist_name(self, mb_recording: Dict) -> str:
+    def _extract_artist_name(self, mb_recording: Dict[str, Any]) -> str:
         """Extract artist name from MusicBrainz recording"""
         try:
-            artist_credit = mb_recording.get('artist-credit', [])
+            artist_credit = mb_recording.get("artist-credit", [])
             if artist_credit:
-                return artist_credit[0].get('name', 'Unknown Artist')
+                return artist_credit[0].get("name", "Unknown Artist")  # type: ignore[no-any-return]
         except (KeyError, IndexError, TypeError) as e:
             logger.debug(f"Could not extract artist name: {e}")
-        return 'Unknown Artist'
+        return "Unknown Artist"
 
-    def _extract_album_name(self, mb_recording: Dict) -> str:
+    def _extract_album_name(self, mb_recording: Dict[str, Any]) -> str:
         """Extract album name from MusicBrainz recording"""
         try:
-            releases = mb_recording.get('releases', [])
+            releases = mb_recording.get("releases", [])
             if releases:
-                return releases[0].get('title', 'Unknown Album')
+                return releases[0].get("title", "Unknown Album")  # type: ignore[no-any-return]
         except (KeyError, IndexError, TypeError) as e:
             logger.debug(f"Could not extract album name: {e}")
-        return 'Unknown Album'
+        return "Unknown Album"
 
-    def _extract_year(self, mb_recording: Dict) -> Optional[int]:
+    def _extract_year(self, mb_recording: Dict[str, Any]) -> Optional[int]:
         """Extract release year from MusicBrainz recording"""
         try:
-            releases = mb_recording.get('releases', [])
+            releases = mb_recording.get("releases", [])
             if releases:
-                date_str = releases[0].get('date', '')
+                date_str = releases[0].get("date", "")
                 if date_str:
                     return int(date_str[:4])
         except (KeyError, IndexError, TypeError, ValueError) as e:
             logger.debug(f"Could not extract year: {e}")
         return None
 
-    def _extract_spotify_year(self, track: Dict) -> Optional[int]:
+    def _extract_spotify_year(self, track: Dict[str, Any]) -> Optional[int]:
         """Extract release year from Spotify track"""
         try:
-            album = track.get('album', {})
-            release_date = album.get('release_date', '')
+            album = track.get("album", {})
+            release_date = album.get("release_date", "")
             if release_date:
                 return int(release_date[:4])
         except (KeyError, TypeError, ValueError) as e:
             logger.debug(f"Could not extract Spotify year: {e}")
         return None
 
-    def get_best_match(self, results: List[Dict], min_confidence: float = 70.0) -> Optional[Dict]:
+    def get_best_match(self, results: List[Dict[str, Any]], min_confidence: float = 70.0) -> Optional[Dict[str, Any]]:
         """
         Get best match from results
 
@@ -376,21 +386,19 @@ class MetadataFetcher:
 
         best = results[0]  # Already sorted by score
 
-        if best['score'] >= min_confidence:
+        if best["score"] >= min_confidence:
             logger.info(
                 f"Best match: {best['title']} - {best['artist']} "
                 f"(score: {best['score']}%, source: {best['source']})"
             )
             return best
         else:
-            logger.warning(
-                f"Best match score too low: {best['score']}% < {min_confidence}% threshold"
-            )
+            logger.warning(f"Best match score too low: {best['score']}% < {min_confidence}% threshold")
             return None
 
-    def fetch_metadata(self, title: str, artist: str,
-                      duration: Optional[int] = None,
-                      min_confidence: float = 70.0) -> Optional[Dict]:
+    def fetch_metadata(
+        self, title: str, artist: str, duration: Optional[int] = None, min_confidence: float = 70.0
+    ) -> Optional[Dict[str, Any]]:
         """
         One-shot fetch: Search and return best match
 

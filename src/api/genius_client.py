@@ -12,12 +12,17 @@ API Documentation: https://docs.genius.com/
 
 Created: November 17, 2025
 """
+
+from __future__ import annotations
+
 import logging
 import re
-import requests
-from typing import Optional
-from utils.rate_limiter import RateLimiter
+from typing import Any, Dict, List, Optional
+
+import requests  # type: ignore[import-untyped]
+
 from utils.constants import API_DEFAULT_TIMEOUT
+from utils.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +38,7 @@ class GeniusClient:
             print(lyrics)
     """
 
-    def __init__(self, access_token: str):
+    def __init__(self, access_token: str) -> None:
         """
         Initialize Genius API client
 
@@ -46,13 +51,14 @@ class GeniusClient:
         if not access_token or not access_token.strip():
             raise ValueError("Genius API access token is required")
 
-        self.access_token = access_token.strip()
-        self._cache = {}  # {(title_lower, artist_lower): lyrics}
+        self.access_token: str = access_token.strip()
+        self._cache: Dict[tuple[str, str], Optional[str]] = {}  # {(title_lower, artist_lower): lyrics}
 
         # Initialize lyricsgenius
         try:
             import lyricsgenius
-            self.genius = lyricsgenius.Genius(self.access_token)
+
+            self.genius: Any = lyricsgenius.Genius(self.access_token)
             self.genius.verbose = False  # Disable console output
             self.genius.remove_section_headers = True  # Clean lyrics
             self.genius.timeout = API_DEFAULT_TIMEOUT
@@ -84,42 +90,39 @@ class GeniusClient:
             # Build list of artist name variants to try
             artist_variants = [artist_clean]
             # Also try without common channel suffixes
-            for suffix in [' Official', ' Music', ' VEVO', ' Records', ' Band']:
-                stripped = re.sub(re.escape(suffix) + '$', '', artist_clean, flags=re.IGNORECASE).strip()
+            for suffix in [" Official", " Music", " VEVO", " Records", " Band"]:
+                stripped = re.sub(re.escape(suffix) + "$", "", artist_clean, flags=re.IGNORECASE).strip()
                 if stripped and stripped != artist_clean:
                     artist_variants.append(stripped)
 
             for variant in artist_variants:
-                prefix_pattern = re.compile(
-                    r'^' + re.escape(variant) + r'\s*[-–—:]\s*',
-                    re.IGNORECASE
-                )
-                new_cleaned = prefix_pattern.sub('', cleaned)
+                prefix_pattern = re.compile(r"^" + re.escape(variant) + r"\s*[-–—:]\s*", re.IGNORECASE)
+                new_cleaned = prefix_pattern.sub("", cleaned)
                 if new_cleaned != cleaned:
                     cleaned = new_cleaned
                     break
 
         # Remove common YouTube suffixes in parentheses/brackets
         noise_patterns = [
-            r'\s*\(Official\s*(Music\s*)?Video\)',
-            r'\s*\(Official\s*Audio\)',
-            r'\s*\(Audio\)',
-            r'\s*\(Lyric[s]?\s*Video\)',
-            r'\s*\(Visuali[zs]er\)',
-            r'\s*\(Live\)',
-            r'\s*\(HD\)',
-            r'\s*\(HQ\)',
-            r'\s*\(Remaster(ed)?\)',
-            r'\s*\[Official\s*(Music\s*)?Video\]',
-            r'\s*\[Official\s*Audio\]',
-            r'\s*\[Audio\]',
-            r'\s*\[Lyric[s]?\s*Video\]',
-            r'\s*\[HD\]',
-            r'\s*\[HQ\]',
-            r'\s*\[Remaster(ed)?\]',
+            r"\s*\(Official\s*(Music\s*)?Video\)",
+            r"\s*\(Official\s*Audio\)",
+            r"\s*\(Audio\)",
+            r"\s*\(Lyric[s]?\s*Video\)",
+            r"\s*\(Visuali[zs]er\)",
+            r"\s*\(Live\)",
+            r"\s*\(HD\)",
+            r"\s*\(HQ\)",
+            r"\s*\(Remaster(ed)?\)",
+            r"\s*\[Official\s*(Music\s*)?Video\]",
+            r"\s*\[Official\s*Audio\]",
+            r"\s*\[Audio\]",
+            r"\s*\[Lyric[s]?\s*Video\]",
+            r"\s*\[HD\]",
+            r"\s*\[HQ\]",
+            r"\s*\[Remaster(ed)?\]",
         ]
         for pattern in noise_patterns:
-            cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
+            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
 
         cleaned = cleaned.strip()
 
@@ -158,9 +161,9 @@ class GeniusClient:
         clean_title = self._clean_title_for_search(title, artist)
 
         # Also clean artist (remove " - Topic" YouTube suffix)
-        clean_artist = re.sub(r'\s*-\s*Topic$', '', artist.strip(), flags=re.IGNORECASE)
+        clean_artist = re.sub(r"\s*-\s*Topic$", "", artist.strip(), flags=re.IGNORECASE)
         # Remove "Official" suffix from artist name
-        clean_artist = re.sub(r'\s+Official$', '', clean_artist, flags=re.IGNORECASE)
+        clean_artist = re.sub(r"\s+Official$", "", clean_artist, flags=re.IGNORECASE)
 
         # Normalize for cache lookup (case-insensitive)
         title_normalized = clean_title.strip().lower()
@@ -175,7 +178,7 @@ class GeniusClient:
         # Search Genius API
         try:
             # Apply rate limiting before API call
-            RateLimiter.get_instance().wait('genius')
+            RateLimiter.get_instance().wait("genius")
 
             logger.info(f"Searching Genius for: {clean_title} - {clean_artist}")
             song = self.genius.search_song(clean_title, clean_artist)
@@ -186,7 +189,7 @@ class GeniusClient:
 
                 # Cache for future requests
                 self._cache[cache_key] = lyrics
-                return lyrics
+                return lyrics  # type: ignore[no-any-return]
             else:
                 logger.warning(f"Lyrics not found: {title} - {artist}")
                 return None
@@ -195,7 +198,7 @@ class GeniusClient:
             logger.error(f"Genius API error for '{title} - {artist}': {e}")
             return None
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Clear the lyrics cache"""
         cache_size = len(self._cache)
         self._cache.clear()

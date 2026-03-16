@@ -13,12 +13,15 @@ Features:
 
 Created: November 13, 2025
 """
+
+from __future__ import annotations
+
 import logging
 import os
 import sqlite3
-from typing import List, Dict, Optional
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -47,14 +50,14 @@ class PlaylistManager:
         manager.save_playlist(playlist_id, "/path/to/playlist.m3u8")
     """
 
-    def __init__(self, db_manager):
+    def __init__(self, db_manager: Any) -> None:
         """
         Initialize Playlist Manager
 
         Args:
             db_manager: Database manager instance
         """
-        self.db_manager = db_manager
+        self.db_manager: Any = db_manager
         logger.info("PlaylistManager initialized")
 
     def create_playlist(self, name: str, description: str = "") -> int:
@@ -75,7 +78,7 @@ class PlaylistManager:
             """
             playlist_id = self.db_manager.execute_query(query, (name, description))
             logger.info(f"Created playlist: {name} (ID: {playlist_id})")
-            return playlist_id
+            return playlist_id  # type: ignore[no-any-return]
 
         except sqlite3.Error as e:
             logger.error(f"Failed to create playlist: {e}")
@@ -140,7 +143,7 @@ class PlaylistManager:
             if position is None:
                 query = "SELECT MAX(position) as max_pos FROM playlist_songs WHERE playlist_id = ?"
                 result = self.db_manager.fetch_one(query, (playlist_id,))
-                position = (result['max_pos'] + 1) if result and result['max_pos'] is not None else 0
+                position = (result["max_pos"] + 1) if result and result["max_pos"] is not None else 0
 
             # Insert song
             query = """
@@ -213,7 +216,7 @@ class PlaylistManager:
             # Update positions
             for i, song in enumerate(songs):
                 update_query = "UPDATE playlist_songs SET position = ? WHERE id = ?"
-                self.db_manager.execute_query(update_query, (i, song['id']))
+                self.db_manager.execute_query(update_query, (i, song["id"]))
 
             logger.debug(f"Reordered playlist {playlist_id}: moved position {old_index} → {new_index}")
             return True
@@ -222,7 +225,7 @@ class PlaylistManager:
             logger.error(f"Failed to reorder songs: {e}")
             return False
 
-    def get_playlists(self) -> List[Dict]:
+    def get_playlists(self) -> List[Dict[str, Any]]:
         """
         Get all playlists with song counts
 
@@ -250,7 +253,7 @@ class PlaylistManager:
             logger.error(f"Failed to get playlists: {e}")
             return []
 
-    def get_playlist_songs(self, playlist_id: int) -> List[Dict]:
+    def get_playlist_songs(self, playlist_id: int) -> List[Dict[str, Any]]:
         """
         Get all songs in playlist
 
@@ -298,18 +301,18 @@ class PlaylistManager:
             songs = self.get_playlist_songs(playlist_id)
 
             # Write .m3u8 file
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write('#EXTM3U\n')
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write("#EXTM3U\n")
 
                 for song in songs:
-                    duration = int(song.get('duration', 0))
-                    artist = song.get('artist', 'Unknown Artist')
-                    title = song.get('title', 'Unknown')
-                    file_path_song = song.get('file_path', '')
+                    duration = int(song.get("duration", 0))
+                    artist = song.get("artist", "Unknown Artist")
+                    title = song.get("title", "Unknown")
+                    file_path_song = song.get("file_path", "")
 
                     # Write extended info
-                    f.write(f'#EXTINF:{duration},{artist} - {title}\n')
-                    f.write(f'{file_path_song}\n')
+                    f.write(f"#EXTINF:{duration},{artist} - {title}\n")
+                    f.write(f"{file_path_song}\n")
 
             logger.info(f"Saved playlist {playlist_id} to {file_path}")
             return True
@@ -342,7 +345,7 @@ class PlaylistManager:
             playlist_id = self.create_playlist(name, f"Imported from {Path(file_path).name}")
 
             # Parse .m3u8 file
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
 
             position = 0
@@ -350,7 +353,7 @@ class PlaylistManager:
                 line = line.strip()
 
                 # Skip comments except #EXTINF
-                if line.startswith('#') and not line.startswith('#EXTINF'):
+                if line.startswith("#") and not line.startswith("#EXTINF"):
                     continue
 
                 # Skip empty lines
@@ -358,7 +361,7 @@ class PlaylistManager:
                     continue
 
                 # Process file path lines
-                if not line.startswith('#'):
+                if not line.startswith("#"):
                     song_path = line
 
                     # Try to find song in database by file path
@@ -366,7 +369,7 @@ class PlaylistManager:
                     result = self.db_manager.fetch_one(query, (song_path,))
 
                     if result:
-                        song_id = result['id']
+                        song_id = result["id"]
                         self.add_song(playlist_id, song_id, position)
                         position += 1
                     else:
@@ -404,12 +407,12 @@ class PlaylistManager:
                 new_name = f"Copy of {original['name']}"
 
             # Create new playlist
-            new_id = self.create_playlist(new_name, original.get('description', ''))
+            new_id = self.create_playlist(new_name, original.get("description", ""))
 
             # Copy all songs
             songs = self.get_playlist_songs(playlist_id)
             for song in songs:
-                self.add_song(new_id, song['id'], song['position'])
+                self.add_song(new_id, song["id"], song["position"])
 
             logger.info(f"Duplicated playlist {playlist_id} → {new_id}")
             return new_id
@@ -418,7 +421,7 @@ class PlaylistManager:
             logger.error(f"Failed to duplicate playlist: {e}")
             return None
 
-    def get_playlist_stats(self, playlist_id: int) -> Dict:
+    def get_playlist_stats(self, playlist_id: int) -> Dict[str, Any]:
         """
         Get playlist statistics
 
@@ -440,15 +443,15 @@ class PlaylistManager:
             result = self.db_manager.fetch_one(query, (playlist_id,))
 
             return {
-                'song_count': result['song_count'] if result else 0,
-                'total_duration': result['total_duration'] if result else 0
+                "song_count": result["song_count"] if result else 0,
+                "total_duration": result["total_duration"] if result else 0,
             }
 
         except sqlite3.Error as e:
             logger.error(f"Failed to get playlist stats: {e}")
-            return {'song_count': 0, 'total_duration': 0}
+            return {"song_count": 0, "total_duration": 0}
 
-    def _reorder_playlist_songs(self, playlist_id: int):
+    def _reorder_playlist_songs(self, playlist_id: int) -> None:
         """
         Internal: Reorder playlist songs to fill gaps in positions
 
@@ -468,7 +471,7 @@ class PlaylistManager:
             if songs:
                 for i, song in enumerate(songs):
                     update_query = "UPDATE playlist_songs SET position = ? WHERE id = ?"
-                    self.db_manager.execute_query(update_query, (i, song['id']))
+                    self.db_manager.execute_query(update_query, (i, song["id"]))
 
         except (sqlite3.Error, TypeError) as e:
             logger.error(f"Failed to reorder playlist songs: {e}")

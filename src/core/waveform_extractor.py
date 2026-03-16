@@ -14,9 +14,11 @@ Features:
 Created: November 15, 2025
 Updated: November 20, 2025 - Added spectrum analysis
 """
+
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Try to import pydub (main method)
 try:
     from pydub import AudioSegment
+
     PYDUB_AVAILABLE = True
 except ImportError:
     PYDUB_AVAILABLE = False
@@ -40,9 +43,9 @@ class WaveformExtractor:
         # waveform is list of floats [-1.0, 1.0]
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Waveform Extractor"""
-        self.cache = {}  # Cache extracted waveforms
+        self.cache: Dict[str, Any] = {}  # Cache extracted waveforms
         logger.info("WaveformExtractor initialized")
 
     def extract(self, file_path: str, num_points: int = 1000) -> Optional[List[float]]:
@@ -60,7 +63,7 @@ class WaveformExtractor:
         cache_key = f"{file_path}_{num_points}"
         if cache_key in self.cache:
             logger.debug(f"Waveform loaded from cache: {Path(file_path).name}")
-            return self.cache[cache_key]
+            return self.cache[cache_key]  # type: ignore[no-any-return]
 
         # Check if file exists
         if not Path(file_path).exists():
@@ -127,7 +130,7 @@ class WaveformExtractor:
 
                 # Get RMS (root mean square) for this segment
                 segment = normalized_samples[start_idx:end_idx]
-                rms = np.sqrt(np.mean(segment ** 2))
+                rms = np.sqrt(np.mean(segment**2))
 
                 # Use RMS as amplitude (gives better visual representation)
                 waveform.append(float(rms))
@@ -160,7 +163,7 @@ class WaveformExtractor:
             from mutagen import File
 
             audio_file = File(file_path)
-            if not audio_file or not hasattr(audio_file.info, 'length'):
+            if not audio_file or not hasattr(audio_file.info, "length"):
                 logger.warning("Could not get audio duration")
                 return None
 
@@ -192,10 +195,7 @@ class WaveformExtractor:
             return None
 
     def extract_spectrum(
-        self,
-        file_path: str,
-        num_bars: int = 60,
-        window_size_ms: int = 50
+        self, file_path: str, num_bars: int = 60, window_size_ms: int = 50
     ) -> Optional[Tuple[List[List[float]], float]]:
         """
         Extract frequency spectrum data for dynamic visualizer
@@ -224,7 +224,7 @@ class WaveformExtractor:
         cache_key = f"spectrum_{file_path}_{num_bars}_{window_size_ms}"
         if cache_key in self.cache:
             logger.debug(f"Spectrum loaded from cache: {Path(file_path).name}")
-            return self.cache[cache_key]
+            return self.cache[cache_key]  # type: ignore[no-any-return]
 
         # Check if file exists
         if not Path(file_path).exists():
@@ -233,9 +233,7 @@ class WaveformExtractor:
 
         try:
             if PYDUB_AVAILABLE:
-                result = self._extract_spectrum_with_pydub(
-                    file_path, num_bars, window_size_ms
-                )
+                result = self._extract_spectrum_with_pydub(file_path, num_bars, window_size_ms)
             else:
                 logger.warning("pydub not available - spectrum extraction unavailable")
                 return None
@@ -256,10 +254,7 @@ class WaveformExtractor:
             return None
 
     def _extract_spectrum_with_pydub(
-        self,
-        file_path: str,
-        num_bars: int,
-        window_size_ms: int
+        self, file_path: str, num_bars: int, window_size_ms: int
     ) -> Optional[Tuple[List[List[float]], float]]:
         """
         Extract frequency spectrum using pydub + FFT
@@ -334,10 +329,7 @@ class WaveformExtractor:
 
                 spectrum_data.append(bar_magnitudes)
 
-            logger.debug(
-                f"Extracted {len(spectrum_data)} spectrum windows "
-                f"({num_bars} bars each)"
-            )
+            logger.debug(f"Extracted {len(spectrum_data)} spectrum windows " f"({num_bars} bars each)")
 
             return (spectrum_data, duration)
 
@@ -345,11 +337,7 @@ class WaveformExtractor:
             logger.error(f"Spectrum extraction with pydub failed: {e}")
             return None
 
-    def _distribute_into_bars(
-        self,
-        magnitudes: np.ndarray,
-        num_bars: int
-    ) -> List[float]:
+    def _distribute_into_bars(self, magnitudes: Any, num_bars: int) -> List[float]:
         """
         Distribute FFT magnitudes into visual bars using logarithmic scale
 
@@ -388,7 +376,7 @@ class WaveformExtractor:
 
         return bar_magnitudes
 
-    def extract_raw_samples(self, file_path: str):
+    def extract_raw_samples(self, file_path: str) -> Optional[Tuple[Any, int]]:
         """
         Load raw mono audio samples for real-time FFT visualization.
 
@@ -405,7 +393,7 @@ class WaveformExtractor:
         """
         cache_key = f"raw_{file_path}"
         if cache_key in self.cache:
-            return self.cache[cache_key]
+            return self.cache[cache_key]  # type: ignore[no-any-return]
 
         if not Path(file_path).exists():
             logger.error(f"File not found: {file_path}")
@@ -428,8 +416,7 @@ class WaveformExtractor:
             self.cache[cache_key] = result
 
             logger.info(
-                f"Raw samples extracted: {Path(file_path).name} "
-                f"({len(samples)} samples, {audio.frame_rate}Hz)"
+                f"Raw samples extracted: {Path(file_path).name} " f"({len(samples)} samples, {audio.frame_rate}Hz)"
             )
             return result
 
@@ -437,7 +424,7 @@ class WaveformExtractor:
             logger.error(f"Failed to extract raw samples from {file_path}: {e}")
             return None
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Clear waveform cache"""
         self.cache.clear()
         logger.debug("Waveform cache cleared")

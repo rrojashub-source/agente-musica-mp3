@@ -7,6 +7,10 @@ Contains:
 Created: December 17, 2025
 """
 
+from __future__ import annotations
+
+from typing import List
+
 from .organic_visualizer import OrganicVisualizerWidget
 
-__all__ = ['OrganicVisualizerWidget']
+__all__: List[str] = ["OrganicVisualizerWidget"]

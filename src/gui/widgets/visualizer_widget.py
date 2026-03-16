@@ -18,16 +18,35 @@ Updated: November 20, 2025 - Modern gradient bars
 Updated: November 21, 2025 - Multiple styles + selector
 Updated: December 17, 2025 - Added Organic visualizer (Phase 10)
 """
+
+from __future__ import annotations
+
 import logging
-from typing import List, Optional
 import math
-from PySide6.QtWidgets import QWidget, QComboBox, QStackedWidget, QVBoxLayout
-from PySide6.QtCore import Qt, QRect, QPoint, QSettings, QTimer
-from PySide6.QtGui import QPainter, QColor, QPen, QPainterPath, QLinearGradient, QRadialGradient
+from typing import Any, List, Optional
+
+from PySide6.QtCore import QPoint, QRect, QSettings, Qt, QTimer
+from PySide6.QtGui import (
+    QCloseEvent,
+    QColor,
+    QKeyEvent,
+    QLinearGradient,
+    QMouseEvent,
+    QPainter,
+    QPainterPath,
+    QPaintEvent,
+    QPen,
+    QRadialGradient,
+    QResizeEvent,
+)
+from PySide6.QtWidgets import QComboBox, QStackedWidget, QVBoxLayout, QWidget
+
+from gui.themes.style_constants import Styles
 
 # Try to import Organic Visualizer (Phase 10)
 try:
     from gui.visualizers import OrganicVisualizerWidget
+
     ORGANIC_AVAILABLE = True
 except ImportError:
     ORGANIC_AVAILABLE = False
@@ -53,7 +72,7 @@ class VisualizerWidget(QWidget):
         visualizer.set_style('bars')  # Bar style
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         """
         Initialize Visualizer Widget
 
@@ -93,10 +112,10 @@ class VisualizerWidget(QWidget):
         self.setMinimumSize(200, 100)
 
         # Fullscreen mode
-        self._fullscreen_window = None
+        self._fullscreen_window: _FullscreenVisualizer | None = None
 
         # Organic visualizer widget (Phase 10)
-        self.organic_widget: Optional['OrganicVisualizerWidget'] = None
+        self.organic_widget: Optional["OrganicVisualizerWidget"] = None
         if ORGANIC_AVAILABLE:
             self._init_organic_visualizer()
 
@@ -111,33 +130,30 @@ class VisualizerWidget(QWidget):
         # Force initial redraw with correct style (fixes bug where saved style doesn't apply on startup)
         self.update()
 
-    def _init_style_selector(self):
+    def _init_style_selector(self) -> None:
         """Initialize floating style selector (no layout to preserve paintEvent)"""
         # ComboBox for style selection (floating widget, not in layout)
         self.style_selector = QComboBox(self)
 
         # Build style list dynamically (Organic only if OpenGL available)
-        styles = [
-            "Bars (Spectrum) 📊",
-            "Circular (Radial) 🔵",
-            "Brain AI 🧠"
-        ]
+        styles = ["Bars (Spectrum) 📊", "Circular (Radial) 🔵", "Brain AI 🧠"]
         if ORGANIC_AVAILABLE:
             styles.append("Organic SDF 🌊")
         self.style_selector.addItems(styles)
 
         # Set current style (waveform removed, migrate to bars)
         style_index = {
-            'waveform': 0,  # Legacy: redirect to bars
-            'bars': 0,
-            'circular': 1,
-            'brain_ai': 2,
-            'organic': 3 if ORGANIC_AVAILABLE else 0
+            "waveform": 0,  # Legacy: redirect to bars
+            "bars": 0,
+            "circular": 1,
+            "brain_ai": 2,
+            "organic": 3 if ORGANIC_AVAILABLE else 0,
         }.get(self.viz_style, 0)
         self.style_selector.setCurrentIndex(style_index)
 
         # Style the combobox
-        self.style_selector.setStyleSheet("""
+        self.style_selector.setStyleSheet(
+            """
             QComboBox {
                 background-color: rgba(50, 50, 50, 200);
                 color: white;
@@ -167,7 +183,8 @@ class VisualizerWidget(QWidget):
                 selection-background-color: #0d7377;
                 border: 1px solid #555;
             }
-        """)
+        """
+        )
 
         # Position in top-right corner (will be updated in resizeEvent)
         self.style_selector.move(10, 10)
@@ -175,37 +192,37 @@ class VisualizerWidget(QWidget):
         # Connect change event
         self.style_selector.currentIndexChanged.connect(self._on_style_changed)
 
-    def _init_organic_visualizer(self):
+    def _init_organic_visualizer(self) -> None:
         """Initialize the Organic SDF Ray Marching visualizer (Phase 10)"""
         try:
             self.organic_widget = OrganicVisualizerWidget(self)
             self.organic_widget.setGeometry(0, 0, self.width(), self.height())
             self.organic_widget.hide()  # Hidden by default
-            self.organic_widget.set_style('music')  # Use music color preset
+            self.organic_widget.set_style("music")  # Use music color preset
             logger.info("Organic visualizer initialized successfully")
-        except Exception as e:
+        except Exception as e:  # OpenGL/Qt errors - visualizer is optional, must not crash GUI
             logger.error(f"Failed to initialize organic visualizer: {e}")
             self.organic_widget = None
 
-    def _update_organic_visibility(self):
+    def _update_organic_visibility(self) -> None:
         """Show/hide organic widget based on current style"""
         if self.organic_widget:
-            if self.viz_style == 'organic':
+            if self.viz_style == "organic":
                 self.organic_widget.show()
                 # Keep selector ABOVE organic widget
-                if hasattr(self, 'style_selector'):
+                if hasattr(self, "style_selector"):
                     self.style_selector.raise_()
             else:
                 self.organic_widget.hide()
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QResizeEvent) -> None:
         """Reposition selector and resize organic widget on resize"""
         # Resize organic widget to fill entire area (FIRST, so it's below)
         if self.organic_widget:
             self.organic_widget.setGeometry(0, 0, self.width(), self.height())
 
         # Position selector in top-right corner (LAST, so it's on top)
-        if hasattr(self, 'style_selector'):
+        if hasattr(self, "style_selector"):
             x = self.width() - self.style_selector.width() - 10
             y = 10
             self.style_selector.move(x, y)
@@ -213,12 +230,12 @@ class VisualizerWidget(QWidget):
 
         super().resizeEvent(event)
 
-    def _on_style_changed(self, index: int):
+    def _on_style_changed(self, index: int) -> None:
         """Handle style selection change"""
         # Build styles list dynamically (matches selector)
-        styles = ['bars', 'circular', 'brain_ai']
+        styles = ["bars", "circular", "brain_ai"]
         if ORGANIC_AVAILABLE:
-            styles.append('organic')
+            styles.append("organic")
 
         if index >= len(styles):
             return
@@ -236,7 +253,7 @@ class VisualizerWidget(QWidget):
             self.update()
             logger.info(f"Visualizer style changed to: {new_style}")
 
-    def set_waveform(self, waveform_data: List[float]):
+    def set_waveform(self, waveform_data: List[float]) -> None:
         """
         Set waveform data for visualization
 
@@ -247,7 +264,7 @@ class VisualizerWidget(QWidget):
         self.update()  # Trigger repaint
         logger.debug(f"Waveform data set: {len(waveform_data)} samples")
 
-    def set_position(self, position: float):
+    def set_position(self, position: float) -> None:
         """
         Set current playback position
 
@@ -262,7 +279,7 @@ class VisualizerWidget(QWidget):
             self.position = 0.0
 
         # Forward FFT data to organic visualizer if active
-        if self.organic_widget and self.viz_style == 'organic':
+        if self.organic_widget and self.viz_style == "organic":
             # Prefer real-time FFT from raw samples (much more dynamic)
             if self._raw_samples is not None:
                 self._compute_realtime_fft(position)
@@ -277,7 +294,7 @@ class VisualizerWidget(QWidget):
 
         self.update()  # Trigger repaint
 
-    def set_spectrum(self, spectrum_data: List[List[float]], duration: float):
+    def set_spectrum(self, spectrum_data: List[List[float]], duration: float) -> None:
         """
         Set spectrum data for dynamic visualization
 
@@ -291,7 +308,7 @@ class VisualizerWidget(QWidget):
         self.update()  # Trigger repaint
         logger.debug(f"Spectrum data set: {len(spectrum_data)} windows, {duration:.2f}s")
 
-    def set_raw_audio(self, samples, sample_rate: int):
+    def set_raw_audio(self, samples: Any, sample_rate: int) -> None:
         """
         Set raw audio samples for real-time FFT computation.
 
@@ -308,7 +325,7 @@ class VisualizerWidget(QWidget):
         self._adaptive_max = 1.0  # Reset adaptive gain
         logger.info(f"Raw audio set for real-time FFT ({len(samples)} samples, {sample_rate}Hz)")
 
-    def _compute_realtime_fft(self, position_seconds: float):
+    def _compute_realtime_fft(self, position_seconds: float) -> None:
         """
         Compute FFT at current playback position from raw audio samples.
 
@@ -328,13 +345,13 @@ class VisualizerWidget(QWidget):
         window_size = int(sr * 0.05)
         center = int(position_seconds * sr)
         start = max(0, center - window_size // 2)
-        end = min(len(samples), start + window_size)
+        end = min(len(samples), start + window_size)  # type: ignore[arg-type]
 
         if end - start < 256:
             return
 
         # Extract and window
-        window = samples[start:end].copy()
+        window = samples[start:end].copy()  # type: ignore[index]
         window *= np.hanning(len(window))
 
         # FFT — raw linear magnitudes (NOT dB)
@@ -344,9 +361,7 @@ class VisualizerWidget(QWidget):
         # Logarithmic distribution into 60 bars (more resolution for bass)
         num_bars = 60
         n = len(magnitudes)
-        log_boundaries = np.logspace(
-            np.log10(max(1, 1)), np.log10(n), num_bars + 1, base=10
-        ).astype(int)
+        log_boundaries = np.logspace(np.log10(max(1, 1)), np.log10(n), num_bars + 1, base=10).astype(int)
         log_boundaries = np.clip(log_boundaries, 0, n - 1)
 
         bars = []
@@ -354,7 +369,7 @@ class VisualizerWidget(QWidget):
             s, e = log_boundaries[i], log_boundaries[i + 1]
             if s >= e:
                 e = s + 1
-            bars.append(float(np.mean(magnitudes[s:min(e, n)])))
+            bars.append(float(np.mean(magnitudes[s : min(e, n)])))
 
         # Adaptive gain normalization — preserves dynamics across passages
         # Fast attack (0.3): loud sections are captured immediately
@@ -369,13 +384,13 @@ class VisualizerWidget(QWidget):
         safe_max = max(self._adaptive_max, 0.001)
         bars = [min(1.0, b / safe_max) for b in bars]
 
-        self.organic_widget.update_from_fft(bars)
+        self.organic_widget.update_from_fft(bars)  # type: ignore[union-attr]
 
         # Also feed fullscreen visualizer if active
         if self._fullscreen_window and self._fullscreen_window.organic:
             self._fullscreen_window.organic.update_from_fft(bars)
 
-    def update_organic_audio(self, fft_data: List[float]):
+    def update_organic_audio(self, fft_data: List[float]) -> None:
         """
         Update organic visualizer with FFT data (Phase 10)
 
@@ -385,10 +400,10 @@ class VisualizerWidget(QWidget):
         Args:
             fft_data: List of FFT magnitude values
         """
-        if self.organic_widget and self.viz_style == 'organic':
+        if self.organic_widget and self.viz_style == "organic":
             self.organic_widget.update_from_fft(fft_data)
 
-    def set_duration(self, duration: float):
+    def set_duration(self, duration: float) -> None:
         """
         Set total song duration (for position conversion)
 
@@ -398,7 +413,7 @@ class VisualizerWidget(QWidget):
         self.duration = duration
         logger.debug(f"Duration set: {duration:.2f}s")
 
-    def set_color(self, color: QColor):
+    def set_color(self, color: QColor) -> None:
         """
         Set waveform color
 
@@ -408,27 +423,27 @@ class VisualizerWidget(QWidget):
         self.waveform_color = color
         self.update()  # Trigger repaint
 
-    def set_style(self, style: str):
+    def set_style(self, style: str) -> None:
         """
         Set visualization style
 
         Args:
             style: 'bars', 'circular', 'brain_ai', or 'organic'
         """
-        valid_styles = ['bars', 'circular', 'brain_ai']
+        valid_styles = ["bars", "circular", "brain_ai"]
         if ORGANIC_AVAILABLE:
-            valid_styles.append('organic')
+            valid_styles.append("organic")
 
         # Migrate legacy waveform to bars
-        if style == 'waveform':
-            style = 'bars'
+        if style == "waveform":
+            style = "bars"
 
         if style in valid_styles:
             self.viz_style = style
             self.settings.setValue("visualizer/style", style)
 
             # Sync selector to match new style (prevent visual desync)
-            if hasattr(self, 'style_selector'):
+            if hasattr(self, "style_selector"):
                 style_index = valid_styles.index(style)
                 # Block signals to prevent recursive calls
                 self.style_selector.blockSignals(True)
@@ -443,7 +458,7 @@ class VisualizerWidget(QWidget):
         else:
             logger.warning(f"Invalid visualization style: {style}")
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent) -> None:
         """
         Custom paint event for waveform visualization
 
@@ -451,13 +466,15 @@ class VisualizerWidget(QWidget):
             event: QPaintEvent
         """
         # Skip 2D drawing when organic mode is active (OpenGL widget handles rendering)
-        if self.viz_style == 'organic' and self.organic_widget:
+        if self.viz_style == "organic" and self.organic_widget:
             # Just draw background - organic widget overlays on top
             painter = QPainter(self)
             painter.fillRect(self.rect(), self.background_color)
             return
 
-        logger.debug(f"paintEvent called: style={self.viz_style}, has_waveform={self.waveform_data is not None}, has_spectrum={self.spectrum_data is not None}")
+        logger.debug(
+            f"paintEvent called: style={self.viz_style}, has_waveform={self.waveform_data is not None}, has_spectrum={self.spectrum_data is not None}"
+        )
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -474,17 +491,17 @@ class VisualizerWidget(QWidget):
         logger.debug(f"Drawing {self.viz_style} visualization")
 
         # Draw visualization based on style (waveform removed, redirects to bars)
-        if self.viz_style == 'waveform' or self.viz_style == 'bars':
+        if self.viz_style == "waveform" or self.viz_style == "bars":
             self._draw_bars(painter)
-        elif self.viz_style == 'circular':
+        elif self.viz_style == "circular":
             self._draw_circular(painter)
-        elif self.viz_style == 'brain_ai':
+        elif self.viz_style == "brain_ai":
             self._draw_brain_ai(painter)
 
         # Draw position indicator
         self._draw_position_indicator(painter)
 
-    def _draw_placeholder(self, painter: QPainter):
+    def _draw_placeholder(self, painter: QPainter) -> None:
         """
         Draw placeholder when no waveform loaded
 
@@ -494,7 +511,7 @@ class VisualizerWidget(QWidget):
         painter.setPen(QColor(100, 100, 100))
         painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "No audio loaded")
 
-    def _draw_waveform(self, painter: QPainter):
+    def _draw_waveform(self, painter: QPainter) -> None:
         """
         Draw waveform as continuous line
 
@@ -556,7 +573,7 @@ class VisualizerWidget(QWidget):
         painter.setPen(pen)
         painter.drawPath(path)
 
-    def _draw_bars(self, painter: QPainter):
+    def _draw_bars(self, painter: QPainter) -> None:
         """
         Draw dynamic spectrum analyzer bars with Brain AI color palette
 
@@ -571,8 +588,8 @@ class VisualizerWidget(QWidget):
         Args:
             painter: QPainter instance
         """
-        import time
         import math
+        import time
 
         width = self.width()
         height = self.height()
@@ -591,12 +608,12 @@ class VisualizerWidget(QWidget):
 
         # Brain AI color palette (6 colors)
         brain_colors = [
-            (0, 200, 255),    # Cyan
-            (0, 100, 255),    # Blue
-            (100, 0, 255),    # Purple
-            (200, 0, 255),    # Magenta
-            (255, 0, 150),    # Pink
-            (0, 255, 200),    # Cyan-green
+            (0, 200, 255),  # Cyan
+            (0, 100, 255),  # Blue
+            (100, 0, 255),  # Purple
+            (200, 0, 255),  # Magenta
+            (255, 0, 150),  # Pink
+            (0, 255, 200),  # Cyan-green
         ]
 
         for i in range(num_bars):
@@ -614,9 +631,9 @@ class VisualizerWidget(QWidget):
             # Calculate bar rectangle (from bottom upwards)
             bar_rect = QRect(
                 x + bar_spacing // 2,  # Left edge with spacing
-                height - bar_height,    # Top edge (grows upwards)
+                height - bar_height,  # Top edge (grows upwards)
                 bar_width - bar_spacing,  # Width minus spacing
-                bar_height              # Height
+                bar_height,  # Height
             )
 
             # Calculate color based on bar position (rainbow across spectrum)
@@ -657,15 +674,10 @@ class VisualizerWidget(QWidget):
             if intensity > 0.6:
                 glow_alpha = int((intensity - 0.6) * 100)  # 0-40 alpha
                 glow_color = QColor(r, g, b, glow_alpha)
-                glow_rect = QRect(
-                    bar_rect.x() - 2,
-                    bar_rect.y() - 2,
-                    bar_rect.width() + 4,
-                    bar_rect.height() + 4
-                )
+                glow_rect = QRect(bar_rect.x() - 2, bar_rect.y() - 2, bar_rect.width() + 4, bar_rect.height() + 4)
                 painter.fillRect(glow_rect, glow_color)
 
-    def _draw_circular(self, painter: QPainter):
+    def _draw_circular(self, painter: QPainter) -> None:
         """
         Draw circular/radial spectrum visualizer with Brain AI color palette
 
@@ -703,12 +715,12 @@ class VisualizerWidget(QWidget):
 
         # Brain AI color palette (6 colors)
         brain_colors = [
-            (0, 200, 255),    # Cyan
-            (0, 100, 255),    # Blue
-            (100, 0, 255),    # Purple
-            (200, 0, 255),    # Magenta
-            (255, 0, 150),    # Pink
-            (0, 255, 200),    # Cyan-green
+            (0, 200, 255),  # Cyan
+            (0, 100, 255),  # Blue
+            (100, 0, 255),  # Purple
+            (200, 0, 255),  # Magenta
+            (255, 0, 150),  # Pink
+            (0, 255, 200),  # Cyan-green
         ]
 
         for i in range(num_bars):
@@ -768,12 +780,13 @@ class VisualizerWidget(QWidget):
             # Glow effect for high amplitudes
             if intensity > 0.6:
                 glow_alpha = int((intensity - 0.6) * 150)  # 0-60 alpha
-                glow_pen = QPen(QColor(r, g, b, glow_alpha), pen_width + 3,
-                               Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+                glow_pen = QPen(
+                    QColor(r, g, b, glow_alpha), pen_width + 3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap
+                )
                 painter.setPen(glow_pen)
                 painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))
 
-    def _draw_brain_ai(self, painter: QPainter):
+    def _draw_brain_ai(self, painter: QPainter) -> None:
         """
         Draw "Brain AI" visualization - inspired by AI brain visualizations in movies
 
@@ -789,8 +802,8 @@ class VisualizerWidget(QWidget):
         Args:
             painter: QPainter instance
         """
-        import random
         import math
+        import random
         import time
 
         width = self.width()
@@ -867,8 +880,9 @@ class VisualizerWidget(QWidget):
             # Draw particle with glow
             painter.setBrush(color)
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(int(px - particle_size/2), int(py - particle_size/2),
-                               int(particle_size), int(particle_size))
+            painter.drawEllipse(
+                int(px - particle_size / 2), int(py - particle_size / 2), int(particle_size), int(particle_size)
+            )
 
         # === 2. PROCESSING WAVES (expand on high magnitude) ===
         if avg_magnitude > 0.7:  # High audio peak
@@ -883,8 +897,9 @@ class VisualizerWidget(QWidget):
 
             painter.setBrush(wave_gradient)
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(int(center_x - wave_radius), int(center_y - wave_radius),
-                               int(wave_radius * 2), int(wave_radius * 2))
+            painter.drawEllipse(
+                int(center_x - wave_radius), int(center_y - wave_radius), int(wave_radius * 2), int(wave_radius * 2)
+            )
 
         # === 3. PULSATING CORE SPHERE (DRAMATIC - Audio Reactive) ===
         base_radius = min(width, height) * 0.15
@@ -893,24 +908,25 @@ class VisualizerWidget(QWidget):
 
         # AUDIO REACTIVE COLORS: Brighter and more saturated on peaks
         center_brightness = int(200 + avg_magnitude * 55)  # 200-255
-        mid_brightness = int(150 + avg_magnitude * 50)     # 150-200
+        mid_brightness = int(150 + avg_magnitude * 50)  # 150-200
 
         # Draw central sphere with radial gradient (AI core)
         gradient = QRadialGradient(center_x, center_y, pulse_radius)
         gradient.setColorAt(0.0, QColor(0, 200, 255, center_brightness))  # Bright cyan (reactive)
-        gradient.setColorAt(0.3, QColor(0, 150, 255, mid_brightness))     # Blue (reactive)
-        gradient.setColorAt(0.6, QColor(100, 0, 255, 150))                # Purple
-        gradient.setColorAt(1.0, QColor(100, 0, 255, 0))                  # Fade to transparent
+        gradient.setColorAt(0.3, QColor(0, 150, 255, mid_brightness))  # Blue (reactive)
+        gradient.setColorAt(0.6, QColor(100, 0, 255, 150))  # Purple
+        gradient.setColorAt(1.0, QColor(100, 0, 255, 0))  # Fade to transparent
 
         painter.setBrush(gradient)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(int(center_x - pulse_radius), int(center_y - pulse_radius),
-                           int(pulse_radius * 2), int(pulse_radius * 2))
+        painter.drawEllipse(
+            int(center_x - pulse_radius), int(center_y - pulse_radius), int(pulse_radius * 2), int(pulse_radius * 2)
+        )
 
         # COMMENTED OUT:         # Draw "neurons" (points distributed in a circle around the core)
         # COMMENTED OUT:         num_neurons = 20
         # COMMENTED OUT:         neuron_distance = min(width, height) * 0.35  # Distance from center
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:         # Generate neuron positions (deterministic based on widget size for consistency)
         # COMMENTED OUT:         random.seed(42)  # Fixed seed for consistent positions
         # COMMENTED OUT:         neurons = []
@@ -918,11 +934,11 @@ class VisualizerWidget(QWidget):
         # COMMENTED OUT:             angle = (i / num_neurons) * 360 + random.uniform(-15, 15)  # Slight randomness
         # COMMENTED OUT:             angle_rad = math.radians(angle)
         # COMMENTED OUT:             distance = neuron_distance + random.uniform(-20, 20)
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             nx = center_x + distance * math.cos(angle_rad)
         # COMMENTED OUT:             ny = center_y + distance * math.sin(angle_rad)
         # COMMENTED OUT:             neurons.append((nx, ny))
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:         # === 4. ELECTRICAL IMPULSES (traveling from center to neurons) ===
         # COMMENTED OUT:         # Generate new impulses based on audio magnitude (higher magnitude = more impulses)
         # COMMENTED OUT:         impulse_spawn_chance = avg_magnitude * 0.3  # 0-30% chance per frame
@@ -930,7 +946,7 @@ class VisualizerWidget(QWidget):
         # COMMENTED OUT:             # Pick random neuron to send impulse to
         # COMMENTED OUT:             target_neuron = random.randint(0, num_neurons - 1)
         # COMMENTED OUT:             target_x, target_y = neurons[target_neuron]
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             # Create new impulse
         # COMMENTED OUT:             self.electrical_impulses.append({
         # COMMENTED OUT:                 'start_x': center_x,
@@ -941,72 +957,72 @@ class VisualizerWidget(QWidget):
         # COMMENTED OUT:                 'speed': 0.03 + avg_magnitude * 0.05,  # Faster on high magnitude
         # COMMENTED OUT:                 'target_neuron': target_neuron
         # COMMENTED OUT:             })
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:         # Update and draw active impulses
         # COMMENTED OUT:         impulses_to_remove = []
         # COMMENTED OUT:         for i, impulse in enumerate(self.electrical_impulses):
         # COMMENTED OUT:             # Update progress
         # COMMENTED OUT:             impulse['progress'] += impulse['speed']
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             # Remove if reached destination
         # COMMENTED OUT:             if impulse['progress'] >= 1.0:
         # COMMENTED OUT:                 impulses_to_remove.append(i)
         # COMMENTED OUT:                 continue
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             # Calculate current position (interpolate between start and end)
         # COMMENTED OUT:             current_x = impulse['start_x'] + (impulse['end_x'] - impulse['start_x']) * impulse['progress']
         # COMMENTED OUT:             current_y = impulse['start_y'] + (impulse['end_y'] - impulse['start_y']) * impulse['progress']
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             # Draw impulse as glowing point with trail
         # COMMENTED OUT:             # Opacity fades as impulse ages (brightest at start)
         # COMMENTED OUT:             impulse_opacity = int((1.0 - impulse['progress'] * 0.5) * 255)
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             # Draw impulse head (bright cyan)
         # COMMENTED OUT:             impulse_color = QColor(0, 255, 255, impulse_opacity)
         # COMMENTED OUT:             impulse_radius = 3 + avg_magnitude * 2  # 3-5 pixels
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             # Glow effect around impulse
         # COMMENTED OUT:             glow_gradient = QRadialGradient(current_x, current_y, impulse_radius * 2)
         # COMMENTED OUT:             glow_gradient.setColorAt(0.0, impulse_color)
         # COMMENTED OUT:             glow_gradient.setColorAt(0.5, QColor(0, 200, 255, impulse_opacity // 2))
         # COMMENTED OUT:             glow_gradient.setColorAt(1.0, QColor(0, 200, 255, 0))
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             painter.setBrush(glow_gradient)
         # COMMENTED OUT:             painter.setPen(Qt.PenStyle.NoPen)
         # COMMENTED OUT:             painter.drawEllipse(int(current_x - impulse_radius), int(current_y - impulse_radius),
         # COMMENTED OUT:                                int(impulse_radius * 2), int(impulse_radius * 2))
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:         # Clean up completed impulses
         # COMMENTED OUT:         for index in reversed(impulses_to_remove):
         # COMMENTED OUT:             del self.electrical_impulses[index]
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:         # Draw neuron points (pulsating dots)
         # COMMENTED OUT:         for i, (nx, ny) in enumerate(neurons):
         # COMMENTED OUT:             # Get magnitude for this neuron
         # COMMENTED OUT:             neuron_index = int(i / num_neurons * len(bar_magnitudes))
         # COMMENTED OUT:             neuron_index = min(neuron_index, len(bar_magnitudes) - 1)
         # COMMENTED OUT:             magnitude = bar_magnitudes[neuron_index]
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             # Neuron size based on magnitude
         # COMMENTED OUT:             neuron_radius = 3 + magnitude * 5  # 3-8 pixels
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             # Neuron color (cyan to magenta based on magnitude)
         # COMMENTED OUT:             if magnitude < 0.5:
         # COMMENTED OUT:                 color = QColor(0, 200, 255)  # Cyan
         # COMMENTED OUT:             else:
         # COMMENTED OUT:                 color = QColor(255, 0, 200)  # Magenta
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             # Draw neuron with glow
         # COMMENTED OUT:             gradient = QRadialGradient(nx, ny, neuron_radius * 2)
         # COMMENTED OUT:             gradient.setColorAt(0.0, color)
         # COMMENTED OUT:             gradient.setColorAt(0.5, QColor(color.red(), color.green(), color.blue(), 150))
         # COMMENTED OUT:             gradient.setColorAt(1.0, QColor(color.red(), color.green(), color.blue(), 0))
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             painter.setBrush(gradient)
         # COMMENTED OUT:             painter.setPen(Qt.PenStyle.NoPen)
         # COMMENTED OUT:             painter.drawEllipse(int(nx - neuron_radius), int(ny - neuron_radius),
         # COMMENTED OUT:                                int(neuron_radius * 2), int(neuron_radius * 2))
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             # === 5. ORBITAL RINGS (reactive to impulses) ===
         # COMMENTED OUT:             # Check if any impulse is arriving at this neuron (progress > 0.85)
         # COMMENTED OUT:             ring_activation = 0.0
@@ -1015,14 +1031,14 @@ class VisualizerWidget(QWidget):
         # COMMENTED OUT:                     # Ring activates when impulse is close (85-100% of travel)
         # COMMENTED OUT:                     activation_intensity = (impulse['progress'] - 0.85) / 0.15  # 0.0 to 1.0
         # COMMENTED OUT:                     ring_activation = max(ring_activation, activation_intensity)
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:             # Draw ring only if activated by arriving impulse
         # COMMENTED OUT:             if ring_activation > 0.0:
         # COMMENTED OUT:                 ring_radius = neuron_radius * 2.5
         # COMMENTED OUT:                 ring_width = 2
         # COMMENTED OUT:                 # Cyan color (matches center), opacity based on activation
         # COMMENTED OUT:                 ring_opacity = int(ring_activation * 255)
-        # COMMENTED OUT: 
+        # COMMENTED OUT:
         # COMMENTED OUT:                 ring_pen = QPen(QColor(0, 255, 255, ring_opacity),  # Bright cyan
         # COMMENTED OUT:                                ring_width, Qt.PenStyle.SolidLine)
         # COMMENTED OUT:                 painter.setPen(ring_pen)
@@ -1039,8 +1055,9 @@ class VisualizerWidget(QWidget):
 
         painter.setBrush(ring_gradient)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(int(center_x - ring_radius), int(center_y - ring_radius),
-                           int(ring_radius * 2), int(ring_radius * 2))
+        painter.drawEllipse(
+            int(center_x - ring_radius), int(center_y - ring_radius), int(ring_radius * 2), int(ring_radius * 2)
+        )
 
     def _get_current_bar_magnitudes(self, num_bars: int) -> List[float]:
         """
@@ -1072,12 +1089,13 @@ class VisualizerWidget(QWidget):
             else:
                 # Resample to match num_bars
                 import numpy as np
+
                 resampled = np.interp(
                     np.linspace(0, len(current_spectrum) - 1, num_bars),
                     np.arange(len(current_spectrum)),
-                    current_spectrum
+                    current_spectrum,
                 )
-                return resampled.tolist()
+                return resampled.tolist()  # type: ignore[no-any-return]
 
         # Fallback: Use static waveform data
         elif self.waveform_data:
@@ -1104,7 +1122,7 @@ class VisualizerWidget(QWidget):
         else:
             return [0.0] * num_bars
 
-    def _draw_position_indicator(self, painter: QPainter):
+    def _draw_position_indicator(self, painter: QPainter) -> None:
         """
         Draw position indicator line
 
@@ -1122,7 +1140,7 @@ class VisualizerWidget(QWidget):
         painter.setPen(pen)
         painter.drawLine(x, 0, x, height)
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear all visualization data"""
         self.waveform_data = None
         self.spectrum_data = None
@@ -1139,49 +1157,50 @@ class VisualizerWidget(QWidget):
         self.update()
         logger.debug("Visualizer cleared")
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset to initial state"""
         self.clear()
-        self.viz_style = 'bars'  # Default to bars (waveform removed)
+        self.viz_style = "bars"  # Default to bars (waveform removed)
         self.waveform_color = QColor(0, 150, 255)
         self._update_organic_visibility()
         self.update()
         logger.debug("Visualizer reset")
 
-    def mouseDoubleClickEvent(self, event):
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         """Double-click to toggle fullscreen organic visualizer"""
-        if self.viz_style == 'organic' and ORGANIC_AVAILABLE:
+        if self.viz_style == "organic" and ORGANIC_AVAILABLE:
             self.toggle_fullscreen()
         else:
             super().mouseDoubleClickEvent(event)
 
-    def toggle_fullscreen(self):
+    def toggle_fullscreen(self) -> None:
         """Toggle fullscreen organic visualizer window"""
         if self._fullscreen_window:
             self._exit_fullscreen()
         else:
             self._enter_fullscreen()
 
-    def _enter_fullscreen(self):
+    def _enter_fullscreen(self) -> None:
         """Open organic visualizer in fullscreen"""
         if not ORGANIC_AVAILABLE:
             return
 
         from PySide6.QtWidgets import QApplication
+
         from gui.visualizers import OrganicVisualizerWidget
 
-        self._fullscreen_window = _FullscreenVisualizer(self)
-        self._fullscreen_window.showFullScreen()
+        self._fullscreen_window = _FullscreenVisualizer(self)  # type: ignore[assignment]
+        self._fullscreen_window.showFullScreen()  # type: ignore[attr-defined]
         logger.info("Entered fullscreen visualizer")
 
-    def _exit_fullscreen(self):
+    def _exit_fullscreen(self) -> None:
         """Close fullscreen visualizer"""
         if self._fullscreen_window:
             self._fullscreen_window.close()
             self._fullscreen_window = None
             logger.info("Exited fullscreen visualizer")
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent) -> None:
         """Handle widget close - cleanup OpenGL resources"""
         self._exit_fullscreen()
         if self.organic_widget:
@@ -1197,35 +1216,36 @@ class _FullscreenVisualizer(QWidget):
     Press ESC, F11, or double-click to exit.
     """
 
-    def __init__(self, parent_visualizer: 'VisualizerWidget'):
+    def __init__(self, parent_visualizer: VisualizerWidget) -> None:
         super().__init__()
-        self._parent_viz = parent_visualizer
+        self._parent_viz: VisualizerWidget = parent_visualizer
 
         self.setWindowTitle("NEXUS Visualizer")
-        self.setStyleSheet("background-color: #000;")
+        self.setStyleSheet(Styles.BG_BLACK)
         self.setCursor(Qt.CursorShape.BlankCursor)
 
         # Create dedicated organic widget for fullscreen
         from gui.visualizers import OrganicVisualizerWidget
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.organic = OrganicVisualizerWidget(self)
-        self.organic.set_style('music')
+        self.organic.set_style("music")
         layout.addWidget(self.organic)
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QKeyEvent) -> None:
         """ESC or F11 to exit fullscreen"""
         if event.key() in (Qt.Key.Key_Escape, Qt.Key.Key_F11):
             self._parent_viz._exit_fullscreen()
         else:
             super().keyPressEvent(event)
 
-    def mouseDoubleClickEvent(self, event):
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         """Double-click to exit fullscreen"""
         self._parent_viz._exit_fullscreen()
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent) -> None:
         """Cleanup on close"""
         self.organic.cleanup()
         super().closeEvent(event)

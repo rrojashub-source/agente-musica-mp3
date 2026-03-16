@@ -12,50 +12,58 @@ Features:
 
 Created: March 2026
 """
-import re
-import logging
-from typing import Dict
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QTextBrowser, QLabel,
-    QPushButton, QFrame, QComboBox, QSplitter
-)
-from PySide6.QtCore import Qt, Signal, QThread, QTimer
-from PySide6.QtGui import QFont, QTextCursor
 
+from __future__ import annotations
+
+import logging
+import re
+from typing import Any, Dict, List, Optional
+
+from PySide6.QtCore import Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QFont, QTextCursor
+from PySide6.QtWidgets import (
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSplitter,
+    QTextBrowser,
+    QVBoxLayout,
+    QWidget,
+)
+
+from gui.base import BaseTab
+from gui.base.base_worker import BaseWorker
+from gui.themes.style_constants import Styles
 from gui.widgets.chord_diagram_widget import ChordDiagramWidget
 
 logger = logging.getLogger(__name__)
 
 
-class ChordsAnalyzeWorker(QThread):
+class ChordsAnalyzeWorker(BaseWorker):
     """Background worker for chord analysis (non-blocking)."""
 
-    finished = Signal(list)
-    error = Signal(str)
+    # Override progress signal: single str instead of BaseWorker's (int, str)
     progress = Signal(str)
 
-    def __init__(self, chords_client, file_path: str, song_id: int = None):
+    def __init__(self, chords_client: Any, file_path: str, song_id: Optional[int] = None) -> None:
         super().__init__()
-        self.chords_client = chords_client
-        self.file_path = file_path
-        self.song_id = song_id
+        self.chords_client: Any = chords_client
+        self.file_path: str = file_path
+        self.song_id: Optional[int] = song_id
 
-    def run(self):
-        try:
-            self.progress.emit("Analizando audio...")
-            chords = self.chords_client.get_chords(
-                self.file_path, song_id=self.song_id
-            )
-            if chords:
-                self.finished.emit(chords)
-            else:
-                self.error.emit("No se pudieron detectar acordes")
-        except Exception as e:
-            logger.error(f"Chord worker error: {e}")
-            self.error.emit(f"Error de analisis: {str(e)}")
+    def do_work(self) -> Any:
+        self.progress.emit("Analizando audio...")
+        chords = self.chords_client.get_chords(self.file_path, song_id=self.song_id)
+        if chords:
+            return chords
+        else:
+            self.error.emit("No se pudieron detectar acordes")
+            return None
 
 
-class ChordsTab(QWidget):
+class ChordsTab(BaseTab):
     """
     Tab for displaying detected song chords with guitar diagrams.
 
@@ -66,27 +74,26 @@ class ChordsTab(QWidget):
 
     # YouTube title noise patterns to strip for cleaner display
     _NOISE_PATTERNS = [
-        r'\s*[\(\[](Official\s*)?(Music\s*)?Video[\)\]]',
-        r'\s*[\(\[]Official\s*Audio[\)\]]',
-        r'\s*[\(\[]Audio[\)\]]',
-        r'\s*[\(\[]Lyric[s]?\s*Video[\)\]]',
-        r'\s*[\(\[]Visuali[zs]er[\)\]]',
-        r'\s*[\(\[]Live[\)\]]',
-        r'\s*[\(\[](HD|HQ)[\)\]]',
-        r'\s*[\(\[]Remaster(ed)?[\)\]]',
+        r"\s*[\(\[](Official\s*)?(Music\s*)?Video[\)\]]",
+        r"\s*[\(\[]Official\s*Audio[\)\]]",
+        r"\s*[\(\[]Audio[\)\]]",
+        r"\s*[\(\[]Lyric[s]?\s*Video[\)\]]",
+        r"\s*[\(\[]Visuali[zs]er[\)\]]",
+        r"\s*[\(\[]Live[\)\]]",
+        r"\s*[\(\[](HD|HQ)[\)\]]",
+        r"\s*[\(\[]Remaster(ed)?[\)\]]",
     ]
 
-    def __init__(self, chords_client=None, audio_player=None):
-        super().__init__()
-        self.chords_client = chords_client
-        self.audio_player = audio_player
-        self.current_song = None
-        self._worker = None
-        self._chords = []               # Original chord list
-        self._displayed_chords = []     # Currently displayed (possibly transposed)
-        self._transpose = 0
-        self._current_chord_idx = -1
-        self._init_ui()
+    def __init__(self, chords_client: Any = None, audio_player: Any = None) -> None:
+        self.chords_client: Any = chords_client
+        self.audio_player: Any = audio_player
+        self.current_song: Optional[Dict[str, Any]] = None
+        self._worker: Optional[ChordsAnalyzeWorker] = None
+        self._chords: List[Dict[str, Any]] = []  # Original chord list
+        self._displayed_chords: List[Dict[str, Any]] = []  # Currently displayed (possibly transposed)
+        self._transpose: int = 0
+        self._current_chord_idx: int = -1
+        super().__init__(db_manager=None, parent=None)
 
         # Timer for highlighting current chord during playback
         self._highlight_timer = QTimer()
@@ -95,7 +102,7 @@ class ChordsTab(QWidget):
 
         logger.info("ChordsTab initialized")
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         layout = QVBoxLayout()
         layout.setContentsMargins(15, 15, 15, 15)
         layout.setSpacing(10)
@@ -107,14 +114,12 @@ class ChordsTab(QWidget):
         header_layout.setContentsMargins(10, 10, 10, 10)
 
         self.header_label = QLabel("🎸 No hay cancion reproduciendo")
-        self.header_label.setStyleSheet(
-            "QLabel { font-size: 16pt; font-weight: bold; padding: 5px; }"
-        )
+        self.header_label.setStyleSheet(Styles.LABEL_16PT_BOLD)
         self.header_label.setWordWrap(True)
         header_layout.addWidget(self.header_label)
 
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet("QLabel { font-size: 10pt; padding: 2px; }")
+        self.status_label.setStyleSheet(Styles.LABEL_10PT)
         self.status_label.setProperty("class", "secondary")
         header_layout.addWidget(self.status_label)
 
@@ -138,7 +143,7 @@ class ChordsTab(QWidget):
         self.transpose_label = QLabel("0")
         self.transpose_label.setFixedWidth(30)
         self.transpose_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.transpose_label.setStyleSheet("font-weight: bold; font-size: 12pt;")
+        self.transpose_label.setStyleSheet(Styles.LABEL_BOLD_PT)
         controls_layout.addWidget(self.transpose_label)
 
         self.transpose_up_btn = QPushButton("+ 1")
@@ -160,7 +165,7 @@ class ChordsTab(QWidget):
             '<span style="color: #e06c75;">&#9632;</span> Menor &nbsp; '
             '<span style="color: #e5c07b;">&#9632;</span> 7ma'
         )
-        legend.setStyleSheet("font-size: 9pt;")
+        legend.setStyleSheet(Styles.LABEL_9PT)
         controls_layout.addWidget(legend)
 
         controls_layout.addStretch()
@@ -214,18 +219,14 @@ class ChordsTab(QWidget):
         self.analyze_button = QPushButton("🔄 Re-analizar")
         self.analyze_button.setToolTip("Analizar acordes de nuevo (ignora cache)")
         self.analyze_button.clicked.connect(self._on_manual_analyze)
-        self.analyze_button.setStyleSheet(
-            "QPushButton { padding: 8px 16px; font-size: 10pt; border-radius: 4px; }"
-        )
+        self.analyze_button.setStyleSheet(Styles.BTN_ACTION)
         bottom_layout.addWidget(self.analyze_button)
 
         self.copy_button = QPushButton("📋 Copiar Acordes")
         self.copy_button.setToolTip("Copiar acordes al portapapeles")
         self.copy_button.clicked.connect(self._on_copy_chords)
         self.copy_button.setEnabled(False)
-        self.copy_button.setStyleSheet(
-            "QPushButton { padding: 8px 16px; font-size: 10pt; border-radius: 4px; }"
-        )
+        self.copy_button.setStyleSheet(Styles.BTN_ACTION)
         bottom_layout.addWidget(self.copy_button)
 
         bottom_layout.addStretch()
@@ -239,7 +240,7 @@ class ChordsTab(QWidget):
 
     # ===== Song Events =====
 
-    def on_song_changed(self, song_info: Dict):
+    def on_song_changed(self, song_info: Dict[str, Any]) -> None:
         """Called when a new song starts playing."""
         self.current_song = song_info
         self._transpose = 0
@@ -247,13 +248,13 @@ class ChordsTab(QWidget):
         self._current_chord_idx = -1
         self.chord_diagram.clear()
 
-        title = song_info.get('title', 'Unknown')
-        artist = song_info.get('artist', 'Unknown Artist')
+        title = song_info.get("title", "Unknown")
+        artist = song_info.get("artist", "Unknown Artist")
         clean_title = self._clean_display_title(title, artist)
         self.header_label.setText(f"🎸 {clean_title} — {artist}")
 
-        file_path = song_info.get('file_path', '')
-        song_id = song_info.get('id')
+        file_path = song_info.get("file_path", "")
+        song_id = song_info.get("id")
 
         if file_path:
             self._analyze_chords(file_path, song_id)
@@ -267,26 +268,22 @@ class ChordsTab(QWidget):
 
         # Strip "Artist - " prefix
         if artist:
-            prefix = re.compile(
-                r'^' + re.escape(artist.strip()) + r'\s*[-\u2013\u2014:]\s*',
-                re.IGNORECASE
-            )
-            cleaned = prefix.sub('', cleaned)
+            prefix = re.compile(r"^" + re.escape(artist.strip()) + r"\s*[-\u2013\u2014:]\s*", re.IGNORECASE)
+            cleaned = prefix.sub("", cleaned)
 
         # Strip noise suffixes
         for pattern in ChordsTab._NOISE_PATTERNS:
-            cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
+            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
 
         return cleaned.strip() or title
 
     # ===== Analysis =====
 
-    def _analyze_chords(self, file_path: str, song_id: int = None):
+    def _analyze_chords(self, file_path: str, song_id: Optional[int] = None) -> None:
         """Start background chord analysis."""
         if not self.chords_client:
             self.chords_text.setPlainText(
-                "❌ Servicio de acordes no disponible\n\n"
-                "Requiere: pip install librosa pychord"
+                "❌ Servicio de acordes no disponible\n\n" "Requiere: pip install librosa pychord"
             )
             self.status_label.setText("⚠️ Librosa no instalado")
             return
@@ -304,17 +301,13 @@ class ChordsTab(QWidget):
                 self._worker.terminate()
                 self._worker.wait()
 
-        self._worker = ChordsAnalyzeWorker(
-            self.chords_client, file_path, song_id
-        )
+        self._worker = ChordsAnalyzeWorker(self.chords_client, file_path, song_id)
         self._worker.finished.connect(self._on_chords_found)
         self._worker.error.connect(self._on_chords_error)
-        self._worker.progress.connect(
-            lambda msg: self.status_label.setText(f"🔍 {msg}")
-        )
+        self._worker.progress.connect(lambda msg: self.status_label.setText(f"🔍 {msg}"))
         self._worker.start()
 
-    def _on_chords_found(self, chords: list):
+    def _on_chords_found(self, chords: List[Dict[str, Any]]) -> None:
         """Display detected chords."""
         self._chords = chords
         self._displayed_chords = chords
@@ -334,7 +327,7 @@ class ChordsTab(QWidget):
 
         logger.info(f"Displayed {len(chords)} chords")
 
-    def _on_chords_error(self, error: str):
+    def _on_chords_error(self, error: str) -> None:
         """Show error message."""
         self.chords_text.setPlainText(
             f"❌ {error}\n\n"
@@ -351,16 +344,13 @@ class ChordsTab(QWidget):
 
     # ===== Display =====
 
-    def _render_chords(self, chords: list):
+    def _render_chords(self, chords: List[Dict[str, Any]]) -> None:
         """Render chords as clickable HTML in the text browser."""
         if not chords:
             self.chords_text.setPlainText("No se detectaron acordes.")
             return
 
-        lines = [
-            '<div style="font-family: Consolas, monospace; font-size: 13pt; '
-            'line-height: 2.0;">'
-        ]
+        lines = ['<div style="font-family: Consolas, monospace; font-size: 13pt; ' 'line-height: 2.0;">']
 
         for i, entry in enumerate(chords):
             t = entry["t"]
@@ -370,25 +360,25 @@ class ChordsTab(QWidget):
             timestamp = f"{minutes}:{seconds:02d}"
 
             # Color by chord type
-            if 'm' in chord and '7' not in chord:
-                color = "#e06c75"   # Minor (red)
-            elif '7' in chord:
-                color = "#e5c07b"   # 7th (yellow)
+            if "m" in chord and "7" not in chord:
+                color = "#e06c75"  # Minor (red)
+            elif "7" in chord:
+                color = "#e5c07b"  # 7th (yellow)
             else:
-                color = "#61afef"   # Major (blue)
+                color = "#61afef"  # Major (blue)
 
             # Clickable chord — href uses index to avoid URL encoding issues with #
             lines.append(
                 f'<span style="color: #888;">[{timestamp}]</span> '
                 f'<a href="chord://{i}" style="color: {color}; font-weight: bold; '
                 f'font-size: 15pt; text-decoration: none;">'
-                f'{chord}</a><br/>'
+                f"{chord}</a><br/>"
             )
 
-        lines.append('</div>')
-        self.chords_text.setHtml('\n'.join(lines))
+        lines.append("</div>")
+        self.chords_text.setHtml("\n".join(lines))
 
-    def _on_chord_clicked(self, url):
+    def _on_chord_clicked(self, url: QUrl) -> None:
         """Handle click on a chord name — show its guitar diagram."""
         text = url.toString()
         if text.startswith("chord://"):
@@ -402,34 +392,27 @@ class ChordsTab(QWidget):
 
     # ===== Transpose =====
 
-    def _on_transpose(self, semitones: int):
+    def _on_transpose(self, semitones: int) -> None:
         """Transpose all chords by N semitones."""
         if not self._chords:
             return
 
         self._transpose += semitones
-        self.transpose_label.setText(
-            f"{'+' if self._transpose > 0 else ''}{self._transpose}"
-        )
+        self.transpose_label.setText(f"{'+' if self._transpose > 0 else ''}{self._transpose}")
 
         if self.chords_client:
-            transposed = self.chords_client.transpose_chords(
-                self._chords, self._transpose
-            )
+            transposed = self.chords_client.transpose_chords(self._chords, self._transpose)
             self._displayed_chords = transposed
             self._render_chords(transposed)
             self.status_label.setText(
-                f"✅ Transpuesto {'+' if self._transpose > 0 else ''}"
-                f"{self._transpose} semitonos"
+                f"✅ Transpuesto {'+' if self._transpose > 0 else ''}" f"{self._transpose} semitonos"
             )
 
             # Update diagram with current chord in new key
             if 0 <= self._current_chord_idx < len(transposed):
-                self.chord_diagram.set_chord(
-                    transposed[self._current_chord_idx]["chord"]
-                )
+                self.chord_diagram.set_chord(transposed[self._current_chord_idx]["chord"])
 
-    def _on_transpose_reset(self):
+    def _on_transpose_reset(self) -> None:
         """Reset transposition to original key."""
         self._transpose = 0
         self.transpose_label.setText("0")
@@ -438,13 +421,11 @@ class ChordsTab(QWidget):
         self.status_label.setText("✅ Tonalidad original")
 
         if 0 <= self._current_chord_idx < len(self._chords):
-            self.chord_diagram.set_chord(
-                self._chords[self._current_chord_idx]["chord"]
-            )
+            self.chord_diagram.set_chord(self._chords[self._current_chord_idx]["chord"])
 
     # ===== Playback Sync =====
 
-    def _update_current_chord(self):
+    def _update_current_chord(self) -> None:
         """Highlight current chord and update diagram during playback."""
         if not self.audio_player or not self._displayed_chords:
             return
@@ -467,9 +448,7 @@ class ChordsTab(QWidget):
 
             # Update guitar diagram
             if chord_idx < len(self._displayed_chords):
-                self.chord_diagram.set_chord(
-                    self._displayed_chords[chord_idx]["chord"]
-                )
+                self.chord_diagram.set_chord(self._displayed_chords[chord_idx]["chord"])
 
             # Scroll to current chord
             cursor = self.chords_text.textCursor()
@@ -481,11 +460,11 @@ class ChordsTab(QWidget):
 
     # ===== Actions =====
 
-    def _on_manual_analyze(self):
+    def _on_manual_analyze(self) -> None:
         """Re-analyze chords (clears all caches)."""
         if self.current_song:
-            file_path = self.current_song.get('file_path', '')
-            song_id = self.current_song.get('id')
+            file_path = self.current_song.get("file_path", "")
+            song_id = self.current_song.get("id")
             if file_path:
                 # Clear memory + DB cache to force re-analysis
                 if self.chords_client and song_id:
@@ -500,19 +479,16 @@ class ChordsTab(QWidget):
         else:
             self.status_label.setText("⚠️ Reproduce una cancion primero")
 
-    def _clear_db_cache(self, song_id: int):
+    def _clear_db_cache(self, song_id: int) -> None:
         """Clear cached chords from database for a specific song."""
         if self.chords_client and self.chords_client.db_manager:
             try:
-                self.chords_client.db_manager.execute_query(
-                    "UPDATE songs SET chords = NULL WHERE id = ?",
-                    (song_id,)
-                )
+                self.chords_client.db_manager.execute_query("UPDATE songs SET chords = NULL WHERE id = ?", (song_id,))
                 logger.debug(f"Cleared DB chord cache for song {song_id}")
             except (OSError, ValueError) as e:
                 logger.debug(f"Could not clear DB chord cache: {e}")
 
-    def _on_copy_chords(self):
+    def _on_copy_chords(self) -> None:
         """Copy chords to clipboard as plain text."""
         from PySide6.QtWidgets import QApplication
 
@@ -524,8 +500,8 @@ class ChordsTab(QWidget):
 
         lines = []
         if self.current_song:
-            title = self.current_song.get('title', '')
-            artist = self.current_song.get('artist', '')
+            title = self.current_song.get("title", "")
+            artist = self.current_song.get("artist", "")
             if title:
                 clean = self._clean_display_title(title, artist)
                 lines.append(f"{clean} - {artist}")
@@ -540,5 +516,5 @@ class ChordsTab(QWidget):
             lines.append(f"[{minutes}:{seconds:02d}] {entry['chord']}")
 
         clipboard = QApplication.clipboard()
-        clipboard.setText('\n'.join(lines))
+        clipboard.setText("\n".join(lines))
         self.status_label.setText("✅ Acordes copiados al portapapeles")

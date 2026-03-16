@@ -10,53 +10,55 @@ Purpose: Find and manage duplicate songs in library
 Created: November 13, 2025
 Updated: November 20, 2025 (UX improvements: visual indicators, dark mode colors)
 """
-from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QPushButton,
-    QComboBox, QSlider, QLabel, QTreeWidget, QTreeWidgetItem,
-    QMessageBox, QGroupBox
-)
-from PySide6.QtCore import Qt, Signal, QThread
-from PySide6.QtGui import QColor, QBrush, QFont
+
+from __future__ import annotations
+
 import logging
 import os
+from typing import Any, Dict, List, Optional
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor, QFont
+from PySide6.QtWidgets import (
+    QComboBox,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QSlider,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from core.duplicate_detector import DuplicateDetector
-from gui.base import BaseTab
+from gui.base import BaseTab, BaseWorker
 
 logger = logging.getLogger(__name__)
 
 
-class ScanWorker(QThread):
+class ScanWorker(BaseWorker):
     """Background worker for duplicate scanning"""
 
-    # Signals
-    progress = Signal(int, str)  # (percentage, status_message)
-    finished = Signal(list)  # List of duplicate groups
-    error = Signal(str)  # Error message
-
-    def __init__(self, detector, method):
+    def __init__(self, detector: DuplicateDetector, method: str) -> None:
         super().__init__()
-        self.detector = detector
-        self.method = method
+        self.detector: DuplicateDetector = detector
+        self.method: str = method
 
-    def run(self):
+    def do_work(self) -> Any:
         """Run duplicate detection in background"""
-        try:
-            self.progress.emit(10, "Initializing scan...")
+        self.report_progress(10, "Initializing scan...")
 
-            self.progress.emit(30, f"Scanning library ({self.method})...")
+        self.report_progress(30, f"Scanning library ({self.method})...")
 
-            # Perform scan
-            duplicates = self.detector.scan_library(method=self.method)
+        # Perform scan
+        duplicates = self.detector.scan_library(method=self.method)
 
-            self.progress.emit(90, "Processing results...")
+        self.report_progress(90, "Processing results...")
 
-            # Emit results
-            self.finished.emit(duplicates)
-
-        except Exception as e:
-            logger.error(f"Scan error: {e}")
-            self.error.emit(str(e))
+        return duplicates
 
 
 class DuplicatesTab(BaseTab):
@@ -72,13 +74,13 @@ class DuplicatesTab(BaseTab):
     - Safe deletion with confirmation
     """
 
-    def __init__(self, db_manager, parent=None):
-        self.detector = DuplicateDetector(db_manager)
-        self.scan_worker = None
-        self.duplicate_groups = []
+    def __init__(self, db_manager: Any, parent: Optional[QWidget] = None) -> None:
+        self.detector: DuplicateDetector = DuplicateDetector(db_manager)
+        self.scan_worker: Optional[ScanWorker] = None
+        self.duplicate_groups: List[Dict[str, Any]] = []
         super().__init__(db_manager=db_manager, parent=parent)
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize user interface"""
         layout = QVBoxLayout()
 
@@ -133,13 +135,7 @@ class DuplicatesTab(BaseTab):
         results_layout = QVBoxLayout()
 
         self.results_tree = QTreeWidget()
-        self.results_tree.setHeaderLabels([
-            "Song / File",
-            "Details",
-            "Bitrate",
-            "Size",
-            "Path"
-        ])
+        self.results_tree.setHeaderLabels(["Song / File", "Details", "Bitrate", "Size", "Path"])
         self.results_tree.setColumnWidth(0, 300)
         self.results_tree.setColumnWidth(1, 200)
 
@@ -166,13 +162,13 @@ class DuplicatesTab(BaseTab):
 
         self.setLayout(layout)
 
-    def _on_threshold_changed(self, value):
+    def _on_threshold_changed(self, value: int) -> None:
         """Handle threshold slider change"""
         self.threshold_value_label.setText(f"{value}%")
         # Update detector threshold
         self.detector.similarity_threshold = value / 100.0
 
-    def _on_scan_clicked(self):
+    def _on_scan_clicked(self) -> None:
         """Handle scan button click"""
         if self.scan_worker and self.scan_worker.isRunning():
             logger.warning("Scan already in progress")
@@ -181,36 +177,31 @@ class DuplicatesTab(BaseTab):
         method = self.method_combo.currentData()
 
         # Warn if fingerprint method selected but fpcalc not available
-        if method == 'fingerprint' and not self.detector.fpcalc_checker.is_available():
+        if method == "fingerprint" and not self.detector.fpcalc_checker.is_available():
             from PySide6.QtWidgets import QMessageBox
+
             QMessageBox.warning(
                 self,
                 "fpcalc no disponible",
                 "El metodo de fingerprint requiere el binario fpcalc.\n\n"
                 "Descargalo de: https://acoustid.org/chromaprint\n"
                 "Y colocalo en la carpeta tools/ del proyecto.\n\n"
-                "Usa 'Metadata Comparison' como alternativa."
+                "Usa 'Metadata Comparison' como alternativa.",
             )
             return
 
         logger.info(f"Starting duplicate scan (method: {method})")
 
         self.scan_worker = ScanWorker(self.detector, method)
-        self.connect_worker(
-            self.scan_worker,
-            on_finished=self._on_scan_finished,
-            action_button=self.scan_button
-        )
+        self.connect_worker(self.scan_worker, on_finished=self._on_scan_finished, action_button=self.scan_button)
         self.scan_worker.start()
 
-    def _on_scan_finished(self, duplicate_groups):
+    def _on_scan_finished(self, duplicate_groups: List[Dict[str, Any]]) -> None:
         """Handle scan completion"""
         self.duplicate_groups = duplicate_groups
 
-        total_songs = sum(len(group['songs']) for group in duplicate_groups)
-        self.status_label.setText(
-            f"Found {len(duplicate_groups)} duplicate groups ({total_songs} files)"
-        )
+        total_songs = sum(len(group["songs"]) for group in duplicate_groups)
+        self.status_label.setText(f"Found {len(duplicate_groups)} duplicate groups ({total_songs} files)")
 
         self._populate_results(duplicate_groups)
 
@@ -220,23 +211,25 @@ class DuplicatesTab(BaseTab):
 
         logger.info(f"Scan complete: {len(duplicate_groups)} groups found")
 
-    def _populate_results(self, duplicate_groups):
+    def _populate_results(self, duplicate_groups: List[Dict[str, Any]]) -> None:
         """Populate results tree with duplicate groups"""
         self.results_tree.clear()
 
         for group_idx, group in enumerate(duplicate_groups, 1):
-            songs = group['songs']
-            confidence = group.get('confidence', 0.0)
-            method = group.get('method', 'unknown')
+            songs = group["songs"]
+            confidence = group.get("confidence", 0.0)
+            method = group.get("method", "unknown")
 
             # Create group item
-            group_item = QTreeWidgetItem([
-                f"Group {group_idx}: {songs[0].get('title', 'Unknown')} ({len(songs)} files)",
-                f"Confidence: {confidence * 100:.1f}% ({method})",
-                "",
-                "",
-                ""
-            ])
+            group_item = QTreeWidgetItem(
+                [
+                    f"Group {group_idx}: {songs[0].get('title', 'Unknown')} ({len(songs)} files)",
+                    f"Confidence: {confidence * 100:.1f}% ({method})",
+                    "",
+                    "",
+                    "",
+                ]
+            )
 
             # CRITICAL: Make bold and expand by default
             font = group_item.font(0)
@@ -246,13 +239,13 @@ class DuplicatesTab(BaseTab):
 
             # Add songs to group (with quality indicator)
             for idx, song in enumerate(songs):
-                is_best_quality = (idx == 0)  # First song is highest quality
+                is_best_quality = idx == 0  # First song is highest quality
                 song_item = self._create_song_item(song, is_best_quality)
                 group_item.addChild(song_item)
 
             self.results_tree.addTopLevelItem(group_item)
 
-    def _create_song_item(self, song, is_best_quality=False):
+    def _create_song_item(self, song: Dict[str, Any], is_best_quality: bool = False) -> QTreeWidgetItem:
         """
         Create tree item for a song
 
@@ -260,13 +253,13 @@ class DuplicatesTab(BaseTab):
             song: Song dictionary
             is_best_quality: True if this is the highest quality song in group
         """
-        title = song.get('title', 'Unknown')
-        artist = song.get('artist', 'Unknown')
-        bitrate = song.get('bitrate', 0)
-        file_path = song.get('file_path', '')
+        title = song.get("title", "Unknown")
+        artist = song.get("artist", "Unknown")
+        bitrate = song.get("bitrate", 0)
+        file_path = song.get("file_path", "")
 
         # Get file size
-        size_mb = 0
+        size_mb: float = 0
         if os.path.exists(file_path):
             try:
                 size_bytes = os.path.getsize(file_path)
@@ -278,13 +271,15 @@ class DuplicatesTab(BaseTab):
         quality_indicator = "⭐ [KEEP]" if is_best_quality else ""
         details_text = f"{quality_indicator} ID: {song.get('id', 0)}".strip()
 
-        song_item = QTreeWidgetItem([
-            f"{title} - {artist}",
-            details_text,
-            f"{bitrate} kbps" if bitrate > 0 else "Unknown",
-            f"{size_mb:.1f} MB",
-            file_path
-        ])
+        song_item = QTreeWidgetItem(
+            [
+                f"{title} - {artist}",
+                details_text,
+                f"{bitrate} kbps" if bitrate > 0 else "Unknown",
+                f"{size_mb:.1f} MB",
+                file_path,
+            ]
+        )
 
         # Visual styling for best quality
         if is_best_quality:
@@ -305,7 +300,7 @@ class DuplicatesTab(BaseTab):
 
         return song_item
 
-    def _select_low_quality(self):
+    def _select_low_quality(self) -> None:
         """Auto-select all duplicates except highest quality"""
         selected_count = 0
         kept_count = 0
@@ -335,8 +330,7 @@ class DuplicatesTab(BaseTab):
 
         # Update status label with clear feedback
         self.status_label.setText(
-            f"✓ Selected {selected_count} LOW QUALITY songs for deletion "
-            f"(Keeping {kept_count} BEST QUALITY)"
+            f"✓ Selected {selected_count} LOW QUALITY songs for deletion " f"(Keeping {kept_count} BEST QUALITY)"
         )
 
         logger.info(f"Auto-selected {selected_count} low quality duplicates (keeping {kept_count} best)")
@@ -347,10 +341,10 @@ class DuplicatesTab(BaseTab):
             "Selection Complete",
             f"Selected {selected_count} LOW QUALITY songs for deletion.\n\n"
             f"Keeping {kept_count} BEST QUALITY songs (marked with ⭐ [KEEP]).\n\n"
-            f"Review the selection and click 'Delete Selected' to proceed."
+            f"Review the selection and click 'Delete Selected' to proceed.",
         )
 
-    def _on_delete_clicked(self):
+    def _on_delete_clicked(self) -> None:
         """Handle delete button click"""
         # Collect checked items and count best quality songs
         selected_songs = []
@@ -379,7 +373,7 @@ class DuplicatesTab(BaseTab):
                 self,
                 "No Selection",
                 "Please select files to delete by checking the checkboxes.\n\n"
-                "TIP: Click 'Select All Low Quality' to auto-select duplicates."
+                "TIP: Click 'Select All Low Quality' to auto-select duplicates.",
             )
             return
 
@@ -404,21 +398,21 @@ class DuplicatesTab(BaseTab):
             f"Keeping: {kept_count} BEST QUALITY songs{warning_msg}\n\n"
             f"⚠️ This action cannot be undone!",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
             self._delete_files(selected_songs)
 
-    def _delete_files(self, songs):
+    def _delete_files(self, songs: List[Dict[str, Any]]) -> None:
         """Delete selected song files"""
         success_count = 0
         error_count = 0
         errors = []
 
         for song in songs:
-            file_path = song.get('file_path', '')
-            song_id = song.get('id')
+            file_path = song.get("file_path", "")
+            song_id = song.get("id")
 
             try:
                 # Delete file
@@ -430,25 +424,21 @@ class DuplicatesTab(BaseTab):
                 if song_id:
                     self.db.delete_song(song_id)
 
-            except Exception as e:
+            except Exception as e:  # file/DB deletion - must continue with remaining files
                 error_count += 1
                 errors.append(f"{file_path}: {str(e)}")
                 logger.error(f"Failed to delete {file_path}: {e}")
 
         # Show result
         if error_count == 0:
-            QMessageBox.information(
-                self,
-                "Deletion Complete",
-                f"Successfully deleted {success_count} files."
-            )
+            QMessageBox.information(self, "Deletion Complete", f"Successfully deleted {success_count} files.")
         else:
             QMessageBox.warning(
                 self,
                 "Deletion Partially Complete",
                 f"Deleted {success_count} files.\n"
                 f"Failed to delete {error_count} files.\n\n"
-                f"Errors:\n" + "\n".join(errors[:5])
+                f"Errors:\n" + "\n".join(errors[:5]),
             )
 
         # Refresh results

@@ -5,12 +5,16 @@ High-performance SQLite manager with WAL mode and FTS5
 Thread-safety: Uses threading.local() for per-thread connections
 """
 
-import sqlite3
+from __future__ import annotations
+
 import logging
+import sqlite3
 import sys
 import threading
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from types import TracebackType
+from typing import Any, Dict, List, Optional, Type
+
 from utils.constants import DB_CONNECTION_TIMEOUT
 
 logger = logging.getLogger(__name__)
@@ -18,11 +22,46 @@ logger = logging.getLogger(__name__)
 
 def get_resource_path(relative_path: str) -> Path:
     """Get absolute path to resource, works for dev and PyInstaller bundle."""
-    if hasattr(sys, '_MEIPASS') or '__compiled__' in globals():
-        base_path = Path(sys._MEIPASS) if hasattr(sys, '_MEIPASS') else Path(__file__).parent.parent
+    if hasattr(sys, "_MEIPASS") or "__compiled__" in globals():
+        base_path = Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else Path(__file__).parent.parent
     else:
         base_path = Path(__file__).parent.parent  # database -> src
     return base_path / relative_path
+
+
+ALLOWED_SONG_FIELDS = frozenset(
+    {
+        # Core metadata (migration 001)
+        "title",
+        "artist",
+        "album",
+        "year",
+        "genre",
+        "track_number",
+        "duration",
+        "bitrate",
+        "sample_rate",
+        "file_path",
+        "file_size",
+        "added_date",
+        "modified_date",
+        "play_count",
+        "last_played",
+        "cover_art",
+        "lyrics",
+        "rating",
+        # AI analysis (migration 008)
+        "bpm",
+        "mood",
+        "energy",
+        "valence",
+        # Chord detection (migration 011)
+        "chords",
+        # Embeddings & content filter
+        "embedding",
+        "content_rating",
+    }
+)
 
 
 class DatabaseManager:
@@ -43,12 +82,12 @@ class DatabaseManager:
     - All connections tracked and closed on cleanup
     """
 
-    def __init__(self, db_path: str = "music_library.db"):
+    def __init__(self, db_path: str = "music_library.db") -> None:
         """Initialize database manager with thread-safe connections"""
-        self.db_path = Path(db_path)
-        self._local = threading.local()  # Thread-local storage for connections
-        self._connections = []  # Track all connections for cleanup
-        self._lock = threading.Lock()  # Lock for connection tracking
+        self.db_path: Path = Path(db_path)
+        self._local: threading.local = threading.local()  # Thread-local storage for connections
+        self._connections: List[sqlite3.Connection] = []  # Track all connections for cleanup
+        self._lock: threading.Lock = threading.Lock()  # Lock for connection tracking
 
         # Create database directory if needed
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -64,20 +103,19 @@ class DatabaseManager:
         Each thread gets its own connection for thread-safety.
         Connections are created on first access per thread.
         """
-        if not hasattr(self._local, 'conn') or self._local.conn is None:
+        if not hasattr(self._local, "conn") or self._local.conn is None:
             self._local.conn = self._create_connection()
             # Track connection for cleanup
             with self._lock:
                 self._connections.append(self._local.conn)
             logger.debug(f"Created new connection for thread {threading.current_thread().name}")
-        return self._local.conn
+        conn: sqlite3.Connection = self._local.conn
+        return conn
 
     def _create_connection(self) -> sqlite3.Connection:
         """Create a new optimized SQLite connection"""
         conn = sqlite3.connect(
-            str(self.db_path),
-            timeout=DB_CONNECTION_TIMEOUT,
-            check_same_thread=True  # Enforce thread safety
+            str(self.db_path), timeout=DB_CONNECTION_TIMEOUT, check_same_thread=True  # Enforce thread safety
         )
         conn.row_factory = sqlite3.Row
 
@@ -93,7 +131,7 @@ class DatabaseManager:
 
         return conn
 
-    def _setup_database(self):
+    def _setup_database(self) -> None:
         """Setup database with performance optimizations"""
         # Use conn property to create connection for main thread
         _ = self.conn
@@ -103,7 +141,7 @@ class DatabaseManager:
 
         logger.info(f"Database initialized (thread-safe): {self.db_path}")
 
-    def _run_migrations(self):
+    def _run_migrations(self) -> None:
         """Run SQL migrations from migrations/ folder"""
         migrations_dir = get_resource_path("database/migrations")
 
@@ -121,35 +159,31 @@ class DatabaseManager:
         cursor = self.conn.cursor()
 
         # Create migrations tracking table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS schema_migrations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 filename TEXT NOT NULL UNIQUE,
                 applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Run each migration
         for migration_file in migration_files:
             # Check if already applied
-            cursor.execute(
-                "SELECT filename FROM schema_migrations WHERE filename = ?",
-                (migration_file.name,)
-            )
+            cursor.execute("SELECT filename FROM schema_migrations WHERE filename = ?", (migration_file.name,))
             if cursor.fetchone():
                 logger.debug(f"Migration already applied: {migration_file.name}")
                 continue
 
             # Read and execute migration
             try:
-                sql = migration_file.read_text(encoding='utf-8')
+                sql = migration_file.read_text(encoding="utf-8")
                 cursor.executescript(sql)
 
                 # Record migration
-                cursor.execute(
-                    "INSERT INTO schema_migrations (filename) VALUES (?)",
-                    (migration_file.name,)
-                )
+                cursor.execute("INSERT INTO schema_migrations (filename) VALUES (?)", (migration_file.name,))
                 self.conn.commit()
 
                 logger.info(f"Applied migration: {migration_file.name}")
@@ -198,7 +232,24 @@ class DatabaseManager:
     def get_song_count(self) -> int:
         """Get total number of songs in library"""
         result = self.fetch_one("SELECT COUNT(*) as count FROM songs")
-        return result['count'] if result else 0
+        return result["count"] if result else 0
+
+    @staticmethod
+    def _sanitize_fts5_query(query: str) -> str:
+        """Sanitize query for FTS5 MATCH to prevent injection.
+
+        Removes FTS5 operators and special characters, wrapping each
+        token in double quotes so they are treated as literal strings.
+        """
+        import re
+
+        # Remove FTS5 special operators and punctuation
+        cleaned = re.sub(r'["\'\*\(\)\{\}\[\]:^~!@#$%&]', " ", query)
+        # Split into tokens and quote each one
+        tokens = cleaned.split()
+        if not tokens:
+            return '""'
+        return " ".join(f'"{token}"' for token in tokens)
 
     def search_songs(self, query: str, limit: int = 100) -> List[Dict[str, Any]]:
         """
@@ -213,13 +264,15 @@ class DatabaseManager:
         """
         # Try FTS5 first
         try:
+            # SECURITY: Sanitize to prevent FTS5 MATCH injection
+            safe_query = self._sanitize_fts5_query(query)
             sql = """
                 SELECT songs.* FROM songs
                 JOIN songs_fts ON songs.id = songs_fts.rowid
                 WHERE songs_fts MATCH ?
                 LIMIT ?
             """
-            return self.fetch_all(sql, (query, limit))
+            return self.fetch_all(sql, (safe_query, limit))
         except sqlite3.OperationalError:
             # Fallback to LIKE search
             logger.warning("FTS5 not available, using LIKE search")
@@ -251,16 +304,16 @@ class DatabaseManager:
               (done by extract_metadata in import worker)
         """
         # Extract fields with defaults
-        title = song_data.get('title', 'Unknown')
-        artist = song_data.get('artist')
-        album = song_data.get('album')
-        year = song_data.get('year')
-        genre = song_data.get('genre')
-        duration = song_data.get('duration')
-        bitrate = song_data.get('bitrate')
-        sample_rate = song_data.get('sample_rate')
-        file_path = song_data.get('file_path')
-        file_size = song_data.get('file_size')
+        title = song_data.get("title", "Unknown")
+        artist = song_data.get("artist")
+        album = song_data.get("album")
+        year = song_data.get("year")
+        genre = song_data.get("genre")
+        duration = song_data.get("duration")
+        bitrate = song_data.get("bitrate")
+        sample_rate = song_data.get("sample_rate")
+        file_path = song_data.get("file_path")
+        file_size = song_data.get("file_size")
 
         # Validate required fields
         if not file_path:
@@ -280,11 +333,7 @@ class DatabaseManager:
                     file_path, file_size
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
-            params = (
-                title, artist, album, year, genre,
-                duration, bitrate, sample_rate,
-                file_path, file_size
-            )
+            params = (title, artist, album, year, genre, duration, bitrate, sample_rate, file_path, file_size)
 
             song_id = self.execute_query(sql, params)
             logger.info(f"Added song: {title} (ID: {song_id})")
@@ -322,28 +371,25 @@ class DatabaseManager:
             Number of songs that were cleaned
         """
         from core.metadata_cleaner import MetadataCleaner
+
         cleaner = MetadataCleaner()
         songs = self.get_all_songs()
         cleaned_count = 0
 
         for song in songs:
-            title = song.get('title', '')
-            artist = song.get('artist', '')
-            song_id = song.get('id')
+            title = song.get("title", "")
+            artist = song.get("artist", "")
+            song_id = song.get("id")
 
             clean_title, title_issues = cleaner.clean_title(title, artist)
             clean_artist, artist_issues = cleaner.clean_artist(artist)
 
             if clean_title != title or clean_artist != artist:
                 self.execute_query(
-                    "UPDATE songs SET title = ?, artist = ? WHERE id = ?",
-                    (clean_title, clean_artist, song_id)
+                    "UPDATE songs SET title = ?, artist = ? WHERE id = ?", (clean_title, clean_artist, song_id)
                 )
                 cleaned_count += 1
-                logger.debug(
-                    f"Cleaned song {song_id}: "
-                    f"'{title}' → '{clean_title}', '{artist}' → '{clean_artist}'"
-                )
+                logger.debug(f"Cleaned song {song_id}: " f"'{title}' → '{clean_title}', '{artist}' → '{clean_artist}'")
 
         if cleaned_count:
             logger.info(f"Batch cleaned {cleaned_count}/{len(songs)} songs")
@@ -410,6 +456,9 @@ class DatabaseManager:
         values = []
 
         for key, value in updates.items():
+            if key not in ALLOWED_SONG_FIELDS:
+                logger.warning(f"Skipping invalid update field: {key}")
+                continue
             fields.append(f"{key} = ?")
             values.append(value)
 
@@ -525,7 +574,7 @@ class DatabaseManager:
             logger.error(f"Failed to delete song {song_id}: {e}")
             return False
 
-    def cleanup_orphans(self) -> dict:
+    def cleanup_orphans(self) -> Dict[str, Any]:
         """
         Remove songs from database whose files no longer exist
 
@@ -540,51 +589,46 @@ class DatabaseManager:
         """
         import os
 
-        stats = {
-            'total_checked': 0,
-            'orphans_found': 0,
-            'orphans_deleted': 0,
-            'errors': []
-        }
+        stats: dict[str, Any] = {"total_checked": 0, "orphans_found": 0, "orphans_deleted": 0, "errors": []}
 
         try:
             # Get all songs from database
             all_songs = self.get_all_songs()
-            stats['total_checked'] = len(all_songs)
+            stats["total_checked"] = len(all_songs)
 
             orphan_ids = []
 
             # Check each song's file existence
             for song in all_songs:
-                file_path = song.get('file_path', '')
-                song_id = song.get('id')
+                file_path = song.get("file_path", "")
+                song_id = song.get("id")
 
                 if not file_path or not os.path.exists(file_path):
                     orphan_ids.append(song_id)
                     logger.debug(f"Orphan found: ID {song_id} - {file_path}")
 
-            stats['orphans_found'] = len(orphan_ids)
+            stats["orphans_found"] = len(orphan_ids)
 
             # Delete orphans using batch DELETE (avoid N+1 query problem)
             if orphan_ids:
                 try:
                     # Use batch delete for better performance
-                    placeholders = ','.join('?' * len(orphan_ids))
+                    placeholders = ",".join("?" * len(orphan_ids))
                     sql = f"DELETE FROM songs WHERE id IN ({placeholders})"
                     cursor = self.conn.cursor()
                     cursor.execute(sql, orphan_ids)
                     self.conn.commit()
-                    stats['orphans_deleted'] = cursor.rowcount
+                    stats["orphans_deleted"] = cursor.rowcount
                     logger.info(f"Batch deleted {cursor.rowcount} orphan songs")
                 except sqlite3.Error as e:
                     # Fallback to individual deletes if batch fails
                     logger.warning(f"Batch delete failed, falling back to individual: {e}")
                     for song_id in orphan_ids:
                         try:
-                            if self.delete_song(song_id):
-                                stats['orphans_deleted'] += 1
+                            if self.delete_song(song_id):  # type: ignore[arg-type]
+                                stats["orphans_deleted"] += 1  # type: ignore[operator]
                         except sqlite3.Error as e2:
-                            stats['errors'].append(f"Failed to delete song {song_id}: {e2}")
+                            stats["errors"].append(f"Failed to delete song {song_id}: {e2}")  # type: ignore[union-attr]
 
             logger.info(
                 f"Orphan cleanup: {stats['orphans_deleted']}/{stats['orphans_found']} deleted "
@@ -595,10 +639,10 @@ class DatabaseManager:
 
         except sqlite3.Error as e:
             logger.error(f"Orphan cleanup failed: {e}")
-            stats['errors'].append(str(e))
+            stats["errors"].append(str(e))  # type: ignore[union-attr]
             return stats
 
-    def close(self):
+    def close(self) -> None:
         """Close all database connections (thread-safe cleanup)"""
         with self._lock:
             closed_count = 0
@@ -611,15 +655,17 @@ class DatabaseManager:
             self._connections.clear()
 
         # Clear thread-local connection
-        if hasattr(self._local, 'conn'):
+        if hasattr(self._local, "conn"):
             self._local.conn = None
 
         logger.info(f"Database connections closed ({closed_count} total)")
 
-    def __enter__(self):
+    def __enter__(self) -> DatabaseManager:
         """Context manager entry"""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
+    ) -> None:
         """Context manager exit"""
         self.close()

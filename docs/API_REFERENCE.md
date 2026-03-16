@@ -1,7 +1,7 @@
 # NEXUS Music Manager - API Reference
 
-**Version:** 2.0
-**Last Updated:** November 23, 2025
+**Version:** 2.1.0
+**Last Updated:** March 15, 2026
 
 ---
 
@@ -25,7 +25,7 @@ Thread-safe SQLite database manager with FTS5 full-text search.
 #### Constructor
 
 ```python
-DatabaseManager(db_path: str = "data/nexus_music.db")
+DatabaseManager(db_path: str = "music_library.db")
 ```
 
 **Parameters:**
@@ -33,22 +33,37 @@ DatabaseManager(db_path: str = "data/nexus_music.db")
 
 #### Methods
 
-##### `get_all_songs(limit: int = None, offset: int = 0) -> List[dict]`
+##### `get_all_songs(limit: int = None) -> List[dict]`
 Retrieve songs from the library.
 
 ```python
-songs = db.get_all_songs(limit=100, offset=0)
+songs = db.get_all_songs(limit=100)
 # Returns: [{"id": 1, "title": "Song", "artist": "Artist", ...}, ...]
 ```
 
 ##### `search_songs(query: str) -> List[dict]`
-Full-text search using FTS5 index.
+Full-text search using FTS5 index. The query is automatically sanitized via
+`_sanitize_fts5_query` before execution (see below). Falls back to LIKE search
+if FTS5 is unavailable.
 
 ```python
 results = db.search_songs("Bohemian Rhapsody")
 # Searches: title, artist, album fields
 # Returns: Matching songs sorted by relevance
 ```
+
+##### `_sanitize_fts5_query(query: str) -> str` *(static)*
+Sanitize a query string for safe use with FTS5 MATCH. Removes FTS5 operators
+and special characters (`"`, `'`, `*`, `(`, `)`, `{`, `}`, `[`, `]`, `:`, `^`, `~`, `!`, `@`, `#`, `$`, `%`, `&`),
+then wraps each remaining token in double quotes so they are treated as literals.
+
+```python
+safe = DatabaseManager._sanitize_fts5_query("test'; DROP TABLE;--")
+# Returns: '"test" "DROP" "TABLE"'
+```
+
+This method is called internally by `search_songs` and does not need to be
+invoked directly under normal use.
 
 ##### `add_song(song_data: dict) -> int`
 Add a new song to the library.
@@ -82,9 +97,9 @@ Close all database connections (thread-safe).
 
 ### AudioPlayer (`src/core/audio_player.py`)
 
-Pygame-based audio playback engine.
+python-mpv based audio playback engine with gapless support.
 
-#### Signals (PyQt6)
+#### Signals (PySide6)
 
 | Signal | Parameters | Description |
 |--------|------------|-------------|
@@ -131,7 +146,7 @@ Check if currently playing.
 
 Concurrent download manager with progress tracking.
 
-#### Signals (PyQt6)
+#### Signals (PySide6)
 
 | Signal | Parameters | Description |
 |--------|------------|-------------|
@@ -430,6 +445,89 @@ Background thread for folder scanning.
 
 ---
 
+## Remote Control REST API (`src/services/remote_server.py`)
+
+Flask-based REST API for mobile remote control.
+
+### Authentication
+
+All API endpoints require JWT Bearer token authentication.
+
+```http
+Authorization: Bearer <token>
+```
+
+The token is generated on server start and displayed via QR code in the Remote tab.
+
+**Token properties:**
+- Format: `{random_urlsafe_32}.{unix_timestamp}`
+- Max age: 24 hours
+- Delivery: Bearer header only (no query parameter fallback)
+
+**CORS policy:** Restricted to `127.0.0.1`, `localhost`, and the server's local IP.
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Mobile web interface (requires `?token=` for initial load) |
+| GET | `/api/status` | Now playing info + queue length |
+| POST | `/api/play` | Start playback |
+| POST | `/api/pause` | Pause playback |
+| POST | `/api/toggle` | Toggle play/pause |
+| POST | `/api/next` | Next track |
+| POST | `/api/previous` | Previous track |
+| POST | `/api/volume` | Set volume (`{"volume": 0-100}`) |
+| POST | `/api/seek` | Seek to position (`{"position": seconds}`) |
+| GET | `/api/queue` | Get current queue |
+| POST | `/api/queue/add` | Add song to queue (`{"song_id": int}`) |
+| POST | `/api/queue/clear` | Clear queue |
+| GET | `/api/search?q=...&limit=N` | Search library |
+| POST | `/api/refresh-token` | Refresh auth token (returns new token) |
+
+### Error Responses
+
+```json
+// 401 Unauthorized
+{"error": "Unauthorized"}
+
+// 400 Bad Request
+{"success": false, "error": "Missing song_id"}
+```
+
+---
+
+## Credential Loading (`src/utils/credentials.py`)
+
+Centralized 4-tier credential loading utility.
+
+### `load_credential(name: str) -> Optional[str]`
+
+Load a single API credential with fallback strategy:
+1. **OS Keyring** (most secure)
+2. **Environment variable**
+3. **.env file** (via python-dotenv)
+4. **credentials.json** (development fallback)
+
+```python
+from utils.credentials import load_credential
+
+youtube_key = load_credential("youtube_api_key")
+genius_token = load_credential("genius_token")
+```
+
+### Known Credentials
+
+| Name | Keyring Key | Env Var |
+|------|------------|---------|
+| `youtube_api_key` | `youtube_api_key` | `YOUTUBE_API_KEY` |
+| `spotify_client_id` | `spotify_client_id` | `SPOTIFY_CLIENT_ID` |
+| `spotify_client_secret` | `spotify_client_secret` | `SPOTIFY_CLIENT_SECRET` |
+| `genius_token` | `genius_token` | `GENIUS_ACCESS_TOKEN` |
+| `acoustid_api_key` | `acoustid_api_key` | `ACOUSTID_API_KEY` |
+
+---
+
 ## Configuration
 
 ### ConfigManager (`src/config_manager.py`)
@@ -480,5 +578,5 @@ except ValidationError as e:
 
 ---
 
-**Document Version:** 1.0
-**Created by:** NEXUS@CLI
+**Document Version:** 2.1
+**Last Updated:** 2026-03-15

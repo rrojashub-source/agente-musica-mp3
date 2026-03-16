@@ -340,3 +340,6 @@ C\\Users/
 C:/Users/
 # Partial downloads
 *.part
+
+# Debug output
+debug_output.txt

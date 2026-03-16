@@ -9,9 +9,13 @@ Purpose: Prevent injection attacks and filesystem issues
 
 Created: November 13, 2025 (Pre-Phase 5 Hardening - Blocker #4)
 """
-import re
+
+from __future__ import annotations
+
 import logging
+import re
 from pathlib import Path
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -47,18 +51,18 @@ def sanitize_query(query: str, max_length: int = 500) -> str:
 
     # Remove control characters (ASCII 0x00-0x1f and 0x7f-0x9f)
     # These can cause issues in logs, databases, and APIs
-    query = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', query)
+    query = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", query)
 
     # Remove SQL injection attempts
     # Removes: single quotes, double quotes, semicolons
-    query = re.sub(r'[\'\";]', '', query)
+    query = re.sub(r"[\'\";]", "", query)
 
     # Remove command injection attempts
     # Removes: pipes, ampersands, dollar signs, backticks
-    query = re.sub(r'[|&$`]', '', query)
+    query = re.sub(r"[|&$`]", "", query)
 
     # Remove path traversal attempts
-    query = query.replace('../', '').replace('..\\', '')
+    query = query.replace("../", "").replace("..\\", "")
 
     # Truncate to max length
     query = query[:max_length]
@@ -103,14 +107,14 @@ def sanitize_filename(filename: str, max_length: int = 255) -> str:
         return "untitled"
 
     # Remove control characters (ASCII 0x00-0x1f and 0x7f-0x9f)
-    filename = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', filename)
+    filename = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", filename)
 
     # Replace invalid filesystem characters with underscores
     # Invalid chars: / \ : * ? " < > |
-    filename = re.sub(r'[/\\:*?"<>|]', '_', filename)
+    filename = re.sub(r'[/\\:*?"<>|]', "_", filename)
 
     # Remove leading/trailing dots and spaces (Windows compatibility)
-    filename = filename.strip('. ')
+    filename = filename.strip(". ")
 
     # If filename became empty after stripping, return default
     if not filename:
@@ -196,7 +200,7 @@ def validate_path(path: str, base_dir: str) -> tuple[bool, str]:
         return False, f"Invalid path: {str(e)}"
 
 
-def sanitize_url(url: str, allowed_domains: list[str] = None) -> tuple[bool, str]:
+def sanitize_url(url: str, allowed_domains: Optional[list[str]] = None) -> tuple[bool, str]:
     """
     Validate and sanitize URLs
 
@@ -232,7 +236,7 @@ def sanitize_url(url: str, allowed_domains: list[str] = None) -> tuple[bool, str
         parsed = urlparse(url)
 
         # Check scheme (only allow http/https)
-        if parsed.scheme not in ('http', 'https'):
+        if parsed.scheme not in ("http", "https"):
             return False, f"Disallowed URL scheme: {parsed.scheme}"
 
         # Check for valid hostname
@@ -243,13 +247,13 @@ def sanitize_url(url: str, allowed_domains: list[str] = None) -> tuple[bool, str
         if allowed_domains:
             hostname = parsed.netloc.lower()
             # Remove www. prefix for comparison
-            if hostname.startswith('www.'):
+            if hostname.startswith("www."):
                 hostname = hostname[4:]
 
             domain_allowed = False
             for domain in allowed_domains:
                 domain = domain.lower()
-                if hostname == domain or hostname.endswith('.' + domain):
+                if hostname == domain or hostname.endswith("." + domain):
                     domain_allowed = True
                     break
 
@@ -257,7 +261,7 @@ def sanitize_url(url: str, allowed_domains: list[str] = None) -> tuple[bool, str
                 return False, f"Domain not allowed: {parsed.netloc}"
 
         # Sanitize - remove control characters
-        sanitized = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', url)
+        sanitized = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", url)
 
         return True, sanitized
 
@@ -266,7 +270,7 @@ def sanitize_url(url: str, allowed_domains: list[str] = None) -> tuple[bool, str
         return False, f"Invalid URL: {str(e)}"
 
 
-def sanitize_metadata(metadata: dict) -> dict:
+def sanitize_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     """
     Sanitize metadata dictionary from external sources
 
@@ -292,11 +296,11 @@ def sanitize_metadata(metadata: dict) -> dict:
     for key, value in metadata.items():
         if isinstance(value, str):
             # Remove HTML tags
-            value = re.sub(r'<[^>]+>', '', value)
+            value = re.sub(r"<[^>]+>", "", value)
             # Remove control characters
-            value = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', value)
+            value = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", value)
             # Remove script-related content
-            value = re.sub(r'javascript:', '', value, flags=re.IGNORECASE)
+            value = re.sub(r"javascript:", "", value, flags=re.IGNORECASE)
             # Trim whitespace
             value = value.strip()
         elif isinstance(value, dict):

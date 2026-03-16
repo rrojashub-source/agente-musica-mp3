@@ -11,9 +11,11 @@ Features:
 Security (Pre-Phase 5 Hardening):
 - Input sanitization to prevent injection attacks
 """
+
 import logging
-from typing import List, Dict, Optional
 from difflib import SequenceMatcher
+from typing import Any, Dict, List, Optional
+
 from api.musicbrainz_client import MusicBrainzClient
 from utils.input_sanitizer import sanitize_query
 
@@ -37,14 +39,14 @@ class MetadataAutocompleter:
         results = autocompleter.autocomplete_batch(songs, auto_select_threshold=90)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize metadata autocompleter
         """
-        self.mb_client = MusicBrainzClient()
+        self.mb_client: MusicBrainzClient = MusicBrainzClient()
         logger.info("MetadataAutocompleter initialized")
 
-    def autocomplete_single(self, song_data: Dict) -> List[Dict]:
+    def autocomplete_single(self, song_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Autocomplete single song (returns matches for user selection)
 
@@ -62,8 +64,8 @@ class MetadataAutocompleter:
             >>> print(matches[0]['confidence'])  # e.g., 95
         """
         # Extract query params
-        title = song_data.get('title', '')
-        artist = song_data.get('artist', None)
+        title = song_data.get("title", "")
+        artist = song_data.get("artist", None)
 
         # Sanitize inputs (remove injection attempts, control chars)
         title = sanitize_query(title, max_length=500)
@@ -85,16 +87,18 @@ class MetadataAutocompleter:
         matches = []
         for mb_result in mb_results:
             confidence = self._calculate_confidence(song_data, mb_result)
-            match = {**mb_result, 'confidence': confidence}
+            match = {**mb_result, "confidence": confidence}
             matches.append(match)
 
         # Sort by confidence (highest first)
-        matches.sort(key=lambda x: x['confidence'], reverse=True)
+        matches.sort(key=lambda x: x["confidence"], reverse=True)
 
         logger.info(f"Autocomplete single: {len(matches)} matches for '{title}'")
         return matches
 
-    def autocomplete_batch(self, songs: List[Dict], auto_select_threshold: int = 90) -> Dict[str, Optional[Dict]]:
+    def autocomplete_batch(
+        self, songs: List[Dict[str, Any]], auto_select_threshold: int = 90
+    ) -> Dict[str, Optional[Dict[str, Any]]]:
         """
         Batch autocomplete for multiple songs
 
@@ -122,10 +126,10 @@ class MetadataAutocompleter:
             logger.warning(f"Batch processing limited to 100 songs (received {len(songs)})")
             songs = songs[:100]
 
-        results = {}
+        results: dict[str, dict[str, Any] | None] = {}
 
         for song in songs:
-            song_id = song.get('id')
+            song_id = song.get("id")
             if not song_id:
                 logger.warning("Song without ID, skipping")
                 continue
@@ -142,27 +146,27 @@ class MetadataAutocompleter:
             best_match = matches[0]
 
             # Auto-select if confidence high enough
-            if best_match['confidence'] >= auto_select_threshold:
+            if best_match["confidence"] >= auto_select_threshold:
                 results[song_id] = {
-                    'metadata': best_match,
-                    'confidence': best_match['confidence'],
-                    'status': 'auto_selected'
+                    "metadata": best_match,
+                    "confidence": best_match["confidence"],
+                    "status": "auto_selected",
                 }
                 logger.info(f"Auto-selected: {song.get('title')} (confidence: {best_match['confidence']})")
             else:
                 # Requires manual selection
                 results[song_id] = {
-                    'metadata': best_match,
-                    'confidence': best_match['confidence'],
-                    'status': 'manual_required',
-                    'all_matches': matches  # Provide all matches for manual selection
+                    "metadata": best_match,
+                    "confidence": best_match["confidence"],
+                    "status": "manual_required",
+                    "all_matches": matches,  # Provide all matches for manual selection
                 }
                 logger.info(f"Manual required: {song.get('title')} (confidence: {best_match['confidence']})")
 
         logger.info(f"Batch complete: {len(results)} songs processed")
         return results
 
-    def _calculate_confidence(self, song_data: Dict, mb_result: Dict) -> int:
+    def _calculate_confidence(self, song_data: Dict[str, Any], mb_result: Dict[str, Any]) -> int:
         """
         Calculate confidence score (0-100) for match
 
@@ -176,33 +180,27 @@ class MetadataAutocompleter:
         confidence = 0
 
         # Title similarity (40% weight)
-        title_sim = self._fuzzy_match(
-            song_data.get('title', '').lower(),
-            mb_result.get('title', '').lower()
-        )
+        title_sim = self._fuzzy_match(song_data.get("title", "").lower(), mb_result.get("title", "").lower())
         confidence += int(title_sim * 40)
 
         # Artist similarity (40% weight)
-        if song_data.get('artist'):
-            artist_sim = self._fuzzy_match(
-                song_data.get('artist', '').lower(),
-                mb_result.get('artist', '').lower()
-            )
+        if song_data.get("artist"):
+            artist_sim = self._fuzzy_match(song_data.get("artist", "").lower(), mb_result.get("artist", "").lower())
             confidence += int(artist_sim * 40)
         else:
             # No artist to compare, give partial credit
             confidence += 20
 
         # Album name presence (10% weight)
-        if mb_result.get('album') and mb_result['album'] != 'Unknown':
+        if mb_result.get("album") and mb_result["album"] != "Unknown":
             confidence += 10
 
         # Year presence (5% weight)
-        if mb_result.get('year') and mb_result['year'] != 'Unknown':
+        if mb_result.get("year") and mb_result["year"] != "Unknown":
             confidence += 5
 
         # Genre presence (5% weight)
-        if mb_result.get('genre') and mb_result['genre'] != 'Unknown':
+        if mb_result.get("genre") and mb_result["genre"] != "Unknown":
             confidence += 5
 
         # Ensure 0-100 range

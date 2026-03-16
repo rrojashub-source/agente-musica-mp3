@@ -15,18 +15,32 @@ Security:
 Author: NEXUS@CLI (Pre-Phase 5 Hardening)
 Date: November 13, 2025
 """
-from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QTabWidget,
-    QWidget, QLineEdit, QPushButton, QLabel, QGroupBox, QApplication, QFrame
-)
-from PySide6.QtCore import Qt, Signal
-import keyring
+
+from __future__ import annotations
+
 import logging
+from typing import Any, Optional, Tuple
+
+import keyring
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 # Import API clients at module level for testability
 try:
-    from api.youtube_search import YouTubeSearcher
     from api.spotify_search import SpotifySearcher
+    from api.youtube_search import YouTubeSearcher
 except ImportError:
     # Fallback if API modules not available (shouldn't happen in normal use)
     YouTubeSearcher = None
@@ -45,7 +59,7 @@ class APITabWidget(QWidget):
     - See validation status
     """
 
-    def __init__(self, api_name: str, service_name: str = "nexus_music"):
+    def __init__(self, api_name: str, service_name: str = "nexus_music") -> None:
         """
         Initialize API tab
 
@@ -54,12 +68,16 @@ class APITabWidget(QWidget):
             service_name: Keyring service identifier
         """
         super().__init__()
-        self.api_name = api_name
-        self.service_name = service_name
+        self.api_name: str = api_name
+        self.service_name: str = service_name
+        self.api_key_input: QLineEdit
+        self.validate_button: QPushButton
+        self.clear_button: QPushButton
+        self.status_label: QLabel
         self._setup_ui()
         self._load_existing_key()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         """Setup UI components - Bilingual (ES/EN)"""
         layout = QVBoxLayout()
 
@@ -69,7 +87,9 @@ class APITabWidget(QWidget):
 
         # API Key input field
         self.api_key_input = QLineEdit()
-        self.api_key_input.setPlaceholderText(f"Pega tu clave de {self.api_name} aquí / Paste your {self.api_name} API key here")
+        self.api_key_input.setPlaceholderText(
+            f"Pega tu clave de {self.api_name} aquí / Paste your {self.api_name} API key here"
+        )
         self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
         input_layout.addWidget(QLabel(f"Clave API de {self.api_name} / {self.api_name} API Key:"))
         input_layout.addWidget(self.api_key_input)
@@ -91,12 +111,14 @@ class APITabWidget(QWidget):
         # Status label
         self.status_label = QLabel("")
         self.status_label.setWordWrap(True)
-        self.status_label.setStyleSheet("""
+        self.status_label.setStyleSheet(
+            """
             QLabel {
                 padding: 10px;
                 border-radius: 5px;
             }
-        """)
+        """
+        )
         self.status_label.setProperty("class", "secondary")  # Use theme color
         layout.addWidget(self.status_label)
 
@@ -159,19 +181,21 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
         instructions = QLabel(instructions_text)
         instructions.setWordWrap(True)
         instructions.setOpenExternalLinks(True)  # Enable clickable links
-        instructions.setStyleSheet("""
+        instructions.setStyleSheet(
+            """
             QLabel {
                 padding: 15px;
                 border-radius: 5px;
             }
-        """)
+        """
+        )
         instructions.setFrameStyle(QFrame.Shape.StyledPanel)  # Use themed border
         layout.addWidget(instructions)
 
         layout.addStretch()
         self.setLayout(layout)
 
-    def _load_existing_key(self):
+    def _load_existing_key(self) -> None:
         """Load existing key from keyring"""
         try:
             key = keyring.get_password(self.service_name, f"{self.api_name.lower()}_api_key")
@@ -181,9 +205,11 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
                 logger.info(f"{self.api_name} key loaded from keyring")
         except (RuntimeError, OSError) as e:
             logger.debug(f"No existing key for {self.api_name}: {e}")
-            self.status_label.setText("ℹ️ No hay clave guardada. Ingresa tu clave arriba. / No existing key. Please enter your API key above.")
+            self.status_label.setText(
+                "ℹ️ No hay clave guardada. Ingresa tu clave arriba. / No existing key. Please enter your API key above."
+            )
 
-    def _on_validate_clicked(self):
+    def _on_validate_clicked(self) -> None:
         """Validate API key by making test request"""
         api_key = self.api_key_input.text().strip()
 
@@ -211,7 +237,7 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
         finally:
             self.validate_button.setEnabled(True)
 
-    def _validate_youtube(self, api_key: str):
+    def _validate_youtube(self, api_key: str) -> None:
         """
         Validate YouTube API key by making test search
 
@@ -239,9 +265,11 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
             if len(api_key) >= 30:
                 self.status_label.setText("✅ Válida - Formato de clave correcto / Valid - API key format correct")
             else:
-                raise Exception("Clave muy corta (esperado 30+ caracteres) / API key too short (expected 30+ characters)")
+                raise Exception(
+                    "Clave muy corta (esperado 30+ caracteres) / API key too short (expected 30+ characters)"
+                )
 
-    def _validate_spotify(self, client_id: str):
+    def _validate_spotify(self, client_id: str) -> None:
         """
         Validate Spotify credentials
 
@@ -259,9 +287,11 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
             self.status_label.setText("✅ Válida - Formato de Client ID correcto / Valid - Client ID format correct")
             logger.info("Spotify Client ID format validated")
         else:
-            raise Exception("Formato inválido (esperado 32 caracteres alfanuméricos) / Invalid format (expected 32 alphanumeric characters)")
+            raise Exception(
+                "Formato inválido (esperado 32 caracteres alfanuméricos) / Invalid format (expected 32 alphanumeric characters)"
+            )
 
-    def _validate_genius(self, api_key: str):
+    def _validate_genius(self, api_key: str) -> None:
         """
         Validate Genius API token
 
@@ -278,7 +308,7 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
         else:
             raise Exception("Token muy corto (esperado 20+ caracteres) / Token too short (expected 20+ characters)")
 
-    def _validate_acoustid(self, api_key: str):
+    def _validate_acoustid(self, api_key: str) -> None:
         """
         Validate AcoustID API key
 
@@ -291,13 +321,15 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
         # AcoustID API key format: typically 8+ characters (alphanumeric, may include hyphens)
         # Examples: "8XaBELgH" or "abc123de-f456-7890-abcd-ef1234567890"
         # Remove hyphens and check if remaining chars are alphanumeric
-        cleaned_key = api_key.replace('-', '').replace('_', '')
+        cleaned_key = api_key.replace("-", "").replace("_", "")
 
         if len(cleaned_key) >= 8 and cleaned_key.isalnum():
             self.status_label.setText("✅ Válida - Formato de clave correcto / Valid - API key format correct")
             logger.info("AcoustID API key format validated")
         else:
-            raise Exception(f"Formato inválido (esperado 8+ caracteres, tienes {len(cleaned_key)}) / Invalid format (expected 8+ chars, got {len(cleaned_key)})")
+            raise Exception(
+                f"Formato inválido (esperado 8+ caracteres, tienes {len(cleaned_key)}) / Invalid format (expected 8+ chars, got {len(cleaned_key)})"
+            )
 
     def get_api_key(self) -> str:
         """
@@ -306,7 +338,7 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
         Returns:
             str: API key (trimmed)
         """
-        return self.api_key_input.text().strip()
+        return self.api_key_input.text().strip()  # type: ignore[no-any-return]
 
 
 class SpotifyTabWidget(QWidget):
@@ -314,13 +346,18 @@ class SpotifyTabWidget(QWidget):
     Specialized tab for Spotify (needs Client ID + Client Secret)
     """
 
-    def __init__(self, service_name: str = "nexus_music"):
+    def __init__(self, service_name: str = "nexus_music") -> None:
         super().__init__()
-        self.service_name = service_name
+        self.service_name: str = service_name
+        self.client_id_input: QLineEdit
+        self.client_secret_input: QLineEdit
+        self.validate_button: QPushButton
+        self.clear_button: QPushButton
+        self.status_label: QLabel
         self._setup_ui()
         self._load_existing_keys()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         """Setup UI with Client ID + Client Secret fields - Bilingual (ES/EN)"""
         layout = QVBoxLayout()
 
@@ -337,7 +374,9 @@ class SpotifyTabWidget(QWidget):
 
         # Client Secret field
         self.client_secret_input = QLineEdit()
-        self.client_secret_input.setPlaceholderText("Pega tu Client Secret aquí / Paste your Spotify Client Secret here")
+        self.client_secret_input.setPlaceholderText(
+            "Pega tu Client Secret aquí / Paste your Spotify Client Secret here"
+        )
         self.client_secret_input.setEchoMode(QLineEdit.EchoMode.Password)
         input_layout.addWidget(QLabel("Spotify Client Secret:"))
         input_layout.addWidget(self.client_secret_input)
@@ -359,12 +398,14 @@ class SpotifyTabWidget(QWidget):
         # Status label
         self.status_label = QLabel("")
         self.status_label.setWordWrap(True)
-        self.status_label.setStyleSheet("""
+        self.status_label.setStyleSheet(
+            """
             QLabel {
                 padding: 10px;
                 border-radius: 5px;
             }
-        """)
+        """
+        )
         self.status_label.setProperty("class", "secondary")  # Use theme color
         layout.addWidget(self.status_label)
 
@@ -395,19 +436,21 @@ class SpotifyTabWidget(QWidget):
         instructions = QLabel(instructions_text)
         instructions.setWordWrap(True)
         instructions.setOpenExternalLinks(True)
-        instructions.setStyleSheet("""
+        instructions.setStyleSheet(
+            """
             QLabel {
                 padding: 15px;
                 border-radius: 5px;
             }
-        """)
+        """
+        )
         instructions.setFrameStyle(QFrame.Shape.StyledPanel)  # Use themed border
         layout.addWidget(instructions)
 
         layout.addStretch()
         self.setLayout(layout)
 
-    def _load_existing_keys(self):
+    def _load_existing_keys(self) -> None:
         """Load existing Spotify credentials from keyring"""
         try:
             client_id = keyring.get_password(self.service_name, "spotify_client_id")
@@ -422,25 +465,33 @@ class SpotifyTabWidget(QWidget):
                 self.status_label.setText("✅ Credenciales cargadas / Existing credentials loaded")
                 logger.info("Spotify credentials loaded from keyring")
             elif client_id or client_secret:
-                self.status_label.setText("⚠️ Credenciales parciales. Ingresa ambos. / Partial credentials. Please enter both.")
+                self.status_label.setText(
+                    "⚠️ Credenciales parciales. Ingresa ambos. / Partial credentials. Please enter both."
+                )
             else:
-                self.status_label.setText("ℹ️ Sin credenciales. Ingresa ambas arriba. / No credentials. Please enter both above.")
+                self.status_label.setText(
+                    "ℹ️ Sin credenciales. Ingresa ambas arriba. / No credentials. Please enter both above."
+                )
         except (RuntimeError, OSError) as e:
             logger.debug(f"No existing Spotify credentials: {e}")
-            self.status_label.setText("ℹ️ Sin credenciales. Ingresa ambas arriba. / No credentials. Please enter both above.")
+            self.status_label.setText(
+                "ℹ️ Sin credenciales. Ingresa ambas arriba. / No credentials. Please enter both above."
+            )
 
-    def _clear_fields(self):
+    def _clear_fields(self) -> None:
         """Clear both input fields"""
         self.client_id_input.clear()
         self.client_secret_input.clear()
 
-    def _on_validate_clicked(self):
+    def _on_validate_clicked(self) -> None:
         """Validate Spotify credentials"""
         client_id = self.client_id_input.text().strip()
         client_secret = self.client_secret_input.text().strip()
 
         if not client_id or not client_secret:
-            self.status_label.setText("❌ Por favor ingresa ambos Client ID y Secret / Please enter both Client ID and Secret")
+            self.status_label.setText(
+                "❌ Por favor ingresa ambos Client ID y Secret / Please enter both Client ID and Secret"
+            )
             return
 
         self.status_label.setText("⏳ Validando... / Validating...")
@@ -476,17 +527,14 @@ class SpotifyTabWidget(QWidget):
         finally:
             self.validate_button.setEnabled(True)
 
-    def get_credentials(self) -> tuple:
+    def get_credentials(self) -> Tuple[str, str]:
         """
         Get Spotify credentials
 
         Returns:
             tuple: (client_id, client_secret)
         """
-        return (
-            self.client_id_input.text().strip(),
-            self.client_secret_input.text().strip()
-        )
+        return (self.client_id_input.text().strip(), self.client_secret_input.text().strip())
 
 
 class APISettingsDialog(QDialog):
@@ -505,7 +553,7 @@ class APISettingsDialog(QDialog):
 
     keys_saved = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         """
         Initialize API Settings Dialog - Bilingual (ES/EN)
 
@@ -513,11 +561,18 @@ class APISettingsDialog(QDialog):
             parent: Parent widget (optional)
         """
         super().__init__(parent)
+        self.tab_widget: QTabWidget
+        self.youtube_tab: APITabWidget
+        self.spotify_tab: SpotifyTabWidget
+        self.genius_tab: APITabWidget
+        self.acoustid_tab: APITabWidget
+        self.save_button: QPushButton
+        self.cancel_button: QPushButton
         self.setWindowTitle("Configuración de API / API Settings")
         self.setMinimumSize(650, 550)
         self._setup_ui()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         """Setup dialog UI - Bilingual (ES/EN)"""
         layout = QVBoxLayout()
 
@@ -566,7 +621,7 @@ class APISettingsDialog(QDialog):
         layout.addLayout(button_layout)
         self.setLayout(layout)
 
-    def _on_help_clicked(self):
+    def _on_help_clicked(self) -> None:
         """Show help dialog with instructions - Bilingual (ES/EN)"""
         from PySide6.QtWidgets import QMessageBox
 
@@ -606,7 +661,7 @@ class APISettingsDialog(QDialog):
         msg.setIcon(QMessageBox.Icon.Information)
         msg.exec()
 
-    def _on_save_clicked(self):
+    def _on_save_clicked(self) -> None:
         """Save all API keys to keyring"""
         try:
             saved_count = 0
@@ -628,11 +683,12 @@ class APISettingsDialog(QDialog):
             elif spotify_client_id or spotify_client_secret:
                 # Partial credentials - warn user
                 from PySide6.QtWidgets import QMessageBox
+
                 QMessageBox.warning(
                     self,
                     "Credenciales Spotify Incompletas / Incomplete Spotify Credentials",
                     "Por favor ingresa ambos Client ID y Client Secret, o deja ambos vacíos.\n\n"
-                    "Please enter both Spotify Client ID and Client Secret, or leave both empty."
+                    "Please enter both Spotify Client ID and Client Secret, or leave both empty.",
                 )
 
             # Save Genius key
@@ -656,28 +712,31 @@ class APISettingsDialog(QDialog):
             else:
                 # No keys entered
                 from PySide6.QtWidgets import QMessageBox
+
                 QMessageBox.warning(
                     self,
                     "Sin Claves / No Keys Entered",
                     "Por favor ingresa al menos una clave API antes de guardar.\n\n"
-                    "Please enter at least one API key before saving."
+                    "Please enter at least one API key before saving.",
                 )
 
         except (RuntimeError, OSError) as e:
             logger.error(f"Error saving keys to keyring: {e}")
             from PySide6.QtWidgets import QMessageBox
+
             QMessageBox.critical(
                 self,
                 "Error al Guardar / Error Saving Keys",
                 f"No se pudo guardar las claves API:\n{str(e)}\n\n"
                 f"Verifica el acceso al keyring del sistema.\n\n"
-                f"Failed to save API keys. Please check system keyring access."
+                f"Failed to save API keys. Please check system keyring access.",
             )
 
 
 # Standalone test
 if __name__ == "__main__":
     import sys
+
     app = QApplication(sys.argv)
 
     dialog = APISettingsDialog()

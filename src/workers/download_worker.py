@@ -8,18 +8,25 @@ Features:
 - Metadata extraction
 - Error handling with signals
 - MP3 conversion (320kbps)
+
+Migrated to BaseWorker pattern (Phase 4 polish).
 """
-import yt_dlp
-from PySide6.QtCore import QThread, Signal
+
 import logging
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import yt_dlp
+from PySide6.QtCore import Signal
+
+from gui.base.base_worker import BaseWorker
 from utils.input_sanitizer import validate_path
 
 # Setup logger
 logger = logging.getLogger(__name__)
 
 
-class DownloadWorker(QThread):
+class DownloadWorker(BaseWorker):
     """
     Background worker for downloading YouTube videos as MP3
 
@@ -31,10 +38,9 @@ class DownloadWorker(QThread):
         worker.start()
     """
 
-    # Signals
+    # Custom signal overrides -- callers expect progress(int) and finished(dict)
     progress = Signal(int)  # Progress percentage 0-100
     finished = Signal(dict)  # Metadata when download completes
-    error = Signal(str)      # Error message on failure
 
     # Allowed base directories for downloads
     ALLOWED_BASE_DIRS = [
@@ -45,7 +51,7 @@ class DownloadWorker(QThread):
         Path.cwd() / "data" / "downloads",
     ]
 
-    def __init__(self, video_url, output_path, allowed_base_dir=None):
+    def __init__(self, video_url: str, output_path: str, allowed_base_dir: Optional[str] = None) -> None:
         """
         Initialize download worker
 
@@ -61,7 +67,7 @@ class DownloadWorker(QThread):
         super().__init__()
 
         # Validate output path to prevent path traversal
-        output_path_str = str(output_path)
+        output_path_str: str = str(output_path)
         if allowed_base_dir:
             is_valid, result = validate_path(output_path_str, str(allowed_base_dir))
             if not is_valid:
@@ -69,7 +75,7 @@ class DownloadWorker(QThread):
             output_path_str = result  # Use resolved path
         else:
             # Validate against known safe directories
-            path_valid = False
+            path_valid: bool = False
             for base_dir in self.ALLOWED_BASE_DIRS:
                 if base_dir.exists():
                     is_valid, _ = validate_path(output_path_str, str(base_dir))
@@ -84,104 +90,93 @@ class DownloadWorker(QThread):
                 parent.mkdir(parents=True, exist_ok=True)
                 logger.warning(f"Output path {resolved} not in known safe dirs, allowing as fallback")
 
-        self.video_url = video_url
-        self.output_path = output_path_str
+        self.video_url: str = video_url
+        self.output_path: str = output_path_str
 
         # Configure yt-dlp options
-        self.yt_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': output_path_str,
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '320',
-            }],
-            'progress_hooks': [self._progress_hook],
-            'quiet': True,
-            'no_warnings': True,
+        self.yt_opts: Dict[str, Any] = {
+            "format": "bestaudio/best",
+            "outtmpl": output_path_str,
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "320",
+                }
+            ],
+            "progress_hooks": [self._progress_hook],
+            "quiet": True,
+            "no_warnings": True,
         }
 
-    def run(self):
+    def do_work(self) -> dict:
         """
-        Execute download in background thread
+        Execute download in background thread.
 
-        Emits:
-            progress: Progress updates 0-100
-            finished: Metadata dict when complete
-            error: Error message if download fails
+        Returns:
+            Metadata dict, emitted via finished(dict) signal by BaseWorker.run().
         """
-        try:
-            logger.info(f"Starting download: {self.video_url}")
+        logger.info(f"Starting download: {self.video_url}")
 
-            # Download with yt-dlp
-            with yt_dlp.YoutubeDL(self.yt_opts) as ydl:
-                # Extract info first
-                info = ydl.extract_info(self.video_url, download=True)
+        # Download with yt-dlp
+        with yt_dlp.YoutubeDL(self.yt_opts) as ydl:
+            # Extract info first
+            info = ydl.extract_info(self.video_url, download=True)
 
-                # Get actual downloaded file path (yt-dlp may rename after post-processing)
-                actual_filepath = None
-                if 'requested_downloads' in info and info['requested_downloads']:
-                    # After post-processing, filepath contains the final MP3 path
-                    actual_filepath = info['requested_downloads'][0].get('filepath')
+            # Get actual downloaded file path (yt-dlp may rename after post-processing)
+            actual_filepath = None
+            if "requested_downloads" in info and info["requested_downloads"]:
+                # After post-processing, filepath contains the final MP3 path
+                actual_filepath = info["requested_downloads"][0].get("filepath")
 
-                # Fallback to prepare_filename if requested_downloads not available
-                if not actual_filepath:
-                    actual_filepath = ydl.prepare_filename(info)
-                    # If post-processor changed extension to .mp3, update path
-                    if not actual_filepath.endswith('.mp3'):
-                        actual_filepath = actual_filepath.rsplit('.', 1)[0] + '.mp3'
+            # Fallback to prepare_filename if requested_downloads not available
+            if not actual_filepath:
+                actual_filepath = ydl.prepare_filename(info)
+                # If post-processor changed extension to .mp3, update path
+                if not actual_filepath.endswith(".mp3"):
+                    actual_filepath = actual_filepath.rsplit(".", 1)[0] + ".mp3"
 
-                logger.debug(f"Downloaded file path: {actual_filepath}")
+            logger.debug(f"Downloaded file path: {actual_filepath}")
 
-                # Build metadata dict
-                raw_title = info.get('title', 'Unknown')
-                raw_artist = info.get('uploader', 'Unknown')
+            # Build metadata dict
+            raw_title = info.get("title", "Unknown")
+            raw_artist = info.get("uploader", "Unknown")
 
-                # Clean YouTube artifacts from title and artist
-                from core.metadata_cleaner import MetadataCleaner
-                cleaner = MetadataCleaner()
-                clean_title, _ = cleaner.clean_title(raw_title, raw_artist)
-                clean_artist, _ = cleaner.clean_artist(raw_artist)
+            # Clean YouTube artifacts from title and artist
+            from core.metadata_cleaner import MetadataCleaner
 
-                metadata = {
-                    'title': clean_title,
-                    'artist': clean_artist,
-                    'duration': info.get('duration', 0),
-                    'upload_date': info.get('upload_date', None),
-                    'output_path': actual_filepath  # Use ACTUAL path, not template
-                }
+            cleaner = MetadataCleaner()
+            clean_title, _ = cleaner.clean_title(raw_title, raw_artist)
+            clean_artist, _ = cleaner.clean_artist(raw_artist)
 
-                # Emit finished signal
-                logger.info(f"Download complete: {metadata['title']} (raw: {raw_title})")
-                self.finished.emit(metadata)
+            metadata = {
+                "title": clean_title,
+                "artist": clean_artist,
+                "duration": info.get("duration", 0),
+                "upload_date": info.get("upload_date", None),
+                "output_path": actual_filepath,  # Use ACTUAL path, not template
+            }
 
-        except yt_dlp.utils.DownloadError as e:
-            error_msg = f"Download failed: {str(e)}"
-            logger.error(error_msg)
-            self.error.emit(error_msg)
+            logger.info(f"Download complete: {metadata['title']} (raw: {raw_title})")
+            return metadata
 
-        except Exception as e:
-            error_msg = f"Unexpected error: {str(e)}"
-            logger.error(error_msg)
-            self.error.emit(error_msg)
-
-    def _progress_hook(self, d):
+    def _progress_hook(self, d: Dict[str, Any]) -> None:
         """
         Callback for yt-dlp progress updates
 
         Args:
             d (dict): Progress data from yt-dlp
         """
-        if d['status'] == 'downloading':
+        if d["status"] == "downloading":
             # Calculate percentage
-            if 'total_bytes' in d and d['total_bytes'] > 0:
-                percentage = int((d['downloaded_bytes'] / d['total_bytes']) * 100)
+            if "total_bytes" in d and d["total_bytes"] > 0:
+                percentage = int((d["downloaded_bytes"] / d["total_bytes"]) * 100)
                 self.progress.emit(percentage)
-            elif 'total_bytes_estimate' in d and d['total_bytes_estimate'] > 0:
-                percentage = int((d['downloaded_bytes'] / d['total_bytes_estimate']) * 100)
+            elif "total_bytes_estimate" in d and d["total_bytes_estimate"] > 0:
+                percentage = int((d["downloaded_bytes"] / d["total_bytes_estimate"]) * 100)
                 self.progress.emit(percentage)
 
-        elif d['status'] == 'finished':
+        elif d["status"] == "finished":
             # Download complete, processing starts
             self.progress.emit(100)
             logger.debug("Download finished, processing...")

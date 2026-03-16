@@ -11,25 +11,29 @@ Features:
 
 Created: November 17, 2025
 """
+
+from __future__ import annotations
+
 import logging
-from typing import Optional, Dict
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QTextEdit, QLabel, QPushButton,
-    QHBoxLayout, QFrame
-)
-from PySide6.QtCore import Qt, Signal, QThread
+from typing import Any, Dict, Optional
+
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout
+
+from gui.base import BaseTab
+from gui.base.base_worker import BaseWorker
+from gui.themes.style_constants import Styles
 
 logger = logging.getLogger(__name__)
 
 
-class LyricsSearchWorker(QThread):
+class LyricsSearchWorker(BaseWorker):
     """Background worker for lyrics search (non-blocking)"""
 
     finished = Signal(str)  # lyrics_text
-    error = Signal(str)  # error_message
 
-    def __init__(self, genius_client, title: str, artist: str):
+    def __init__(self, genius_client: Any, title: str, artist: str) -> None:
         """
         Initialize search worker
 
@@ -39,27 +43,22 @@ class LyricsSearchWorker(QThread):
             artist: Artist name
         """
         super().__init__()
-        self.genius_client = genius_client
-        self.title = title
-        self.artist = artist
+        self.genius_client: Any = genius_client
+        self.title: str = title
+        self.artist: str = artist
 
-    def run(self):
+    def do_work(self) -> Any:
         """Execute background search"""
-        try:
-            logger.info(f"Worker searching: {self.title} - {self.artist}")
-            lyrics = self.genius_client.search_lyrics(self.title, self.artist)
-
-            if lyrics:
-                self.finished.emit(lyrics)
-            else:
-                self.error.emit("Lyrics not found on Genius")
-
-        except Exception as e:
-            logger.error(f"Worker error: {e}")
-            self.error.emit(f"Search failed: {str(e)}")
+        logger.info(f"Worker searching: {self.title} - {self.artist}")
+        lyrics = self.genius_client.search_lyrics(self.title, self.artist)
+        if lyrics:
+            return lyrics
+        else:
+            self.error.emit("Lyrics not found on Genius")
+            return None
 
 
-class LyricsTab(QWidget):
+class LyricsTab(BaseTab):
     """
     Tab for displaying song lyrics
 
@@ -71,22 +70,21 @@ class LyricsTab(QWidget):
     - Error messages
     """
 
-    def __init__(self, genius_client=None):
+    def __init__(self, genius_client: Any = None) -> None:
         """
         Initialize Lyrics tab
 
         Args:
             genius_client: GeniusClient instance (optional)
         """
-        super().__init__()
-        self.genius_client = genius_client
-        self.current_song = None
-        self._worker = None
-        self._init_ui()
+        self.genius_client: Any = genius_client
+        self.current_song: Optional[Dict[str, Any]] = None
+        self._worker: Optional[LyricsSearchWorker] = None
+        super().__init__(db_manager=None, parent=None)
 
         logger.info("LyricsTab initialized")
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize UI components"""
         layout = QVBoxLayout()
         layout.setContentsMargins(15, 15, 15, 15)
@@ -100,24 +98,13 @@ class LyricsTab(QWidget):
 
         # Song info label
         self.header_label = QLabel("🎵 No song playing")
-        self.header_label.setStyleSheet("""
-            QLabel {
-                font-size: 16pt;
-                font-weight: bold;
-                padding: 5px;
-            }
-        """)
+        self.header_label.setStyleSheet(Styles.LABEL_16PT_BOLD)
         self.header_label.setWordWrap(True)
         header_layout.addWidget(self.header_label)
 
         # Status label (searching, found, error)
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet("""
-            QLabel {
-                font-size: 10pt;
-                padding: 2px;
-            }
-        """)
+        self.status_label.setStyleSheet(Styles.LABEL_10PT)
         self.status_label.setProperty("class", "secondary")  # Use theme color
         header_layout.addWidget(self.status_label)
 
@@ -128,8 +115,7 @@ class LyricsTab(QWidget):
         self.lyrics_text = QTextEdit()
         self.lyrics_text.setReadOnly(True)
         self.lyrics_text.setPlaceholderText(
-            "🎵 Play a song to see lyrics...\n\n"
-            "Lyrics will automatically load from Genius.com"
+            "🎵 Play a song to see lyrics...\n\n" "Lyrics will automatically load from Genius.com"
         )
 
         # Professional monospace font for lyrics
@@ -139,12 +125,14 @@ class LyricsTab(QWidget):
         self.lyrics_text.setFont(font)
 
         # Let theme handle colors, only set padding
-        self.lyrics_text.setStyleSheet("""
+        self.lyrics_text.setStyleSheet(
+            """
             QTextEdit {
                 padding: 15px;
                 line-height: 1.6;
             }
-        """)
+        """
+        )
 
         layout.addWidget(self.lyrics_text)
 
@@ -155,13 +143,7 @@ class LyricsTab(QWidget):
         self.search_button = QPushButton("🔍 Manual Search")
         self.search_button.setToolTip("Re-search for lyrics manually")
         self.search_button.clicked.connect(self._on_manual_search)
-        self.search_button.setStyleSheet("""
-            QPushButton {
-                padding: 8px 16px;
-                font-size: 10pt;
-                border-radius: 4px;
-            }
-        """)
+        self.search_button.setStyleSheet(Styles.BTN_ACTION)
         controls_layout.addWidget(self.search_button)
 
         # Copy button
@@ -169,13 +151,7 @@ class LyricsTab(QWidget):
         self.copy_button.setToolTip("Copy lyrics to clipboard")
         self.copy_button.clicked.connect(self._on_copy_lyrics)
         self.copy_button.setEnabled(False)
-        self.copy_button.setStyleSheet("""
-            QPushButton {
-                padding: 8px 16px;
-                font-size: 10pt;
-                border-radius: 4px;
-            }
-        """)
+        self.copy_button.setStyleSheet(Styles.BTN_ACTION)
         controls_layout.addWidget(self.copy_button)
 
         controls_layout.addStretch()
@@ -183,7 +159,7 @@ class LyricsTab(QWidget):
 
         self.setLayout(layout)
 
-    def on_song_changed(self, song_info: Dict):
+    def on_song_changed(self, song_info: Dict[str, Any]) -> None:
         """
         Called when a new song starts playing
 
@@ -193,15 +169,15 @@ class LyricsTab(QWidget):
         self.current_song = song_info
 
         # Update header
-        title = song_info.get('title', 'Unknown')
-        artist = song_info.get('artist', 'Unknown Artist')
+        title = song_info.get("title", "Unknown")
+        artist = song_info.get("artist", "Unknown Artist")
         self.header_label.setText(f"🎵 {title} - {artist}")
 
         # Auto-search lyrics
         logger.info(f"Song changed: {title} - {artist}")
         self._search_lyrics(title, artist)
 
-    def _search_lyrics(self, title: str, artist: str):
+    def _search_lyrics(self, title: str, artist: str) -> None:
         """
         Search for lyrics (background thread)
 
@@ -247,7 +223,7 @@ class LyricsTab(QWidget):
         self._worker.start()
         logger.debug("Started lyrics search worker")
 
-    def _on_lyrics_found(self, lyrics: str):
+    def _on_lyrics_found(self, lyrics: str) -> None:
         """
         Display found lyrics
 
@@ -261,7 +237,7 @@ class LyricsTab(QWidget):
 
         logger.info(f"Lyrics displayed ({len(lyrics)} chars)")
 
-    def _on_lyrics_error(self, error: str):
+    def _on_lyrics_error(self, error: str) -> None:
         """
         Show error message
 
@@ -286,11 +262,11 @@ class LyricsTab(QWidget):
 
         logger.warning(f"Lyrics error: {error}")
 
-    def _on_manual_search(self):
+    def _on_manual_search(self) -> None:
         """Manual search triggered by button"""
         if self.current_song:
-            title = self.current_song.get('title', '')
-            artist = self.current_song.get('artist', '')
+            title = self.current_song.get("title", "")
+            artist = self.current_song.get("artist", "")
 
             if title and artist:
                 logger.info(f"Manual search: {title} - {artist}")
@@ -300,7 +276,7 @@ class LyricsTab(QWidget):
         else:
             self.status_label.setText("⚠️ Play a song first")
 
-    def _on_copy_lyrics(self):
+    def _on_copy_lyrics(self) -> None:
         """Copy lyrics to clipboard"""
         from PySide6.QtWidgets import QApplication
 

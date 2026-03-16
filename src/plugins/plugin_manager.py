@@ -2,27 +2,30 @@
 Plugin Manager
 Handles loading, enabling, disabling and executing plugins
 """
-import os
-import sys
-import json
+
 import importlib
 import importlib.util
+import json
 import logging
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Type
+import os
+import sys
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Type
 
 
 def get_resource_path(relative_path: str) -> Path:
     """Get absolute path to resource, works for dev and PyInstaller bundle."""
-    if hasattr(sys, '_MEIPASS') or '__compiled__' in globals():
-        base_path = Path(sys._MEIPASS) if hasattr(sys, '_MEIPASS') else Path(__file__).parent.parent
+    if hasattr(sys, "_MEIPASS") or "__compiled__" in globals():
+        base_path = Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else Path(__file__).parent.parent
     else:
         base_path = Path(__file__).parent.parent  # plugins -> src
     return base_path / relative_path
 
+
 try:
     from PySide6.QtCore import QObject, Signal
+
     HAS_QT = True
 except ImportError:
     HAS_QT = False
@@ -36,13 +39,14 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PluginState:
     """Tracks state of a loaded plugin"""
+
     plugin: Plugin
     enabled: bool = False
     load_error: Optional[str] = None
     settings: Dict[str, Any] = field(default_factory=dict)
 
 
-class PluginManager(QObject if HAS_QT else object):
+class PluginManager(QObject if HAS_QT else object):  # type: ignore[misc]
     """
     Manages all plugins in NEXUS Music Manager.
 
@@ -61,17 +65,17 @@ class PluginManager(QObject if HAS_QT else object):
     """
 
     # Singleton instance
-    _instance: Optional['PluginManager'] = None
+    _instance: Optional["PluginManager"] = None
 
     # PySide6 signals (if available)
     if HAS_QT:
-        plugin_loaded = Signal(str)           # plugin_name
-        plugin_enabled = Signal(str)          # plugin_name
-        plugin_disabled = Signal(str)         # plugin_name
-        plugin_error = Signal(str, str)       # plugin_name, error_message
-        hook_executed = Signal(str, int)      # hook_name, handlers_count
+        plugin_loaded = Signal(str)  # plugin_name
+        plugin_enabled = Signal(str)  # plugin_name
+        plugin_disabled = Signal(str)  # plugin_name
+        plugin_error = Signal(str, str)  # plugin_name, error_message
+        hook_executed = Signal(str, int)  # hook_name, handlers_count
 
-    def __init__(self, plugins_dir: str = None, data_dir: str = None):
+    def __init__(self, plugins_dir: Optional[str] = None, data_dir: Optional[str] = None) -> None:
         """
         Initialize Plugin Manager.
 
@@ -99,8 +103,12 @@ class PluginManager(QObject if HAS_QT else object):
         # Plugin registry
         self._plugins: Dict[str, PluginState] = {}
 
-        # Plugin whitelist (None = allow all, set = only allow listed)
-        self._whitelist: Optional[List[str]] = None
+        # SECURITY: Default-deny plugin loading. Only bundled plugins are
+        # allowed unless an explicit whitelist file overrides this list.
+        # This prevents arbitrary code execution from third-party plugins
+        # that may appear in the plugins directory.
+        self._bundled_plugins = ["discord_rpc", "play_counter", "scrobbler"]
+        self._whitelist: Optional[List[str]] = list(self._bundled_plugins)
         self._whitelist_file = self._data_dir / "plugin_whitelist.json"
         self._load_whitelist()
 
@@ -111,7 +119,7 @@ class PluginManager(QObject if HAS_QT else object):
         self._load_settings()
 
     @classmethod
-    def get_instance(cls, plugins_dir: str = None, data_dir: str = None) -> 'PluginManager':
+    def get_instance(cls, plugins_dir: Optional[str] = None, data_dir: Optional[str] = None) -> "PluginManager":
         """Get singleton instance"""
         if cls._instance is None:
             cls._instance = cls(plugins_dir, data_dir)
@@ -130,9 +138,9 @@ class PluginManager(QObject if HAS_QT else object):
         """Load plugin whitelist from file"""
         if self._whitelist_file.exists():
             try:
-                with open(self._whitelist_file, 'r') as f:
+                with open(self._whitelist_file, "r") as f:
                     data = json.load(f)
-                    self._whitelist = data.get('allowed_plugins', None)
+                    self._whitelist = data.get("allowed_plugins", None)
                     logger.info(f"Plugin whitelist loaded: {self._whitelist}")
             except (json.JSONDecodeError, IOError) as e:
                 logger.error(f"Failed to load plugin whitelist: {e}")
@@ -142,15 +150,20 @@ class PluginManager(QObject if HAS_QT else object):
         """Set plugin whitelist. None = allow all, list = only allow listed."""
         self._whitelist = plugin_names
         try:
-            with open(self._whitelist_file, 'w') as f:
-                json.dump({'allowed_plugins': plugin_names}, f, indent=2)
+            with open(self._whitelist_file, "w") as f:
+                json.dump({"allowed_plugins": plugin_names}, f, indent=2)
         except IOError as e:
             logger.error(f"Failed to save plugin whitelist: {e}")
 
     def _is_plugin_allowed(self, plugin_name: str) -> bool:
-        """Check if a plugin is allowed by the whitelist"""
-        if self._whitelist is None:
-            return True  # No whitelist = allow all
+        """Check if a plugin is allowed by the whitelist.
+
+        SECURITY: Default-deny. When whitelist is None or empty,
+        only bundled plugins are permitted.
+        """
+        if not self._whitelist:
+            # No whitelist or empty list -> fall back to bundled plugins only
+            return plugin_name in self._bundled_plugins
         return plugin_name in self._whitelist
 
     def load_plugins(self) -> int:
@@ -171,7 +184,7 @@ class PluginManager(QObject if HAS_QT else object):
             return 0
 
         for item in self._plugins_dir.iterdir():
-            if item.is_dir() and not item.name.startswith('_'):
+            if item.is_dir() and not item.name.startswith("_"):
                 # Check whitelist before loading
                 if not self._is_plugin_allowed(item.name):
                     logger.warning(f"Plugin '{item.name}' not in whitelist, skipping")
@@ -181,7 +194,7 @@ class PluginManager(QObject if HAS_QT else object):
                 if plugin_file.exists():
                     if self._load_plugin_from_file(plugin_file, item.name):
                         loaded_count += 1
-            elif item.suffix == '.py' and not item.name.startswith('_'):
+            elif item.suffix == ".py" and not item.name.startswith("_"):
                 # Check whitelist before loading
                 if not self._is_plugin_allowed(item.stem):
                     logger.warning(f"Plugin '{item.stem}' not in whitelist, skipping")
@@ -220,9 +233,7 @@ class PluginManager(QObject if HAS_QT else object):
 
             # Load module with explicit file path (no sys.path modification)
             spec = importlib.util.spec_from_file_location(
-                f"nexus_plugin_{plugin_name}",
-                resolved_file,
-                submodule_search_locations=[str(resolved_file.parent)]
+                f"nexus_plugin_{plugin_name}", resolved_file, submodule_search_locations=[str(resolved_file.parent)]
             )
             if spec is None or spec.loader is None:
                 logger.error(f"Cannot load plugin spec: {file_path}")
@@ -238,9 +249,7 @@ class PluginManager(QObject if HAS_QT else object):
             plugin_class = None
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
-                if (isinstance(attr, type) and
-                    issubclass(attr, Plugin) and
-                    attr is not Plugin):
+                if isinstance(attr, type) and issubclass(attr, Plugin) and attr is not Plugin:
                     plugin_class = attr
                     break
 
@@ -262,9 +271,7 @@ class PluginManager(QObject if HAS_QT else object):
 
             # Register plugin
             self._plugins[plugin_name] = PluginState(
-                plugin=plugin_instance,
-                enabled=False,
-                settings=self._get_saved_settings(plugin_name)
+                plugin=plugin_instance, enabled=False, settings=self._get_saved_settings(plugin_name)
             )
 
             # Load saved settings into plugin
@@ -293,12 +300,13 @@ class PluginManager(QObject if HAS_QT else object):
                 self.plugin_error.emit(plugin_name, str(e))
             return False
 
-    def load_plugin_class(self, plugin_class: Type[Plugin]) -> bool:
+    def load_plugin_class(self, plugin_class: Type[Plugin], *, _skip_whitelist: bool = False) -> bool:
         """
         Load a plugin from a class directly (useful for testing).
 
         Args:
             plugin_class: Plugin subclass to instantiate
+            _skip_whitelist: Skip whitelist check (testing only, keyword-only)
 
         Returns:
             True if plugin was loaded successfully
@@ -307,10 +315,13 @@ class PluginManager(QObject if HAS_QT else object):
             plugin_instance = plugin_class()
             plugin_name = plugin_instance.metadata.name
 
+            # SECURITY: Enforce whitelist even for class-based loading
+            if not _skip_whitelist and not self._is_plugin_allowed(plugin_name):
+                logger.warning(f"Plugin '{plugin_name}' not in whitelist, refusing to load")
+                return False
+
             self._plugins[plugin_name] = PluginState(
-                plugin=plugin_instance,
-                enabled=False,
-                settings=self._get_saved_settings(plugin_name)
+                plugin=plugin_instance, enabled=False, settings=self._get_saved_settings(plugin_name)
             )
 
             plugin_instance.load_settings(self._plugins[plugin_name].settings)
@@ -395,8 +406,7 @@ class PluginManager(QObject if HAS_QT else object):
         try:
             # Check if other plugins depend on this one
             for name, other_state in self._plugins.items():
-                if (other_state.enabled and
-                    plugin_name in other_state.plugin.metadata.dependencies):
+                if other_state.enabled and plugin_name in other_state.plugin.metadata.dependencies:
                     logger.error(f"Cannot disable {plugin_name}: {name} depends on it")
                     return False
 
@@ -424,7 +434,7 @@ class PluginManager(QObject if HAS_QT else object):
     # Hook Execution
     # ==========================================
 
-    def execute_hook(self, hook: PluginHook, *args, **kwargs) -> List[Any]:
+    def execute_hook(self, hook: PluginHook, *args: Any, **kwargs: Any) -> List[Any]:
         """
         Execute a hook across all enabled plugins.
 
@@ -473,10 +483,7 @@ class PluginManager(QObject if HAS_QT else object):
 
     def get_enabled_plugins(self) -> List[Plugin]:
         """Get all enabled plugins"""
-        return [
-            state.plugin for state in self._plugins.values()
-            if state.enabled
-        ]
+        return [state.plugin for state in self._plugins.values() if state.enabled]
 
     def get_plugin_info(self, plugin_name: str) -> Optional[Dict[str, Any]]:
         """Get plugin info as dictionary"""
@@ -484,20 +491,12 @@ class PluginManager(QObject if HAS_QT else object):
             return None
 
         state = self._plugins[plugin_name]
-        return {
-            'metadata': state.plugin.metadata.to_dict(),
-            'enabled': state.enabled,
-            'error': state.load_error
-        }
+        return {"metadata": state.plugin.metadata.to_dict(), "enabled": state.enabled, "error": state.load_error}
 
     def get_all_plugin_info(self) -> List[Dict[str, Any]]:
         """Get info for all plugins"""
         return [
-            {
-                'metadata': state.plugin.metadata.to_dict(),
-                'enabled': state.enabled,
-                'error': state.load_error
-            }
+            {"metadata": state.plugin.metadata.to_dict(), "enabled": state.enabled, "error": state.load_error}
             for state in self._plugins.values()
         ]
 
@@ -517,7 +516,7 @@ class PluginManager(QObject if HAS_QT else object):
 
         if self._settings_file.exists():
             try:
-                with open(self._settings_file, 'r') as f:
+                with open(self._settings_file, "r") as f:
                     self._saved_settings = json.load(f)
             except (json.JSONDecodeError, OSError) as e:
                 logger.error(f"Failed to load plugin settings: {e}")
@@ -526,13 +525,10 @@ class PluginManager(QObject if HAS_QT else object):
         """Save plugin settings to file"""
         settings = {}
         for name, state in self._plugins.items():
-            settings[name] = {
-                'enabled': state.enabled,
-                'settings': state.plugin.get_all_settings()
-            }
+            settings[name] = {"enabled": state.enabled, "settings": state.plugin.get_all_settings()}
 
         try:
-            with open(self._settings_file, 'w') as f:
+            with open(self._settings_file, "w") as f:
                 json.dump(settings, f, indent=2)
         except OSError as e:
             logger.error(f"Failed to save plugin settings: {e}")
@@ -540,13 +536,13 @@ class PluginManager(QObject if HAS_QT else object):
     def _get_saved_settings(self, plugin_name: str) -> Dict[str, Any]:
         """Get saved settings for a plugin"""
         if plugin_name in self._saved_settings:
-            return self._saved_settings[plugin_name].get('settings', {})
+            return self._saved_settings[plugin_name].get("settings", {})  # type: ignore[no-any-return]
         return {}
 
     def _restore_enabled_state(self) -> None:
         """Restore enabled state for plugins"""
         for name, saved in self._saved_settings.items():
-            if saved.get('enabled', False) and name in self._plugins:
+            if saved.get("enabled", False) and name in self._plugins:
                 self.enable_plugin(name)
 
     def save_plugin_settings(self, plugin_name: str, settings: Dict[str, Any]) -> bool:

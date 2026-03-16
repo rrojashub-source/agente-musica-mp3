@@ -5,16 +5,36 @@ Builds the complete UI: menu bar, top section (now playing + visualizer),
 tab widget with 15 tabs, status bar. Also handles dialog methods and
 visualizer signal callbacks.
 """
+
+from __future__ import annotations
+
 import logging
 from pathlib import Path
+from typing import Any, Optional
 
-from PySide6.QtWidgets import (
-    QTabWidget, QVBoxLayout, QHBoxLayout, QWidget, QStatusBar,
-    QMessageBox, QDialog, QPushButton
-)
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QDialog,
+    QHBoxLayout,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QStatusBar,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
-from translations import tr, get_language, set_language, LANGUAGES
+from api.genius_client import GeniusClient
+from config_manager import ConfigManager
+from core.audio_player import AudioPlayer
+from core.download_queue import DownloadQueue
+from core.keyboard_shortcuts import KeyboardShortcutManager
+from core.playlist_manager import PlaylistManager
+from core.theme_manager import ThemeManager
+from core.waveform_extractor import WaveformExtractor
+from database.manager import DatabaseManager
+from translations import LANGUAGES, get_language, set_language, tr
 
 logger = logging.getLogger(__name__)
 
@@ -22,21 +42,32 @@ logger = logging.getLogger(__name__)
 class UIComposer:
     """Creates and manages all UI components for the main window"""
 
-    def __init__(self, window, db_manager, audio_player, playlist_manager,
-                 waveform_extractor, config_manager, download_queue,
-                 theme_manager, shortcuts_manager, genius_client):
-        self.window = window
-        self.db_manager = db_manager
-        self.audio_player = audio_player
-        self.playlist_manager = playlist_manager
-        self.waveform_extractor = waveform_extractor
-        self.config_manager = config_manager
-        self.download_queue = download_queue
-        self.theme_manager = theme_manager
-        self.shortcuts_manager = shortcuts_manager
-        self.genius_client = genius_client
+    def __init__(
+        self,
+        window: QMainWindow,
+        db_manager: DatabaseManager,
+        audio_player: AudioPlayer,
+        playlist_manager: PlaylistManager,
+        waveform_extractor: WaveformExtractor,
+        config_manager: ConfigManager,
+        download_queue: DownloadQueue,
+        theme_manager: ThemeManager,
+        shortcuts_manager: KeyboardShortcutManager,
+        genius_client: GeniusClient,
+    ) -> None:
+        self.window: QMainWindow = window
+        self.db_manager: DatabaseManager = db_manager
+        self.audio_player: AudioPlayer = audio_player
+        self.playlist_manager: PlaylistManager = playlist_manager
+        self.waveform_extractor: WaveformExtractor = waveform_extractor
+        self.config_manager: ConfigManager = config_manager
+        self.download_queue: DownloadQueue = download_queue
+        self.theme_manager: ThemeManager = theme_manager
+        self.shortcuts_manager: KeyboardShortcutManager = shortcuts_manager
+        self.genius_client: GeniusClient = genius_client
+        self._spectrum_worker: Optional[Any] = None
 
-    def compose(self):
+    def compose(self) -> None:
         """Build the complete UI. Sets widget references on self.window."""
         self._create_menu_bar()
 
@@ -63,7 +94,7 @@ class UIComposer:
     # Menu Bar
     # ==========================================
 
-    def _create_menu_bar(self):
+    def _create_menu_bar(self) -> None:
         """Create application menu bar"""
         menubar = self.window.menuBar()
 
@@ -92,9 +123,7 @@ class UIComposer:
             lang_action = language_menu.addAction(lang_name)
             lang_action.setCheckable(True)
             lang_action.setChecked(lang_code == get_language())
-            lang_action.triggered.connect(
-                lambda checked, lc=lang_code: self._change_language(lc)
-            )
+            lang_action.triggered.connect(lambda checked, lc=lang_code: self._change_language(lc))
 
         # View menu
         view_menu = menubar.addMenu(tr("menu_view"))
@@ -122,11 +151,11 @@ class UIComposer:
     # Top Section
     # ==========================================
 
-    def _create_top_section(self):
+    def _create_top_section(self) -> QWidget:
         """Create top section with Now Playing + Visualizer + Recommendations"""
         from gui.widgets.now_playing_widget import NowPlayingWidget
-        from gui.widgets.visualizer_widget import VisualizerWidget
         from gui.widgets.recommendations_widget import RecommendationsWidget
+        from gui.widgets.visualizer_widget import VisualizerWidget
 
         top_widget = QWidget()
         top_layout = QHBoxLayout(top_widget)
@@ -146,9 +175,7 @@ class UIComposer:
         top_layout.addWidget(self.window.recommendations_widget, stretch=1)
 
         # Connect visualizer position signal
-        self.window.now_playing.position_changed.connect(
-            lambda pos: self.window.visualizer.set_position(pos)
-        )
+        self.window.now_playing.position_changed.connect(lambda pos: self.window.visualizer.set_position(pos))
 
         # Connect song loaded → visualizer analysis
         self.window.now_playing.song_loaded.connect(self._on_song_loaded)
@@ -159,22 +186,22 @@ class UIComposer:
     # Tab Widget (15 tabs)
     # ==========================================
 
-    def _create_tab_widget(self):
+    def _create_tab_widget(self) -> QTabWidget:
         """Create tab widget with all features"""
-        from gui.tabs.library_tab import LibraryTab
-        from gui.tabs.search_tab import SearchTab
-        from gui.tabs.lyrics_tab import LyricsTab
         from gui.tabs.chords_tab import ChordsTab
-        from gui.tabs.import_tab import ImportTab
-        from gui.tabs.duplicates_tab import DuplicatesTab
-        from gui.tabs.organize_tab import OrganizeTab
-        from gui.tabs.rename_tab import RenameTab
         from gui.tabs.cleanup_tab import CleanupTab
         from gui.tabs.cloud_sync_tab import CloudSyncTab
+        from gui.tabs.duplicates_tab import DuplicatesTab
+        from gui.tabs.import_tab import ImportTab
+        from gui.tabs.library_tab import LibraryTab
+        from gui.tabs.lyrics_tab import LyricsTab
+        from gui.tabs.organize_tab import OrganizeTab
+        from gui.tabs.rename_tab import RenameTab
+        from gui.tabs.search_tab import SearchTab
         from gui.tabs.statistics_tab import StatisticsTab
+        from gui.widgets.album_grid_widget import AlbumGridWidget
         from gui.widgets.playlist_widget import PlaylistWidget
         from gui.widgets.queue_widget import QueueWidget
-        from gui.widgets.album_grid_widget import AlbumGridWidget
 
         self.window.tabs = QTabWidget()
         self.window.tabs.setTabPosition(QTabWidget.TabPosition.North)
@@ -222,11 +249,9 @@ class UIComposer:
         # Tab 5: Chords
         try:
             from api.chords_client import ChordsClient
+
             chords_client = ChordsClient(db_manager=self.db_manager)
-            w.chords_tab = ChordsTab(
-                chords_client=chords_client,
-                audio_player=self.audio_player
-            )
+            w.chords_tab = ChordsTab(chords_client=chords_client, audio_player=self.audio_player)
             tabs.addTab(w.chords_tab, tr("tab_chords"))
             logger.info("Chords tab loaded")
         except Exception as e:  # Tab widgets can raise any Qt/import error during construction
@@ -279,7 +304,7 @@ class UIComposer:
 
         # Tab 10: Cleanup Wizard
         try:
-            db_path = self.db_manager.db_path if hasattr(self.db_manager, 'db_path') else 'music_library.db'
+            db_path = self.db_manager.db_path if hasattr(self.db_manager, "db_path") else "music_library.db"
             w.cleanup_tab = CleanupTab(db_path)
             tabs.addTab(w.cleanup_tab, tr("tab_cleanup"))
             logger.info("Cleanup Wizard tab loaded")
@@ -316,10 +341,8 @@ class UIComposer:
 
         # Connect download queue signals to library refresh
         try:
-            if hasattr(w, 'library_tab') and self.download_queue:
-                self.download_queue.item_completed.connect(
-                    lambda item_id, meta: w.library_tab._load_library()
-                )
+            if hasattr(w, "library_tab") and self.download_queue:
+                self.download_queue.item_completed.connect(lambda item_id, meta: w.library_tab._load_library())
                 logger.info("Connected download queue → library refresh")
         except Exception as e:  # Signal connection can fail if widgets were replaced with error stubs
             logger.warning(f"Could not connect queue→library signal: {e}")
@@ -329,15 +352,15 @@ class UIComposer:
 
         return self.window.tabs
 
-    def _connect_data_changed_signals(self, w):
+    def _connect_data_changed_signals(self, w: QMainWindow) -> None:
         """Connect data_changed from all tabs that modify DB → library + statistics refresh"""
-        data_tabs = ['import_tab', 'cleanup_tab', 'organize_tab', 'cloud_sync_tab']
-        library = getattr(w, 'library_tab', None)
-        stats = getattr(w, 'statistics_tab', None)
+        data_tabs = ["import_tab", "cleanup_tab", "organize_tab", "cloud_sync_tab"]
+        library = getattr(w, "library_tab", None)
+        stats = getattr(w, "statistics_tab", None)
 
         for tab_name in data_tabs:
             tab = getattr(w, tab_name, None)
-            if tab and hasattr(tab, 'data_changed'):
+            if tab and hasattr(tab, "data_changed"):
                 if library:
                     tab.data_changed.connect(library._load_library)
                 if stats:
@@ -348,7 +371,7 @@ class UIComposer:
     # Dialog Handlers
     # ==========================================
 
-    def _show_api_settings(self):
+    def _show_api_settings(self) -> None:
         """Show API settings dialog"""
         from gui.dialogs.api_settings_dialog import APISettingsDialog
 
@@ -359,7 +382,7 @@ class UIComposer:
         else:
             logger.info("API settings dialog cancelled")
 
-    def _show_equalizer(self):
+    def _show_equalizer(self) -> None:
         """Show audio equalizer dialog"""
         from gui.widgets.equalizer_widget import EqualizerWidget
 
@@ -371,13 +394,13 @@ class UIComposer:
         equalizer = EqualizerWidget()
         layout.addWidget(equalizer)
 
-        if hasattr(self.audio_player, 'set_equalizer_gains'):
+        if hasattr(self.audio_player, "set_equalizer_gains"):
             equalizer.eq_changed.connect(self.audio_player.set_equalizer_gains)
 
         dialog.exec()
         logger.info("Equalizer dialog closed")
 
-    def _change_language(self, lang_code: str):
+    def _change_language(self, lang_code: str) -> None:
         """Change application language"""
         from PySide6.QtCore import QSettings
 
@@ -385,23 +408,19 @@ class UIComposer:
             settings = QSettings("NEXUS", "MusicManager")
             settings.setValue("language", lang_code)
 
-            QMessageBox.information(
-                self.window,
-                tr("language_changed_title"),
-                tr("language_changed_message")
-            )
+            QMessageBox.information(self.window, tr("language_changed_title"), tr("language_changed_message"))
             logger.info(f"Language changed to: {lang_code}")
         else:
             logger.error(f"Invalid language code: {lang_code}")
 
-    def _toggle_theme(self):
+    def _toggle_theme(self) -> None:
         """Toggle between dark and light themes"""
         new_theme = self.theme_manager.toggle_theme()
         theme_display = new_theme.capitalize()
         self.window.statusBar.showMessage(tr("status_theme_switched", theme=theme_display), 2000)
         logger.info(f"User toggled theme to: {new_theme}")
 
-    def _show_about(self):
+    def _show_about(self) -> None:
         """Show about dialog"""
         about_text = """
 <h2>NEXUS Music Manager</h2>
@@ -428,7 +447,7 @@ audio playback, playlists, and visualizer.</p>
         """
         QMessageBox.about(self.window, "About - NEXUS Music Manager", about_text)
 
-    def _show_api_guide(self):
+    def _show_api_guide(self) -> None:
         """Show API setup guide"""
         from PySide6.QtWidgets import QTextBrowser
 
@@ -449,7 +468,7 @@ audio playback, playlists, and visualizer.</p>
 
         dialog.exec()
 
-    def _show_shortcuts_dialog(self):
+    def _show_shortcuts_dialog(self) -> None:
         """Show keyboard shortcuts help dialog"""
         from gui.dialogs.shortcuts_dialog import ShortcutsDialog
 
@@ -461,7 +480,7 @@ audio playback, playlists, and visualizer.</p>
     # Visualizer Signal Handlers
     # ==========================================
 
-    def _on_song_loaded(self, file_path: str):
+    def _on_song_loaded(self, file_path: str) -> None:
         """Handle song loaded — extract spectrum/waveform asynchronously"""
         try:
             logger.info(f"Starting audio analysis for: {Path(file_path).name}")
@@ -470,21 +489,18 @@ audio playback, playlists, and visualizer.</p>
             self.window.statusBar.showMessage("Analyzing audio for visualizer...", 0)
 
             # Stop any existing worker
-            if hasattr(self, '_spectrum_worker') and self._spectrum_worker.isRunning():
-                self._spectrum_worker.terminate()
-                self._spectrum_worker.wait()
+            if self._spectrum_worker is not None and self._spectrum_worker.isRunning():  # type: ignore[union-attr]
+                self._spectrum_worker.terminate()  # type: ignore[union-attr]
+                self._spectrum_worker.wait()  # type: ignore[union-attr]
 
             from core.spectrum_worker import SpectrumWorker
-            self._spectrum_worker = SpectrumWorker(
-                self.waveform_extractor, file_path, num_bars=60
-            )
+
+            self._spectrum_worker = SpectrumWorker(self.waveform_extractor, file_path, num_bars=60)
 
             self._spectrum_worker.finished.connect(
                 lambda data, dur: self._on_spectrum_extracted(data, dur, duration, file_path)
             )
-            self._spectrum_worker.error.connect(
-                lambda err: self._on_spectrum_error(err, file_path, duration)
-            )
+            self._spectrum_worker.error.connect(lambda err: self._on_spectrum_error(err, file_path, duration))
             self._spectrum_worker.progress.connect(
                 lambda pct: self.window.statusBar.showMessage(f"Analyzing audio... {pct}%", 0)
             )
@@ -499,7 +515,9 @@ audio playback, playlists, and visualizer.</p>
             self.window.statusBar.showMessage(f"Error: {str(e)}", 5000)
             self.window.visualizer.clear()
 
-    def _on_spectrum_extracted(self, spectrum_data, spectrum_duration, audio_duration, file_path):
+    def _on_spectrum_extracted(
+        self, spectrum_data: list[list[float]], spectrum_duration: float, audio_duration: float, file_path: str
+    ) -> None:
         """Handle spectrum extraction completion"""
         try:
             self.window.visualizer.set_spectrum(spectrum_data, spectrum_duration)
@@ -510,7 +528,7 @@ audio playback, playlists, and visualizer.</p>
             logger.error(f"Error applying spectrum data: {e}")
             self.window.statusBar.showMessage(f"Visualizer error: {str(e)}", 5000)
 
-    def _on_spectrum_error(self, error_msg, file_path, duration):
+    def _on_spectrum_error(self, error_msg: str, file_path: str, duration: float) -> None:
         """Handle spectrum extraction error — fallback to waveform"""
         logger.warning(f"Spectrum extraction failed: {error_msg}")
         self.window.statusBar.showMessage("Using simplified visualizer...", 2000)

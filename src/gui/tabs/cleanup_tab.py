@@ -9,20 +9,34 @@ Purpose: GUI wizard for metadata cleanup workflow
 
 Created: November 18, 2025
 """
-from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QTreeWidget, QTreeWidgetItem, QMessageBox,
-    QGroupBox, QCheckBox, QSpinBox
-)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QBrush
-import logging
 
-from database.manager import DatabaseManager
+from __future__ import annotations
+
+import logging
+from typing import Any, Dict, List, Optional
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
+from core.cleanup_workflow import CleanupApplier, CleanupWorkflowWorker
 from core.metadata_cleaner import MetadataCleaner
 from core.metadata_fetcher import MetadataFetcher
-from core.cleanup_workflow import CleanupWorkflowWorker, CleanupApplier
+from database.manager import DatabaseManager
 from gui.base import BaseTab
+from gui.themes.style_constants import Styles
 from utils.constants import CONFIDENCE_THRESHOLD_DEFAULT
 
 logger = logging.getLogger(__name__)
@@ -41,24 +55,24 @@ class CleanupTab(BaseTab):
     6. Organize (optional) → Clean library structure
     """
 
-    def __init__(self, db_path: str, parent=None):
-        self.db_path = db_path
-        db = DatabaseManager(db_path)
-        self.cleaner = MetadataCleaner()
-        self.fetcher = None  # Initialize when needed (requires API clients)
-        self.applier = CleanupApplier(db)
-        self.workflow_worker = None
-        self.workflow_results = None
-        self.preview_changes = []
+    def __init__(self, db_path: str, parent: Optional[QWidget] = None) -> None:
+        self.db_path: str = db_path
+        db: DatabaseManager = DatabaseManager(db_path)
+        self.cleaner: MetadataCleaner = MetadataCleaner()
+        self.fetcher: Optional[MetadataFetcher] = None  # Initialize when needed (requires API clients)
+        self.applier: CleanupApplier = CleanupApplier(db)
+        self.workflow_worker: Optional[CleanupWorkflowWorker] = None
+        self.workflow_results: Optional[Dict[str, Any]] = None
+        self.preview_changes: List[Dict[str, Any]] = []
         super().__init__(db_manager=db, parent=parent)
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize user interface"""
         layout = QVBoxLayout()
 
         # Header
         header = QLabel("🧹 Metadata Cleanup Wizard")
-        header.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px;")
+        header.setStyleSheet(Styles.HEADER_TITLE_PADDED)
         layout.addWidget(header)
 
         # Instructions
@@ -66,7 +80,7 @@ class CleanupTab(BaseTab):
             "This wizard will help you clean and correct corrupted metadata.\n"
             "Process: Scan → Clean → Fetch Correct Data → Preview → Apply"
         )
-        instructions.setStyleSheet("padding: 5px; color: gray;")
+        instructions.setStyleSheet(Styles.TEXT_INSTRUCTIONS)
         layout.addWidget(instructions)
 
         # === STEP 1: SCAN SETTINGS ===
@@ -76,17 +90,14 @@ class CleanupTab(BaseTab):
         # Fetch metadata checkbox
         self.fetch_metadata_check = QCheckBox("Fetch correct metadata from MusicBrainz/Spotify")
         self.fetch_metadata_check.setChecked(True)
-        self.fetch_metadata_check.setToolTip(
-            "Search external APIs for correct metadata (recommended)"
-        )
+        self.fetch_metadata_check.setToolTip("Search external APIs for correct metadata (recommended)")
         scan_layout.addWidget(self.fetch_metadata_check)
 
         # Download cover art checkbox
         self.download_covers_check = QCheckBox("Download album cover art automatically")
         self.download_covers_check.setChecked(False)
         self.download_covers_check.setToolTip(
-            "Download cover images from Cover Art Archive\n"
-            "Saves to: downloads/covers/{artist}/{album}/cover.jpg"
+            "Download cover images from Cover Art Archive\n" "Saves to: downloads/covers/{artist}/{album}/cover.jpg"
         )
         scan_layout.addWidget(self.download_covers_check)
 
@@ -97,9 +108,7 @@ class CleanupTab(BaseTab):
         self.confidence_spin.setRange(50, 100)
         self.confidence_spin.setValue(CONFIDENCE_THRESHOLD_DEFAULT)
         self.confidence_spin.setSuffix("%")
-        self.confidence_spin.setToolTip(
-            "Minimum confidence to accept metadata matches (70% recommended)"
-        )
+        self.confidence_spin.setToolTip("Minimum confidence to accept metadata matches (70% recommended)")
         confidence_layout.addWidget(confidence_label)
         confidence_layout.addWidget(self.confidence_spin)
         confidence_layout.addStretch()
@@ -123,14 +132,7 @@ class CleanupTab(BaseTab):
 
         # Preview tree
         self.preview_tree = QTreeWidget()
-        self.preview_tree.setHeaderLabels([
-            "Song",
-            "Original",
-            "→",
-            "Proposed",
-            "Confidence",
-            "Source"
-        ])
+        self.preview_tree.setHeaderLabels(["Song", "Original", "→", "Proposed", "Confidence", "Source"])
         self.preview_tree.setColumnWidth(0, 200)
         self.preview_tree.setColumnWidth(1, 250)
         self.preview_tree.setColumnWidth(2, 30)
@@ -169,17 +171,13 @@ class CleanupTab(BaseTab):
 
         self.setLayout(layout)
 
-    def _on_scan_clicked(self):
+    def _on_scan_clicked(self) -> None:
         """Handle scan button click - Start workflow"""
         # Get all songs from database
         songs = self.db.get_all_songs()
 
         if not songs:
-            QMessageBox.information(
-                self,
-                "Empty Library",
-                "No songs in library to scan."
-            )
+            QMessageBox.information(self, "Empty Library", "No songs in library to scan.")
             return
 
         logger.info(f"Starting cleanup workflow for {len(songs)} songs")
@@ -194,31 +192,32 @@ class CleanupTab(BaseTab):
         if self.fetch_metadata_check.isChecked():
             try:
                 # Import API clients and adapters
+                import keyring
+
                 from api.musicbrainz_client import MusicBrainzClient
                 from api.spotify_search import SpotifySearcher
                 from core.api_adapters import MusicBrainzAdapter, SpotifyAdapter
-                import keyring
 
                 # Initialize MusicBrainz client
                 mb_client = MusicBrainzClient(
-                    app_name="NEXUS Music Manager",
-                    app_version="2.0",
-                    contact="support@nexusmusic.com"
+                    app_name="NEXUS Music Manager", app_version="2.0", contact="support@nexusmusic.com"
                 )
                 mb_adapter = MusicBrainzAdapter(mb_client)
 
-                # Initialize Spotify client (with credentials from keyring)
+                # Initialize Spotify client
                 try:
-                    spotify_id = keyring.get_password("nexus_music", "spotify_client_id")
-                    spotify_secret = keyring.get_password("nexus_music", "spotify_client_secret")
+                    from utils.credentials import load_credential
+
+                    spotify_id = load_credential("spotify_client_id")
+                    spotify_secret = load_credential("spotify_client_secret")
 
                     if spotify_id and spotify_secret:
                         spotify_searcher = SpotifySearcher(spotify_id, spotify_secret)
                         spotify_adapter = SpotifyAdapter(spotify_searcher)
                     else:
-                        logger.warning("Spotify credentials not found in keyring")
+                        logger.warning("Spotify credentials not found")
                         spotify_adapter = None
-                except Exception as e:
+                except Exception as e:  # GUI error boundary
                     logger.warning(f"Failed to initialize Spotify: {e}")
                     spotify_adapter = None
 
@@ -226,7 +225,7 @@ class CleanupTab(BaseTab):
                 self.fetcher = MetadataFetcher(mb_adapter, spotify_adapter)
                 logger.info("Metadata fetcher initialized with API adapters")
 
-            except Exception as e:
+            except Exception as e:  # API client init - diverse import/auth/network errors
                 logger.warning(f"Failed to initialize API clients: {e}")
                 self.fetcher = None
 
@@ -238,34 +237,31 @@ class CleanupTab(BaseTab):
             songs_to_clean=songs,
             fetch_metadata=self.fetch_metadata_check.isChecked(),
             min_confidence=self.confidence_spin.value(),
-            download_covers=self.download_covers_check.isChecked()
+            download_covers=self.download_covers_check.isChecked(),
         )
 
         # Connect worker signals (connect_worker handles progress/finished/error)
         self.connect_worker(
-            self.workflow_worker,
-            on_finished=self._on_workflow_finished,
-            action_button=self.scan_button
+            self.workflow_worker, on_finished=self._on_workflow_finished, action_button=self.scan_button
         )
         self.workflow_worker.step_completed.connect(self._on_step_completed)
         self.workflow_worker.start()
 
-    def _on_step_completed(self, step_number, results):
+    def _on_step_completed(self, step_number: int, results: Any) -> None:
         """Handle step completion"""
         logger.info(f"Step {step_number} completed: {results}")
 
-    def _on_workflow_finished(self, results):
+    def _on_workflow_finished(self, results: Dict[str, Any]) -> None:
         """Handle workflow completion - Show preview"""
         self.workflow_results = results
-        self.preview_changes = results.get('preview', [])
+        self.preview_changes = results.get("preview", [])
 
-        analysis = results.get('analysis', {})
-        cleaned_count = len(results.get('cleaned', []))
-        fetched_count = len(results.get('fetched', []))
+        analysis = results.get("analysis", {})
+        cleaned_count = len(results.get("cleaned", []))
+        fetched_count = len(results.get("fetched", []))
 
         self.status_label.setText(
-            f"Scan complete: {cleaned_count} songs cleaned, "
-            f"{fetched_count} fetched from APIs"
+            f"Scan complete: {cleaned_count} songs cleaned, " f"{fetched_count} fetched from APIs"
         )
 
         # Populate preview tree
@@ -282,25 +278,27 @@ class CleanupTab(BaseTab):
 
         logger.info(f"Workflow complete: {len(self.preview_changes)} changes to preview")
 
-    def _populate_preview(self, preview_changes):
+    def _populate_preview(self, preview_changes: List[Dict[str, Any]]) -> None:
         """Populate preview tree with changes"""
         self.preview_tree.clear()
 
         for change in preview_changes:
-            original = change['original']
-            proposed = change['proposed']
-            confidence = change.get('confidence', 0)
-            source = change.get('source', 'unknown')
+            original = change["original"]
+            proposed = change["proposed"]
+            confidence = change.get("confidence", 0)
+            source = change.get("source", "unknown")
 
             # Create tree item
-            item = QTreeWidgetItem([
-                "",  # Will add checkbox
-                f"{original.get('title', 'Unknown')}",
-                "→",
-                f"{proposed.get('title', 'Unknown')}",
-                f"{confidence:.1f}%",
-                source
-            ])
+            item = QTreeWidgetItem(
+                [
+                    "",  # Will add checkbox
+                    f"{original.get('title', 'Unknown')}",
+                    "→",
+                    f"{proposed.get('title', 'Unknown')}",
+                    f"{confidence:.1f}%",
+                    source,
+                ]
+            )
 
             # Make checkable
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
@@ -321,10 +319,10 @@ class CleanupTab(BaseTab):
 
             self.preview_tree.addTopLevelItem(item)
 
-    def _show_scan_summary(self, analysis, cleaned_count, fetched_count):
+    def _show_scan_summary(self, analysis: Dict[str, Any], cleaned_count: int, fetched_count: int) -> None:
         """Show scan summary dialog"""
-        total = analysis.get('total_songs', 0)
-        clean = analysis.get('clean', 0)
+        total = analysis.get("total_songs", 0)
+        clean = analysis.get("clean", 0)
         problematic = total - clean
 
         summary_text = (
@@ -337,25 +335,21 @@ class CleanupTab(BaseTab):
             f"Review the preview below and select changes to apply."
         )
 
-        QMessageBox.information(
-            self,
-            "Scan Summary",
-            summary_text
-        )
+        QMessageBox.information(self, "Scan Summary", summary_text)
 
-    def _on_select_all(self):
+    def _on_select_all(self) -> None:
         """Select all changes"""
         for i in range(self.preview_tree.topLevelItemCount()):
             item = self.preview_tree.topLevelItem(i)
             item.setCheckState(0, Qt.CheckState.Checked)
 
-    def _on_deselect_all(self):
+    def _on_deselect_all(self) -> None:
         """Deselect all changes"""
         for i in range(self.preview_tree.topLevelItemCount()):
             item = self.preview_tree.topLevelItem(i)
             item.setCheckState(0, Qt.CheckState.Unchecked)
 
-    def _on_apply_clicked(self):
+    def _on_apply_clicked(self) -> None:
         """Handle apply button click - Apply selected changes"""
         # Collect selected changes
         approved_changes = []
@@ -367,11 +361,7 @@ class CleanupTab(BaseTab):
                 approved_changes.append(change)
 
         if not approved_changes:
-            QMessageBox.information(
-                self,
-                "No Selection",
-                "Please select at least one change to apply."
-            )
+            QMessageBox.information(self, "No Selection", "Please select at least one change to apply.")
             return
 
         # Confirmation dialog
@@ -384,7 +374,7 @@ class CleanupTab(BaseTab):
             f"- MP3 file tags (ID3)\n\n"
             f"This action cannot be undone.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.No:
@@ -407,23 +397,19 @@ class CleanupTab(BaseTab):
         self.select_all_button.setEnabled(False)
         self.deselect_all_button.setEnabled(False)
 
-    def _show_apply_results(self, results):
+    def _show_apply_results(self, results: Dict[str, Any]) -> None:
         """Show apply results dialog"""
-        success = results['success']
-        failed = results['failed']
-        errors = results.get('errors', [])
-        covers_downloaded = results.get('covers_downloaded', 0)
+        success = results["success"]
+        failed = results["failed"]
+        errors = results.get("errors", [])
+        covers_downloaded = results.get("covers_downloaded", 0)
 
         if failed == 0:
             message = f"Successfully updated {success} songs!"
             if covers_downloaded > 0:
                 message += f"\n\nCover art downloaded: {covers_downloaded} albums"
 
-            QMessageBox.information(
-                self,
-                "Changes Applied",
-                message
-            )
+            QMessageBox.information(self, "Changes Applied", message)
         else:
             error_text = "\n".join(errors[:5])
             if len(errors) > 5:
@@ -434,10 +420,6 @@ class CleanupTab(BaseTab):
                 message += f"\n\nCover art downloaded: {covers_downloaded} albums"
             message += f"\n\nErrors:\n{error_text}"
 
-            QMessageBox.warning(
-                self,
-                "Partially Complete",
-                message
-            )
+            QMessageBox.warning(self, "Partially Complete", message)
 
         logger.info(f"Apply complete: {success} success, {failed} failed, {covers_downloaded} covers")

@@ -13,10 +13,17 @@ Features:
 
 Created: March 2026
 """
+
+from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
 
 logger = logging.getLogger(__name__)
 
@@ -32,37 +39,38 @@ class ChordsClient:
     """
 
     # Chromagram note labels (C=0 ... B=11)
-    CHROMA_LABELS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+    CHROMA_LABELS: List[str] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
     # Analysis parameters
-    HOP_LENGTH = 8192          # ~0.37s per frame at 22050Hz
-    BLOCK_SECONDS = 4.0        # Group frames into 4-second blocks (smoother)
-    SAMPLE_RATE = 22050        # Standard for analysis
-    MIN_ENERGY = 0.01          # Skip silence
+    HOP_LENGTH: int = 8192  # ~0.37s per frame at 22050Hz
+    BLOCK_SECONDS: float = 4.0  # Group frames into 4-second blocks (smoother)
+    SAMPLE_RATE: int = 22050  # Standard for analysis
+    MIN_ENERGY: float = 0.01  # Skip silence
 
-    def __init__(self, db_manager=None):
+    def __init__(self, db_manager: Any = None) -> None:
         """
         Initialize ChordsClient.
 
         Args:
             db_manager: DatabaseManager for caching chords in DB (optional)
         """
-        self.db_manager = db_manager
-        self._cache = {}  # {song_id: list[dict]}
-        self._librosa = None
-        self._np = None
+        self.db_manager: Any = db_manager
+        self._cache: Dict[int, List[Dict[str, Any]]] = {}  # {song_id: list[dict]}
+        self._librosa: Any = None
+        self._np: Any = None
 
         logger.info("ChordsClient initialized")
 
-    def _ensure_libs(self):
+    def _ensure_libs(self) -> None:
         """Lazy-load heavy libraries (librosa, numpy)."""
         if self._librosa is None:
             import librosa
             import numpy as np
+
             self._librosa = librosa
             self._np = np
 
-    def get_chords(self, file_path: str, song_id: int = None) -> Optional[list]:
+    def get_chords(self, file_path: str, song_id: Optional[int] = None) -> Optional[List[Dict[str, Any]]]:
         """
         Get chords for a song. Checks cache/DB first, analyzes if needed.
 
@@ -99,7 +107,7 @@ class ChordsClient:
 
         return chords
 
-    def analyze_file(self, file_path: str) -> Optional[list]:
+    def analyze_file(self, file_path: str) -> Optional[List[Dict[str, Any]]]:
         """
         Analyze an audio file and detect chords.
 
@@ -127,9 +135,7 @@ class ChordsClient:
             logger.debug(f"Loaded {duration:.1f}s audio")
 
             # Compute CQT chromagram (better for chord detection than STFT)
-            chroma = librosa.feature.chroma_cqt(
-                y=y, sr=sr, hop_length=self.HOP_LENGTH
-            )
+            chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=self.HOP_LENGTH)
 
             # Segment into blocks
             hop_duration = self.HOP_LENGTH / sr
@@ -137,7 +143,7 @@ class ChordsClient:
 
             raw_chords = []
             for i in range(0, chroma.shape[1], n_frames_per_block):
-                block = chroma[:, i:i + n_frames_per_block]
+                block = chroma[:, i : i + n_frames_per_block]
                 if block.shape[1] == 0:
                     break
 
@@ -166,7 +172,7 @@ class ChordsClient:
             logger.error(f"Chord analysis failed: {e}")
             return None
 
-    def _detect_chord(self, chroma_vector) -> str:
+    def _detect_chord(self, chroma_vector: Any) -> str:
         """
         Detect chord from a 12-bin chroma vector.
 
@@ -230,7 +236,7 @@ class ChordsClient:
         return best_chord
 
     @staticmethod
-    def _deduplicate(chords: list) -> list:
+    def _deduplicate(chords: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Remove consecutive duplicate chords, keeping the first occurrence."""
         if not chords:
             return chords
@@ -241,7 +247,7 @@ class ChordsClient:
         return result
 
     @staticmethod
-    def transpose_chords(chords: list, semitones: int) -> list:
+    def transpose_chords(chords: List[Dict[str, Any]], semitones: int) -> List[Dict[str, Any]]:
         """
         Transpose all chords by N semitones.
 
@@ -272,30 +278,25 @@ class ChordsClient:
                 result.append(entry)
         return result
 
-    def _load_from_db(self, song_id: int) -> Optional[list]:
+    def _load_from_db(self, song_id: int) -> Optional[List[Dict[str, Any]]]:
         """Load cached chords from database."""
         try:
-            row = self.db_manager.execute_query(
-                "SELECT chords FROM songs WHERE id = ?", (song_id,)
-            )
+            row = self.db_manager.execute_query("SELECT chords FROM songs WHERE id = ?", (song_id,))
             if row and row[0] and row[0][0]:
-                return json.loads(row[0][0])
+                return json.loads(row[0][0])  # type: ignore[no-any-return]
         except (ValueError, KeyError, TypeError) as e:
             logger.debug(f"No cached chords for song {song_id}: {e}")
         return None
 
-    def _save_to_db(self, song_id: int, chords: list):
+    def _save_to_db(self, song_id: int, chords: List[Dict[str, Any]]) -> None:
         """Save chords to database for caching."""
         try:
-            self.db_manager.execute_query(
-                "UPDATE songs SET chords = ? WHERE id = ?",
-                (json.dumps(chords), song_id)
-            )
+            self.db_manager.execute_query("UPDATE songs SET chords = ? WHERE id = ?", (json.dumps(chords), song_id))
             logger.debug(f"Cached chords to DB: song_id={song_id}")
         except (OSError, ValueError) as e:
             logger.warning(f"Failed to cache chords: {e}")
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Clear in-memory chord cache."""
         size = len(self._cache)
         self._cache.clear()

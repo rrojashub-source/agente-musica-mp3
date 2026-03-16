@@ -10,18 +10,18 @@ Features:
 - Offline-first with eventual consistency
 """
 
+import hashlib
 import json
 import logging
-import hashlib
+import shutil
 import sqlite3
 import threading
-from pathlib import Path
-from typing import Optional, List, Dict, Any, Callable
-from dataclasses import dataclass, field, asdict
+from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
-from abc import ABC, abstractmethod
-import shutil
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QObject, Signal
 
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 class SyncStatus(Enum):
     """Sync status enum"""
+
     IDLE = "idle"
     SYNCING = "syncing"
     UPLOADING = "uploading"
@@ -41,6 +42,7 @@ class SyncStatus(Enum):
 
 class ConflictStrategy(Enum):
     """Conflict resolution strategy"""
+
     NEWER_WINS = "newer_wins"  # Most recent change wins
     LOCAL_WINS = "local_wins"  # Local changes always win
     REMOTE_WINS = "remote_wins"  # Remote changes always win
@@ -51,73 +53,80 @@ class ConflictStrategy(Enum):
 @dataclass
 class SyncState:
     """Tracks sync state"""
+
     last_sync_time: Optional[str] = None
     last_sync_hash: Optional[str] = None
     provider: Optional[str] = None
     status: str = "idle"
     pending_changes: int = 0
-    conflicts: List[Dict] = field(default_factory=list)
+    conflicts: List[Dict[str, Any]] = field(default_factory=list)
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'SyncState':
+    def from_dict(cls, data: Dict[str, Any]) -> "SyncState":
         return cls(**data)
 
 
 @dataclass
 class SyncConflict:
     """Represents a sync conflict"""
+
     item_type: str  # "song", "playlist", "setting"
     item_id: str
-    local_data: Dict
-    remote_data: Dict
+    local_data: Dict[str, Any]
+    remote_data: Dict[str, Any]
     local_modified: str
     remote_modified: str
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
 
 @dataclass
 class LibraryExport:
     """Exported library data structure"""
+
     version: str = "1.0"
     exported_at: str = ""
     device_id: str = ""
-    songs: List[Dict] = field(default_factory=list)
-    playlists: List[Dict] = field(default_factory=list)
-    settings: Dict = field(default_factory=dict)
-    sync_metadata: Dict = field(default_factory=dict)
+    songs: List[Dict[str, Any]] = field(default_factory=list)
+    playlists: List[Dict[str, Any]] = field(default_factory=list)
+    settings: Dict[str, Any] = field(default_factory=dict)
+    sync_metadata: Dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'LibraryExport':
+    def from_dict(cls, data: Dict[str, Any]) -> "LibraryExport":
         return cls(
-            version=data.get('version', '1.0'),
-            exported_at=data.get('exported_at', ''),
-            device_id=data.get('device_id', ''),
-            songs=data.get('songs', []),
-            playlists=data.get('playlists', []),
-            settings=data.get('settings', {}),
-            sync_metadata=data.get('sync_metadata', {})
+            version=data.get("version", "1.0"),
+            exported_at=data.get("exported_at", ""),
+            device_id=data.get("device_id", ""),
+            songs=data.get("songs", []),
+            playlists=data.get("playlists", []),
+            settings=data.get("settings", {}),
+            sync_metadata=data.get("sync_metadata", {}),
         )
 
     def compute_hash(self) -> str:
         """Compute hash of library content for change detection"""
-        content = json.dumps({
-            'songs': sorted(self.songs, key=lambda x: x.get('id', 0)),
-            'playlists': sorted(self.playlists, key=lambda x: x.get('id', 0)),
-        }, sort_keys=True)
+        content = json.dumps(
+            {
+                "songs": sorted(self.songs, key=lambda x: x.get("id", 0)),
+                "playlists": sorted(self.playlists, key=lambda x: x.get("id", 0)),
+            },
+            sort_keys=True,
+        )
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
 
 # ==========================================
 # Cloud Provider Abstraction
 # ==========================================
+
 
 class CloudProvider(ABC):
     """Abstract base class for cloud storage providers"""
@@ -128,7 +137,7 @@ class CloudProvider(ABC):
         pass
 
     @abstractmethod
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Disconnect from provider"""
         pass
 
@@ -176,9 +185,9 @@ class LocalFolderProvider(CloudProvider):
     Syncs to a local folder that can be synced via other tools
     """
 
-    def __init__(self, sync_folder: str = None):
-        self._sync_folder = Path(sync_folder) if sync_folder else None
-        self._connected = False
+    def __init__(self, sync_folder: Optional[str] = None) -> None:
+        self._sync_folder: Optional[Path] = Path(sync_folder) if sync_folder else None
+        self._connected: bool = False
 
     def connect(self) -> bool:
         """Connect (verify folder exists)"""
@@ -195,13 +204,13 @@ class LocalFolderProvider(CloudProvider):
             logger.error(f"Failed to connect to local folder: {e}")
             return False
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Disconnect"""
         self._connected = False
 
     def upload(self, local_path: str, remote_path: str) -> bool:
         """Copy file to sync folder"""
-        if not self._connected:
+        if not self._connected or self._sync_folder is None:
             return False
 
         try:
@@ -216,7 +225,7 @@ class LocalFolderProvider(CloudProvider):
 
     def download(self, remote_path: str, local_path: str) -> bool:
         """Copy file from sync folder"""
-        if not self._connected:
+        if not self._connected or self._sync_folder is None:
             return False
 
         try:
@@ -235,13 +244,13 @@ class LocalFolderProvider(CloudProvider):
 
     def exists(self, remote_path: str) -> bool:
         """Check if file exists in sync folder"""
-        if not self._connected:
+        if not self._connected or self._sync_folder is None:
             return False
         return (self._sync_folder / remote_path).exists()
 
     def get_modified_time(self, remote_path: str) -> Optional[datetime]:
         """Get file modification time"""
-        if not self._connected:
+        if not self._connected or self._sync_folder is None:
             return None
 
         path = self._sync_folder / remote_path
@@ -251,7 +260,7 @@ class LocalFolderProvider(CloudProvider):
 
     def delete(self, remote_path: str) -> bool:
         """Delete file from sync folder"""
-        if not self._connected:
+        if not self._connected or self._sync_folder is None:
             return False
 
         try:
@@ -276,7 +285,7 @@ class LocalFolderProvider(CloudProvider):
         return self._sync_folder
 
     @sync_folder.setter
-    def sync_folder(self, path: str):
+    def sync_folder(self, path: Optional[str]) -> None:
         self._sync_folder = Path(path) if path else None
         self._connected = False
 
@@ -291,25 +300,26 @@ class GoogleDriveProvider(CloudProvider):
     Credentials loaded from ~/.nexus_music/cloud/gdrive_credentials.json
     """
 
-    _SCOPES = ['https://www.googleapis.com/auth/drive.file']
+    _SCOPES: List[str] = ["https://www.googleapis.com/auth/drive.file"]
 
     @classmethod
-    def _load_client_config(cls) -> dict:
+    def _load_client_config(cls) -> Dict[str, Any]:
         """Load OAuth credentials from config file"""
         import json
+
         config_path = Path.home() / ".nexus_music" / "cloud" / "gdrive_credentials.json"
 
         if config_path.exists():
             try:
                 with open(config_path) as f:
-                    return json.load(f)
+                    return json.load(f)  # type: ignore[no-any-return]
             except (OSError, json.JSONDecodeError) as e:
                 logger.error(f"Failed to load credentials: {e}")
 
         # Return empty config - will fail gracefully
         return {}
 
-    def __init__(self, credentials_file: str = None):
+    def __init__(self, credentials_file: Optional[str] = None) -> None:
         """
         Initialize Google Drive provider.
 
@@ -317,15 +327,15 @@ class GoogleDriveProvider(CloudProvider):
             credentials_file: Deprecated, kept for backwards compatibility.
                              Now uses embedded credentials.
         """
-        self._service = None
-        self._connected = False
-        self._folder_id = None
-        self._user_email = None
+        self._service: Any = None
+        self._connected: bool = False
+        self._folder_id: Optional[str] = None
+        self._user_email: Optional[str] = None
 
         # Token stored in user's home directory
-        self._token_dir = Path.home() / ".nexus_music" / "cloud"
+        self._token_dir: Path = Path.home() / ".nexus_music" / "cloud"
         self._token_dir.mkdir(parents=True, exist_ok=True)
-        self._token_path = self._token_dir / "google_drive_token.json"
+        self._token_path: Path = self._token_dir / "google_drive_token.json"
 
     @property
     def is_authenticated(self) -> bool:
@@ -343,18 +353,16 @@ class GoogleDriveProvider(CloudProvider):
         Opens browser for authorization if needed.
         """
         try:
-            from googleapiclient.discovery import build
             from google.oauth2.credentials import Credentials
             from google_auth_oauthlib.flow import InstalledAppFlow
+            from googleapiclient.discovery import build
 
             creds = None
 
             # Try to load existing token
             if self._token_path.exists():
                 try:
-                    creds = Credentials.from_authorized_user_file(
-                        str(self._token_path), self._SCOPES
-                    )
+                    creds = Credentials.from_authorized_user_file(str(self._token_path), self._SCOPES)
                 except (OSError, ValueError, KeyError) as e:
                     logger.warning(f"Invalid token file, will re-authenticate: {e}")
                     creds = None
@@ -364,6 +372,7 @@ class GoogleDriveProvider(CloudProvider):
                 if creds and creds.expired and creds.refresh_token:
                     try:
                         from google.auth.transport.requests import Request
+
                         creds.refresh(Request())
                         logger.info("Google Drive token refreshed")
                     except (ConnectionError, OSError, ValueError) as e:
@@ -378,22 +387,20 @@ class GoogleDriveProvider(CloudProvider):
                         return False
 
                     # Start OAuth flow - opens browser automatically
-                    flow = InstalledAppFlow.from_client_config(
-                        client_config, self._SCOPES
-                    )
+                    flow = InstalledAppFlow.from_client_config(client_config, self._SCOPES)
                     creds = flow.run_local_server(
                         port=0,
-                        prompt='consent',
-                        success_message='¡Conexión exitosa! Puedes cerrar esta ventana y volver a NEXUS Music Manager.'
+                        prompt="consent",
+                        success_message="¡Conexión exitosa! Puedes cerrar esta ventana y volver a NEXUS Music Manager.",
                     )
                     logger.info("Google Drive authorization completed")
 
                 # Save token for future use
-                with open(self._token_path, 'w') as token:
+                with open(self._token_path, "w") as token:
                     token.write(creds.to_json())
 
             # Build service
-            self._service = build('drive', 'v3', credentials=creds)
+            self._service = build("drive", "v3", credentials=creds)
             self._connected = True
 
             # Get user info
@@ -406,24 +413,26 @@ class GoogleDriveProvider(CloudProvider):
             return True
 
         except ImportError:
-            logger.error("Google Drive dependencies not installed. Run: pip install google-api-python-client google-auth-oauthlib")
+            logger.error(
+                "Google Drive dependencies not installed. Run: pip install google-api-python-client google-auth-oauthlib"
+            )
             return False
-        except Exception as e:
+        except Exception as e:  # OAuth raises heterogeneous exceptions (HttpError, TransportError, etc.)
             # Broad catch intentional: OAuth flow can raise many heterogeneous exceptions
             # (HttpError, TransportError, browser errors, OS errors) depending on environment.
             logger.error(f"Failed to connect to Google Drive: {e}")
             return False
 
-    def _get_user_info(self):
+    def _get_user_info(self) -> None:
         """Get authenticated user's email"""
         try:
             about = self._service.about().get(fields="user").execute()
-            self._user_email = about.get('user', {}).get('emailAddress', 'Unknown')
+            self._user_email = about.get("user", {}).get("emailAddress", "Unknown")
         except (KeyError, AttributeError, ConnectionError, OSError) as e:
             logger.debug(f"Could not get user info: {e}")
             self._user_email = "Connected"
 
-    def logout(self):
+    def logout(self) -> None:
         """Logout and remove saved token"""
         self.disconnect()
         if self._token_path.exists():
@@ -431,33 +440,32 @@ class GoogleDriveProvider(CloudProvider):
             logger.info("Google Drive token removed")
         self._user_email = None
 
-    def _ensure_sync_folder(self):
+    def _ensure_sync_folder(self) -> None:
         """Create or find sync folder in Drive"""
         if not self._service:
             return
 
         # Search for existing folder
-        results = self._service.files().list(
-            q="name='NEXUS_Music_Sync' and mimeType='application/vnd.google-apps.folder' and trashed=false",
-            spaces='drive',
-            fields='files(id, name)'
-        ).execute()
+        results = (
+            self._service.files()
+            .list(
+                q="name='NEXUS_Music_Sync' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+                spaces="drive",
+                fields="files(id, name)",
+            )
+            .execute()
+        )
 
-        files = results.get('files', [])
+        files = results.get("files", [])
         if files:
-            self._folder_id = files[0]['id']
+            self._folder_id = files[0]["id"]
         else:
             # Create folder
-            file_metadata = {
-                'name': 'NEXUS_Music_Sync',
-                'mimeType': 'application/vnd.google-apps.folder'
-            }
-            folder = self._service.files().create(
-                body=file_metadata, fields='id'
-            ).execute()
-            self._folder_id = folder.get('id')
+            file_metadata = {"name": "NEXUS_Music_Sync", "mimeType": "application/vnd.google-apps.folder"}
+            folder = self._service.files().create(body=file_metadata, fields="id").execute()
+            self._folder_id = folder.get("id")
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Disconnect from Google Drive"""
         self._service = None
         self._connected = False
@@ -474,23 +482,16 @@ class GoogleDriveProvider(CloudProvider):
             # Check if file exists
             existing = self._find_file(remote_path)
 
-            file_metadata = {'name': remote_path}
+            file_metadata: dict[str, Any] = {"name": remote_path}
             media = MediaFileUpload(local_path, resumable=True)
 
             if existing:
                 # Update existing file
-                self._service.files().update(
-                    fileId=existing['id'],
-                    media_body=media
-                ).execute()
+                self._service.files().update(fileId=existing["id"], media_body=media).execute()
             else:
                 # Create new file
-                file_metadata['parents'] = [self._folder_id]
-                self._service.files().create(
-                    body=file_metadata,
-                    media_body=media,
-                    fields='id'
-                ).execute()
+                file_metadata["parents"] = [self._folder_id]  # type: ignore[assignment]
+                self._service.files().create(body=file_metadata, media_body=media, fields="id").execute()
 
             logger.info(f"Uploaded to Google Drive: {remote_path}")
             return True
@@ -504,14 +505,15 @@ class GoogleDriveProvider(CloudProvider):
             return False
 
         try:
-            from googleapiclient.http import MediaIoBaseDownload
             import io
+
+            from googleapiclient.http import MediaIoBaseDownload
 
             file_info = self._find_file(remote_path)
             if not file_info:
                 return False
 
-            request = self._service.files().get_media(fileId=file_info['id'])
+            request = self._service.files().get_media(fileId=file_info["id"])
             fh = io.BytesIO()
             downloader = MediaIoBaseDownload(fh, request)
 
@@ -520,7 +522,7 @@ class GoogleDriveProvider(CloudProvider):
                 status, done = downloader.next_chunk()
 
             Path(local_path).parent.mkdir(parents=True, exist_ok=True)
-            with open(local_path, 'wb') as f:
+            with open(local_path, "wb") as f:
                 f.write(fh.getvalue())
 
             logger.info(f"Downloaded from Google Drive: {remote_path}")
@@ -529,18 +531,22 @@ class GoogleDriveProvider(CloudProvider):
             logger.error(f"Failed to download from Drive: {e}")
             return False
 
-    def _find_file(self, filename: str) -> Optional[Dict]:
+    def _find_file(self, filename: str) -> Optional[Dict[str, Any]]:
         """Find file in sync folder"""
         if not self._service or not self._folder_id:
             return None
 
-        results = self._service.files().list(
-            q=f"name='{filename}' and '{self._folder_id}' in parents and trashed=false",
-            spaces='drive',
-            fields='files(id, name, modifiedTime)'
-        ).execute()
+        results = (
+            self._service.files()
+            .list(
+                q=f"name='{filename}' and '{self._folder_id}' in parents and trashed=false",
+                spaces="drive",
+                fields="files(id, name, modifiedTime)",
+            )
+            .execute()
+        )
 
-        files = results.get('files', [])
+        files = results.get("files", [])
         return files[0] if files else None
 
     def exists(self, remote_path: str) -> bool:
@@ -550,8 +556,8 @@ class GoogleDriveProvider(CloudProvider):
     def get_modified_time(self, remote_path: str) -> Optional[datetime]:
         """Get file modified time"""
         file_info = self._find_file(remote_path)
-        if file_info and 'modifiedTime' in file_info:
-            return datetime.fromisoformat(file_info['modifiedTime'].replace('Z', '+00:00'))
+        if file_info and "modifiedTime" in file_info:
+            return datetime.fromisoformat(file_info["modifiedTime"].replace("Z", "+00:00"))
         return None
 
     def delete(self, remote_path: str) -> bool:
@@ -562,7 +568,7 @@ class GoogleDriveProvider(CloudProvider):
         try:
             file_info = self._find_file(remote_path)
             if file_info:
-                self._service.files().delete(fileId=file_info['id']).execute()
+                self._service.files().delete(fileId=file_info["id"]).execute()
             return True
         except (ConnectionError, OSError, KeyError) as e:
             logger.error(f"Failed to delete from Drive: {e}")
@@ -580,6 +586,7 @@ class GoogleDriveProvider(CloudProvider):
 # ==========================================
 # Cloud Sync Service
 # ==========================================
+
 
 class CloudSyncService(QObject):
     """
@@ -603,25 +610,25 @@ class CloudSyncService(QObject):
     status_changed = Signal(object)  # SyncStatus
 
     # Singleton
-    _instance: Optional['CloudSyncService'] = None
-    _lock = threading.Lock()
+    _instance: Optional["CloudSyncService"] = None
+    _lock: threading.Lock = threading.Lock()
 
     # Remote filename
-    SYNC_FILENAME = "nexus_library_sync.json"
-    STATE_FILENAME = "sync_state.json"
+    SYNC_FILENAME: str = "nexus_library_sync.json"
+    STATE_FILENAME: str = "sync_state.json"
 
-    def __init__(self, data_dir: str = None):
+    def __init__(self, data_dir: Optional[str] = None) -> None:
         """Initialize CloudSyncService"""
         super().__init__()
 
-        self._data_dir = Path(data_dir) if data_dir else Path.home() / ".nexus_music"
+        self._data_dir: Path = Path(data_dir) if data_dir else Path.home() / ".nexus_music"
         self._data_dir.mkdir(parents=True, exist_ok=True)
 
         self._provider: Optional[CloudProvider] = None
-        self._state = SyncState()
-        self._conflict_strategy = ConflictStrategy.NEWER_WINS
-        self._device_id = self._get_device_id()
-        self._db_manager = None
+        self._state: SyncState = SyncState()
+        self._conflict_strategy: ConflictStrategy = ConflictStrategy.NEWER_WINS
+        self._device_id: str = self._get_device_id()
+        self._db_manager: Any = None
 
         # Load saved state
         self._load_state()
@@ -629,7 +636,7 @@ class CloudSyncService(QObject):
         logger.info(f"CloudSyncService initialized (device: {self._device_id})")
 
     @classmethod
-    def get_instance(cls, data_dir: str = None) -> 'CloudSyncService':
+    def get_instance(cls, data_dir: Optional[str] = None) -> "CloudSyncService":
         """Get singleton instance"""
         if cls._instance is None:
             with cls._lock:
@@ -638,7 +645,7 @@ class CloudSyncService(QObject):
         return cls._instance
 
     @classmethod
-    def reset_instance(cls):
+    def reset_instance(cls) -> None:
         """Reset singleton (for testing)"""
         with cls._lock:
             cls._instance = None
@@ -663,11 +670,11 @@ class CloudSyncService(QObject):
         return self._device_id
 
     @property
-    def sync_state(self) -> 'SyncState':
+    def sync_state(self) -> "SyncState":
         """Public property to access sync state"""
         return self._state
 
-    def _load_state(self):
+    def _load_state(self) -> None:
         """Load sync state from disk"""
         state_file = self._data_dir / self.STATE_FILENAME
         if state_file.exists():
@@ -677,7 +684,7 @@ class CloudSyncService(QObject):
             except (OSError, json.JSONDecodeError, KeyError, TypeError) as e:
                 logger.error(f"Failed to load sync state: {e}")
 
-    def _save_state(self):
+    def _save_state(self) -> None:
         """Save sync state to disk"""
         state_file = self._data_dir / self.STATE_FILENAME
         try:
@@ -711,7 +718,7 @@ class CloudSyncService(QObject):
             self._state.status = SyncStatus.IDLE.value
         return result
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Disconnect from cloud provider"""
         if self._provider:
             self._provider.disconnect()
@@ -719,13 +726,13 @@ class CloudSyncService(QObject):
     @property
     def is_connected(self) -> bool:
         """Check if connected"""
-        return self._provider and self._provider.is_connected
+        return bool(self._provider and self._provider.is_connected)  # type: ignore[return-value]
 
     # ==========================================
     # Export/Import
     # ==========================================
 
-    def export_library(self, db_manager=None) -> LibraryExport:
+    def export_library(self, db_manager: Any = None) -> LibraryExport:
         """
         Export library to LibraryExport object
 
@@ -735,6 +742,7 @@ class CloudSyncService(QObject):
         db = db_manager or self._db_manager
         if not db:
             from database.manager import DatabaseManager
+
             # Use default path - this should be configured
             db = DatabaseManager()
 
@@ -745,10 +753,7 @@ class CloudSyncService(QObject):
             songs=[],
             playlists=[],
             settings={},
-            sync_metadata={
-                'last_sync': self._state.last_sync_time,
-                'source_device': self._device_id
-            }
+            sync_metadata={"last_sync": self._state.last_sync_time, "source_device": self._device_id},
         )
 
         # Export songs
@@ -766,18 +771,16 @@ class CloudSyncService(QObject):
             # Include playlist songs
             for playlist in export.playlists:
                 playlist_songs = db.fetch_all(
-                    "SELECT song_id FROM playlist_songs WHERE playlist_id = ?",
-                    (playlist['id'],)
+                    "SELECT song_id FROM playlist_songs WHERE playlist_id = ?", (playlist["id"],)
                 )
-                playlist['song_ids'] = [s['song_id'] for s in playlist_songs]
+                playlist["song_ids"] = [s["song_id"] for s in playlist_songs]
         except sqlite3.Error as e:
             logger.debug(f"No playlists to export: {e}")
 
         logger.info(f"Exported {len(export.songs)} songs, {len(export.playlists)} playlists")
         return export
 
-    def import_library(self, export: LibraryExport, db_manager=None,
-                       merge: bool = True) -> Dict[str, int]:
+    def import_library(self, export: LibraryExport, db_manager: Any = None, merge: bool = True) -> Dict[str, int]:
         """
         Import library from LibraryExport object
 
@@ -792,33 +795,31 @@ class CloudSyncService(QObject):
         db = db_manager or self._db_manager
         if not db:
             from database.manager import DatabaseManager
+
             db = DatabaseManager()
 
-        stats = {'added': 0, 'updated': 0, 'skipped': 0, 'errors': 0}
+        stats = {"added": 0, "updated": 0, "skipped": 0, "errors": 0}
 
         for song in export.songs:
             try:
                 # Check if song exists (by file_path or title+artist)
-                existing = db.fetch_one(
-                    "SELECT id FROM songs WHERE file_path = ?",
-                    (song.get('file_path', ''),)
-                )
+                existing = db.fetch_one("SELECT id FROM songs WHERE file_path = ?", (song.get("file_path", ""),))
 
                 if existing:
                     if merge:
                         # Update existing
                         # (simplified - in production, compare modified times)
-                        stats['skipped'] += 1
+                        stats["skipped"] += 1
                     else:
-                        stats['skipped'] += 1
+                        stats["skipped"] += 1
                 else:
                     # Add new song
                     db.add_song(song)
-                    stats['added'] += 1
+                    stats["added"] += 1
 
             except sqlite3.Error as e:
                 logger.error(f"Failed to import song: {e}")
-                stats['errors'] += 1
+                stats["errors"] += 1
 
         logger.info(f"Import complete: {stats}")
         return stats
@@ -827,7 +828,7 @@ class CloudSyncService(QObject):
     # Sync Operations
     # ==========================================
 
-    def sync(self, db_manager=None) -> bool:
+    def sync(self, db_manager: Any = None) -> bool:
         """
         Perform full sync with cloud
 
@@ -853,13 +854,13 @@ class CloudSyncService(QObject):
             # Step 2: Check for remote library
             self.sync_progress.emit("checking", "Checking remote library...", 30)
 
-            if self._provider.exists(self.SYNC_FILENAME):
+            if self._provider.exists(self.SYNC_FILENAME):  # type: ignore[union-attr]
                 # Download remote
                 self.sync_progress.emit("downloading", "Downloading remote library...", 40)
                 self._state.status = SyncStatus.DOWNLOADING.value
 
                 temp_file = self._data_dir / "temp_remote.json"
-                if self._provider.download(self.SYNC_FILENAME, str(temp_file)):
+                if self._provider.download(self.SYNC_FILENAME, str(temp_file)):  # type: ignore[union-attr]
                     remote_data = json.loads(temp_file.read_text())
                     remote_export = LibraryExport.from_dict(remote_data)
                     remote_hash = remote_export.compute_hash()
@@ -887,7 +888,7 @@ class CloudSyncService(QObject):
             temp_file = self._data_dir / "temp_upload.json"
             temp_file.write_text(json.dumps(merged.to_dict(), indent=2))
 
-            if self._provider.upload(str(temp_file), self.SYNC_FILENAME):
+            if self._provider.upload(str(temp_file), self.SYNC_FILENAME):  # type: ignore[union-attr]
                 self._update_sync_state(merged.compute_hash())
                 self.sync_progress.emit("complete", "Sync completed", 100)
                 self._state.status = SyncStatus.COMPLETED.value
@@ -897,7 +898,7 @@ class CloudSyncService(QObject):
             else:
                 raise Exception("Failed to upload to cloud")
 
-        except Exception as e:
+        except Exception as e:  # sync orchestrates network/disk/DB - all failures must reach UI
             # Broad catch intentional: sync() orchestrates network, disk, JSON and DB
             # operations; any of them can fail and must be reported to the UI via signals.
             logger.error(f"Sync failed: {e}")
@@ -914,12 +915,12 @@ class CloudSyncService(QObject):
             device_id=self._device_id,
             songs=[],
             playlists=[],
-            settings={**remote.settings, **local.settings}
+            settings={**remote.settings, **local.settings},
         )
 
         # Create lookup by file_path
-        local_songs = {s.get('file_path'): s for s in local.songs if s.get('file_path')}
-        remote_songs = {s.get('file_path'): s for s in remote.songs if s.get('file_path')}
+        local_songs = {s.get("file_path"): s for s in local.songs if s.get("file_path")}
+        remote_songs = {s.get("file_path"): s for s in remote.songs if s.get("file_path")}
 
         all_paths = set(local_songs.keys()) | set(remote_songs.keys())
 
@@ -930,8 +931,8 @@ class CloudSyncService(QObject):
             if local_song and remote_song:
                 # Both have it - resolve conflict
                 if self._conflict_strategy == ConflictStrategy.NEWER_WINS:
-                    local_mod = local_song.get('date_modified', '')
-                    remote_mod = remote_song.get('date_modified', '')
+                    local_mod = local_song.get("date_modified", "")
+                    remote_mod = remote_song.get("date_modified", "")
                     merged.songs.append(local_song if local_mod >= remote_mod else remote_song)
                 elif self._conflict_strategy == ConflictStrategy.LOCAL_WINS:
                     merged.songs.append(local_song)
@@ -945,18 +946,18 @@ class CloudSyncService(QObject):
                 merged.songs.append(remote_song)
 
         # Merge playlists (similar logic)
-        local_playlists = {p.get('name'): p for p in local.playlists}
-        remote_playlists = {p.get('name'): p for p in remote.playlists}
+        local_playlists = {p.get("name"): p for p in local.playlists}
+        remote_playlists = {p.get("name"): p for p in remote.playlists}
         all_names = set(local_playlists.keys()) | set(remote_playlists.keys())
 
         for name in all_names:
             local_pl = local_playlists.get(name)
             remote_pl = remote_playlists.get(name)
-            merged.playlists.append(local_pl or remote_pl)
+            merged.playlists.append(local_pl or remote_pl)  # type: ignore[arg-type]
 
         return merged
 
-    def _update_sync_state(self, content_hash: str):
+    def _update_sync_state(self, content_hash: str) -> None:
         """Update sync state after successful sync"""
         self._state.last_sync_time = datetime.now().isoformat()
         self._state.last_sync_hash = content_hash
@@ -974,7 +975,7 @@ class CloudSyncService(QObject):
         return self._conflict_strategy
 
     @conflict_strategy.setter
-    def conflict_strategy(self, strategy: ConflictStrategy):
+    def conflict_strategy(self, strategy: ConflictStrategy) -> None:
         """Set conflict resolution strategy"""
         self._conflict_strategy = strategy
 
@@ -996,7 +997,7 @@ class CloudSyncService(QObject):
     # Cleanup
     # ==========================================
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup resources"""
         self._save_state()
         if self._provider:

@@ -9,14 +9,19 @@ Features:
 - Rate limiting (1 request/second)
 - User agent configuration
 """
-import musicbrainzngs
-import requests
+
+from __future__ import annotations
+
 import logging
 import time
-from typing import List, Dict, Optional
 from pathlib import Path
-from utils.rate_limiter import RateLimiter
+from typing import Any, Dict, List, Optional
+
+import musicbrainzngs
+import requests  # type: ignore[import-untyped]
+
 from utils.constants import API_DEFAULT_TIMEOUT
+from utils.rate_limiter import RateLimiter
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -32,7 +37,7 @@ class MusicBrainzClient:
         client.download_album_art(url, "cover.jpg")
     """
 
-    def __init__(self, app_name="NexusMusicManager", app_version="1.0", contact=""):
+    def __init__(self, app_name: str = "NexusMusicManager", app_version: str = "1.0", contact: str = "") -> None:
         """
         Initialize MusicBrainz client
 
@@ -41,16 +46,16 @@ class MusicBrainzClient:
             app_version (str): Application version
             contact (str): Contact email (optional)
         """
-        self.app_name = app_name
-        self.app_version = app_version
-        self.contact = contact
+        self.app_name: str = app_name
+        self.app_version: str = app_version
+        self.contact: str = contact
 
         # Set user agent (required by MusicBrainz)
         musicbrainzngs.set_useragent(app_name, app_version, contact)
 
         # Rate limiting (MusicBrainz allows 1 request/second)
-        self._last_request_time = 0
-        self._rate_limiter = True
+        self._last_request_time: float = 0
+        self._rate_limiter: bool = True
 
         logger.info(f"MusicBrainzClient initialized: {app_name} v{app_version}")
 
@@ -87,10 +92,7 @@ class MusicBrainzClient:
                 query = f'recording:"{title}"'
 
             # Search MusicBrainz
-            result = musicbrainzngs.search_recordings(
-                query=query,
-                limit=min(limit, 5)  # Limit to max 5
-            )
+            result = musicbrainzngs.search_recordings(query=query, limit=min(limit, 5))  # Limit to max 5
 
             # Parse results
             recordings = self._parse_recordings(result)
@@ -122,7 +124,7 @@ class MusicBrainzClient:
 
             if response.status_code == 200:
                 # Save to file
-                with open(output_path, 'wb') as f:
+                with open(output_path, "wb") as f:
                     f.write(response.content)
 
                 logger.info(f"Album art downloaded: {output_path}")
@@ -145,37 +147,31 @@ class MusicBrainzClient:
         Returns:
             list: Parsed recordings
         """
-        recordings = []
+        recordings: list[dict[str, Any]] = []
 
-        if 'recording-list' not in result:
+        if "recording-list" not in result:
             return recordings
 
-        for item in result['recording-list']:
+        for item in result["recording-list"]:
             try:
                 # Extract artist
                 artist = "Unknown"
-                if 'artist-credit' in item and item['artist-credit']:
-                    artist = item['artist-credit'][0]['artist']['name']
+                if "artist-credit" in item and item["artist-credit"]:
+                    artist = item["artist-credit"][0]["artist"]["name"]
 
                 # Extract album and year
                 album = "Unknown"
                 year = "Unknown"
-                if 'release-list' in item and item['release-list']:
-                    release = item['release-list'][0]
-                    album = release.get('title', 'Unknown')
-                    year = release.get('date', 'Unknown')[:4]  # Extract year only
+                if "release-list" in item and item["release-list"]:
+                    release = item["release-list"][0]
+                    album = release.get("title", "Unknown")
+                    year = release.get("date", "Unknown")[:4]  # Extract year only
 
                 # Extract genre from tags
-                genre = self._extract_genre(item.get('tag-list', []))
+                genre = self._extract_genre(item.get("tag-list", []))
 
                 # Build recording dict
-                recording = {
-                    'title': item['title'],
-                    'artist': artist,
-                    'album': album,
-                    'year': year,
-                    'genre': genre
-                }
+                recording = {"title": item["title"], "artist": artist, "album": album, "year": year, "genre": genre}
 
                 recordings.append(recording)
 
@@ -199,15 +195,15 @@ class MusicBrainzClient:
             return "Unknown"
 
         # Sort by count (most popular first)
-        sorted_tags = sorted(tag_list, key=lambda x: x.get('count', 0), reverse=True)
+        sorted_tags = sorted(tag_list, key=lambda x: x.get("count", 0), reverse=True)
 
         # Return most popular genre
         if sorted_tags:
-            return sorted_tags[0]['name']
+            return sorted_tags[0]["name"]  # type: ignore[no-any-return]
 
         return "Unknown"
 
-    def _enforce_rate_limit(self):
+    def _enforce_rate_limit(self) -> None:
         """
         Enforce rate limit (1 request/second for MusicBrainz)
         Uses centralized RateLimiter for consistent behavior across all APIs
@@ -216,4 +212,4 @@ class MusicBrainzClient:
             return
 
         # Use centralized rate limiter (MusicBrainz: 1 req/s)
-        RateLimiter.get_instance().wait('musicbrainz')
+        RateLimiter.get_instance().wait("musicbrainz")

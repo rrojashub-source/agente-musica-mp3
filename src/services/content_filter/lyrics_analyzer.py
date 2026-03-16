@@ -9,10 +9,12 @@ Dependencies:
 Created: December 8, 2025
 """
 
+from __future__ import annotations
+
 import logging
 import re
-from typing import Optional, List
 from pathlib import Path
+from typing import Any, List, Optional
 
 from .classifier import ContentScore
 
@@ -22,55 +24,193 @@ logger = logging.getLogger(__name__)
 # Profanity word lists (Spanish + English)
 PROFANITY_ES = {
     # Strong (weight 1.0)
-    'puta', 'puto', 'mierda', 'coño', 'carajo', 'verga', 'pinga',
-    'cabron', 'cabrón', 'pendejo', 'pendeja', 'joder', 'cojones',
-    'culo', 'perra', 'perro', 'marica', 'maricón', 'maricon',
-    'malparido', 'hijueputa', 'gonorrea', 'chimba',
+    "puta",
+    "puto",
+    "mierda",
+    "coño",
+    "carajo",
+    "verga",
+    "pinga",
+    "cabron",
+    "cabrón",
+    "pendejo",
+    "pendeja",
+    "joder",
+    "cojones",
+    "culo",
+    "perra",
+    "perro",
+    "marica",
+    "maricón",
+    "maricon",
+    "malparido",
+    "hijueputa",
+    "gonorrea",
+    "chimba",
     # Medium (weight 0.5)
-    'cagar', 'cagada', 'chingar', 'chingada', 'mamada', 'mamón',
-    'huevon', 'huevón', 'culero', 'pinche', 'fregada',
+    "cagar",
+    "cagada",
+    "chingar",
+    "chingada",
+    "mamada",
+    "mamón",
+    "huevon",
+    "huevón",
+    "culero",
+    "pinche",
+    "fregada",
 }
 
 PROFANITY_EN = {
     # Strong (weight 1.0)
-    'fuck', 'fucking', 'fucked', 'fucker', 'motherfucker', 'mf',
-    'shit', 'shitty', 'bullshit', 'bitch', 'bitches', 'asshole',
-    'ass', 'damn', 'cunt', 'dick', 'cock', 'pussy', 'whore',
-    'slut', 'bastard', 'nigga', 'nigger',
+    "fuck",
+    "fucking",
+    "fucked",
+    "fucker",
+    "motherfucker",
+    "mf",
+    "shit",
+    "shitty",
+    "bullshit",
+    "bitch",
+    "bitches",
+    "asshole",
+    "ass",
+    "damn",
+    "cunt",
+    "dick",
+    "cock",
+    "pussy",
+    "whore",
+    "slut",
+    "bastard",
+    "nigga",
+    "nigger",
     # Medium (weight 0.5)
-    'hell', 'crap', 'piss', 'suck', 'sucks', 'wtf', 'stfu',
+    "hell",
+    "crap",
+    "piss",
+    "suck",
+    "sucks",
+    "wtf",
+    "stfu",
 }
 
 VIOLENCE_KEYWORDS = {
-    'kill', 'murder', 'matar', 'muerte', 'dead', 'muerto',
-    'gun', 'pistola', 'shoot', 'disparo', 'blood', 'sangre',
-    'fight', 'pelea', 'war', 'guerra', 'knife', 'cuchillo',
-    'beat', 'golpear', 'hit', 'punch', 'stab', 'apuñalar',
+    "kill",
+    "murder",
+    "matar",
+    "muerte",
+    "dead",
+    "muerto",
+    "gun",
+    "pistola",
+    "shoot",
+    "disparo",
+    "blood",
+    "sangre",
+    "fight",
+    "pelea",
+    "war",
+    "guerra",
+    "knife",
+    "cuchillo",
+    "beat",
+    "golpear",
+    "hit",
+    "punch",
+    "stab",
+    "apuñalar",
 }
 
 DRUG_KEYWORDS = {
-    'cocaine', 'cocaina', 'crack', 'heroin', 'heroina',
-    'meth', 'weed', 'marijuana', 'marihuana', 'hierba',
-    'pills', 'pastillas', 'lean', 'codeine', 'codeina',
-    'molly', 'ecstasy', 'extasis', 'droga', 'drugs',
-    'smoke', 'fumar', 'high', 'drogado', 'perico',
-    'blunt', 'joint', 'porro', 'cannabis', 'thc',
+    "cocaine",
+    "cocaina",
+    "crack",
+    "heroin",
+    "heroina",
+    "meth",
+    "weed",
+    "marijuana",
+    "marihuana",
+    "hierba",
+    "pills",
+    "pastillas",
+    "lean",
+    "codeine",
+    "codeina",
+    "molly",
+    "ecstasy",
+    "extasis",
+    "droga",
+    "drugs",
+    "smoke",
+    "fumar",
+    "high",
+    "drogado",
+    "perico",
+    "blunt",
+    "joint",
+    "porro",
+    "cannabis",
+    "thc",
 }
 
 SEXUAL_KEYWORDS = {
-    'sex', 'sexo', 'sexy', 'naked', 'desnudo', 'nude',
-    'porn', 'porno', 'strip', 'stripper', 'twerk',
-    'orgasm', 'orgasmo', 'horny', 'caliente', 'cachondo',
-    'booty', 'nalga', 'titties', 'tetas', 'breasts',
-    'penetrar', 'penetrate', 'ride', 'montar',
+    "sex",
+    "sexo",
+    "sexy",
+    "naked",
+    "desnudo",
+    "nude",
+    "porn",
+    "porno",
+    "strip",
+    "stripper",
+    "twerk",
+    "orgasm",
+    "orgasmo",
+    "horny",
+    "caliente",
+    "cachondo",
+    "booty",
+    "nalga",
+    "titties",
+    "tetas",
+    "breasts",
+    "penetrar",
+    "penetrate",
+    "ride",
+    "montar",
 }
 
 POSITIVE_KEYWORDS = {
-    'love', 'amor', 'happy', 'feliz', 'joy', 'alegria',
-    'peace', 'paz', 'hope', 'esperanza', 'dream', 'sueño',
-    'smile', 'sonrisa', 'friend', 'amigo', 'family', 'familia',
-    'beautiful', 'hermoso', 'wonderful', 'maravilloso',
-    'thank', 'gracias', 'bless', 'bendicion',
+    "love",
+    "amor",
+    "happy",
+    "feliz",
+    "joy",
+    "alegria",
+    "peace",
+    "paz",
+    "hope",
+    "esperanza",
+    "dream",
+    "sueño",
+    "smile",
+    "sonrisa",
+    "friend",
+    "amigo",
+    "family",
+    "familia",
+    "beautiful",
+    "hermoso",
+    "wonderful",
+    "maravilloso",
+    "thank",
+    "gracias",
+    "bless",
+    "bendicion",
 }
 
 
@@ -79,43 +219,20 @@ class LyricsAnalyzer:
     Analyzes song lyrics for content classification
     """
 
-    def __init__(self):
-        self._genius = None
-        self._profanity_checker = None
+    def __init__(self) -> None:
+        self._genius: Any = None
+        self._profanity_checker: Any = None
         self._init_genius()
         self._init_profanity()
 
-    def _init_genius(self):
+    def _init_genius(self) -> None:
         """Initialize Genius API client"""
         try:
             import lyricsgenius
-            # Try to get API token from multiple sources
-            import os
-            token = None
 
-            # 1. Try environment variable
-            token = os.environ.get('GENIUS_ACCESS_TOKEN')
+            from utils.credentials import load_credential
 
-            # 2. Try keyring (like other API keys in the app)
-            if not token:
-                try:
-                    import keyring
-                    token = keyring.get_password("nexus_music", "genius_token")
-                except (ImportError, RuntimeError):
-                    pass
-
-            # 3. Try credentials.json
-            if not token:
-                try:
-                    from pathlib import Path
-                    import json
-                    creds_path = Path.home() / ".claude" / "secrets" / "credentials.json"
-                    if creds_path.exists():
-                        with open(creds_path) as f:
-                            creds = json.load(f)
-                        token = creds.get('apis', {}).get('genius', {}).get('api_key')
-                except (OSError, json.JSONDecodeError, KeyError):
-                    pass
+            token = load_credential("genius_token")
 
             if token:
                 self._genius = lyricsgenius.Genius(token, verbose=False, timeout=10)
@@ -127,10 +244,11 @@ class LyricsAnalyzer:
         except ImportError:
             logger.warning("lyricsgenius not installed: pip install lyricsgenius")
 
-    def _init_profanity(self):
+    def _init_profanity(self) -> None:
         """Initialize profanity checker"""
         try:
             from better_profanity import profanity
+
             profanity.load_censor_words()
             self._profanity_checker = profanity
             logger.info("Profanity checker initialized")
@@ -169,9 +287,9 @@ class LyricsAnalyzer:
                 lyrics = song.lyrics
 
                 # Remove common Genius artifacts
-                lyrics = re.sub(r'\[.*?\]', '', lyrics)  # Remove [Verse 1], etc.
-                lyrics = re.sub(r'^\d+\s*Embed.*$', '', lyrics, flags=re.MULTILINE)
-                lyrics = re.sub(r'See .* LiveGet tickets.*$', '', lyrics, flags=re.MULTILINE)
+                lyrics = re.sub(r"\[.*?\]", "", lyrics)  # Remove [Verse 1], etc.
+                lyrics = re.sub(r"^\d+\s*Embed.*$", "", lyrics, flags=re.MULTILINE)
+                lyrics = re.sub(r"See .* LiveGet tickets.*$", "", lyrics, flags=re.MULTILINE)
                 lyrics = lyrics.strip()
 
                 logger.debug(f"Found lyrics for {artist} - {title} ({len(lyrics)} chars)")
@@ -189,7 +307,7 @@ class LyricsAnalyzer:
         """
         score = ContentScore(source="lyrics")
         lyrics_lower = lyrics.lower()
-        words = re.findall(r'\b\w+\b', lyrics_lower)
+        words = re.findall(r"\b\w+\b", lyrics_lower)
         word_count = len(words)
 
         if word_count == 0:

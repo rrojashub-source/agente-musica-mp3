@@ -13,10 +13,11 @@ Features:
 
 Created: December 12, 2025
 """
-import re
+
 import logging
-from typing import List, Optional, Dict, Callable
+import re
 from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SpotifyTrack:
     """Track from Spotify playlist"""
+
     track_id: str
     title: str
     artist: str
@@ -45,6 +47,7 @@ class SpotifyTrack:
 @dataclass
 class SpotifyPlaylist:
     """Spotify playlist metadata"""
+
     playlist_id: str
     name: str
     description: str
@@ -72,24 +75,20 @@ class SpotifyPlaylistImporter:
     """
 
     # URL patterns
-    PLAYLIST_URL_PATTERN = re.compile(
-        r'(?:https?://)?(?:open\.)?spotify\.com/playlist/([a-zA-Z0-9]+)'
-    )
-    PLAYLIST_URI_PATTERN = re.compile(
-        r'spotify:playlist:([a-zA-Z0-9]+)'
-    )
+    PLAYLIST_URL_PATTERN: re.Pattern[str] = re.compile(r"(?:https?://)?(?:open\.)?spotify\.com/playlist/([a-zA-Z0-9]+)")
+    PLAYLIST_URI_PATTERN: re.Pattern[str] = re.compile(r"spotify:playlist:([a-zA-Z0-9]+)")
 
-    def __init__(self, spotify_client):
+    def __init__(self, spotify_client: Any) -> None:
         """
         Initialize importer
 
         Args:
             spotify_client: Spotipy client instance or SpotifySearcher
         """
-        self.sp = spotify_client
+        self.sp: Any = spotify_client
 
         # Handle SpotifySearcher wrapper
-        if hasattr(spotify_client, 'sp'):
+        if hasattr(spotify_client, "sp"):
             self.sp = spotify_client.sp
 
         logger.info("SpotifyPlaylistImporter initialized")
@@ -125,7 +124,7 @@ class SpotifyPlaylistImporter:
             return match.group(1)
 
         # Maybe it's just the ID
-        if re.match(r'^[a-zA-Z0-9]{22}$', url_or_uri):
+        if re.match(r"^[a-zA-Z0-9]{22}$", url_or_uri):
             return url_or_uri
 
         logger.warning(f"Could not parse playlist URL/URI: {url_or_uri}")
@@ -155,12 +154,12 @@ class SpotifyPlaylistImporter:
             # Build playlist object
             playlist = SpotifyPlaylist(
                 playlist_id=playlist_id,
-                name=playlist_data.get('name', 'Unknown Playlist'),
-                description=playlist_data.get('description', ''),
-                owner=playlist_data.get('owner', {}).get('display_name', 'Unknown'),
-                total_tracks=playlist_data.get('tracks', {}).get('total', 0),
+                name=playlist_data.get("name", "Unknown Playlist"),
+                description=playlist_data.get("description", ""),
+                owner=playlist_data.get("owner", {}).get("display_name", "Unknown"),
+                total_tracks=playlist_data.get("tracks", {}).get("total", 0),
                 tracks=tracks,
-                image_url=self._get_image_url(playlist_data)
+                image_url=self._get_image_url(playlist_data),
             )
 
             logger.info(f"Fetched playlist '{playlist.name}' with {len(tracks)} tracks")
@@ -170,7 +169,7 @@ class SpotifyPlaylistImporter:
             logger.error(f"Error fetching playlist {playlist_id}: {e}")
             return None
 
-    def _fetch_all_tracks(self, playlist_id: str, playlist_data: Dict) -> List[SpotifyTrack]:
+    def _fetch_all_tracks(self, playlist_id: str, playlist_data: Dict[str, Any]) -> List[SpotifyTrack]:
         """
         Fetch all tracks from playlist (handles pagination)
 
@@ -185,7 +184,7 @@ class SpotifyPlaylistImporter:
         position = 0
 
         # Process first batch from initial response
-        items = playlist_data.get('tracks', {}).get('items', [])
+        items = playlist_data.get("tracks", {}).get("items", [])
         for item in items:
             track = self._parse_track(item, position)
             if track:
@@ -193,23 +192,23 @@ class SpotifyPlaylistImporter:
                 position += 1
 
         # Fetch remaining pages if more than 100 tracks
-        next_url = playlist_data.get('tracks', {}).get('next')
+        next_url = playlist_data.get("tracks", {}).get("next")
 
         while next_url:
             try:
-                results = self.sp.next(playlist_data['tracks'])
+                results = self.sp.next(playlist_data["tracks"])
                 if not results:
                     break
 
-                items = results.get('items', [])
+                items = results.get("items", [])
                 for item in items:
                     track = self._parse_track(item, position)
                     if track:
                         tracks.append(track)
                         position += 1
 
-                next_url = results.get('next')
-                playlist_data['tracks'] = results
+                next_url = results.get("next")
+                playlist_data["tracks"] = results
 
             except (KeyError, ValueError, AttributeError) as e:
                 logger.error(f"Error fetching playlist page: {e}")
@@ -217,7 +216,7 @@ class SpotifyPlaylistImporter:
 
         return tracks
 
-    def _parse_track(self, item: Dict, position: int) -> Optional[SpotifyTrack]:
+    def _parse_track(self, item: Dict[str, Any], position: int) -> Optional[SpotifyTrack]:
         """
         Parse track from playlist item
 
@@ -229,45 +228,45 @@ class SpotifyPlaylistImporter:
             SpotifyTrack object or None if invalid
         """
         try:
-            track_data = item.get('track')
+            track_data = item.get("track")
             if not track_data:
                 return None
 
             # Skip local files (not on Spotify)
-            if track_data.get('is_local', False):
+            if track_data.get("is_local", False):
                 logger.debug(f"Skipping local track at position {position}")
                 return None
 
             # Get artist name
-            artists = track_data.get('artists', [])
-            artist = artists[0]['name'] if artists else 'Unknown Artist'
+            artists = track_data.get("artists", [])
+            artist = artists[0]["name"] if artists else "Unknown Artist"
 
             return SpotifyTrack(
-                track_id=track_data.get('id', ''),
-                title=track_data.get('name', 'Unknown'),
+                track_id=track_data.get("id", ""),
+                title=track_data.get("name", "Unknown"),
                 artist=artist,
-                album=track_data.get('album', {}).get('name', 'Unknown'),
-                duration_ms=track_data.get('duration_ms', 0),
-                position=position
+                album=track_data.get("album", {}).get("name", "Unknown"),
+                duration_ms=track_data.get("duration_ms", 0),
+                position=position,
             )
 
         except (KeyError, IndexError, ValueError) as e:
             logger.warning(f"Error parsing track at position {position}: {e}")
             return None
 
-    def _get_image_url(self, playlist_data: Dict) -> Optional[str]:
+    def _get_image_url(self, playlist_data: Dict[str, Any]) -> Optional[str]:
         """Get playlist cover image URL"""
-        images = playlist_data.get('images', [])
+        images = playlist_data.get("images", [])
         if images:
-            return images[0].get('url')
+            return images[0].get("url")  # type: ignore[no-any-return]
         return None
 
     def add_to_queue(
         self,
         playlist: SpotifyPlaylist,
-        download_queue,
-        youtube_searcher=None,
-        progress_callback: Optional[Callable[[int, int, str], None]] = None
+        download_queue: Any,
+        youtube_searcher: Any = None,
+        progress_callback: Optional[Callable[[int, int, str], None]] = None,
     ) -> int:
         """
         Add playlist tracks to download queue
@@ -292,21 +291,21 @@ class SpotifyPlaylistImporter:
 
                 # Create queue item
                 item = {
-                    'id': f"spotify_{track.track_id}",
-                    'title': track.title,
-                    'artist': track.artist,
-                    'album': track.album,
-                    'duration': track.duration_seconds,
-                    'source': 'spotify',
-                    'search_query': track.search_query,
-                    'metadata': {
-                        'title': track.title,
-                        'artist': track.artist,
-                        'album': track.album,
-                        'spotify_id': track.track_id,
-                        'playlist_name': playlist.name,
-                        'playlist_position': track.position
-                    }
+                    "id": f"spotify_{track.track_id}",
+                    "title": track.title,
+                    "artist": track.artist,
+                    "album": track.album,
+                    "duration": track.duration_seconds,
+                    "source": "spotify",
+                    "search_query": track.search_query,
+                    "metadata": {
+                        "title": track.title,
+                        "artist": track.artist,
+                        "album": track.album,
+                        "spotify_id": track.track_id,
+                        "playlist_name": playlist.name,
+                        "playlist_position": track.position,
+                    },
                 }
 
                 # If YouTube searcher available, search for YouTube URL
@@ -314,8 +313,8 @@ class SpotifyPlaylistImporter:
                     try:
                         results = youtube_searcher.search(track.search_query, max_results=1)
                         if results:
-                            item['url'] = results[0].get('url')
-                            item['video_id'] = results[0].get('video_id')
+                            item["url"] = results[0].get("url")
+                            item["video_id"] = results[0].get("video_id")
                     except (ConnectionError, OSError, KeyError, ValueError) as e:
                         logger.warning(f"YouTube search failed for '{track.search_query}': {e}")
 
@@ -331,7 +330,7 @@ class SpotifyPlaylistImporter:
         logger.info(f"Added {added}/{total} tracks from playlist '{playlist.name}'")
         return added
 
-    def get_tracks_for_download(self, playlist: SpotifyPlaylist) -> List[Dict]:
+    def get_tracks_for_download(self, playlist: SpotifyPlaylist) -> List[Dict[str, Any]]:
         """
         Convert playlist tracks to download items
 
@@ -344,22 +343,24 @@ class SpotifyPlaylistImporter:
         items = []
 
         for track in playlist.tracks:
-            items.append({
-                'id': f"spotify_{track.track_id}",
-                'title': track.title,
-                'artist': track.artist,
-                'album': track.album,
-                'duration': track.duration_seconds,
-                'source': 'spotify',
-                'search_query': track.search_query,
-                'metadata': {
-                    'title': track.title,
-                    'artist': track.artist,
-                    'album': track.album,
-                    'spotify_id': track.track_id,
-                    'playlist_name': playlist.name
+            items.append(
+                {
+                    "id": f"spotify_{track.track_id}",
+                    "title": track.title,
+                    "artist": track.artist,
+                    "album": track.album,
+                    "duration": track.duration_seconds,
+                    "source": "spotify",
+                    "search_query": track.search_query,
+                    "metadata": {
+                        "title": track.title,
+                        "artist": track.artist,
+                        "album": track.album,
+                        "spotify_id": track.track_id,
+                        "playlist_name": playlist.name,
+                    },
                 }
-            })
+            )
 
         return items
 

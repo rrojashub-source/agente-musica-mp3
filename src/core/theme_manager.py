@@ -12,21 +12,23 @@ Features:
 import json
 import logging
 import sys
-from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
+from typing import List, Optional
+
 from PySide6.QtWidgets import QApplication
 
 
 def get_resource_path(relative_path: str) -> Path:
     """Get absolute path to resource, works for dev and PyInstaller bundle."""
-    if hasattr(sys, '_MEIPASS') or '__compiled__' in globals():
+    if hasattr(sys, "_MEIPASS") or "__compiled__" in globals():
         # Running from PyInstaller bundle
-        base_path = Path(sys._MEIPASS) if hasattr(sys, '_MEIPASS') else Path(__file__).parent.parent
+        base_path = Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else Path(__file__).parent.parent
     else:
         # Running from source
         base_path = Path(__file__).parent.parent
     return base_path / relative_path
+
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,7 @@ class ThemeManager:
         manager.toggle_theme()  # Switch to light
     """
 
-    _instance: Optional['ThemeManager'] = None
+    _instance: Optional["ThemeManager"] = None
 
     # Config path (can be overridden in tests)
     config_path = Path.home() / ".nexus_music" / "config.json"
@@ -52,22 +54,22 @@ class ThemeManager:
     # Available themes
     THEMES = ["dark", "light"]
 
-    def __new__(cls):
+    def __new__(cls) -> "ThemeManager":
         """Implement singleton pattern"""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize theme manager"""
         # Only initialize once (singleton)
-        if hasattr(self, '_initialized'):
+        if hasattr(self, "_initialized"):
             return
 
-        self.current_theme = "dark"  # Default theme
+        self.current_theme: str = "dark"  # Default theme
         self._load_preference()
 
-        self._initialized = True
+        self._initialized: bool = True
 
         logger.info(f"ThemeManager initialized (theme: {self.current_theme})")
 
@@ -141,7 +143,7 @@ class ThemeManager:
         # Read QSS file
         if qss_file.exists():
             try:
-                with open(qss_file, 'r', encoding='utf-8') as f:
+                with open(qss_file, "r", encoding="utf-8") as f:
                     qss_content = f.read()
 
                 logger.debug(f"Loaded QSS: {qss_file} ({len(qss_content)} chars)")
@@ -160,17 +162,13 @@ class ThemeManager:
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Prepare config data
-        config = {
-            'theme': self.current_theme,
-            'version': '1.0',
-            'last_updated': datetime.now().isoformat()
-        }
+        config = {"theme": self.current_theme, "version": "1.0", "last_updated": datetime.now().isoformat()}
 
         # Write to temp file first (atomic write)
-        temp_path = self.config_path.with_suffix('.tmp')
+        temp_path = self.config_path.with_suffix(".tmp")
 
         try:
-            with open(temp_path, 'w', encoding='utf-8') as f:
+            with open(temp_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2)
 
             # Rename temp file to actual config (atomic on most filesystems)
@@ -192,11 +190,11 @@ class ThemeManager:
             return
 
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
+            with open(self.config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
 
             # Load theme setting
-            theme = config.get('theme', 'dark')
+            theme = config.get("theme", "dark")
 
             # Validate theme
             if theme in self.THEMES:

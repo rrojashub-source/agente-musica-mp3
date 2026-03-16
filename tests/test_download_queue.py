@@ -2,85 +2,81 @@
 Tests for Download Queue System (Phase 4.2)
 TDD: Write tests FIRST, then implement src/core/download_queue.py
 """
-import pytest
-import unittest
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
-import tempfile
+
 import json
+import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 
-class TestDownloadQueue(unittest.TestCase):
+class TestDownloadQueue:
     """Test DownloadQueue (manages concurrent downloads)"""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup(self, tmp_path):
         """Setup test fixtures"""
-        # Create temporary directory for test persistence
-        self.test_dir = tempfile.mkdtemp()
-        self.queue_file = Path(self.test_dir) / "queue.json"
+        self.test_dir = str(tmp_path)
+        self.queue_file = tmp_path / "queue.json"
 
         # Import the class we're testing (will fail initially - expected in TDD Red phase)
         try:
             from core.download_queue import DownloadQueue
+
             self.queue_class = DownloadQueue
         except ImportError:
             self.queue_class = None  # Expected to fail initially
 
-    def tearDown(self):
-        """Cleanup test files"""
-        import shutil
-        if Path(self.test_dir).exists():
-            shutil.rmtree(self.test_dir)
-
     def test_queue_class_exists(self):
         """Test DownloadQueue class exists"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found - implement src/core/download_queue.py")
+            pytest.fail("DownloadQueue class not found - implement src/core/download_queue.py")
 
         # Should be able to instantiate
         queue = self.queue_class(max_concurrent=3)
-        self.assertIsNotNone(queue)
+        assert queue is not None
 
     def test_queue_initialization(self):
         """Test DownloadQueue initializes with max_concurrent limit"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         # Initialize with max_concurrent=50 (as per requirements)
         queue = self.queue_class(max_concurrent=50)
 
         # Verify max_concurrent set
-        self.assertEqual(queue.max_concurrent, 50)
+        assert queue.max_concurrent == 50
 
         # Verify queue starts empty
-        self.assertEqual(len(queue.get_all()), 0)
+        assert len(queue.get_all()) == 0
 
     def test_queue_add_item(self):
         """Test adding download to queue"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
         # Add download item
         item_id = queue.add(
             video_url="https://www.youtube.com/watch?v=test123",
-            metadata={'title': 'Test Song', 'artist': 'Test Artist'}
+            metadata={"title": "Test Song", "artist": "Test Artist"},
         )
 
         # Verify item added
-        self.assertIsNotNone(item_id, "add() should return item ID")
-        self.assertEqual(len(queue.get_all()), 1)
+        assert item_id is not None, "add() should return item ID"
+        assert len(queue.get_all()) == 1
 
         # Verify item has correct data
         items = queue.get_all()
-        self.assertEqual(items[0]['video_url'], "https://www.youtube.com/watch?v=test123")
-        self.assertEqual(items[0]['metadata']['title'], 'Test Song')
+        assert items[0]["video_url"] == "https://www.youtube.com/watch?v=test123"
+        assert items[0]["metadata"]["title"] == "Test Song"
 
     def test_queue_add_multiple_items(self):
         """Test adding multiple downloads to queue"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
@@ -88,98 +84,86 @@ class TestDownloadQueue(unittest.TestCase):
         for i in range(5):
             queue.add(
                 video_url=f"https://www.youtube.com/watch?v=test{i}",
-                metadata={'title': f'Song {i}', 'artist': 'Artist'}
+                metadata={"title": f"Song {i}", "artist": "Artist"},
             )
 
         # Verify all added
-        self.assertEqual(len(queue.get_all()), 5)
+        assert len(queue.get_all()) == 5
 
     def test_queue_start_processing(self):
         """Test starting queue processing"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
         # Add items
-        queue.add(
-            video_url="https://www.youtube.com/watch?v=test1",
-            metadata={'title': 'Song 1'}
-        )
+        queue.add(video_url="https://www.youtube.com/watch?v=test1", metadata={"title": "Song 1"})
 
         # Mock DownloadWorker to prevent actual downloads
-        with patch('core.download_queue.DownloadWorker'):
+        with patch("core.download_queue.DownloadWorker"):
             # Start processing
             queue.start()
 
             # Verify queue is processing
-            self.assertTrue(queue.is_running())
+            assert queue.is_running()
 
     def test_queue_respects_max_concurrent_limit(self):
         """Test queue respects max_concurrent limit (50 max)"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         # Set low limit for testing
         queue = self.queue_class(max_concurrent=3)
 
         # Add 10 items
         for i in range(10):
-            queue.add(
-                video_url=f"https://www.youtube.com/watch?v=test{i}",
-                metadata={'title': f'Song {i}'}
-            )
+            queue.add(video_url=f"https://www.youtube.com/watch?v=test{i}", metadata={"title": f"Song {i}"})
 
         # Mock DownloadWorker
-        with patch('core.download_queue.DownloadWorker'):
+        with patch("core.download_queue.DownloadWorker"):
             # Start processing
             queue.start()
 
             # Verify only 3 are active (not all 10)
             active = queue.get_active_downloads()
-            self.assertLessEqual(len(active), 3, "Should not exceed max_concurrent")
+            assert len(active) <= 3, "Should not exceed max_concurrent"
 
     def test_queue_pause_download(self):
         """Test pausing individual download"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
         # Add item
-        item_id = queue.add(
-            video_url="https://www.youtube.com/watch?v=test1",
-            metadata={'title': 'Song 1'}
-        )
+        item_id = queue.add(video_url="https://www.youtube.com/watch?v=test1", metadata={"title": "Song 1"})
 
         # Mock worker
-        with patch('core.download_queue.DownloadWorker') as mock_worker:
+        with patch("core.download_queue.DownloadWorker") as mock_worker:
             queue.start()
 
             # Pause the download
             result = queue.pause(item_id)
 
             # Verify paused
-            self.assertTrue(result, "pause() should return True on success")
+            assert result, "pause() should return True on success"
 
             # Verify status changed
             item = queue.get_item(item_id)
-            self.assertEqual(item['status'], 'paused')
+            assert item["status"] == "paused"
 
     def test_queue_resume_download(self):
         """Test resuming paused download"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
         # Add and pause item
-        item_id = queue.add(
-            video_url="https://www.youtube.com/watch?v=test1",
-            metadata={'title': 'Song 1'}
-        )
+        item_id = queue.add(video_url="https://www.youtube.com/watch?v=test1", metadata={"title": "Song 1"})
 
-        with patch('core.download_queue.DownloadWorker'):
+        with patch("core.download_queue.DownloadWorker"):
             queue.start()
             queue.pause(item_id)
 
@@ -187,63 +171,57 @@ class TestDownloadQueue(unittest.TestCase):
             result = queue.resume(item_id)
 
             # Verify resumed
-            self.assertTrue(result, "resume() should return True on success")
+            assert result, "resume() should return True on success"
 
             # Verify status changed
             item = queue.get_item(item_id)
-            self.assertIn(item['status'], ['downloading', 'pending'])
+            assert item["status"] in ["downloading", "pending"]
 
     def test_queue_cancel_download(self):
         """Test canceling active download"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
         # Add item
-        item_id = queue.add(
-            video_url="https://www.youtube.com/watch?v=test1",
-            metadata={'title': 'Song 1'}
-        )
+        item_id = queue.add(video_url="https://www.youtube.com/watch?v=test1", metadata={"title": "Song 1"})
 
-        with patch('core.download_queue.DownloadWorker'):
+        with patch("core.download_queue.DownloadWorker"):
             queue.start()
 
             # Cancel the download
             result = queue.cancel(item_id)
 
             # Verify canceled
-            self.assertTrue(result, "cancel() should return True on success")
+            assert result, "cancel() should return True on success"
 
             # Verify item removed or status changed
             item = queue.get_item(item_id)
             if item is not None:
-                self.assertEqual(item['status'], 'canceled')
+                assert item["status"] == "canceled"
 
     def test_queue_progress_tracking(self):
         """Test tracking progress for each download"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
         # Add item
-        item_id = queue.add(
-            video_url="https://www.youtube.com/watch?v=test1",
-            metadata={'title': 'Song 1'}
-        )
+        item_id = queue.add(video_url="https://www.youtube.com/watch?v=test1", metadata={"title": "Song 1"})
 
         # Update progress
         queue.update_progress(item_id, 50)
 
         # Verify progress updated
         item = queue.get_item(item_id)
-        self.assertEqual(item['progress'], 50)
+        assert item["progress"] == 50
 
     def test_queue_completion_callback(self):
         """Test callback fires when download completes"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
@@ -256,56 +234,47 @@ class TestDownloadQueue(unittest.TestCase):
         queue.on_complete = on_complete
 
         # Add item
-        item_id = queue.add(
-            video_url="https://www.youtube.com/watch?v=test1",
-            metadata={'title': 'Song 1'}
-        )
+        item_id = queue.add(video_url="https://www.youtube.com/watch?v=test1", metadata={"title": "Song 1"})
 
         # Simulate completion
-        queue.mark_completed(item_id, metadata={'title': 'Song 1', 'path': '/tmp/song.mp3'})
+        queue.mark_completed(item_id, metadata={"title": "Song 1", "path": "/tmp/song.mp3"})
 
         # Verify callback fired
-        self.assertIn(item_id, completed)
+        assert item_id in completed
 
     def test_queue_persistence_save(self):
         """Test saving queue to disk"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
         # Add items
         for i in range(3):
-            queue.add(
-                video_url=f"https://www.youtube.com/watch?v=test{i}",
-                metadata={'title': f'Song {i}'}
-            )
+            queue.add(video_url=f"https://www.youtube.com/watch?v=test{i}", metadata={"title": f"Song {i}"})
 
         # Save queue
         queue.save(str(self.queue_file))
 
         # Verify file created
-        self.assertTrue(self.queue_file.exists(), "Queue file should be created")
+        assert self.queue_file.exists(), "Queue file should be created"
 
         # Verify file contains queue data
         with open(self.queue_file) as f:
             data = json.load(f)
 
-        self.assertIn('items', data)
-        self.assertEqual(len(data['items']), 3)
+        assert "items" in data
+        assert len(data["items"]) == 3
 
     def test_queue_persistence_load(self):
         """Test loading queue from disk (survives app restart)"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         # Create and save queue
         queue1 = self.queue_class(max_concurrent=3)
         for i in range(3):
-            queue1.add(
-                video_url=f"https://www.youtube.com/watch?v=test{i}",
-                metadata={'title': f'Song {i}'}
-            )
+            queue1.add(video_url=f"https://www.youtube.com/watch?v=test{i}", metadata={"title": f"Song {i}"})
         queue1.save(str(self.queue_file))
 
         # Load into new queue instance (simulate app restart)
@@ -313,62 +282,52 @@ class TestDownloadQueue(unittest.TestCase):
         queue2.load(str(self.queue_file))
 
         # Verify items restored
-        self.assertEqual(len(queue2.get_all()), 3)
+        assert len(queue2.get_all()) == 3
 
         # Verify data matches
         items = queue2.get_all()
-        self.assertEqual(items[0]['metadata']['title'], 'Song 0')
-        self.assertEqual(items[2]['metadata']['title'], 'Song 2')
+        assert items[0]["metadata"]["title"] == "Song 0"
+        assert items[2]["metadata"]["title"] == "Song 2"
 
 
-class TestDownloadQueueSecurity(unittest.TestCase):
+class TestDownloadQueueSecurity:
     """Security tests for DownloadQueue"""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup(self, tmp_path):
         """Setup test fixtures"""
-        self.test_dir = tempfile.mkdtemp()
+        self.test_dir = str(tmp_path)
         try:
             from core.download_queue import DownloadQueue
+
             self.queue_class = DownloadQueue
         except ImportError:
             self.queue_class = None
 
-    def tearDown(self):
-        """Cleanup test files"""
-        import shutil
-        if Path(self.test_dir).exists():
-            shutil.rmtree(self.test_dir)
-
     def test_reject_non_youtube_url(self):
         """Test that non-YouTube URLs are rejected"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
-        with self.assertRaises(ValueError):
-            queue.add(
-                video_url="https://evil.com/malware.exe",
-                metadata={'title': 'Malware'}
-            )
+        with pytest.raises(ValueError):
+            queue.add(video_url="https://evil.com/malware.exe", metadata={"title": "Malware"})
 
     def test_reject_file_protocol_url(self):
         """Test that file:// URLs are rejected"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
-        with self.assertRaises(ValueError):
-            queue.add(
-                video_url="file:///etc/passwd",
-                metadata={'title': 'Hack'}
-            )
+        with pytest.raises(ValueError):
+            queue.add(video_url="file:///etc/passwd", metadata={"title": "Hack"})
 
     def test_accept_valid_youtube_urls(self):
         """Test that valid YouTube URLs are accepted"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
@@ -380,28 +339,28 @@ class TestDownloadQueueSecurity(unittest.TestCase):
         ]
 
         for url in valid_urls:
-            item_id = queue.add(url, metadata={'title': 'Test'})
-            self.assertIsNotNone(item_id, f"Should accept {url}")
+            item_id = queue.add(url, metadata={"title": "Test"})
+            assert item_id is not None, f"Should accept {url}"
 
     def test_metadata_is_sanitized(self):
         """Test that metadata is sanitized on add"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         queue = self.queue_class(max_concurrent=3)
 
         item_id = queue.add(
             video_url="https://www.youtube.com/watch?v=test",
-            metadata={'title': '<script>alert("xss")</script>Test Song'}
+            metadata={"title": '<script>alert("xss")</script>Test Song'},
         )
 
         item = queue.get_item(item_id)
-        self.assertNotIn('<script>', item['metadata']['title'])
+        assert "<script>" not in item["metadata"]["title"]
 
     def test_thread_safety_concurrent_add(self):
         """Test that concurrent adds don't corrupt state"""
         if self.queue_class is None:
-            self.fail("DownloadQueue class not found")
+            pytest.fail("DownloadQueue class not found")
 
         import threading
 
@@ -410,10 +369,7 @@ class TestDownloadQueueSecurity(unittest.TestCase):
 
         def add_item(i):
             try:
-                queue.add(
-                    video_url=f"https://www.youtube.com/watch?v=test{i}",
-                    metadata={'title': f'Song {i}'}
-                )
+                queue.add(video_url=f"https://www.youtube.com/watch?v=test{i}", metadata={"title": f"Song {i}"})
             except Exception as e:
                 errors.append(str(e))
 
@@ -423,9 +379,5 @@ class TestDownloadQueueSecurity(unittest.TestCase):
         for t in threads:
             t.join()
 
-        self.assertEqual(len(errors), 0, f"Concurrent adds had errors: {errors}")
-        self.assertEqual(len(queue.get_all()), 20)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert len(errors) == 0, f"Concurrent adds had errors: {errors}"
+        assert len(queue.get_all()) == 20

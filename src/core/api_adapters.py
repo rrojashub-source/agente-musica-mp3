@@ -4,8 +4,9 @@ API Adapters - Bridge between existing API clients and MetadataFetcher
 Purpose: Adapt MusicBrainzClient and SpotifySearcher to work with MetadataFetcher
 Created: November 18, 2025
 """
+
 import logging
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -17,17 +18,17 @@ class MusicBrainzAdapter:
     Converts MusicBrainzClient format to MetadataFetcher expected format
     """
 
-    def __init__(self, musicbrainz_client):
+    def __init__(self, musicbrainz_client: Any) -> None:
         """
         Initialize adapter
 
         Args:
             musicbrainz_client: Instance of api.musicbrainz_client.MusicBrainzClient
         """
-        self.client = musicbrainz_client
+        self.client: Any = musicbrainz_client
         logger.info("MusicBrainzAdapter initialized")
 
-    def search_recordings(self, query: str, limit: int = 5) -> List[Dict]:
+    def search_recordings(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Search recordings and return in MetadataFetcher format
 
@@ -41,6 +42,7 @@ class MusicBrainzAdapter:
         # Extract title and artist from query
         # Query format: 'recording:"title" AND artist:"artist"'
         import re
+
         title_match = re.search(r'recording:"([^"]+)"', query)
         artist_match = re.search(r'artist:"([^"]+)"', query)
 
@@ -62,22 +64,20 @@ class MusicBrainzAdapter:
         for result in results:
             # Build structure expected by MetadataFetcher
             adapted = {
-                'title': result.get('title', ''),
-                'artist-credit': [
+                "title": result.get("title", ""),
+                "artist-credit": [
                     {
-                        'name': result.get('artist', 'Unknown Artist'),
-                        'artist': {
-                            'name': result.get('artist', 'Unknown Artist')
-                        }
+                        "name": result.get("artist", "Unknown Artist"),
+                        "artist": {"name": result.get("artist", "Unknown Artist")},
                     }
                 ],
-                'releases': [
+                "releases": [
                     {
-                        'title': result.get('album', 'Unknown Album'),
-                        'date': f"{result.get('year', '')}-01-01" if result.get('year') else ''
+                        "title": result.get("album", "Unknown Album"),
+                        "date": f"{result.get('year', '')}-01-01" if result.get("year") else "",
                     }
                 ],
-                'length': 0  # Duration not available from current client
+                "length": 0,  # Duration not available from current client
             }
 
             adapted_results.append(adapted)
@@ -93,17 +93,17 @@ class SpotifyAdapter:
     Converts SpotifySearcher format to MetadataFetcher expected format
     """
 
-    def __init__(self, spotify_searcher):
+    def __init__(self, spotify_searcher: Any) -> None:
         """
         Initialize adapter
 
         Args:
             spotify_searcher: Instance of api.spotify_search.SpotifySearcher
         """
-        self.searcher = spotify_searcher
+        self.searcher: Any = spotify_searcher
         logger.info("SpotifyAdapter initialized")
 
-    def search_tracks(self, query: str, limit: int = 5) -> List[Dict]:
+    def search_tracks(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Search tracks and return in MetadataFetcher format
 
@@ -117,8 +117,9 @@ class SpotifyAdapter:
         # Extract title and artist from query
         # Query format: "track:title artist:artist"
         import re
-        track_match = re.search(r'track:([^\s]+(?:\s+[^\s]+)*?)(?:\s+artist:|$)', query)
-        artist_match = re.search(r'artist:(.+)', query)
+
+        track_match = re.search(r"track:([^\s]+(?:\s+[^\s]+)*?)(?:\s+artist:|$)", query)
+        artist_match = re.search(r"artist:(.+)", query)
 
         if not track_match:
             logger.warning("Could not extract track from query")
@@ -142,15 +143,10 @@ class SpotifyAdapter:
             adapted_results = []
             for track in results:
                 adapted = {
-                    'name': track.get('title', ''),
-                    'artists': [
-                        {'name': track.get('artist', 'Unknown Artist')}
-                    ],
-                    'album': {
-                        'name': track.get('album', 'Unknown Album'),
-                        'release_date': track.get('year', '')
-                    },
-                    'duration_ms': track.get('duration', 0) * 1000  # Convert seconds to ms
+                    "name": track.get("title", ""),
+                    "artists": [{"name": track.get("artist", "Unknown Artist")}],
+                    "album": {"name": track.get("album", "Unknown Album"), "release_date": track.get("year", "")},
+                    "duration_ms": track.get("duration", 0) * 1000,  # Convert seconds to ms
                 }
 
                 adapted_results.append(adapted)

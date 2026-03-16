@@ -5,71 +5,64 @@ Detecta carpeta de música y escanea biblioteca
 Project: AGENTE_MUSICA_MP3_001
 """
 
+from __future__ import annotations
+
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional, Set
 
 try:
-    from PySide6.QtWidgets import (
-        QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-        QLineEdit, QFileDialog, QProgressBar, QTextEdit, QMessageBox,
-        QComboBox
-    )
-    from PySide6.QtCore import Qt, QThread, Signal
+    from PySide6.QtCore import Qt
     from PySide6.QtGui import QFont
+    from PySide6.QtWidgets import (
+        QComboBox,
+        QDialog,
+        QFileDialog,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QMessageBox,
+        QProgressBar,
+        QPushButton,
+        QTextEdit,
+        QVBoxLayout,
+    )
 except ImportError:
     print("❌ PySide6 not installed")
     exit(1)
 
+from gui.base.base_worker import BaseWorker
+from gui.themes.style_constants import Styles
 from translations import t
 
 
-class LibraryScanWorker(QThread):
-    """Worker para escanear archivos de música"""
-    progress_update = Signal(int, str)  # (progress, message)
-    scan_complete = Signal(int)  # total files found
-    error_occurred = Signal(str)
+class LibraryScanWorker(BaseWorker):
+    """Worker para escanear archivos de música."""
 
-    def __init__(self, library_path: str):
+    def __init__(self, library_path: str) -> None:
         super().__init__()
-        self.library_path = Path(library_path)
-        self.audio_extensions = {'.mp3', '.flac', '.m4a', '.ogg', '.wav', '.wma', '.aac'}
-        self._is_cancelled = False
+        self.library_path: Path = Path(library_path)
+        self.audio_extensions: Set[str] = {".mp3", ".flac", ".m4a", ".ogg", ".wav", ".wma", ".aac"}
 
-    def cancel(self):
-        """Cancel scanning"""
-        self._is_cancelled = True
+    def do_work(self) -> int:
+        """Scan for audio files. Returns total count."""
+        self.report_progress(0, "Iniciando escaneo...")
+        self.report_progress(10, "Contando archivos...")
 
-    def run(self):
-        """Scan for audio files"""
-        try:
-            self.progress_update.emit(0, "Iniciando escaneo...")
+        audio_files = []
 
-            # Count total files first (for progress calculation)
-            self.progress_update.emit(10, "Contando archivos...")
+        for i, file_path in enumerate(self.library_path.rglob("*")):
+            if self.is_cancelled:
+                return len(audio_files)
 
-            audio_files = []
+            if file_path.suffix.lower() in self.audio_extensions:
+                audio_files.append(file_path)
 
-            # Scan directory recursively
-            for i, file_path in enumerate(self.library_path.rglob('*')):
-                if self._is_cancelled:
-                    return
+                if i % 100 == 0:
+                    self.report_progress(min(90, 10 + (i // 10)), f"Encontrados: {len(audio_files)} archivos...")
 
-                if file_path.suffix.lower() in self.audio_extensions:
-                    audio_files.append(file_path)
-
-                    # Update progress every 100 files
-                    if i % 100 == 0:
-                        self.progress_update.emit(
-                            min(90, 10 + (i // 10)),
-                            f"Encontrados: {len(audio_files)} archivos..."
-                        )
-
-            self.progress_update.emit(100, f"Escaneo completo: {len(audio_files)} archivos")
-            self.scan_complete.emit(len(audio_files))
-
-        except OSError as e:
-            self.error_occurred.emit(f"Error escaneando: {str(e)}")
+        self.report_progress(100, f"Escaneo completo: {len(audio_files)} archivos")
+        return len(audio_files)
 
 
 class SetupWizard(QDialog):
@@ -80,11 +73,11 @@ class SetupWizard(QDialog):
     - Escanea archivos de música
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: Any = None) -> None:
         super().__init__(parent)
-        self.library_path = None
-        self.audio_files_count = 0
-        self.scan_worker = None
+        self.library_path: Optional[str] = None
+        self.audio_files_count: int = 0
+        self.scan_worker: Optional[LibraryScanWorker] = None
 
         self.setWindowTitle("🎵 NEXUS Music Manager - Primera Configuración")
         self.setMinimumWidth(700)
@@ -94,7 +87,7 @@ class SetupWizard(QDialog):
         self.init_ui()
         self.detect_music_folder()
 
-    def init_ui(self):
+    def init_ui(self) -> None:
         """Initialize user interface"""
         layout = QVBoxLayout(self)
 
@@ -112,7 +105,7 @@ class SetupWizard(QDialog):
         )
         self.description.setWordWrap(True)
         self.description.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.description.setStyleSheet("color: gray; padding: 20px;")
+        self.description.setStyleSheet(Styles.STATUS_GRAY_PADDED)
         layout.addWidget(self.description)
 
         # Library path selection
@@ -182,7 +175,7 @@ class SetupWizard(QDialog):
 
         layout.addLayout(buttons_layout)
 
-    def detect_music_folder(self):
+    def detect_music_folder(self) -> None:
         """Auto-detect system Music folder"""
         # Try standard Music folder locations
         music_paths = [
@@ -211,13 +204,10 @@ class SetupWizard(QDialog):
             "Por favor, selecciona tu carpeta de música manualmente.\n"
         )
 
-    def browse_folder(self):
+    def browse_folder(self) -> None:
         """Browse for custom folder"""
         folder = QFileDialog.getExistingDirectory(
-            self,
-            "Selecciona tu Carpeta de Música",
-            str(Path.home()),
-            QFileDialog.Option.ShowDirsOnly
+            self, "Selecciona tu Carpeta de Música", str(Path.home()), QFileDialog.Option.ShowDirsOnly
         )
 
         if folder:
@@ -226,7 +216,7 @@ class SetupWizard(QDialog):
             self.scan_btn.setEnabled(True)
             self.results_text.append(f"\n📁 Carpeta seleccionada: {folder}\n")
 
-    def start_scan(self):
+    def start_scan(self) -> None:
         """Start library scan"""
         if not self.library_path:
             QMessageBox.warning(self, "Error", "Por favor selecciona una carpeta primero")
@@ -235,11 +225,7 @@ class SetupWizard(QDialog):
         # Check if folder exists and is accessible
         path = Path(self.library_path)
         if not path.exists() or not path.is_dir():
-            QMessageBox.warning(
-                self,
-                "Error",
-                f"La carpeta no existe o no es accesible:\n{self.library_path}"
-            )
+            QMessageBox.warning(self, "Error", f"La carpeta no existe o no es accesible:\n{self.library_path}")
             return
 
         # Disable controls during scan
@@ -253,23 +239,22 @@ class SetupWizard(QDialog):
 
         # Start scan worker
         self.scan_worker = LibraryScanWorker(self.library_path)
-        self.scan_worker.progress_update.connect(self.on_progress_update)
-        self.scan_worker.scan_complete.connect(self.on_scan_complete)
-        self.scan_worker.error_occurred.connect(self.on_scan_error)
+        self.scan_worker.progress.connect(self.on_progress_update)
+        self.scan_worker.finished.connect(self.on_scan_complete)
+        self.scan_worker.error.connect(self.on_scan_error)
         self.scan_worker.start()
 
-    def on_progress_update(self, progress: int, message: str):
+    def on_progress_update(self, progress: int, message: str) -> None:
         """Handle scan progress update"""
         self.progress_bar.setValue(progress)
         self.progress_bar.setFormat(f"{progress}% - {message}")
 
-    def on_scan_complete(self, total_files: int):
+    def on_scan_complete(self, total_files: int) -> None:
         """Handle scan completion"""
         self.audio_files_count = total_files
 
         self.results_text.append(
-            f"\n✅ Escaneo completado!\n"
-            f"📊 Total de archivos de audio encontrados: {total_files:,}\n\n"
+            f"\n✅ Escaneo completado!\n" f"📊 Total de archivos de audio encontrados: {total_files:,}\n\n"
         )
 
         if total_files > 0:
@@ -289,7 +274,7 @@ class SetupWizard(QDialog):
         self.skip_btn.setEnabled(True)
         self.progress_bar.setVisible(False)
 
-    def on_scan_error(self, error: str):
+    def on_scan_error(self, error: str) -> None:
         """Handle scan error"""
         self.results_text.append(f"\n❌ {error}\n")
 
@@ -300,27 +285,25 @@ class SetupWizard(QDialog):
 
         QMessageBox.critical(self, "Error de Escaneo", error)
 
-    def skip_setup(self):
+    def skip_setup(self) -> None:
         """Skip setup and use demo database"""
         reply = QMessageBox.question(
             self,
             "Omitir Configuración",
             "¿Deseas omitir la configuración y usar la biblioteca de demostración?\n\n"
             "Podrás configurar tu biblioteca real más tarde desde el menú.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
             self.library_path = None  # Use demo database
             self.accept()
 
-    def finish_setup(self):
+    def finish_setup(self) -> None:
         """Finish setup with configured library"""
         if not self.library_path or self.audio_files_count == 0:
             QMessageBox.warning(
-                self,
-                "Configuración Incompleta",
-                "Por favor escanea tu biblioteca primero o selecciona 'Omitir'."
+                self, "Configuración Incompleta", "Por favor escanea tu biblioteca primero o selecciona 'Omitir'."
             )
             return
 

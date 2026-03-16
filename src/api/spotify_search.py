@@ -14,16 +14,22 @@ Features:
 Security (Pre-Phase 5 Hardening):
 - Input sanitization to prevent injection attacks
 """
-import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
-from spotipy.exceptions import SpotifyException
-import logging
-import requests
-from time import sleep
+
+from __future__ import annotations
+
 import hashlib
+import logging
+from time import sleep
+from typing import Any, Dict, List, Optional
+
+import requests  # type: ignore[import-untyped]
+import spotipy
+from spotipy.exceptions import SpotifyException
+from spotipy.oauth2 import SpotifyClientCredentials
+
+from utils.constants import API_CACHE_SIZE, API_DEFAULT_RESULTS, API_MAX_RESULTS, API_QUERY_MAX_LENGTH
 from utils.input_sanitizer import sanitize_query
 from utils.rate_limiter import RateLimiter
-from utils.constants import API_CACHE_SIZE, API_DEFAULT_RESULTS, API_MAX_RESULTS, API_QUERY_MAX_LENGTH
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -40,7 +46,7 @@ class SpotifySearcher:
         artists = searcher.search_artists("Queen")
     """
 
-    def __init__(self, client_id, client_secret, cache_size=API_CACHE_SIZE):
+    def __init__(self, client_id: str, client_secret: str, cache_size: int = API_CACHE_SIZE) -> None:
         """
         Initialize Spotify searcher with OAuth credentials
 
@@ -49,29 +55,30 @@ class SpotifySearcher:
             client_secret (str): Spotify app client secret
             cache_size (int): Size of LRU cache for search results (default: 128)
         """
-        self.client_id = client_id
-        self.client_secret = client_secret
+        self.client_id: str = client_id
+        self.client_secret: str = client_secret
 
         # Setup OAuth2 authentication (automatically refreshes tokens)
-        self.auth_manager = SpotifyClientCredentials(
-            client_id=client_id,
-            client_secret=client_secret
+        self.auth_manager: SpotifyClientCredentials = SpotifyClientCredentials(
+            client_id=client_id, client_secret=client_secret
         )
 
         # Initialize Spotipy client
-        self.sp = spotipy.Spotify(auth_manager=self.auth_manager)
+        self.sp: spotipy.Spotify = spotipy.Spotify(auth_manager=self.auth_manager)
 
         # Cache configuration
-        self._cache = {}
-        self._cache_size = cache_size
+        self._cache: Dict[str, List[Dict[str, Any]]] = {}
+        self._cache_size: int = cache_size
 
         # Retry configuration
-        self._retry_attempts = 3
-        self._retry_delay = 1  # seconds
+        self._retry_attempts: int = 3
+        self._retry_delay: int = 1  # seconds
 
         logger.info("SpotifySearcher initialized successfully")
 
-    def search_tracks(self, query, limit=API_DEFAULT_RESULTS, use_cache=True):
+    def search_tracks(
+        self, query: str, limit: int = API_DEFAULT_RESULTS, use_cache: bool = True
+    ) -> List[Dict[str, Any]]:
         """
         Search for tracks on Spotify with caching and retry logic
 
@@ -115,10 +122,10 @@ class SpotifySearcher:
         for attempt in range(self._retry_attempts):
             try:
                 # Apply rate limiting before API call
-                RateLimiter.get_instance().wait('spotify')
+                RateLimiter.get_instance().wait("spotify")
 
                 # Make API request
-                results = self.sp.search(q=query, type='track', limit=limit)
+                results = self.sp.search(q=query, type="track", limit=limit)
 
                 # Parse results
                 tracks = self._parse_tracks(results)
@@ -133,7 +140,7 @@ class SpotifySearcher:
             except SpotifyException as e:
                 # Handle rate limit with retry
                 if e.http_status == 429 and attempt < self._retry_attempts - 1:
-                    retry_after = int(e.headers.get('Retry-After', self._retry_delay))
+                    retry_after = int(e.headers.get("Retry-After", self._retry_delay))
                     logger.warning(f"Rate limit exceeded, retrying in {retry_after}s...")
                     sleep(retry_after)
                     continue
@@ -146,7 +153,9 @@ class SpotifySearcher:
 
         return []
 
-    def search_albums(self, query, limit=API_DEFAULT_RESULTS, use_cache=True):
+    def search_albums(
+        self, query: str, limit: int = API_DEFAULT_RESULTS, use_cache: bool = True
+    ) -> List[Dict[str, Any]]:
         """
         Search for albums on Spotify with caching and retry logic
 
@@ -186,10 +195,10 @@ class SpotifySearcher:
         for attempt in range(self._retry_attempts):
             try:
                 # Apply rate limiting before API call
-                RateLimiter.get_instance().wait('spotify')
+                RateLimiter.get_instance().wait("spotify")
 
                 # Make API request
-                results = self.sp.search(q=query, type='album', limit=limit)
+                results = self.sp.search(q=query, type="album", limit=limit)
 
                 # Parse results
                 albums = self._parse_albums(results)
@@ -204,7 +213,7 @@ class SpotifySearcher:
             except SpotifyException as e:
                 # Handle rate limit with retry
                 if e.http_status == 429 and attempt < self._retry_attempts - 1:
-                    retry_after = int(e.headers.get('Retry-After', self._retry_delay))
+                    retry_after = int(e.headers.get("Retry-After", self._retry_delay))
                     logger.warning(f"Rate limit exceeded, retrying in {retry_after}s...")
                     sleep(retry_after)
                     continue
@@ -217,7 +226,9 @@ class SpotifySearcher:
 
         return []
 
-    def search_artists(self, query, limit=API_DEFAULT_RESULTS, use_cache=True):
+    def search_artists(
+        self, query: str, limit: int = API_DEFAULT_RESULTS, use_cache: bool = True
+    ) -> List[Dict[str, Any]]:
         """
         Search for artists on Spotify with caching and retry logic
 
@@ -257,10 +268,10 @@ class SpotifySearcher:
         for attempt in range(self._retry_attempts):
             try:
                 # Apply rate limiting before API call
-                RateLimiter.get_instance().wait('spotify')
+                RateLimiter.get_instance().wait("spotify")
 
                 # Make API request
-                results = self.sp.search(q=query, type='artist', limit=limit)
+                results = self.sp.search(q=query, type="artist", limit=limit)
 
                 # Parse results
                 artists = self._parse_artists(results)
@@ -275,7 +286,7 @@ class SpotifySearcher:
             except SpotifyException as e:
                 # Handle rate limit with retry
                 if e.http_status == 429 and attempt < self._retry_attempts - 1:
-                    retry_after = int(e.headers.get('Retry-After', self._retry_delay))
+                    retry_after = int(e.headers.get("Retry-After", self._retry_delay))
                     logger.warning(f"Rate limit exceeded, retrying in {retry_after}s...")
                     sleep(retry_after)
                     continue
@@ -288,7 +299,7 @@ class SpotifySearcher:
 
         return []
 
-    def _parse_tracks(self, results):
+    def _parse_tracks(self, results: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Parse Spotify track search results into standardized format
 
@@ -298,25 +309,27 @@ class SpotifySearcher:
         Returns:
             list: Parsed tracks
         """
-        tracks = []
+        tracks: list[dict[str, Any]] = []
 
-        if 'tracks' not in results or 'items' not in results['tracks']:
+        if "tracks" not in results or "items" not in results["tracks"]:
             return tracks
 
-        for item in results['tracks']['items']:
+        for item in results["tracks"]["items"]:
             try:
                 # Extract artist name (first artist if multiple)
-                artist_name = item['artists'][0]['name'] if item['artists'] else "Unknown"
+                artist_name = item["artists"][0]["name"] if item["artists"] else "Unknown"
 
-                tracks.append({
-                    'track_id': item['id'],
-                    'title': item['name'],
-                    'artist': artist_name,
-                    'album': item['album']['name'],
-                    'duration_ms': item['duration_ms'],
-                    'popularity': item.get('popularity', 0),
-                    'preview_url': item.get('preview_url', None)
-                })
+                tracks.append(
+                    {
+                        "track_id": item["id"],
+                        "title": item["name"],
+                        "artist": artist_name,
+                        "album": item["album"]["name"],
+                        "duration_ms": item["duration_ms"],
+                        "popularity": item.get("popularity", 0),
+                        "preview_url": item.get("preview_url", None),
+                    }
+                )
 
             except KeyError as e:
                 logger.warning(f"Missing key in Spotify track result: {e}")
@@ -324,7 +337,7 @@ class SpotifySearcher:
 
         return tracks
 
-    def _parse_albums(self, results):
+    def _parse_albums(self, results: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Parse Spotify album search results into standardized format
 
@@ -334,24 +347,26 @@ class SpotifySearcher:
         Returns:
             list: Parsed albums
         """
-        albums = []
+        albums: list[dict[str, Any]] = []
 
-        if 'albums' not in results or 'items' not in results['albums']:
+        if "albums" not in results or "items" not in results["albums"]:
             return albums
 
-        for item in results['albums']['items']:
+        for item in results["albums"]["items"]:
             try:
                 # Extract artist name (first artist if multiple)
-                artist_name = item['artists'][0]['name'] if item['artists'] else "Unknown"
+                artist_name = item["artists"][0]["name"] if item["artists"] else "Unknown"
 
-                albums.append({
-                    'album_id': item['id'],
-                    'name': item['name'],
-                    'artist': artist_name,
-                    'release_date': item.get('release_date', 'Unknown'),
-                    'total_tracks': item.get('total_tracks', 0),
-                    'album_type': item.get('album_type', 'album')
-                })
+                albums.append(
+                    {
+                        "album_id": item["id"],
+                        "name": item["name"],
+                        "artist": artist_name,
+                        "release_date": item.get("release_date", "Unknown"),
+                        "total_tracks": item.get("total_tracks", 0),
+                        "album_type": item.get("album_type", "album"),
+                    }
+                )
 
             except KeyError as e:
                 logger.warning(f"Missing key in Spotify album result: {e}")
@@ -359,7 +374,7 @@ class SpotifySearcher:
 
         return albums
 
-    def _parse_artists(self, results):
+    def _parse_artists(self, results: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Parse Spotify artist search results into standardized format
 
@@ -369,20 +384,22 @@ class SpotifySearcher:
         Returns:
             list: Parsed artists
         """
-        artists = []
+        artists: list[dict[str, Any]] = []
 
-        if 'artists' not in results or 'items' not in results['artists']:
+        if "artists" not in results or "items" not in results["artists"]:
             return artists
 
-        for item in results['artists']['items']:
+        for item in results["artists"]["items"]:
             try:
-                artists.append({
-                    'artist_id': item['id'],
-                    'name': item['name'],
-                    'genres': item.get('genres', []),
-                    'popularity': item.get('popularity', 0),
-                    'followers': item.get('followers', {}).get('total', 0)
-                })
+                artists.append(
+                    {
+                        "artist_id": item["id"],
+                        "name": item["name"],
+                        "genres": item.get("genres", []),
+                        "popularity": item.get("popularity", 0),
+                        "followers": item.get("followers", {}).get("total", 0),
+                    }
+                )
 
             except KeyError as e:
                 logger.warning(f"Missing key in Spotify artist result: {e}")
@@ -390,7 +407,7 @@ class SpotifySearcher:
 
         return artists
 
-    def _handle_spotify_error(self, error, method_name):
+    def _handle_spotify_error(self, error: SpotifyException, method_name: str) -> List[Dict[str, Any]]:
         """
         Handle Spotify API errors with appropriate logging and retry logic
 
@@ -403,7 +420,7 @@ class SpotifySearcher:
         """
         if error.http_status == 429:
             # Rate limit exceeded
-            retry_after = int(error.headers.get('Retry-After', 1))
+            retry_after = int(error.headers.get("Retry-After", 1))
             logger.warning(f"Spotify rate limit exceeded, retry after {retry_after}s")
 
             # For now, return empty (could implement retry in future)
@@ -424,7 +441,7 @@ class SpotifySearcher:
             logger.error(f"Spotify API error in {method_name} ({error.http_status}): {error.msg}")
             return []
 
-    def _get_cache_key(self, query, limit):
+    def _get_cache_key(self, query: str, limit: int) -> str:
         """
         Generate cache key for query
 
@@ -438,7 +455,7 @@ class SpotifySearcher:
         key_str = f"{query.lower()}:{limit}"
         return hashlib.md5(key_str.encode()).hexdigest()
 
-    def _add_to_cache(self, query, limit, results):
+    def _add_to_cache(self, query: str, limit: int, results: List[Dict[str, Any]]) -> None:
         """
         Add results to cache with LRU eviction
 
@@ -459,12 +476,12 @@ class SpotifySearcher:
         self._cache[cache_key] = results
         logger.debug(f"Cached results for query: '{query}' (cache size: {len(self._cache)})")
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Clear the search cache"""
         self._cache.clear()
         logger.info("Spotify search cache cleared")
 
-    def get_track_details(self, track_id):
+    def get_track_details(self, track_id: str) -> Optional[Dict[str, Any]]:
         """
         Get detailed information about a specific track
 
@@ -478,7 +495,7 @@ class SpotifySearcher:
         """
         try:
             track = self.sp.track(track_id)
-            return track
+            return track  # type: ignore[no-any-return]
         except (SpotifyException, requests.RequestException) as e:
             logger.error(f"Error getting track details: {e}")
             return None

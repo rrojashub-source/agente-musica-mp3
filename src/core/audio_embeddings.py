@@ -15,25 +15,35 @@ Created: December 8, 2025
 Updated: 2026-03-11 - Split into 3 specialized classes (Phase 2.3)
 Author: NEXUS + Ricardo
 """
-import logging
+
+from __future__ import annotations
+
 import hashlib
+import logging
 import sqlite3
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
+
 import numpy as np
 
 from core.audio_feature_extractor import (
+    EMBEDDING_DIM,
+    FRAME_SIZE,
+    HOP_SIZE,
+    NUM_BANDS,
+    SAMPLE_RATE,
     AudioFeatureExtractor,
-    EMBEDDING_DIM, SAMPLE_RATE, FRAME_SIZE, HOP_SIZE, NUM_BANDS,
 )
 from core.bpm_detector import BPMDetector
-from core.mood_classifier import MoodClassifier, MOODS as _MOODS
+from core.mood_classifier import MOODS as _MOODS
+from core.mood_classifier import MoodClassifier
 from utils.constants import FILE_HASH_CHUNK_SIZE
 
 logger = logging.getLogger(__name__)
 
 try:
     from pydub import AudioSegment
+
     PYDUB_AVAILABLE = True
 except ImportError:
     PYDUB_AVAILABLE = False
@@ -61,21 +71,21 @@ class AudioEmbeddings:
     NUM_BANDS = NUM_BANDS
     MOODS = _MOODS
 
-    def __init__(self, db_manager=None):
+    def __init__(self, db_manager: Any = None) -> None:
         """
         Initialize AudioEmbeddings.
 
         Args:
             db_manager: Optional DatabaseManager for caching embeddings
         """
-        self.db_manager = db_manager
-        self._feature_extractor = AudioFeatureExtractor()
-        self._bpm_detector = BPMDetector()
-        self._mood_classifier = MoodClassifier(bpm_detector=self._bpm_detector)
+        self.db_manager: Any = db_manager
+        self._feature_extractor: AudioFeatureExtractor = AudioFeatureExtractor()
+        self._bpm_detector: BPMDetector = BPMDetector()
+        self._mood_classifier: MoodClassifier = MoodClassifier(bpm_detector=self._bpm_detector)
         self._ensure_embeddings_table()
         logger.info("AudioEmbeddings initialized (AI-powered similarity search)")
 
-    def _ensure_embeddings_table(self):
+    def _ensure_embeddings_table(self) -> None:
         """Create embeddings cache table if it doesn't exist"""
         if not self.db_manager:
             return
@@ -84,7 +94,8 @@ class AudioEmbeddings:
             conn = self.db_manager.conn
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS audio_embeddings (
                     song_id INTEGER PRIMARY KEY,
                     embedding BLOB NOT NULL,
@@ -92,12 +103,15 @@ class AudioEmbeddings:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (song_id) REFERENCES songs(id)
                 )
-            """)
+            """
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_embeddings_hash
                 ON audio_embeddings(file_hash)
-            """)
+            """
+            )
 
             conn.commit()
             logger.debug("Embeddings table ready")
@@ -109,7 +123,7 @@ class AudioEmbeddings:
     # EMBEDDING EXTRACTION
     # =========================================================================
 
-    def extract_embedding(self, file_path: str) -> Optional[np.ndarray]:
+    def extract_embedding(self, file_path: str) -> Optional[Any]:
         """
         Extract 128D audio embedding from a song file.
 
@@ -133,7 +147,7 @@ class AudioEmbeddings:
             audio = audio.set_frame_rate(self.SAMPLE_RATE)
 
             samples = np.array(audio.get_array_of_samples(), dtype=np.float32)
-            samples = samples / (2 ** 15)  # Normalize to [-1, 1]
+            samples = samples / (2**15)  # type: ignore[assignment]  # Normalize to [-1, 1]
 
             features = self._feature_extractor.extract_features(samples)
 
@@ -156,11 +170,7 @@ class AudioEmbeddings:
     # CACHING
     # =========================================================================
 
-    def get_or_create_embedding(
-        self,
-        song_id: int,
-        file_path: str
-    ) -> Optional[np.ndarray]:
+    def get_or_create_embedding(self, song_id: int, file_path: str) -> Optional[Any]:
         """
         Get cached embedding or create new one.
 
@@ -191,7 +201,7 @@ class AudioEmbeddings:
             path = Path(file_path)
             size = path.stat().st_size
 
-            with open(path, 'rb') as f:
+            with open(path, "rb") as f:
                 first_chunk = f.read(FILE_HASH_CHUNK_SIZE)
 
             content = f"{size}:".encode() + first_chunk
@@ -200,21 +210,20 @@ class AudioEmbeddings:
         except OSError:
             return ""
 
-    def _get_cached_embedding(
-        self,
-        song_id: int,
-        file_hash: str
-    ) -> Optional[np.ndarray]:
+    def _get_cached_embedding(self, song_id: int, file_hash: str) -> Optional[Any]:
         """Get embedding from cache if valid"""
         if not self.db_manager:
             return None
 
         try:
             cursor = self.db_manager.conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT embedding FROM audio_embeddings
                 WHERE song_id = ? AND file_hash = ?
-            """, (song_id, file_hash))
+            """,
+                (song_id, file_hash),
+            )
 
             row = cursor.fetchone()
             if row:
@@ -225,12 +234,7 @@ class AudioEmbeddings:
 
         return None
 
-    def _cache_embedding(
-        self,
-        song_id: int,
-        embedding: np.ndarray,
-        file_hash: str
-    ):
+    def _cache_embedding(self, song_id: int, embedding: Any, file_hash: str) -> None:
         """Save embedding to cache"""
         if not self.db_manager:
             return
@@ -238,10 +242,13 @@ class AudioEmbeddings:
         try:
             cursor = self.db_manager.conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO audio_embeddings (song_id, embedding, file_hash)
                 VALUES (?, ?, ?)
-            """, (song_id, embedding.tobytes(), file_hash))
+            """,
+                (song_id, embedding.tobytes(), file_hash),
+            )
 
             self.db_manager.conn.commit()
             logger.debug(f"Cached embedding for song {song_id}")
@@ -253,12 +260,7 @@ class AudioEmbeddings:
     # SIMILARITY SEARCH
     # =========================================================================
 
-    def find_similar(
-        self,
-        song_id: int,
-        limit: int = 10,
-        min_similarity: float = 0.3
-    ) -> List[Dict]:
+    def find_similar(self, song_id: int, limit: int = 10, min_similarity: float = 0.3) -> List[Dict[str, Any]]:
         """
         Find songs similar to a given song using AI embeddings.
 
@@ -280,10 +282,7 @@ class AudioEmbeddings:
             logger.error(f"Song {song_id} not found")
             return []
 
-        ref_embedding = self.get_or_create_embedding(
-            song_id,
-            ref_song['file_path']
-        )
+        ref_embedding = self.get_or_create_embedding(song_id, ref_song["file_path"])
 
         if ref_embedding is None:
             logger.error(f"Failed to get embedding for song {song_id}")
@@ -293,13 +292,10 @@ class AudioEmbeddings:
         similar_songs = []
 
         for song in all_songs:
-            if song['id'] == song_id:
+            if song["id"] == song_id:
                 continue
 
-            embedding = self.get_or_create_embedding(
-                song['id'],
-                song['file_path']
-            )
+            embedding = self.get_or_create_embedding(song["id"], song["file_path"])
 
             if embedding is None:
                 continue
@@ -307,22 +303,16 @@ class AudioEmbeddings:
             similarity = self._cosine_similarity(ref_embedding, embedding)
 
             if similarity >= min_similarity:
-                similar_songs.append({
-                    'song': song,
-                    'similarity': float(similarity)
-                })
+                similar_songs.append({"song": song, "similarity": float(similarity)})
 
-        similar_songs.sort(key=lambda x: x['similarity'], reverse=True)
+        similar_songs.sort(key=lambda x: x["similarity"], reverse=True)
         result = similar_songs[:limit]
 
-        logger.info(
-            f"Found {len(result)} similar songs to '{ref_song.get('title')}' "
-            f"(threshold: {min_similarity})"
-        )
+        logger.info(f"Found {len(result)} similar songs to '{ref_song.get('title')}' " f"(threshold: {min_similarity})")
 
         return result
 
-    def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
+    def _cosine_similarity(self, a: Any, b: Any) -> float:
         """
         Calculate cosine similarity between two vectors.
 
@@ -338,15 +328,14 @@ class AudioEmbeddings:
 
         # Cosine similarity is in [-1, 1], normalize to [0, 1]
         similarity = dot_product / (norm_a * norm_b)
-        return (similarity + 1) / 2
+        return (similarity + 1) / 2  # type: ignore[no-any-return]
 
     # =========================================================================
     # BATCH OPERATIONS
     # =========================================================================
 
     def batch_generate_embeddings(
-        self,
-        progress_callback=None
+        self, progress_callback: Optional[Callable[[int, int], Any]] = None
     ) -> Dict[str, int]:
         """
         Generate embeddings for all songs in library.
@@ -358,7 +347,7 @@ class AudioEmbeddings:
             Dict with 'processed', 'cached', 'failed' counts
         """
         if not self.db_manager:
-            return {'processed': 0, 'cached': 0, 'failed': 0}
+            return {"processed": 0, "cached": 0, "failed": 0}
 
         all_songs = self.db_manager.get_all_songs()
         total = len(all_songs)
@@ -371,33 +360,26 @@ class AudioEmbeddings:
             if progress_callback:
                 progress_callback(i + 1, total)
 
-            file_hash = self._compute_file_hash(song['file_path'])
-            existing = self._get_cached_embedding(song['id'], file_hash)
+            file_hash = self._compute_file_hash(song["file_path"])
+            existing = self._get_cached_embedding(song["id"], file_hash)
 
             if existing is not None:
                 cached += 1
                 continue
 
-            embedding = self.extract_embedding(song['file_path'])
+            embedding = self.extract_embedding(song["file_path"])
 
             if embedding is not None:
-                self._cache_embedding(song['id'], embedding, file_hash)
+                self._cache_embedding(song["id"], embedding, file_hash)
                 processed += 1
             else:
                 failed += 1
 
-        logger.info(
-            f"Batch embedding complete: {processed} processed, "
-            f"{cached} cached, {failed} failed"
-        )
+        logger.info(f"Batch embedding complete: {processed} processed, " f"{cached} cached, {failed} failed")
 
-        return {
-            'processed': processed,
-            'cached': cached,
-            'failed': failed
-        }
+        return {"processed": processed, "cached": cached, "failed": failed}
 
-    def get_embedding_stats(self) -> Dict:
+    def get_embedding_stats(self) -> Dict[str, Any]:
         """
         Get statistics about cached embeddings.
 
@@ -405,7 +387,7 @@ class AudioEmbeddings:
             Dict with embedding statistics
         """
         if not self.db_manager:
-            return {'total': 0, 'coverage': 0}
+            return {"total": 0, "coverage": 0}
 
         try:
             cursor = self.db_manager.conn.cursor()
@@ -419,15 +401,15 @@ class AudioEmbeddings:
             coverage = (cached / total * 100) if total > 0 else 0
 
             return {
-                'cached': cached,
-                'total': total,
-                'coverage': round(coverage, 1),
-                'embedding_dim': self.EMBEDDING_DIM
+                "cached": cached,
+                "total": total,
+                "coverage": round(coverage, 1),
+                "embedding_dim": self.EMBEDDING_DIM,
             }
 
         except sqlite3.Error as e:
             logger.error(f"Failed to get stats: {e}")
-            return {'total': 0, 'coverage': 0}
+            return {"total": 0, "coverage": 0}
 
     # =========================================================================
     # BPM + MOOD (delegated)
@@ -435,13 +417,13 @@ class AudioEmbeddings:
 
     def detect_bpm(self, file_path: str) -> Optional[int]:
         """Detect BPM (beats per minute) of an audio file."""
-        return self._bpm_detector.detect(file_path)
+        return self._bpm_detector.detect(file_path)  # type: ignore[no-any-return]
 
-    def classify_mood(self, file_path: str) -> Optional[Dict]:
+    def classify_mood(self, file_path: str) -> Optional[Dict[str, Any]]:
         """Classify the mood/energy of an audio file."""
-        return self._mood_classifier.classify(file_path)
+        return self._mood_classifier.classify(file_path)  # type: ignore[no-any-return]
 
-    def analyze_song(self, file_path: str) -> Optional[Dict]:
+    def analyze_song(self, file_path: str) -> Optional[Dict[str, Any]]:
         """
         Complete audio analysis: embedding, BPM, and mood.
 
@@ -459,22 +441,16 @@ class AudioEmbeddings:
 
             if mood_result:
                 return {
-                    'bpm': mood_result.get('bpm'),
-                    'mood': mood_result.get('mood'),
-                    'energy': mood_result.get('energy'),
-                    'valence': mood_result.get('valence'),
-                    'confidence': mood_result.get('confidence')
+                    "bpm": mood_result.get("bpm"),
+                    "mood": mood_result.get("mood"),
+                    "energy": mood_result.get("energy"),
+                    "valence": mood_result.get("valence"),
+                    "confidence": mood_result.get("confidence"),
                 }
 
             # Fallback: just BPM
             bpm = self.detect_bpm(file_path)
-            return {
-                'bpm': bpm,
-                'mood': None,
-                'energy': None,
-                'valence': None,
-                'confidence': None
-            }
+            return {"bpm": bpm, "mood": None, "energy": None, "valence": None, "confidence": None}
 
         except (OSError, ValueError) as e:
             logger.error(f"Song analysis failed: {e}")
@@ -484,20 +460,20 @@ class AudioEmbeddings:
     # DELEGATION (backward compat for tests/consumers accessing internals)
     # =========================================================================
 
-    def _extract_audio_features(self, samples: np.ndarray) -> Optional[np.ndarray]:
+    def _extract_audio_features(self, samples: Any) -> Optional[Any]:
         return self._feature_extractor.extract_features(samples)
 
-    def _compute_band_energies(self, magnitude: np.ndarray, freqs: np.ndarray) -> np.ndarray:
-        return self._feature_extractor.compute_band_energies(magnitude, freqs)
+    def _compute_band_energies(self, magnitude: Any, freqs: Any) -> Any:
+        return self._feature_extractor.compute_band_energies(magnitude, freqs)  # type: ignore[no-any-return]
 
-    def _extract_temporal_features(self, rms_values) -> list:
-        return self._feature_extractor.extract_temporal_features(rms_values)
+    def _extract_temporal_features(self, rms_values: Any) -> list[Any]:
+        return self._feature_extractor.extract_temporal_features(rms_values)  # type: ignore[no-any-return]
 
-    def _estimate_bpm(self, samples: np.ndarray) -> Optional[int]:
-        return self._bpm_detector.estimate_bpm(samples)
+    def _estimate_bpm(self, samples: Any) -> Optional[int]:
+        return self._bpm_detector.estimate_bpm(samples)  # type: ignore[no-any-return]
 
-    def _extract_mood_features(self, samples: np.ndarray) -> Optional[Dict]:
-        return self._mood_classifier.extract_mood_features(samples)
+    def _extract_mood_features(self, samples: Any) -> Optional[Dict[str, Any]]:
+        return self._mood_classifier.extract_mood_features(samples)  # type: ignore[no-any-return]
 
-    def _classify_mood_from_features(self, features: Dict) -> Dict:
-        return self._mood_classifier.classify_from_features(features)
+    def _classify_mood_from_features(self, features: Dict[str, Any]) -> Dict[str, Any]:
+        return self._mood_classifier.classify_from_features(features)  # type: ignore[no-any-return]

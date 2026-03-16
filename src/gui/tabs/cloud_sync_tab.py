@@ -11,29 +11,50 @@ Purpose: Sync library metadata across devices via cloud storage
 
 Created: November 24, 2025
 """
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QLineEdit, QFileDialog, QProgressBar,
-    QTextEdit, QCheckBox, QGroupBox, QMessageBox,
-    QComboBox, QSpinBox, QFrame
-)
-from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QFont
+
+from __future__ import annotations
+
 import json
 import logging
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Optional
 
+from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QSpinBox,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
+from gui.base import BaseTab
+from gui.themes.style_constants import Colors, Styles
 from services.cloud_sync_service import (
-    CloudSyncService, LocalFolderProvider, GoogleDriveProvider,
-    SyncStatus, ConflictStrategy
+    CloudSyncService,
+    ConflictStrategy,
+    GoogleDriveProvider,
+    LocalFolderProvider,
+    SyncStatus,
 )
 from translations import tr
 
 logger = logging.getLogger(__name__)
 
 
-class CloudSyncTab(QWidget):
+class CloudSyncTab(BaseTab):
     """
     Cloud Sync Tab for Library Synchronization
 
@@ -45,12 +66,11 @@ class CloudSyncTab(QWidget):
     - Export/Import controls
     - Conflict strategy selection
     - Last sync info
+
+    Note: data_changed signal is inherited from BaseTab.
     """
 
-    # Emitted when sync/import modifies DB data (library refresh trigger)
-    data_changed = Signal()
-
-    def __init__(self, db_manager=None, parent=None):
+    def __init__(self, db_manager: Any = None, parent: Optional[QWidget] = None) -> None:
         """
         Initialize Cloud Sync Tab
 
@@ -58,29 +78,25 @@ class CloudSyncTab(QWidget):
             db_manager: DatabaseManager instance for library access
             parent: Parent widget
         """
-        super().__init__(parent)
-        self.db_manager = db_manager
-        self.sync_service = None
-        self.provider = None
+        self.db_manager: Any = db_manager
+        self.sync_service: Optional[CloudSyncService] = None
+        self.provider: Optional[Any] = None
+        self._signals_connected: bool = False
+        super().__init__(db_manager=db_manager, parent=parent)
 
-        self._init_ui()
-        # Connect signals after UI is initialized
-        if self.sync_service:
-            self._connect_signals()
-
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize user interface"""
         layout = QVBoxLayout()
         layout.setSpacing(15)
 
         # Header
         header_label = QLabel(tr("cloud_sync_title"))
-        header_label.setStyleSheet("font-size: 18px; font-weight: bold;")
+        header_label.setStyleSheet(Styles.HEADER_TITLE)
         layout.addWidget(header_label)
 
         # Info label
         info_label = QLabel(tr("cloud_sync_info"))
-        info_label.setStyleSheet("margin-bottom: 10px; color: #666;")
+        info_label.setStyleSheet(Styles.TEXT_INFO_PADDED)
         layout.addWidget(info_label)
 
         # === PROVIDER SELECTION ===
@@ -119,20 +135,21 @@ class CloudSyncTab(QWidget):
 
         # Simple info - no technical setup required
         gdrive_info = QLabel(tr("cloud_sync_gdrive_simple_info"))
-        gdrive_info.setStyleSheet("color: #666;")
+        gdrive_info.setStyleSheet(Styles.TEXT_DIMMED)
         gdrive_info.setWordWrap(True)
         gdrive_layout.addWidget(gdrive_info)
 
         # Auth status with user email
         self.gdrive_status = QLabel(tr("cloud_sync_status_not_auth"))
-        self.gdrive_status.setStyleSheet("font-weight: bold; font-size: 13px; margin: 10px 0;")
+        self.gdrive_status.setStyleSheet(Styles.SECTION_HEADER_BOLD)
         gdrive_layout.addWidget(self.gdrive_status)
 
         # Connect/Disconnect buttons row
         gdrive_buttons = QHBoxLayout()
 
         self.gdrive_connect_btn = QPushButton("🔗 " + tr("cloud_sync_connect_google"))
-        self.gdrive_connect_btn.setStyleSheet("""
+        self.gdrive_connect_btn.setStyleSheet(
+            """
             QPushButton {
                 background-color: #4285F4;
                 color: white;
@@ -143,17 +160,20 @@ class CloudSyncTab(QWidget):
             QPushButton:hover {
                 background-color: #3367D6;
             }
-        """)
+        """
+        )
         self.gdrive_connect_btn.clicked.connect(self._connect_google_drive)
         gdrive_buttons.addWidget(self.gdrive_connect_btn)
 
         self.gdrive_logout_btn = QPushButton("🚪 " + tr("cloud_sync_logout"))
-        self.gdrive_logout_btn.setStyleSheet("""
+        self.gdrive_logout_btn.setStyleSheet(
+            """
             QPushButton {
                 padding: 10px 20px;
                 border-radius: 4px;
             }
-        """)
+        """
+        )
         self.gdrive_logout_btn.clicked.connect(self._logout_google_drive)
         self.gdrive_logout_btn.hide()  # Hidden until connected
         gdrive_buttons.addWidget(self.gdrive_logout_btn)
@@ -183,7 +203,7 @@ class CloudSyncTab(QWidget):
         status_row = QHBoxLayout()
         status_label = QLabel(tr("cloud_sync_connection"))
         self.connection_status = QLabel(tr("cloud_sync_not_connected"))
-        self.connection_status.setStyleSheet("font-weight: bold;")
+        self.connection_status.setStyleSheet(Styles.STATUS_BOLD)
         status_row.addWidget(status_label)
         status_row.addWidget(self.connection_status)
         status_row.addStretch()
@@ -202,7 +222,7 @@ class CloudSyncTab(QWidget):
         device_row = QHBoxLayout()
         device_label = QLabel(tr("cloud_sync_device_id"))
         self.device_id_label = QLabel("---")
-        self.device_id_label.setStyleSheet("font-family: monospace;")
+        self.device_id_label.setStyleSheet(Styles.FONT_MONOSPACE)
         device_row.addWidget(device_label)
         device_row.addWidget(self.device_id_label)
         device_row.addStretch()
@@ -219,13 +239,15 @@ class CloudSyncTab(QWidget):
         conflict_row = QHBoxLayout()
         conflict_label = QLabel(tr("cloud_sync_conflict"))
         self.conflict_combo = QComboBox()
-        self.conflict_combo.addItems([
-            tr("cloud_sync_conflict_newer"),
-            tr("cloud_sync_conflict_local"),
-            tr("cloud_sync_conflict_remote"),
-            tr("cloud_sync_conflict_both"),
-            tr("cloud_sync_conflict_manual")
-        ])
+        self.conflict_combo.addItems(
+            [
+                tr("cloud_sync_conflict_newer"),
+                tr("cloud_sync_conflict_local"),
+                tr("cloud_sync_conflict_remote"),
+                tr("cloud_sync_conflict_both"),
+                tr("cloud_sync_conflict_manual"),
+            ]
+        )
         self.conflict_combo.currentIndexChanged.connect(self._on_conflict_changed)
         conflict_row.addWidget(conflict_label)
         conflict_row.addWidget(self.conflict_combo)
@@ -248,7 +270,7 @@ class CloudSyncTab(QWidget):
         progress_layout.addWidget(self.progress_bar)
 
         self.progress_label = QLabel(tr("cloud_sync_ready"))
-        self.progress_label.setStyleSheet("color: #666;")
+        self.progress_label.setStyleSheet(Styles.TEXT_DIMMED)
         progress_layout.addWidget(self.progress_label)
 
         progress_group.setLayout(progress_layout)
@@ -261,7 +283,8 @@ class CloudSyncTab(QWidget):
         self.sync_btn = QPushButton(tr("cloud_sync_sync_now"))
         self.sync_btn.setEnabled(False)
         self.sync_btn.clicked.connect(self._do_sync)
-        self.sync_btn.setStyleSheet("""
+        self.sync_btn.setStyleSheet(
+            """
             QPushButton {
                 background-color: #4CAF50;
                 color: white;
@@ -274,7 +297,8 @@ class CloudSyncTab(QWidget):
             QPushButton:disabled {
                 background-color: #ccc;
             }
-        """)
+        """
+        )
         actions_layout.addWidget(self.sync_btn)
 
         self.export_btn = QPushButton(tr("cloud_sync_export"))
@@ -295,7 +319,7 @@ class CloudSyncTab(QWidget):
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setMaximumHeight(150)
-        self.log_text.setStyleSheet("font-family: monospace; font-size: 11px;")
+        self.log_text.setStyleSheet(Styles.FONT_MONOSPACE_SMALL)
         log_layout.addWidget(self.log_text)
 
         clear_log_btn = QPushButton(tr("cloud_sync_clear_log"))
@@ -311,7 +335,7 @@ class CloudSyncTab(QWidget):
         # Initialize service
         self._init_service()
 
-    def _init_service(self):
+    def _init_service(self) -> None:
         """Initialize cloud sync service"""
         try:
             data_dir = str(Path.home() / ".nexus_music")
@@ -331,15 +355,16 @@ class CloudSyncTab(QWidget):
             logger.error(f"Failed to init sync service: {e}")
             self._log(f"ERROR: Failed to initialize: {e}")
 
-    def _connect_signals(self):
+    def _connect_signals(self) -> None:
         """Connect service signals to UI slots"""
-        if self.sync_service:
+        if self.sync_service and not self._signals_connected:
             self.sync_service.sync_started.connect(self._on_sync_started)
             self.sync_service.sync_progress.connect(self._on_sync_progress)
             self.sync_service.sync_completed.connect(self._on_sync_completed)
             self.sync_service.sync_failed.connect(self._on_sync_failed)
+            self._signals_connected = True
 
-    def _on_provider_changed(self, index: int):
+    def _on_provider_changed(self, index: int) -> None:
         """Handle provider selection change"""
         if index == 0:  # Local Folder
             self.local_folder_widget.show()
@@ -348,97 +373,87 @@ class CloudSyncTab(QWidget):
             self.local_folder_widget.hide()
             self.gdrive_widget.show()
 
-    def _browse_folder(self):
+    def _browse_folder(self) -> None:
         """Browse for sync folder"""
-        folder = QFileDialog.getExistingDirectory(
-            self,
-            "Select Sync Folder",
-            str(Path.home())
-        )
+        folder = QFileDialog.getExistingDirectory(self, "Select Sync Folder", str(Path.home()))
         if folder:
             self.folder_input.setText(folder)
 
-    def _check_gdrive_auth_status(self):
+    def _check_gdrive_auth_status(self) -> None:
         """Check if Google Drive is already authenticated"""
         try:
             provider = GoogleDriveProvider()
             if provider.is_authenticated:
                 self.gdrive_status.setText("⏳ " + tr("cloud_sync_checking_auth"))
-                self.gdrive_status.setStyleSheet("font-weight: bold; color: #FF9800;")
+                self.gdrive_status.setStyleSheet(Styles.STATUS_BOLD_ORANGE)
         except Exception:  # GUI error boundary - must not crash
             pass
 
-    def _connect_google_drive(self):
+    def _connect_google_drive(self) -> None:
         """Connect to Google Drive with simple OAuth flow"""
         self._log("Connecting to Google Drive...")
         self.gdrive_status.setText("⏳ " + tr("cloud_sync_opening_browser"))
-        self.gdrive_status.setStyleSheet("font-weight: bold; color: #FF9800;")
+        self.gdrive_status.setStyleSheet(Styles.STATUS_BOLD_ORANGE)
         self.gdrive_connect_btn.setEnabled(False)
 
         try:
             self.provider = GoogleDriveProvider()
-            self.sync_service.set_provider(self.provider)
+            self.sync_service.set_provider(self.provider)  # type: ignore[union-attr]
 
-            if self.sync_service.connect():
+            if self.sync_service.connect():  # type: ignore[union-attr]
                 # Success!
-                user_email = getattr(self.provider, 'user_email', 'Connected')
+                user_email = getattr(self.provider, "user_email", "Connected")
                 self.gdrive_status.setText(f"✅ {tr('cloud_sync_connected_as')}: {user_email}")
-                self.gdrive_status.setStyleSheet("font-weight: bold; color: #4CAF50;")
+                self.gdrive_status.setStyleSheet(Styles.STATUS_BOLD_GREEN)
                 self.gdrive_connect_btn.hide()
                 self.gdrive_logout_btn.show()
                 self._update_connection_status(True)
                 self._log(f"Connected to Google Drive as {user_email}")
 
-                QMessageBox.information(
-                    self,
-                    tr("cloud_sync_success"),
-                    tr("cloud_sync_gdrive_success_msg")
-                )
+                QMessageBox.information(self, tr("cloud_sync_success"), tr("cloud_sync_gdrive_success_msg"))
             else:
                 self.gdrive_status.setText("❌ " + tr("cloud_sync_connection_failed"))
-                self.gdrive_status.setStyleSheet("font-weight: bold; color: #f44336;")
+                self.gdrive_status.setStyleSheet(Styles.STATUS_BOLD_RED)
                 self.gdrive_connect_btn.setEnabled(True)
                 self._log("Google Drive connection failed")
 
         except ImportError:
             self.gdrive_status.setText("❌ " + tr("cloud_sync_missing_deps"))
-            self.gdrive_status.setStyleSheet("font-weight: bold; color: #f44336;")
+            self.gdrive_status.setStyleSheet(Styles.STATUS_BOLD_RED)
             self.gdrive_connect_btn.setEnabled(True)
             self._log("Missing dependencies: pip install google-api-python-client google-auth-oauthlib")
             QMessageBox.warning(
-                self,
-                tr("cloud_sync_missing_deps"),
-                "pip install google-api-python-client google-auth-oauthlib"
+                self, tr("cloud_sync_missing_deps"), "pip install google-api-python-client google-auth-oauthlib"
             )
         except (RuntimeError, OSError) as e:
             self.gdrive_status.setText("❌ Error")
-            self.gdrive_status.setStyleSheet("font-weight: bold; color: #f44336;")
+            self.gdrive_status.setStyleSheet(Styles.STATUS_BOLD_RED)
             self.gdrive_connect_btn.setEnabled(True)
             self._log(f"Google Drive error: {e}")
             logger.error(f"Google Drive connection error: {e}")
 
-    def _logout_google_drive(self):
+    def _logout_google_drive(self) -> None:
         """Logout from Google Drive"""
         reply = QMessageBox.question(
             self,
             tr("cloud_sync_logout_confirm_title"),
             tr("cloud_sync_logout_confirm_msg"),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            if self.provider and hasattr(self.provider, 'logout'):
+            if self.provider and hasattr(self.provider, "logout"):
                 self.provider.logout()
             self.provider = None
             self._update_connection_status(False)
             self.gdrive_status.setText(tr("cloud_sync_status_not_auth"))
-            self.gdrive_status.setStyleSheet("font-weight: bold;")
+            self.gdrive_status.setStyleSheet(Styles.STATUS_BOLD)
             self.gdrive_connect_btn.show()
             self.gdrive_connect_btn.setEnabled(True)
             self.gdrive_logout_btn.hide()
             self._log("Logged out from Google Drive")
 
-    def _connect_provider(self):
+    def _connect_provider(self) -> None:
         """Connect to selected provider"""
         provider_idx = self.provider_combo.currentIndex()
 
@@ -452,8 +467,8 @@ class CloudSyncTab(QWidget):
             Path(folder).mkdir(parents=True, exist_ok=True)
 
             self.provider = LocalFolderProvider(folder)
-            if self.sync_service.set_provider(self.provider):
-                if self.sync_service.connect():
+            if self.sync_service.set_provider(self.provider):  # type: ignore[union-attr]
+                if self.sync_service.connect():  # type: ignore[union-attr]
                     self._update_connection_status(True)
                     self._log(f"Connected to local folder: {folder}")
                 else:
@@ -462,31 +477,31 @@ class CloudSyncTab(QWidget):
         else:  # Google Drive - use dedicated OAuth flow
             self._connect_google_drive()
 
-    def _update_connection_status(self, connected: bool):
+    def _update_connection_status(self, connected: bool) -> None:
         """Update connection status display"""
         if connected:
             self.connection_status.setText("🟢 Connected")
-            self.connection_status.setStyleSheet("font-weight: bold; color: #4CAF50;")
+            self.connection_status.setStyleSheet(Styles.STATUS_BOLD_GREEN)
             self.sync_btn.setEnabled(True)
         else:
             self.connection_status.setText("⚪ Not connected")
-            self.connection_status.setStyleSheet("font-weight: bold; color: #666;")
+            self.connection_status.setStyleSheet(Styles.STATUS_BOLD_DIMMED)
             self.sync_btn.setEnabled(False)
 
-    def _on_conflict_changed(self, index: int):
+    def _on_conflict_changed(self, index: int) -> None:
         """Handle conflict strategy change"""
         strategies = [
             ConflictStrategy.NEWER_WINS,
             ConflictStrategy.LOCAL_WINS,
             ConflictStrategy.REMOTE_WINS,
             ConflictStrategy.KEEP_BOTH,
-            ConflictStrategy.MANUAL
+            ConflictStrategy.MANUAL,
         ]
         if self.sync_service and index < len(strategies):
             self.sync_service.conflict_strategy = strategies[index]
             self._log(f"Conflict strategy: {strategies[index].value}")
 
-    def _do_sync(self):
+    def _do_sync(self) -> None:
         """Perform sync"""
         if not self.sync_service or not self.sync_service.is_connected:
             QMessageBox.warning(self, "Error", "Not connected to provider")
@@ -512,21 +527,19 @@ class CloudSyncTab(QWidget):
             self.sync_btn.setEnabled(True)
             self.progress_bar.setVisible(False)
 
-    def _do_export(self):
+    def _do_export(self) -> None:
         """Export library to JSON file"""
         file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Export Library",
-            str(Path.home() / "nexus_library_export.json"),
-            "JSON Files (*.json)"
+            self, "Export Library", str(Path.home() / "nexus_library_export.json"), "JSON Files (*.json)"
         )
 
         if file_path:
             try:
                 if self.sync_service:
                     export_data = self.sync_service.export_library(self.db_manager)
-                    with open(file_path, 'w', encoding='utf-8') as f:
+                    with open(file_path, "w", encoding="utf-8") as f:
                         import json
+
                         json.dump(export_data.__dict__, f, indent=2)
                     self._log(f"Library exported to: {file_path}")
                     QMessageBox.information(
@@ -534,27 +547,23 @@ class CloudSyncTab(QWidget):
                         "Export Complete",
                         f"Library exported successfully!\n\n"
                         f"Songs: {len(export_data.songs)}\n"
-                        f"Playlists: {len(export_data.playlists)}"
+                        f"Playlists: {len(export_data.playlists)}",
                     )
             except (OSError, AttributeError, TypeError) as e:
                 logger.error(f"Export error: {e}")
                 self._log(f"ERROR: Export failed - {e}")
                 QMessageBox.warning(self, "Export Error", str(e))
 
-    def _do_import(self):
+    def _do_import(self) -> None:
         """Import library from JSON file"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Import Library",
-            str(Path.home()),
-            "JSON Files (*.json)"
-        )
+        file_path, _ = QFileDialog.getOpenFileName(self, "Import Library", str(Path.home()), "JSON Files (*.json)")
 
         if file_path:
             try:
                 if self.sync_service:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         import json
+
                         data = json.load(f)
 
                     # Confirm import
@@ -565,7 +574,7 @@ class CloudSyncTab(QWidget):
                         f"This will merge the imported data with your current library.\n"
                         f"Songs in file: {len(data.get('songs', []))}\n"
                         f"Playlists in file: {len(data.get('playlists', []))}",
-                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                     )
 
                     if reply == QMessageBox.StandardButton.Yes:
@@ -573,11 +582,7 @@ class CloudSyncTab(QWidget):
                         if result:
                             self._log(f"Library imported from: {file_path}")
                             self.data_changed.emit()
-                            QMessageBox.information(
-                                self,
-                                "Import Complete",
-                                "Library imported successfully!"
-                            )
+                            QMessageBox.information(self, "Import Complete", "Library imported successfully!")
                         else:
                             self._log("Import failed")
             except (json.JSONDecodeError, KeyError, OSError) as e:
@@ -586,7 +591,7 @@ class CloudSyncTab(QWidget):
                 QMessageBox.warning(self, "Import Error", str(e))
 
     @Slot()
-    def _on_sync_started(self):
+    def _on_sync_started(self) -> None:
         """Handle sync started signal"""
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
@@ -594,14 +599,14 @@ class CloudSyncTab(QWidget):
         self._log("Sync started")
 
     @Slot(str, str, int)
-    def _on_sync_progress(self, status: str, message: str, percent: int):
+    def _on_sync_progress(self, status: str, message: str, percent: int) -> None:
         """Handle sync progress signal"""
         self.progress_bar.setValue(percent)
         self.progress_label.setText(f"{status}: {message}")
         self._log(f"[{percent}%] {message}")
 
     @Slot(bool, str)
-    def _on_sync_completed(self, success: bool, message: str):
+    def _on_sync_completed(self, success: bool, message: str) -> None:
         """Handle sync completed signal"""
         self.progress_bar.setVisible(False)
         if success:
@@ -613,13 +618,13 @@ class CloudSyncTab(QWidget):
         self._log(f"Sync completed: {message}")
 
     @Slot(str)
-    def _on_sync_failed(self, error: str):
+    def _on_sync_failed(self, error: str) -> None:
         """Handle sync failed signal"""
         self.progress_bar.setVisible(False)
         self.progress_label.setText(f"Sync failed: {error}")
         self._log(f"ERROR: Sync failed - {error}")
 
-    def _log(self, message: str):
+    def _log(self, message: str) -> None:
         """Add message to activity log"""
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.log_text.append(f"[{timestamp}] {message}")

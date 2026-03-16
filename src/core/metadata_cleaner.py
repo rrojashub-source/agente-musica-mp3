@@ -10,9 +10,10 @@ Purpose: Clean corrupted metadata from MP3 files
 
 Created: November 18, 2025
 """
-import re
+
 import logging
-from typing import Dict, List, Optional, Tuple
+import re
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -28,43 +29,41 @@ class MetadataCleaner:
     - YouTube artifacts: [Official Video], (Official Audio), etc.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize metadata cleaner with common patterns"""
 
         # Patterns to detect and remove
-        self.timestamp_pattern = re.compile(r'_\d{8}_\d{6}')
-        self.repeated_track_pattern = re.compile(r'^(\d+\s*-\s*)+')
-        self.youtube_artifacts_pattern = re.compile(
-            r'\s*[\(\[](Official\s*)?(Music\s*)?Video[\)\]]|'
-            r'\s*[\(\[]Official\s*Audio[\)\]]|'
-            r'\s*[\(\[]Audio[\)\]]|'
-            r'\s*[\(\[]Lyric[s]?\s*Video[\)\]]|'
-            r'\s*[\(\[]Visuali[zs]er[\)\]]|'
-            r'\s*[\(\[]Live[\)\]]|'
-            r'\s*[\(\[]Remaster(ed)?[\)\]]|'
-            r'\s*[\(\[](HD|HQ|4K|1080p)[\)\]]',
-            re.IGNORECASE
+        self.timestamp_pattern: re.Pattern[str] = re.compile(r"_\d{8}_\d{6}")
+        self.repeated_track_pattern: re.Pattern[str] = re.compile(r"^(\d+\s*-\s*)+")
+        self.youtube_artifacts_pattern: re.Pattern[str] = re.compile(
+            r"\s*[\(\[](Official\s*)?(Music\s*)?Video[\)\]]|"
+            r"\s*[\(\[]Official\s*Audio[\)\]]|"
+            r"\s*[\(\[]Audio[\)\]]|"
+            r"\s*[\(\[]Lyric[s]?\s*Video[\)\]]|"
+            r"\s*[\(\[]Visuali[zs]er[\)\]]|"
+            r"\s*[\(\[]Live[\)\]]|"
+            r"\s*[\(\[]Remaster(ed)?[\)\]]|"
+            r"\s*[\(\[](HD|HQ|4K|1080p)[\)\]]",
+            re.IGNORECASE,
         )
 
         # Artist suffix patterns to clean (YouTube channel names)
-        self.artist_suffix_pattern = re.compile(
-            r'\s*(Official|VEVO)$|'
-            r'\s*-\s*Topic$',
-            re.IGNORECASE
+        self.artist_suffix_pattern: re.Pattern[str] = re.compile(
+            r"\s*(Official|VEVO)$|" r"\s*-\s*Topic$", re.IGNORECASE
         )
 
         # Known garbage prefixes/suffixes
-        self.garbage_phrases = [
-            'Unknown Artist - Unknown Album - ',
-            'Unknown Artist - ',
-            'Unknown Album - ',
-            '00 - Unknown Artist - ',
-            '00 - ',
+        self.garbage_phrases: List[str] = [
+            "Unknown Artist - Unknown Album - ",
+            "Unknown Artist - ",
+            "Unknown Album - ",
+            "00 - Unknown Artist - ",
+            "00 - ",
         ]
 
         logger.info("MetadataCleaner initialized")
 
-    def clean_title(self, title: str, artist: str = None) -> Tuple[str, List[str]]:
+    def clean_title(self, title: str, artist: Optional[str] = None) -> Tuple[str, List[str]]:
         """
         Clean corrupted title field
 
@@ -83,41 +82,38 @@ class MetadataCleaner:
 
         # Remove timestamps
         if self.timestamp_pattern.search(title):
-            title = self.timestamp_pattern.sub('', title)
+            title = self.timestamp_pattern.sub("", title)
             issues.append("timestamp_suffix")
 
         # Remove repeated track numbers
         if self.repeated_track_pattern.search(title):
-            title = self.repeated_track_pattern.sub('', title)
+            title = self.repeated_track_pattern.sub("", title)
             issues.append("repeated_track_numbers")
 
         # Remove garbage prefixes
         for garbage in self.garbage_phrases:
             if title.startswith(garbage):
-                title = title[len(garbage):]
+                title = title[len(garbage) :]
                 issues.append("garbage_prefix")
 
         # Strip "Artist - Title" prefix when artist is known
-        if artist and artist.lower() not in ('unknown', 'unknown artist'):
+        if artist and artist.lower() not in ("unknown", "unknown artist"):
             # Clean artist first (strip VEVO/Official) for matching
-            clean_artist = self.artist_suffix_pattern.sub('', artist).strip()
-            prefix = re.compile(
-                r'^' + re.escape(clean_artist) + r'\s*[-\u2013\u2014:]\s*',
-                re.IGNORECASE
-            )
-            new_title = prefix.sub('', title)
+            clean_artist = self.artist_suffix_pattern.sub("", artist).strip()
+            prefix = re.compile(r"^" + re.escape(clean_artist) + r"\s*[-\u2013\u2014:]\s*", re.IGNORECASE)
+            new_title = prefix.sub("", title)
             if new_title != title and new_title.strip():
                 title = new_title
                 issues.append("artist_prefix")
 
         # Remove YouTube artifacts
         if self.youtube_artifacts_pattern.search(title):
-            title = self.youtube_artifacts_pattern.sub('', title)
+            title = self.youtube_artifacts_pattern.sub("", title)
             issues.append("youtube_artifacts")
 
         # Clean up spacing
-        title = re.sub(r'\s+', ' ', title).strip()
-        title = re.sub(r'\s*-\s*$', '', title)  # Remove trailing dash
+        title = re.sub(r"\s+", " ", title).strip()
+        title = re.sub(r"\s*-\s*$", "", title)  # Remove trailing dash
 
         # Fallback if empty after cleaning
         if not title:
@@ -139,7 +135,7 @@ class MetadataCleaner:
         Returns:
             Tuple of (cleaned_artist, list_of_issues_found)
         """
-        if not artist or artist.lower() in ['unknown', 'unknown artist']:
+        if not artist or artist.lower() in ["unknown", "unknown artist"]:
             return "Unknown Artist", ["missing_artist"]
 
         original = artist
@@ -147,17 +143,17 @@ class MetadataCleaner:
 
         # Remove timestamps
         if self.timestamp_pattern.search(artist):
-            artist = self.timestamp_pattern.sub('', artist)
+            artist = self.timestamp_pattern.sub("", artist)
             issues.append("timestamp_suffix")
 
         # Remove YouTube channel suffixes (Official, VEVO, - Topic)
-        new_artist = self.artist_suffix_pattern.sub('', artist).strip()
+        new_artist = self.artist_suffix_pattern.sub("", artist).strip()
         if new_artist and new_artist != artist:
             artist = new_artist
             issues.append("youtube_channel_suffix")
 
         # Clean up spacing
-        artist = re.sub(r'\s+', ' ', artist).strip()
+        artist = re.sub(r"\s+", " ", artist).strip()
 
         if artist != original:
             logger.debug(f"Cleaned artist: '{original}' → '{artist}'")
@@ -174,7 +170,7 @@ class MetadataCleaner:
         Returns:
             Tuple of (cleaned_album, list_of_issues_found)
         """
-        if not album or album.lower() in ['unknown', 'unknown album']:
+        if not album or album.lower() in ["unknown", "unknown album"]:
             return "Unknown Album", ["missing_album"]
 
         original = album
@@ -182,18 +178,18 @@ class MetadataCleaner:
 
         # Remove timestamps
         if self.timestamp_pattern.search(album):
-            album = self.timestamp_pattern.sub('', album)
+            album = self.timestamp_pattern.sub("", album)
             issues.append("timestamp_suffix")
 
         # Clean up spacing
-        album = re.sub(r'\s+', ' ', album).strip()
+        album = re.sub(r"\s+", " ", album).strip()
 
         if album != original:
             logger.debug(f"Cleaned album: '{original}' → '{album}'")
 
         return album, issues
 
-    def clean_metadata(self, metadata: Dict) -> Tuple[Dict, Dict]:
+    def clean_metadata(self, metadata: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, List[str]]]:
         """
         Clean all metadata fields in a song dictionary
 
@@ -207,26 +203,26 @@ class MetadataCleaner:
         all_issues = {}
 
         # Clean title
-        if 'title' in cleaned:
-            cleaned['title'], issues = self.clean_title(cleaned['title'])
+        if "title" in cleaned:
+            cleaned["title"], issues = self.clean_title(cleaned["title"])
             if issues:
-                all_issues['title'] = issues
+                all_issues["title"] = issues
 
         # Clean artist
-        if 'artist' in cleaned:
-            cleaned['artist'], issues = self.clean_artist(cleaned['artist'])
+        if "artist" in cleaned:
+            cleaned["artist"], issues = self.clean_artist(cleaned["artist"])
             if issues:
-                all_issues['artist'] = issues
+                all_issues["artist"] = issues
 
         # Clean album
-        if 'album' in cleaned:
-            cleaned['album'], issues = self.clean_album(cleaned['album'])
+        if "album" in cleaned:
+            cleaned["album"], issues = self.clean_album(cleaned["album"])
             if issues:
-                all_issues['album'] = issues
+                all_issues["album"] = issues
 
         return cleaned, all_issues
 
-    def detect_corruption_level(self, metadata: Dict) -> str:
+    def detect_corruption_level(self, metadata: Dict[str, Any]) -> str:
         """
         Detect severity of metadata corruption
 
@@ -238,9 +234,9 @@ class MetadataCleaner:
         """
         issues_count = 0
 
-        title = metadata.get('title', '')
-        artist = metadata.get('artist', '')
-        album = metadata.get('album', '')
+        title = metadata.get("title", "")
+        artist = metadata.get("artist", "")
+        album = metadata.get("album", "")
 
         # Check for timestamps
         if self.timestamp_pattern.search(title):
@@ -255,9 +251,9 @@ class MetadataCleaner:
             issues_count += 1
 
         # Check for unknown values
-        if not artist or artist.lower() in ['unknown', 'unknown artist']:
+        if not artist or artist.lower() in ["unknown", "unknown artist"]:
             issues_count += 2
-        if not album or album.lower() in ['unknown', 'unknown album']:
+        if not album or album.lower() in ["unknown", "unknown album"]:
             issues_count += 1
 
         # Check for YouTube artifacts
@@ -280,7 +276,7 @@ class MetadataCleaner:
         else:
             return "severe"
 
-    def analyze_library(self, songs: List[Dict]) -> Dict:
+    def analyze_library(self, songs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Analyze entire library for metadata corruption
 
@@ -290,27 +286,29 @@ class MetadataCleaner:
         Returns:
             Analysis report with statistics and problematic songs
         """
-        report = {
-            'total_songs': len(songs),
-            'clean': 0,
-            'minor': 0,
-            'moderate': 0,
-            'severe': 0,
-            'issues_by_type': {},
-            'problematic_songs': []
+        report: Dict[str, Any] = {
+            "total_songs": len(songs),
+            "clean": 0,
+            "minor": 0,
+            "moderate": 0,
+            "severe": 0,
+            "issues_by_type": {},
+            "problematic_songs": [],
         }
 
         for song in songs:
             level = self.detect_corruption_level(song)
-            report[level] += 1
+            report[level] += 1  # type: ignore[operator]
 
-            if level in ['moderate', 'severe']:
-                report['problematic_songs'].append({
-                    'id': song.get('id'),
-                    'title': song.get('title'),
-                    'artist': song.get('artist'),
-                    'corruption_level': level
-                })
+            if level in ["moderate", "severe"]:
+                report["problematic_songs"].append(
+                    {  # type: ignore[union-attr]
+                        "id": song.get("id"),
+                        "title": song.get("title"),
+                        "artist": song.get("artist"),
+                        "corruption_level": level,
+                    }
+                )
 
         logger.info(
             f"Library analysis: {report['clean']} clean, "
@@ -344,12 +342,12 @@ def normalize_for_comparison(text: str) -> str:
     text = text.lower()
 
     # Remove timestamps
-    text = re.sub(r'_\d{8}_\d{6}', '', text)
+    text = re.sub(r"_\d{8}_\d{6}", "", text)
 
     # Remove special characters
-    text = re.sub(r'[^\w\s]', '', text)
+    text = re.sub(r"[^\w\s]", "", text)
 
     # Normalize whitespace
-    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r"\s+", " ", text).strip()
 
     return text

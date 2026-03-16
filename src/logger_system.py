@@ -5,11 +5,14 @@ Project: AGENTE_MUSICA_MP3_001
 Purpose: Track all errors and events for troubleshooting
 """
 
+from __future__ import annotations
+
 import logging
 import sys
+import types
+from datetime import datetime, timedelta
 from pathlib import Path
-from datetime import datetime
-from typing import Optional
+from typing import Any, List, Optional, Tuple, Union
 
 # Log file location
 LOG_DIR = Path.home() / ".nexus_music" / "logs"
@@ -24,8 +27,8 @@ class NEXUSLogger:
     Centralized logging system for NEXUS Music Manager
     """
 
-    def __init__(self):
-        self.logger = logging.getLogger("NEXUS")
+    def __init__(self) -> None:
+        self.logger: logging.Logger = logging.getLogger("NEXUS")
         self.logger.setLevel(logging.DEBUG)
 
         # Prevent duplicate handlers
@@ -33,7 +36,7 @@ class NEXUSLogger:
             return
 
         # File handler - all messages
-        file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
+        file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
         file_handler.setLevel(logging.DEBUG)
 
         # Console handler - warnings and above
@@ -42,8 +45,7 @@ class NEXUSLogger:
 
         # Formatter
         formatter = logging.Formatter(
-            '%(asctime)s | %(levelname)-8s | %(name)s | %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
 
         file_handler.setFormatter(formatter)
@@ -52,27 +54,27 @@ class NEXUSLogger:
         self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
 
-    def debug(self, message: str):
+    def debug(self, message: str) -> None:
         """Log debug message"""
         self.logger.debug(message)
 
-    def info(self, message: str):
+    def info(self, message: str) -> None:
         """Log info message"""
         self.logger.info(message)
 
-    def warning(self, message: str):
+    def warning(self, message: str) -> None:
         """Log warning message"""
         self.logger.warning(message)
 
-    def error(self, message: str, exc_info: bool = False):
+    def error(self, message: str, exc_info: bool = False) -> None:
         """Log error message"""
         self.logger.error(message, exc_info=exc_info)
 
-    def critical(self, message: str, exc_info: bool = True):
+    def critical(self, message: str, exc_info: Union[bool, Tuple[Any, ...]] = True) -> None:
         """Log critical error"""
         self.logger.critical(message, exc_info=exc_info)
 
-    def exception(self, message: str):
+    def exception(self, message: str) -> None:
         """Log exception with full traceback"""
         self.logger.exception(message)
 
@@ -86,7 +88,7 @@ def get_logger() -> NEXUSLogger:
     return _logger
 
 
-def log_startup():
+def log_startup() -> None:
     """Log application startup"""
     logger = get_logger()
     logger.info("=" * 80)
@@ -97,7 +99,7 @@ def log_startup():
     logger.info(f"Log File: {LOG_FILE}")
 
 
-def log_shutdown():
+def log_shutdown() -> None:
     """Log application shutdown"""
     logger = get_logger()
     logger.info("=" * 80)
@@ -105,7 +107,9 @@ def log_shutdown():
     logger.info("=" * 80)
 
 
-def log_exception(exc_type, exc_value, exc_traceback):
+def log_exception(
+    exc_type: type[BaseException], exc_value: BaseException, exc_traceback: Optional[types.TracebackType]
+) -> None:
     """
     Global exception handler
     Logs all unhandled exceptions
@@ -116,13 +120,10 @@ def log_exception(exc_type, exc_value, exc_traceback):
         return
 
     logger = get_logger()
-    logger.critical(
-        "UNHANDLED EXCEPTION",
-        exc_info=(exc_type, exc_value, exc_traceback)
-    )
+    logger.critical("UNHANDLED EXCEPTION", exc_info=(exc_type, exc_value, exc_traceback))  # type: ignore[arg-type]
 
 
-def setup_exception_hook():
+def setup_exception_hook() -> None:
     """Setup global exception hook"""
     sys.excepthook = log_exception
 
@@ -141,10 +142,10 @@ def get_recent_logs(lines: int = 100) -> str:
         return "No log file found."
 
     try:
-        with open(LOG_FILE, 'r', encoding='utf-8') as f:
+        with open(LOG_FILE, "r", encoding="utf-8") as f:
             all_lines = f.readlines()
             recent = all_lines[-lines:] if len(all_lines) > lines else all_lines
-            return ''.join(recent)
+            return "".join(recent)
     except OSError as e:
         return f"Error reading log file: {str(e)}"
 
@@ -154,7 +155,7 @@ def get_log_file_path() -> Path:
     return LOG_FILE
 
 
-def get_all_log_files() -> list:
+def get_all_log_files() -> List[Path]:
     """Get list of all log files"""
     if not LOG_DIR.exists():
         return []
@@ -162,7 +163,7 @@ def get_all_log_files() -> list:
     return sorted(LOG_DIR.glob("nexus_music_*.log"), reverse=True)
 
 
-def clear_old_logs(days: int = 7):
+def clear_old_logs(days: int = 7) -> None:
     """
     Clear log files older than specified days
 
@@ -172,7 +173,7 @@ def clear_old_logs(days: int = 7):
     if not LOG_DIR.exists():
         return
 
-    cutoff_date = datetime.now() - datetime.timedelta(days=days)
+    cutoff_date = datetime.now() - timedelta(days=days)
 
     for log_file in LOG_DIR.glob("nexus_music_*.log"):
         try:

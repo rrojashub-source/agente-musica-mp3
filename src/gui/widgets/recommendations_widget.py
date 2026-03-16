@@ -8,45 +8,63 @@ Created: November 23, 2025
 Updated: December 8, 2025 - Integrated AI audio embeddings for real similarity
 Updated: 2026-03-13 - Moved find_similar() to background thread (fixed GUI freeze)
 """
-import logging
-from typing import Optional, Dict, List
 
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QListWidget, QListWidgetItem, QFrame,
-)
-from PySide6.QtCore import Qt, Signal, QThread
+from __future__ import annotations
+
+import logging
+from typing import Any, Dict, List, Optional
+
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from core.audio_embeddings import AudioEmbeddings
+from gui.base.base_worker import BaseWorker
+from gui.themes.style_constants import Styles
 
 logger = logging.getLogger(__name__)
 
 
-class _SimilarityWorker(QThread):
-    """Background worker for CPU-intensive find_similar() computation"""
+class _SimilarityWorker(BaseWorker):
+    """Background worker for CPU-intensive find_similar() computation.
 
-    finished = Signal(list)   # List[Dict] with results
-    error = Signal(str)       # Error message
+    Custom signal overrides:
+        finished(list): callers expect a list, not generic object.
+    """
 
-    def __init__(self, audio_embeddings, song_id, limit=8, min_similarity=0.3):
+    # Custom signal override -- callers connect expecting list
+    finished = Signal(list)  # List[Dict] with results
+
+    def __init__(
+        self, audio_embeddings: AudioEmbeddings, song_id: int, limit: int = 8, min_similarity: float = 0.3
+    ) -> None:
         super().__init__()
-        self._audio_embeddings = audio_embeddings
-        self._song_id = song_id
-        self._limit = limit
-        self._min_similarity = min_similarity
+        self._audio_embeddings: AudioEmbeddings = audio_embeddings
+        self._song_id: int = song_id
+        self._limit: int = limit
+        self._min_similarity: float = min_similarity
 
-    def run(self):
-        try:
-            results = self._audio_embeddings.find_similar(
-                self._song_id,
-                limit=self._limit,
-                min_similarity=self._min_similarity,
-            )
-            self.finished.emit(results)
-        except Exception as e:
-            logger.error(f"Similarity worker error: {e}")
-            self.error.emit(str(e))
+    def do_work(self) -> list:  # type: ignore[type-arg]
+        """Find similar songs using audio embeddings.
+
+        Returns:
+            List of similar song dicts, emitted via finished signal.
+        """
+        result: list = self._audio_embeddings.find_similar(  # type: ignore[type-arg]
+            self._song_id,
+            limit=self._limit,
+            min_similarity=self._min_similarity,
+        )
+        return result
 
 
 class RecommendationsWidget(QWidget):
@@ -59,13 +77,13 @@ class RecommendationsWidget(QWidget):
 
     song_selected = Signal(dict)
 
-    def __init__(self, db_manager, parent=None):
+    def __init__(self, db_manager: Any, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
-        self.db_manager = db_manager
-        self.audio_embeddings = AudioEmbeddings(db_manager)
+        self.db_manager: Any = db_manager
+        self.audio_embeddings: AudioEmbeddings = AudioEmbeddings(db_manager)
 
-        self._current_song: Optional[Dict] = None
-        self._recommendations: List[Dict] = []
+        self._current_song: Optional[Dict[str, Any]] = None
+        self._recommendations: List[Dict[str, Any]] = []
         self._is_collapsed = False
         self._worker: Optional[_SimilarityWorker] = None
 
@@ -73,7 +91,7 @@ class RecommendationsWidget(QWidget):
 
         logger.info("RecommendationsWidget initialized with AI audio embeddings")
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize UI"""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -83,7 +101,7 @@ class RecommendationsWidget(QWidget):
         header_layout = QHBoxLayout()
 
         self.title_label = QLabel("🧠 Brain AI")
-        self.title_label.setStyleSheet("font-weight: bold; font-size: 12px;")
+        self.title_label.setStyleSheet(Styles.LABEL_BOLD)
         header_layout.addWidget(self.title_label)
 
         header_layout.addStretch()
@@ -105,7 +123,8 @@ class RecommendationsWidget(QWidget):
         # Recommendations list
         self.recommendations_list = QListWidget()
         self.recommendations_list.setMaximumHeight(200)
-        self.recommendations_list.setStyleSheet("""
+        self.recommendations_list.setStyleSheet(
+            """
             QListWidget {
                 border: 1px solid #3d3d3d;
                 border-radius: 4px;
@@ -121,7 +140,8 @@ class RecommendationsWidget(QWidget):
             QListWidget::item:selected {
                 background-color: rgba(0, 180, 230, 0.3);
             }
-        """)
+        """
+        )
         self.recommendations_list.itemDoubleClicked.connect(self._on_item_double_clicked)
         main_layout.addWidget(self.recommendations_list)
 
@@ -129,7 +149,7 @@ class RecommendationsWidget(QWidget):
         self.recommendations_list.hide()
         self.title_label.setText("🧠 Brain AI (play a song)")
 
-    def set_current_song(self, song_data: Optional[Dict]):
+    def set_current_song(self, song_data: Optional[Dict[str, Any]]) -> None:
         """
         Update current song and refresh recommendations using AI
 
@@ -140,7 +160,7 @@ class RecommendationsWidget(QWidget):
 
         if song_data:
             self.recommendations_list.show()
-            song_title = song_data.get('title', 'Unknown')
+            song_title = song_data.get("title", "Unknown")
             self.title_label.setText(f"🧠 Similar to: {song_title[:25]}...")
             self._refresh_recommendations()
         else:
@@ -148,12 +168,12 @@ class RecommendationsWidget(QWidget):
             self.recommendations_list.hide()
             self.title_label.setText("🧠 Brain AI (play a song)")
 
-    def _refresh_recommendations(self):
+    def _refresh_recommendations(self) -> None:
         """Refresh recommendations in a background thread (non-blocking)"""
         if not self._current_song:
             return
 
-        song_id = self._current_song.get('id')
+        song_id = self._current_song.get("id")
         if not song_id:
             logger.warning("No song ID for recommendations")
             return
@@ -170,14 +190,12 @@ class RecommendationsWidget(QWidget):
         self.recommendations_list.addItem(loading_item)
 
         # Launch background worker
-        self._worker = _SimilarityWorker(
-            self.audio_embeddings, song_id, limit=8, min_similarity=0.3
-        )
+        self._worker = _SimilarityWorker(self.audio_embeddings, song_id, limit=8, min_similarity=0.3)
         self._worker.finished.connect(self._on_results_ready)
         self._worker.error.connect(self._on_results_error)
         self._worker.start()
 
-    def _on_results_ready(self, similar_results: list):
+    def _on_results_ready(self, similar_results: List[Dict[str, Any]]) -> None:
         """Handle results from background worker (runs on main thread via signal)"""
         self.recommendations_list.clear()
 
@@ -190,12 +208,12 @@ class RecommendationsWidget(QWidget):
         # Populate list with similarity scores
         self._recommendations = []
         for result in similar_results:
-            song = result['song']
-            similarity = result['similarity']
+            song = result["song"]
+            similarity = result["similarity"]
             self._recommendations.append(song)
 
-            title = song.get('title', 'Unknown')
-            artist = song.get('artist', 'Unknown')
+            title = song.get("title", "Unknown")
+            artist = song.get("artist", "Unknown")
             similarity_pct = int(similarity * 100)
 
             item = QListWidgetItem(f"♪ {title}\n   {artist} ({similarity_pct}%)")
@@ -213,21 +231,21 @@ class RecommendationsWidget(QWidget):
 
         logger.info(f"AI found {len(self._recommendations)} similar songs")
 
-    def _on_results_error(self, error_msg: str):
+    def _on_results_error(self, error_msg: str) -> None:
         """Handle error from background worker"""
         self.recommendations_list.clear()
         item = QListWidgetItem(f"Error: {error_msg[:30]}")
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
         self.recommendations_list.addItem(item)
 
-    def _on_item_double_clicked(self, item: QListWidgetItem):
+    def _on_item_double_clicked(self, item: QListWidgetItem) -> None:
         """Handle recommendation double-click"""
         song_data = item.data(Qt.ItemDataRole.UserRole)
         if song_data:
             self.song_selected.emit(song_data)
             logger.info(f"Recommendation selected: {song_data.get('title')}")
 
-    def _toggle_collapse(self):
+    def _toggle_collapse(self) -> None:
         """Toggle collapsed state"""
         self._is_collapsed = not self._is_collapsed
 
@@ -239,7 +257,7 @@ class RecommendationsWidget(QWidget):
                 self.recommendations_list.show()
             self.collapse_btn.setText("▼")
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear recommendations"""
         self._current_song = None
         self._recommendations = []

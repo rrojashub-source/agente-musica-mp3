@@ -11,12 +11,12 @@ Features:
 """
 
 import logging
-from pathlib import Path
-from typing import Optional, List, Dict, Any, Callable
+import threading
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-import threading
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QObject, Signal
 
@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 class DownloadStatus(Enum):
     """Download status enum"""
+
     PENDING = "pending"
     DOWNLOADING = "downloading"
     PAUSED = "paused"
@@ -36,6 +37,7 @@ class DownloadStatus(Enum):
 @dataclass
 class DownloadItem:
     """Domain model for a download item"""
+
     id: str
     url: str
     title: str
@@ -48,37 +50,37 @@ class DownloadItem:
     completed_at: Optional[datetime] = None
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'DownloadItem':
+    def from_dict(cls, data: Dict[str, Any]) -> "DownloadItem":
         """Create from dictionary"""
-        status_str = data.get('status', 'pending')
+        status_str = data.get("status", "pending")
         status = DownloadStatus(status_str) if isinstance(status_str, str) else status_str
 
         return cls(
-            id=data.get('id', ''),
-            url=data.get('url', data.get('video_url', '')),
-            title=data.get('title', 'Unknown'),
-            artist=data.get('artist', data.get('metadata', {}).get('artist')),
+            id=data.get("id", ""),
+            url=data.get("url", data.get("video_url", "")),
+            title=data.get("title", "Unknown"),
+            artist=data.get("artist", data.get("metadata", {}).get("artist")),
             status=status,
-            progress=data.get('progress', 0.0),
-            file_path=data.get('file_path'),
-            error_message=data.get('error'),
-            created_at=data.get('created_at'),
-            completed_at=data.get('completed_at')
+            progress=data.get("progress", 0.0),
+            file_path=data.get("file_path"),
+            error_message=data.get("error"),
+            created_at=data.get("created_at"),
+            completed_at=data.get("completed_at"),
         )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {
-            'id': self.id,
-            'url': self.url,
-            'title': self.title,
-            'artist': self.artist,
-            'status': self.status.value,
-            'progress': self.progress,
-            'file_path': self.file_path,
-            'error_message': self.error_message,
-            'created_at': self.created_at,
-            'completed_at': self.completed_at
+            "id": self.id,
+            "url": self.url,
+            "title": self.title,
+            "artist": self.artist,
+            "status": self.status.value,
+            "progress": self.progress,
+            "file_path": self.file_path,
+            "error_message": self.error_message,
+            "created_at": self.created_at,
+            "completed_at": self.completed_at,
         }
 
 
@@ -110,10 +112,10 @@ class DownloadService(QObject):
     error_occurred = Signal(str)  # error_message
 
     # Singleton (class-level for QObject compatibility)
-    _instance: Optional['DownloadService'] = None
-    _lock = threading.Lock()
+    _instance: Optional["DownloadService"] = None
+    _lock: threading.Lock = threading.Lock()
 
-    def __init__(self, download_dir: str = None, auto_import: bool = True):
+    def __init__(self, download_dir: Optional[str] = None, auto_import: bool = True) -> None:
         """
         Initialize DownloadService
 
@@ -123,9 +125,9 @@ class DownloadService(QObject):
         """
         super().__init__()
 
-        self._download_dir = download_dir or str(Path.home() / "Music" / "Downloads")
-        self._auto_import = auto_import
-        self._queue = None
+        self._download_dir: str = download_dir or str(Path.home() / "Music" / "Downloads")
+        self._auto_import: bool = auto_import
+        self._queue: Any = None
 
         # Ensure download directory exists
         Path(self._download_dir).mkdir(parents=True, exist_ok=True)
@@ -133,7 +135,7 @@ class DownloadService(QObject):
         logger.info(f"DownloadService initialized with dir: {self._download_dir}")
 
     @classmethod
-    def get_instance(cls, download_dir: str = None) -> 'DownloadService':
+    def get_instance(cls, download_dir: Optional[str] = None) -> "DownloadService":
         """Get singleton instance (thread-safe)"""
         if cls._instance is None:
             with cls._lock:
@@ -142,36 +144,37 @@ class DownloadService(QObject):
         return cls._instance
 
     @classmethod
-    def reset_instance(cls):
+    def reset_instance(cls) -> None:
         """Reset singleton (for testing)"""
         with cls._lock:
             cls._instance = None
 
     @property
-    def queue(self):
+    def queue(self) -> Any:
         """Lazy-load download queue"""
         if self._queue is None:
             from core.download_queue import DownloadQueue
+
             self._queue = DownloadQueue(max_concurrent=2)
             self._connect_queue_signals()
         return self._queue
 
-    def _connect_queue_signals(self):
+    def _connect_queue_signals(self) -> None:
         """Connect internal queue signals to service signals"""
         if self._queue:
             # Connect to queue's signals if available
-            if hasattr(self._queue, 'progress_updated'):
+            if hasattr(self._queue, "progress_updated"):
                 self._queue.progress_updated.connect(self._on_progress)
-            if hasattr(self._queue, 'download_completed'):
+            if hasattr(self._queue, "download_completed"):
                 self._queue.download_completed.connect(self._on_completed)
-            if hasattr(self._queue, 'download_failed'):
+            if hasattr(self._queue, "download_failed"):
                 self._queue.download_failed.connect(self._on_failed)
 
-    def _on_progress(self, item_id: str, progress: float):
+    def _on_progress(self, item_id: str, progress: float) -> None:
         """Handle progress update from queue"""
         self.download_progress.emit(item_id, progress)
 
-    def _on_completed(self, item_id: str, file_path: str):
+    def _on_completed(self, item_id: str, file_path: str) -> None:
         """Handle download completed"""
         self.download_completed.emit(item_id, file_path)
         self.queue_changed.emit()
@@ -180,16 +183,16 @@ class DownloadService(QObject):
         if self._auto_import:
             self._import_to_library(item_id, file_path)
 
-    def _on_failed(self, item_id: str, error: str):
+    def _on_failed(self, item_id: str, error: str) -> None:
         """Handle download failed"""
         self.download_failed.emit(item_id, error)
         self.queue_changed.emit()
 
-    def _import_to_library(self, item_id: str, file_path: str):
+    def _import_to_library(self, item_id: str, file_path: str) -> None:
         """Import downloaded file to library"""
         try:
-            from services.library_service import LibraryService
             from core.metadata_fetcher import extract_metadata
+            from services.library_service import LibraryService
 
             library = LibraryService.get_instance()
 
@@ -207,7 +210,7 @@ class DownloadService(QObject):
     # Queue Operations
     # ==========================================
 
-    def add_download(self, url: str, metadata: Dict[str, Any] = None) -> Optional[str]:
+    def add_download(self, url: str, metadata: Optional[Dict[str, Any]] = None) -> Optional[str]:
         """
         Add a download to the queue
 
@@ -219,15 +222,12 @@ class DownloadService(QObject):
             Item ID if successful
         """
         try:
-            item_id = self.queue.add(
-                video_url=url,
-                metadata=metadata or {}
-            )
+            item_id = self.queue.add(video_url=url, metadata=metadata or {})
             if item_id:
                 self.download_added.emit(item_id)
                 self.queue_changed.emit()
-                logger.info(f"Added download: {metadata.get('title', url)}")
-            return item_id
+                logger.info(f"Added download: {(metadata or {}).get('title', url)}")
+            return item_id  # type: ignore[no-any-return]
         except (ValueError, RuntimeError, AttributeError) as e:
             logger.error(f"Error adding download: {e}")
             self.error_occurred.emit(str(e))
@@ -246,8 +246,7 @@ class DownloadService(QObject):
         item_ids = []
         for item in items:
             item_id = self.add_download(
-                url=item.get('url', item.get('video_url', '')),
-                metadata=item.get('metadata', item)
+                url=item.get("url", item.get("video_url", "")), metadata=item.get("metadata", item)
             )
             if item_id:
                 item_ids.append(item_id)
@@ -256,10 +255,10 @@ class DownloadService(QObject):
     def pause(self, item_id: str) -> bool:
         """Pause a download"""
         try:
-            if hasattr(self.queue, 'pause'):
+            if hasattr(self.queue, "pause"):
                 self.queue.pause(item_id)
             else:
-                self.queue._items[item_id]['status'] = 'paused'
+                self.queue._items[item_id]["status"] = "paused"
             self.queue_changed.emit()
             return True
         except (KeyError, AttributeError, RuntimeError) as e:
@@ -269,10 +268,10 @@ class DownloadService(QObject):
     def resume(self, item_id: str) -> bool:
         """Resume a paused download"""
         try:
-            if hasattr(self.queue, 'resume'):
+            if hasattr(self.queue, "resume"):
                 self.queue.resume(item_id)
             else:
-                self.queue._items[item_id]['status'] = 'pending'
+                self.queue._items[item_id]["status"] = "pending"
             self.queue_changed.emit()
             return True
         except (KeyError, AttributeError, RuntimeError) as e:
@@ -282,10 +281,10 @@ class DownloadService(QObject):
     def cancel(self, item_id: str) -> bool:
         """Cancel a download"""
         try:
-            if hasattr(self.queue, 'cancel'):
+            if hasattr(self.queue, "cancel"):
                 self.queue.cancel(item_id)
             else:
-                self.queue._items[item_id]['status'] = 'canceled'
+                self.queue._items[item_id]["status"] = "canceled"
             self.download_canceled.emit(item_id)
             self.queue_changed.emit()
             return True
@@ -296,11 +295,11 @@ class DownloadService(QObject):
     def retry(self, item_id: str) -> bool:
         """Retry a failed download"""
         try:
-            if hasattr(self.queue, 'retry'):
+            if hasattr(self.queue, "retry"):
                 self.queue.retry(item_id)
             else:
-                self.queue._items[item_id]['status'] = 'pending'
-                self.queue._items[item_id]['progress'] = 0
+                self.queue._items[item_id]["status"] = "pending"
+                self.queue._items[item_id]["progress"] = 0
             self.queue_changed.emit()
             return True
         except (KeyError, AttributeError, RuntimeError) as e:
@@ -315,17 +314,17 @@ class DownloadService(QObject):
             Number of items cleared
         """
         try:
-            if hasattr(self.queue, 'clear_completed'):
+            if hasattr(self.queue, "clear_completed"):
                 count = self.queue.clear_completed()
             else:
                 items = self.queue.get_all_items()
                 count = 0
                 for item_id, item in list(items.items()):
-                    if item.get('status') == 'completed':
+                    if item.get("status") == "completed":
                         del self.queue._items[item_id]
                         count += 1
             self.queue_changed.emit()
-            return count
+            return count  # type: ignore[no-any-return]
         except (KeyError, AttributeError, RuntimeError) as e:
             logger.error(f"Error clearing completed: {e}")
             return 0
@@ -335,7 +334,7 @@ class DownloadService(QObject):
         try:
             items = self.queue.get_all_items()
             count = len(items)
-            if hasattr(self.queue, 'clear_all'):
+            if hasattr(self.queue, "clear_all"):
                 self.queue.clear_all()
             else:
                 self.queue._items.clear()
@@ -373,7 +372,7 @@ class DownloadService(QObject):
         """Get number of pending downloads"""
         try:
             items = self.queue.get_all_items()
-            return sum(1 for i in items.values() if i.get('status') == 'pending')
+            return sum(1 for i in items.values() if i.get("status") == "pending")
         except (AttributeError, KeyError, TypeError) as e:
             logger.debug(f"Error getting pending count: {e}")
             return 0
@@ -382,7 +381,7 @@ class DownloadService(QObject):
         """Get number of active (downloading) downloads"""
         try:
             items = self.queue.get_all_items()
-            return sum(1 for i in items.values() if i.get('status') == 'downloading')
+            return sum(1 for i in items.values() if i.get("status") == "downloading")
         except (AttributeError, KeyError, TypeError) as e:
             logger.debug(f"Error getting active count: {e}")
             return 0
@@ -391,7 +390,7 @@ class DownloadService(QObject):
         """Get number of completed downloads"""
         try:
             items = self.queue.get_all_items()
-            return sum(1 for i in items.values() if i.get('status') == 'completed')
+            return sum(1 for i in items.values() if i.get("status") == "completed")
         except (AttributeError, KeyError, TypeError) as e:
             logger.debug(f"Error getting completed count: {e}")
             return 0
@@ -406,7 +405,7 @@ class DownloadService(QObject):
         return self._download_dir
 
     @download_dir.setter
-    def download_dir(self, path: str):
+    def download_dir(self, path: str) -> None:
         """Set download directory"""
         self._download_dir = path
         Path(path).mkdir(parents=True, exist_ok=True)
@@ -417,29 +416,29 @@ class DownloadService(QObject):
         return self._auto_import
 
     @auto_import_enabled.setter
-    def auto_import_enabled(self, value: bool):
+    def auto_import_enabled(self, value: bool) -> None:
         """Enable/disable auto-import"""
         self._auto_import = value
 
     @property
     def max_concurrent(self) -> int:
         """Get max concurrent downloads"""
-        return getattr(self.queue, 'max_concurrent', 2)
+        return getattr(self.queue, "max_concurrent", 2)
 
     @max_concurrent.setter
-    def max_concurrent(self, value: int):
+    def max_concurrent(self, value: int) -> None:
         """Set max concurrent downloads"""
-        if hasattr(self.queue, 'max_concurrent'):
+        if hasattr(self.queue, "max_concurrent"):
             self.queue.max_concurrent = value
 
     # ==========================================
     # Cleanup
     # ==========================================
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup resources"""
         if self._queue:
-            if hasattr(self._queue, 'stop'):
+            if hasattr(self._queue, "stop"):
                 self._queue.stop()
             self._queue = None
         logger.info("DownloadService cleaned up")

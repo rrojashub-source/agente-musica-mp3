@@ -2,11 +2,12 @@
 Plugin Base Classes and Interfaces
 Defines the contract for all NEXUS plugins
 """
+
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional, Callable
-import logging
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -16,32 +17,33 @@ class PluginHook(Enum):
     Available hook points for plugins to extend functionality.
     Plugins can register handlers for these events.
     """
+
     # Playback hooks
-    ON_SONG_PLAY = auto()           # When a song starts playing
-    ON_SONG_PAUSE = auto()          # When playback is paused
-    ON_SONG_STOP = auto()           # When playback stops
-    ON_SONG_END = auto()            # When a song finishes
-    ON_QUEUE_CHANGE = auto()        # When queue is modified
+    ON_SONG_PLAY = auto()  # When a song starts playing
+    ON_SONG_PAUSE = auto()  # When playback is paused
+    ON_SONG_STOP = auto()  # When playback stops
+    ON_SONG_END = auto()  # When a song finishes
+    ON_QUEUE_CHANGE = auto()  # When queue is modified
 
     # Library hooks
-    ON_SONG_IMPORT = auto()         # When a song is imported
-    ON_SONG_DELETE = auto()         # When a song is deleted
-    ON_METADATA_UPDATE = auto()     # When metadata is updated
-    ON_LIBRARY_SCAN = auto()        # When library scan starts/ends
+    ON_SONG_IMPORT = auto()  # When a song is imported
+    ON_SONG_DELETE = auto()  # When a song is deleted
+    ON_METADATA_UPDATE = auto()  # When metadata is updated
+    ON_LIBRARY_SCAN = auto()  # When library scan starts/ends
 
     # Download hooks
-    ON_DOWNLOAD_START = auto()      # When download starts
-    ON_DOWNLOAD_COMPLETE = auto()   # When download finishes
-    ON_DOWNLOAD_ERROR = auto()      # When download fails
+    ON_DOWNLOAD_START = auto()  # When download starts
+    ON_DOWNLOAD_COMPLETE = auto()  # When download finishes
+    ON_DOWNLOAD_ERROR = auto()  # When download fails
 
     # UI hooks
-    ON_APP_START = auto()           # When application starts
-    ON_APP_CLOSE = auto()           # When application closes
-    ON_TAB_CHANGE = auto()          # When user changes tab
+    ON_APP_START = auto()  # When application starts
+    ON_APP_CLOSE = auto()  # When application closes
+    ON_TAB_CHANGE = auto()  # When user changes tab
 
     # Sync hooks
-    ON_SYNC_START = auto()          # When sync starts
-    ON_SYNC_COMPLETE = auto()       # When sync completes
+    ON_SYNC_START = auto()  # When sync starts
+    ON_SYNC_COMPLETE = auto()  # When sync completes
 
 
 @dataclass
@@ -50,28 +52,29 @@ class PluginMetadata:
     Metadata describing a plugin.
     Every plugin must provide this information.
     """
-    name: str                           # Unique plugin identifier
-    display_name: str                   # Human-readable name
-    version: str                        # Semantic version (e.g., "1.0.0")
-    author: str                         # Plugin author
-    description: str                    # Short description
-    website: str = ""                   # Optional website/repo URL
-    min_app_version: str = "0.9.0"      # Minimum NEXUS version required
+
+    name: str  # Unique plugin identifier
+    display_name: str  # Human-readable name
+    version: str  # Semantic version (e.g., "1.0.0")
+    author: str  # Plugin author
+    description: str  # Short description
+    website: str = ""  # Optional website/repo URL
+    min_app_version: str = "0.9.0"  # Minimum NEXUS version required
     dependencies: List[str] = field(default_factory=list)  # Required plugins
     hooks: List[PluginHook] = field(default_factory=list)  # Hooks this plugin uses
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
-            'name': self.name,
-            'display_name': self.display_name,
-            'version': self.version,
-            'author': self.author,
-            'description': self.description,
-            'website': self.website,
-            'min_app_version': self.min_app_version,
-            'dependencies': self.dependencies,
-            'hooks': [h.name for h in self.hooks]
+            "name": self.name,
+            "display_name": self.display_name,
+            "version": self.version,
+            "author": self.author,
+            "description": self.description,
+            "website": self.website,
+            "min_app_version": self.min_app_version,
+            "dependencies": self.dependencies,
+            "hooks": [h.name for h in self.hooks],
         }
 
 
@@ -108,9 +111,9 @@ class Plugin(ABC):
                 print(f"Playing: {song_data['title']}")
     """
 
-    def __init__(self):
-        self._enabled = False
-        self._hook_handlers: Dict[PluginHook, List[Callable]] = {}
+    def __init__(self) -> None:
+        self._enabled: bool = False
+        self._hook_handlers: Dict[PluginHook, List[Callable[..., Any]]] = {}
         self._settings: Dict[str, Any] = {}
 
     @property
@@ -152,7 +155,7 @@ class Plugin(ABC):
         """
         pass
 
-    def register_hook(self, hook: PluginHook, handler: Callable) -> None:
+    def register_hook(self, hook: PluginHook, handler: Callable[..., Any]) -> None:
         """
         Register a handler for a specific hook.
 
@@ -165,7 +168,7 @@ class Plugin(ABC):
         self._hook_handlers[hook].append(handler)
         logger.debug(f"Plugin {self.name}: registered handler for {hook.name}")
 
-    def unregister_hook(self, hook: PluginHook, handler: Callable) -> None:
+    def unregister_hook(self, hook: PluginHook, handler: Callable[..., Any]) -> None:
         """
         Unregister a handler from a hook.
 
@@ -177,7 +180,7 @@ class Plugin(ABC):
             self._hook_handlers[hook].remove(handler)
             logger.debug(f"Plugin {self.name}: unregistered handler for {hook.name}")
 
-    def get_handlers(self, hook: PluginHook) -> List[Callable]:
+    def get_handlers(self, hook: PluginHook) -> List[Callable[..., Any]]:
         """Get all handlers registered for a hook"""
         return self._hook_handlers.get(hook, [])
 

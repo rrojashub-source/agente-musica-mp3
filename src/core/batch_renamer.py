@@ -12,12 +12,13 @@ Batch rename MP3 files based on metadata patterns:
 
 Created: November 13, 2025
 """
+
 import logging
 import os
 import re
 import sqlite3
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -58,19 +59,25 @@ class BatchRenamer:
         )
     """
 
-    def __init__(self, db_manager):
+    def __init__(self, db_manager: Any) -> None:
         """
         Initialize batch renamer
 
         Args:
             db_manager: Database manager instance
         """
-        self.db = db_manager
+        self.db: Any = db_manager
         logger.info("BatchRenamer initialized")
 
-    def rename_batch(self, songs: List[Dict], template: str,
-                     find: str = "", replace: str = "",
-                     case: str = "none", dry_run: bool = False) -> Dict:
+    def rename_batch(
+        self,
+        songs: List[Dict[str, Any]],
+        template: str,
+        find: str = "",
+        replace: str = "",
+        case: str = "none",
+        dry_run: bool = False,
+    ) -> Dict[str, Any]:
         """
         Rename multiple files in batch
 
@@ -92,20 +99,15 @@ class BatchRenamer:
         """
         logger.info(f"Renaming {len(songs)} songs (dry_run={dry_run})")
 
-        result = {
-            'success': 0,
-            'failed': 0,
-            'errors': [],
-            'preview': []
-        }
+        result: Dict[str, Any] = {"success": 0, "failed": 0, "errors": [], "preview": []}
 
         for seq, song in enumerate(songs, 1):
             try:
-                old_path = song.get('file_path', '')
+                old_path = song.get("file_path", "")
 
                 if not os.path.exists(old_path):
-                    result['failed'] += 1
-                    result['errors'].append(f"File not found: {old_path}")
+                    result["failed"] += 1  # type: ignore[operator]
+                    result["errors"].append(f"File not found: {old_path}")  # type: ignore[union-attr]
                     continue
 
                 # Build new filename
@@ -125,12 +127,10 @@ class BatchRenamer:
 
                 if dry_run:
                     # Preview mode - don't rename files
-                    result['preview'].append({
-                        'old': old_path,
-                        'new': new_path,
-                        'song': song
-                    })
-                    result['success'] += 1
+                    result["preview"].append(
+                        {"old": old_path, "new": new_path, "song": song}  # type: ignore[union-attr]
+                    )
+                    result["success"] += 1  # type: ignore[operator]
                 else:
                     # Actually rename file
                     # Handle name conflicts
@@ -142,21 +142,21 @@ class BatchRenamer:
 
                     if success:
                         # Update database
-                        self._update_database_path(song['id'], new_path)
-                        result['success'] += 1
+                        self._update_database_path(song["id"], new_path)
+                        result["success"] += 1  # type: ignore[operator]
                     else:
-                        result['failed'] += 1
-                        result['errors'].append(f"Failed to rename: {old_path}")
+                        result["failed"] += 1  # type: ignore[operator]
+                        result["errors"].append(f"Failed to rename: {old_path}")  # type: ignore[union-attr]
 
             except (OSError, KeyError, ValueError) as e:
-                result['failed'] += 1
-                result['errors'].append(f"Error: {song.get('file_path', 'unknown')}: {str(e)}")
+                result["failed"] += 1  # type: ignore[operator]
+                result["errors"].append(f"Error: {song.get('file_path', 'unknown')}: {str(e)}")  # type: ignore[union-attr]
                 logger.error(f"Rename error: {e}")
 
         logger.info(f"Rename complete: {result['success']} success, {result['failed']} failed")
         return result
 
-    def build_filename(self, template: str, song: Dict, seq: int = 0) -> str:
+    def build_filename(self, template: str, song: Dict[str, Any], seq: int = 0) -> str:
         """
         Build filename from template and song metadata
 
@@ -170,13 +170,13 @@ class BatchRenamer:
         """
         # Get metadata with fallbacks
         metadata = {
-            'artist': song.get('artist', 'Unknown Artist'),
-            'album': song.get('album', 'Unknown Album'),
-            'title': song.get('title', 'Unknown'),
-            'year': song.get('year', 'Unknown'),
-            'genre': song.get('genre', 'Unknown'),
-            'track': song.get('track', 0),
-            'seq': seq
+            "artist": song.get("artist", "Unknown Artist"),
+            "album": song.get("album", "Unknown Album"),
+            "title": song.get("title", "Unknown"),
+            "year": song.get("year", "Unknown"),
+            "genre": song.get("genre", "Unknown"),
+            "track": song.get("track", 0),
+            "seq": seq,
         }
 
         # Format template
@@ -251,13 +251,13 @@ class BatchRenamer:
 
         # Remove/replace invalid filesystem characters
         # Invalid: / \ : * ? " < > |
-        text = re.sub(r'[/\\:*?"<>|]', '_', text)
+        text = re.sub(r'[/\\:*?"<>|]', "_", text)
 
         # Remove leading/trailing dots and spaces
-        text = text.strip('. ')
+        text = text.strip(". ")
 
         # Remove control characters
-        text = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', text)
+        text = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", text)
 
         if not text:
             return "Unknown"
@@ -283,7 +283,7 @@ class BatchRenamer:
             logger.error(f"Failed to rename {old_path} to {new_path}: {e}")
             return False
 
-    def _update_database_path(self, song_id: int, new_path: str):
+    def _update_database_path(self, song_id: int, new_path: str) -> None:
         """
         Update song file path in database
 

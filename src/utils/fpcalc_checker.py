@@ -4,19 +4,20 @@ fpcalc Checker - Verify Chromaprint availability
 Purpose: Check if fpcalc (Chromaprint) is available for audio fingerprinting
 Created: November 18, 2025
 """
-import os
-import sys
-import subprocess
+
 import logging
+import os
+import subprocess
+import sys
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 # Windows flag to hide console window
-SUBPROCESS_FLAGS = {}
-if sys.platform == 'win32':
-    SUBPROCESS_FLAGS['creationflags'] = subprocess.CREATE_NO_WINDOW
+SUBPROCESS_FLAGS: Dict[str, Any] = {}
+if sys.platform == "win32":
+    SUBPROCESS_FLAGS["creationflags"] = subprocess.CREATE_NO_WINDOW
 
 
 class FpcalcChecker:
@@ -29,13 +30,13 @@ class FpcalcChecker:
     3. Common installation paths
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize fpcalc checker"""
-        self.fpcalc_path = None
-        self.version = None
+        self.fpcalc_path: Optional[str] = None
+        self.version: Optional[str] = None
         self._locate_fpcalc()
 
-    def _locate_fpcalc(self):
+    def _locate_fpcalc(self) -> None:
         """
         Locate fpcalc executable
 
@@ -56,7 +57,7 @@ class FpcalcChecker:
             return
 
         # Check 2: Environment variable
-        env_fpcalc = os.environ.get('FPCALC')
+        env_fpcalc = os.environ.get("FPCALC")
         if env_fpcalc and Path(env_fpcalc).exists():
             self.fpcalc_path = env_fpcalc
             logger.info(f"Found fpcalc from FPCALC env: {self.fpcalc_path}")
@@ -66,14 +67,10 @@ class FpcalcChecker:
         # Check 3: System PATH
         try:
             result = subprocess.run(
-                ['fpcalc', '-version'],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                **SUBPROCESS_FLAGS
+                ["fpcalc", "-version"], capture_output=True, text=True, timeout=5, **SUBPROCESS_FLAGS
             )
             if result.returncode == 0:
-                self.fpcalc_path = 'fpcalc'  # In PATH
+                self.fpcalc_path = "fpcalc"  # In PATH
                 logger.info("Found fpcalc in system PATH")
                 self._get_version()
                 return
@@ -81,14 +78,14 @@ class FpcalcChecker:
             pass
 
         # Check 4: Common Windows paths
-        common_paths = [
+        common_paths: list[str | Path] = [
             r"C:\Program Files\fpcalc\fpcalc.exe",
             r"C:\Program Files (x86)\fpcalc\fpcalc.exe",
-            Path.home() / "fpcalc" / "fpcalc.exe"
+            Path.home() / "fpcalc" / "fpcalc.exe",
         ]
 
         for path in common_paths:
-            if Path(path).exists():
+            if Path(str(path)).exists():  # type: ignore[arg-type]
                 self.fpcalc_path = str(path)
                 logger.info(f"Found fpcalc in common path: {self.fpcalc_path}")
                 self._get_version()
@@ -98,27 +95,23 @@ class FpcalcChecker:
         logger.warning("fpcalc not found in any location")
         self.fpcalc_path = None
 
-    def _get_version(self):
+    def _get_version(self) -> None:
         """Get fpcalc version"""
         if not self.fpcalc_path:
             return
 
         try:
             result = subprocess.run(
-                [self.fpcalc_path, '-version'],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                **SUBPROCESS_FLAGS
+                [self.fpcalc_path, "-version"], capture_output=True, text=True, timeout=5, **SUBPROCESS_FLAGS
             )
 
             if result.returncode == 0:
                 # Output format: "fpcalc version 1.5.1"
                 output = result.stdout.strip()
-                if 'version' in output:
-                    self.version = output.split('version')[-1].strip()
+                if "version" in output:
+                    self.version = output.split("version")[-1].strip()
                     logger.info(f"fpcalc version: {self.version}")
-        except Exception as e:
+        except (OSError, ValueError) as e:  # subprocess/parsing errors
             logger.warning(f"Could not get fpcalc version: {e}")
 
     def is_available(self) -> bool:
@@ -207,7 +200,7 @@ Benefits of AcoustID:
 
 
 # Global instance
-_checker = None
+_checker: Optional[FpcalcChecker] = None
 
 
 def get_checker() -> FpcalcChecker:

@@ -8,8 +8,10 @@ Part of the AudioEmbeddings split (Phase 2.3).
 
 Created: 2026-03-11 (extracted from audio_embeddings.py)
 """
+
 import logging
-from typing import List, Optional
+from typing import Any, List, Optional
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -40,14 +42,14 @@ class AudioFeatureExtractor:
         frame_size: int = FRAME_SIZE,
         hop_size: int = HOP_SIZE,
         num_bands: int = NUM_BANDS,
-    ):
-        self.embedding_dim = embedding_dim
-        self.sample_rate = sample_rate
-        self.frame_size = frame_size
-        self.hop_size = hop_size
-        self.num_bands = num_bands
+    ) -> None:
+        self.embedding_dim: int = embedding_dim
+        self.sample_rate: int = sample_rate
+        self.frame_size: int = frame_size
+        self.hop_size: int = hop_size
+        self.num_bands: int = num_bands
 
-    def extract_features(self, samples: np.ndarray) -> Optional[np.ndarray]:
+    def extract_features(self, samples: Any) -> Optional[Any]:
         """
         Extract audio features from raw samples.
 
@@ -91,7 +93,7 @@ class AudioFeatureExtractor:
 
                 fft = np.fft.rfft(windowed_frame)
                 magnitude = np.abs(fft)
-                freqs = np.fft.rfftfreq(len(windowed_frame), 1/self.sample_rate)
+                freqs = np.fft.rfftfreq(len(windowed_frame), 1 / self.sample_rate)
 
                 # Spectral centroid (brightness)
                 if np.sum(magnitude) > 0:
@@ -104,7 +106,7 @@ class AudioFeatureExtractor:
                 cumsum = np.cumsum(magnitude)
                 if cumsum[-1] > 0:
                     rolloff_idx = np.searchsorted(cumsum, 0.85 * cumsum[-1])
-                    rolloff = freqs[min(rolloff_idx, len(freqs)-1)]
+                    rolloff = freqs[min(rolloff_idx, len(freqs) - 1)]
                 else:
                     rolloff = 0
                 spectral_rolloffs.append(rolloff)
@@ -125,7 +127,7 @@ class AudioFeatureExtractor:
                 zcrs.append(zcr)
 
                 # RMS energy
-                rms = np.sqrt(np.mean(frame ** 2))
+                rms = np.sqrt(np.mean(frame**2))
                 rms_values.append(rms)
 
             # Aggregate features across time
@@ -165,12 +167,9 @@ class AudioFeatureExtractor:
 
             # Ensure exactly 128 dimensions
             if len(feature_vector) < self.embedding_dim:
-                feature_vector = np.pad(
-                    feature_vector,
-                    (0, self.embedding_dim - len(feature_vector))
-                )
+                feature_vector = np.pad(feature_vector, (0, self.embedding_dim - len(feature_vector)))
             elif len(feature_vector) > self.embedding_dim:
-                feature_vector = feature_vector[:self.embedding_dim]
+                feature_vector = feature_vector[: self.embedding_dim]
 
             return feature_vector
 
@@ -178,11 +177,7 @@ class AudioFeatureExtractor:
             logger.error(f"Feature extraction failed: {e}")
             return None
 
-    def compute_band_energies(
-        self,
-        magnitude: np.ndarray,
-        freqs: np.ndarray
-    ) -> np.ndarray:
+    def compute_band_energies(self, magnitude: Any, freqs: Any) -> Any:
         """
         Compute energy in mel-like frequency bands.
 
@@ -217,7 +212,7 @@ class AudioFeatureExtractor:
         # Normalize
         total_energy = np.sum(band_energies)
         if total_energy > 0:
-            band_energies = band_energies / total_energy
+            band_energies = band_energies / total_energy  # type: ignore[assignment]
 
         return band_energies
 
@@ -241,24 +236,26 @@ class AudioFeatureExtractor:
         onset = np.maximum(onset, 0)
 
         # Onset statistics (4 features)
-        features.extend([
-            np.mean(onset),
-            np.std(onset),
-            np.max(onset) if len(onset) > 0 else 0,
-            np.sum(onset > np.mean(onset))  # Number of onsets
-        ])
+        features.extend(
+            [
+                np.mean(onset),
+                np.std(onset),
+                np.max(onset) if len(onset) > 0 else 0,
+                np.sum(onset > np.mean(onset)),  # Number of onsets
+            ]
+        )
 
         # Autocorrelation for tempo estimation (4 features)
         if len(rms) > 100:
-            autocorr = np.correlate(rms - np.mean(rms), rms - np.mean(rms), mode='full')
-            autocorr = autocorr[len(autocorr)//2:]
+            autocorr = np.correlate(rms - np.mean(rms), rms - np.mean(rms), mode="full")
+            autocorr = autocorr[len(autocorr) // 2 :]
 
             if autocorr[0] > 0:
                 autocorr = autocorr / autocorr[0]
 
             # Typical tempo range: 60-180 BPM
-            min_lag = int(60 / (180/60) * (self.sample_rate / self.hop_size))
-            max_lag = int(60 / (60/60) * (self.sample_rate / self.hop_size))
+            min_lag = int(60 / (180 / 60) * (self.sample_rate / self.hop_size))
+            max_lag = int(60 / (60 / 60) * (self.sample_rate / self.hop_size))
 
             search_range = autocorr[min_lag:max_lag] if max_lag < len(autocorr) else autocorr
 
@@ -266,12 +263,14 @@ class AudioFeatureExtractor:
                 peak_idx = np.argmax(search_range)
                 peak_val = search_range[peak_idx]
 
-                features.extend([
-                    peak_val,                          # Tempo confidence
-                    peak_idx / len(search_range),      # Relative tempo position
-                    np.mean(autocorr[:50]),             # Short-term periodicity
-                    np.std(autocorr[:100])              # Periodicity variation
-                ])
+                features.extend(
+                    [
+                        peak_val,  # Tempo confidence
+                        peak_idx / len(search_range),  # Relative tempo position
+                        np.mean(autocorr[:50]),  # Short-term periodicity
+                        np.std(autocorr[:100]),  # Periodicity variation
+                    ]
+                )
             else:
                 features.extend([0, 0, 0, 0])
         else:
@@ -281,9 +280,9 @@ class AudioFeatureExtractor:
         if len(rms) >= 4:
             quartile_size = len(rms) // 4
             q1_energy = np.mean(rms[:quartile_size])
-            q2_energy = np.mean(rms[quartile_size:2*quartile_size])
-            q3_energy = np.mean(rms[2*quartile_size:3*quartile_size])
-            q4_energy = np.mean(rms[3*quartile_size:])
+            q2_energy = np.mean(rms[quartile_size : 2 * quartile_size])
+            q3_energy = np.mean(rms[2 * quartile_size : 3 * quartile_size])
+            q4_energy = np.mean(rms[3 * quartile_size :])
             features.extend([q1_energy, q2_energy, q3_energy, q4_energy])
         else:
             features.extend([0, 0, 0, 0])

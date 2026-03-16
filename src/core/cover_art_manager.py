@@ -4,11 +4,15 @@ Cover Art Manager - Automatic cover art downloading
 Purpose: Download and manage album art from Cover Art Archive
 Created: November 18, 2025
 """
-import requests
+
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Any, Dict, List, Optional
+
 import musicbrainzngs
+import requests  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +25,14 @@ class CoverArtManager:
     https://coverartarchive.org/
     """
 
-    def __init__(self, cover_art_dir: str = None):
+    def __init__(self, cover_art_dir: Optional[str] = None) -> None:
         """
         Initialize cover art manager
 
         Args:
             cover_art_dir: Directory to save covers (default: downloads/covers/)
         """
+        self.cover_dir: Path
         if cover_art_dir:
             self.cover_dir = Path(cover_art_dir)
         else:
@@ -52,22 +57,18 @@ class CoverArtManager:
         """
         try:
             # Search for release
-            result = musicbrainzngs.search_releases(
-                artist=artist,
-                release=album,
-                limit=1
-            )
+            result = musicbrainzngs.search_releases(artist=artist, release=album, limit=1)
 
-            if not result or 'release-list' not in result:
+            if not result or "release-list" not in result:
                 logger.debug(f"No release found for: {artist} - {album}")
                 return None
 
-            releases = result['release-list']
+            releases = result["release-list"]
             if not releases:
                 return None
 
             # Get first release ID
-            release_id = releases[0]['id']
+            release_id = releases[0]["id"]
 
             # Get cover art URL from Cover Art Archive
             cover_url = f"https://coverartarchive.org/release/{release_id}/front"
@@ -79,7 +80,7 @@ class CoverArtManager:
             logger.warning(f"Failed to get cover URL for {artist} - {album}: {e}")
             return None
 
-    def download_cover(self, artist: str, album: str, save_path: Optional[str] = None) -> bool:
+    def download_cover(self, artist: str, album: str, save_path: Optional[str | Path] = None) -> bool:
         """
         Download cover art for artist/album
 
@@ -108,12 +109,13 @@ class CoverArtManager:
 
                 save_path = album_dir / "cover.jpg"
 
+            assert save_path is not None  # Set above if not provided
             # Download cover
             response = requests.get(cover_url, timeout=10)
 
             if response.status_code == 200:
                 # Save image
-                with open(save_path, 'wb') as f:
+                with open(save_path, "wb") as f:
                     f.write(response.content)
 
                 logger.info(f"Cover downloaded: {save_path}")
@@ -147,7 +149,7 @@ class CoverArtManager:
                 Path(save_path).parent.mkdir(parents=True, exist_ok=True)
 
                 # Save image
-                with open(save_path, 'wb') as f:
+                with open(save_path, "wb") as f:
                     f.write(response.content)
 
                 logger.info(f"Cover downloaded from MBID: {save_path}")
@@ -204,7 +206,7 @@ class CoverArtManager:
         sanitized = name
 
         for char in invalid_chars:
-            sanitized = sanitized.replace(char, '_')
+            sanitized = sanitized.replace(char, "_")
 
         # Limit length
         if len(sanitized) > 100:
@@ -212,7 +214,7 @@ class CoverArtManager:
 
         return sanitized.strip()
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> Dict[str, Any]:
         """
         Get cover art statistics
 
@@ -235,8 +237,4 @@ class CoverArtManager:
                         if cover_file.exists():
                             total_covers += 1
 
-        return {
-            'total_covers': total_covers,
-            'total_artists': total_artists,
-            'cover_dir': str(self.cover_dir)
-        }
+        return {"total_covers": total_covers, "total_artists": total_artists, "cover_dir": str(self.cover_dir)}

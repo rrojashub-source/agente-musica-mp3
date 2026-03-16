@@ -5,19 +5,30 @@ Project: AGENTE_MUSICA_MP3_001
 Purpose: Guide user through YouTube, Spotify, and Genius API setup
 """
 
+from __future__ import annotations
+
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Any, List, Optional
 
-import requests
-from utils.constants import API_DEFAULT_TIMEOUT
-
-from PySide6.QtWidgets import (
-    QWizard, QWizardPage, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QTextBrowser, QMessageBox, QCheckBox
-)
+import requests  # type: ignore[import-untyped]
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTextBrowser,
+    QVBoxLayout,
+    QWizard,
+    QWizardPage,
+)
+
+from gui.themes.style_constants import Styles
+from utils.constants import API_DEFAULT_TIMEOUT
 
 
 class APIConfigWizard(QWizard):
@@ -28,7 +39,7 @@ class APIConfigWizard(QWizard):
     - Genius API
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: Any = None) -> None:
         super().__init__(parent)
 
         self.setWindowTitle("🔑 API Configuration Wizard")
@@ -53,7 +64,7 @@ class APIConfigWizard(QWizard):
 class WelcomePage(QWizardPage):
     """Welcome page explaining the wizard"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setTitle("Welcome to API Configuration")
         self.setSubTitle("Let's set up your API keys for enhanced features")
@@ -63,7 +74,8 @@ class WelcomePage(QWizardPage):
         # Explanation
         info = QTextBrowser()
         info.setOpenExternalLinks(True)
-        info.setHtml("""
+        info.setHtml(
+            """
         <html>
         <body style='font-family: Arial; font-size: 12px;'>
             <h2>🎵 NEXUS Music Manager - API Setup</h2>
@@ -102,14 +114,15 @@ class WelcomePage(QWizardPage):
             </p>
         </body>
         </html>
-        """)
+        """
+        )
         layout.addWidget(info)
 
 
 class YouTubeAPIPage(QWizardPage):
     """YouTube API configuration"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setTitle("🔴 YouTube Data API v3")
         self.setSubTitle("Get your free YouTube API key")
@@ -120,7 +133,8 @@ class YouTubeAPIPage(QWizardPage):
         instructions = QTextBrowser()
         instructions.setOpenExternalLinks(True)
         instructions.setMaximumHeight(250)
-        instructions.setHtml("""
+        instructions.setHtml(
+            """
         <html>
         <body style='font-family: Arial; font-size: 11px;'>
             <h3>How to get your YouTube API key:</h3>
@@ -136,7 +150,8 @@ class YouTubeAPIPage(QWizardPage):
             Watch on YouTube</a></p>
         </body>
         </html>
-        """)
+        """
+        )
         layout.addWidget(instructions)
 
         # Input
@@ -170,35 +185,35 @@ class YouTubeAPIPage(QWizardPage):
         # Register field
         self.registerField("youtube_api_key", self.api_key_input)
 
-    def validate_input(self, text: str):
+    def validate_input(self, text: str) -> None:
         """Enable test button when input is valid"""
         self.test_btn.setEnabled(len(text) > 10)
 
-    def test_api_key(self):
+    def test_api_key(self) -> None:
         """Test YouTube API key"""
         api_key = self.api_key_input.text().strip()
 
         try:
             from googleapiclient.discovery import build
 
-            youtube = build('youtube', 'v3', developerKey=api_key)
+            youtube = build("youtube", "v3", developerKey=api_key)
             request = youtube.search().list(q="test", part="id", maxResults=1)
             request.execute()
 
             self.status_label.setText("✅ YouTube API key is valid!")
-            self.status_label.setStyleSheet("color: green;")
+            self.status_label.setStyleSheet(Styles.STATUS_GREEN)
             QMessageBox.information(self, "Success", "YouTube API key works!")
 
         except Exception as e:  # googleapiclient raises many undocumented exception types
             self.status_label.setText(f"❌ Error: {str(e)}")
-            self.status_label.setStyleSheet("color: red;")
+            self.status_label.setStyleSheet(Styles.STATUS_RED)
             QMessageBox.warning(self, "Invalid Key", f"API key test failed:\n{str(e)}")
 
 
 class SpotifyAPIPage(QWizardPage):
     """Spotify API configuration"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setTitle("🟢 Spotify Web API")
         self.setSubTitle("Get your free Spotify API credentials")
@@ -209,7 +224,8 @@ class SpotifyAPIPage(QWizardPage):
         instructions = QTextBrowser()
         instructions.setOpenExternalLinks(True)
         instructions.setMaximumHeight(250)
-        instructions.setHtml("""
+        instructions.setHtml(
+            """
         <html>
         <body style='font-family: Arial; font-size: 11px;'>
             <h3>How to get your Spotify API credentials:</h3>
@@ -225,7 +241,8 @@ class SpotifyAPIPage(QWizardPage):
             Watch on YouTube</a></p>
         </body>
         </html>
-        """)
+        """
+        )
         layout.addWidget(instructions)
 
         # Client ID
@@ -281,7 +298,7 @@ class SpotifyAPIPage(QWizardPage):
         self.registerField("spotify_client_id", self.client_id_input)
         self.registerField("spotify_client_secret", self.client_secret_input)
 
-    def toggle_password_visibility(self, checked: bool):
+    def toggle_password_visibility(self, checked: bool) -> None:
         """Toggle password visibility"""
         if checked:
             self.client_secret_input.setEchoMode(QLineEdit.EchoMode.Normal)
@@ -290,7 +307,7 @@ class SpotifyAPIPage(QWizardPage):
             self.client_secret_input.setEchoMode(QLineEdit.EchoMode.Password)
             self.show_password_btn.setText("👁️")
 
-    def test_credentials(self):
+    def test_credentials(self) -> None:
         """Test Spotify credentials"""
         client_id = self.client_id_input.text().strip()
         client_secret = self.client_secret_input.text().strip()
@@ -303,29 +320,26 @@ class SpotifyAPIPage(QWizardPage):
             import spotipy
             from spotipy.oauth2 import SpotifyClientCredentials
 
-            auth_manager = SpotifyClientCredentials(
-                client_id=client_id,
-                client_secret=client_secret
-            )
+            auth_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
             sp = spotipy.Spotify(auth_manager=auth_manager)
 
             # Test search
             sp.search(q="test", limit=1)
 
             self.status_label.setText("✅ Spotify credentials are valid!")
-            self.status_label.setStyleSheet("color: green;")
+            self.status_label.setStyleSheet(Styles.STATUS_GREEN)
             QMessageBox.information(self, "Success", "Spotify API credentials work!")
 
         except Exception as e:  # spotipy raises many undocumented exception types
             self.status_label.setText(f"❌ Error: {str(e)}")
-            self.status_label.setStyleSheet("color: red;")
+            self.status_label.setStyleSheet(Styles.STATUS_RED)
             QMessageBox.warning(self, "Invalid Credentials", f"Test failed:\n{str(e)}")
 
 
 class GeniusAPIPage(QWizardPage):
     """Genius API configuration"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setTitle("🟡 Genius API")
         self.setSubTitle("Get your free Genius API token")
@@ -336,7 +350,8 @@ class GeniusAPIPage(QWizardPage):
         instructions = QTextBrowser()
         instructions.setOpenExternalLinks(True)
         instructions.setMaximumHeight(250)
-        instructions.setHtml("""
+        instructions.setHtml(
+            """
         <html>
         <body style='font-family: Arial; font-size: 11px;'>
             <h3>How to get your Genius API token:</h3>
@@ -352,7 +367,8 @@ class GeniusAPIPage(QWizardPage):
             <p><b>Note:</b> This enables lyrics display in the music player</p>
         </body>
         </html>
-        """)
+        """
+        )
         layout.addWidget(instructions)
 
         # Input
@@ -384,7 +400,7 @@ class GeniusAPIPage(QWizardPage):
         # Register field
         self.registerField("genius_access_token", self.api_token_input)
 
-    def test_token(self):
+    def test_token(self) -> None:
         """Test Genius API token"""
         token = self.api_token_input.text().strip()
 
@@ -395,28 +411,26 @@ class GeniusAPIPage(QWizardPage):
         try:
             headers = {"Authorization": f"Bearer {token}"}
             response = requests.get(
-                "https://api.genius.com/search?q=test",
-                headers=headers,
-                timeout=API_DEFAULT_TIMEOUT
+                "https://api.genius.com/search?q=test", headers=headers, timeout=API_DEFAULT_TIMEOUT
             )
 
             if response.status_code == 200:
                 self.status_label.setText("✅ Genius API token is valid!")
-                self.status_label.setStyleSheet("color: green;")
+                self.status_label.setStyleSheet(Styles.STATUS_GREEN)
                 QMessageBox.information(self, "Success", "Genius API token works!")
             else:
                 raise Exception(f"HTTP {response.status_code}")
 
         except (requests.RequestException, OSError, ValueError) as e:
             self.status_label.setText(f"❌ Error: {str(e)}")
-            self.status_label.setStyleSheet("color: red;")
+            self.status_label.setStyleSheet(Styles.STATUS_RED)
             QMessageBox.warning(self, "Invalid Token", f"Test failed:\n{str(e)}")
 
 
 class CompletionPage(QWizardPage):
     """Completion page with summary"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setTitle("✅ Configuration Complete!")
         self.setSubTitle("Your API keys have been saved")
@@ -437,7 +451,7 @@ class CompletionPage(QWizardPage):
 
         layout.addLayout(save_layout)
 
-    def initializePage(self):
+    def initializePage(self) -> None:
         """Called when page is displayed"""
         # Get field values
         youtube_key = self.field("youtube_api_key") or ""
@@ -448,7 +462,7 @@ class CompletionPage(QWizardPage):
         # Save to config file
         config_file = Path(__file__).parent / "api_keys_config.txt"
 
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             f.write("# NEXUS Music Manager - API Configuration\n")
             f.write("# Generated by API Configuration Wizard\n\n")
 
@@ -514,7 +528,7 @@ class CompletionPage(QWizardPage):
 
         self.summary_browser.setHtml(summary_html)
 
-    def open_config_file(self):
+    def open_config_file(self) -> None:
         """Open config file in system editor"""
         import platform
 
@@ -534,8 +548,9 @@ class CompletionPage(QWizardPage):
 
 
 if __name__ == "__main__":
-    from PySide6.QtWidgets import QApplication
     import sys
+
+    from PySide6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
     wizard = APIConfigWizard()

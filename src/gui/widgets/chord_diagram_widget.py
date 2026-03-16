@@ -6,14 +6,17 @@ for a given chord. Uses the tombatossals/chords-db JSON database.
 
 Created: March 2026
 """
+
+from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Any, Dict, List, Optional, Tuple
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
-from PySide6.QtCore import Qt, QRectF
-from PySide6.QtGui import QPainter, QColor, QFont, QPen, QBrush
+from PySide6.QtCore import QRectF, Qt
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPaintEvent, QPen
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 logger = logging.getLogger(__name__)
 
@@ -34,17 +37,17 @@ class ChordDiagramWidget(QWidget):
     PADDING_LEFT = 35
     PADDING_RIGHT = 20
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
-        self._chord_db = None
-        self._current_chord = None  # chord name string
-        self._current_data = None   # chord position data
-        self._chord_name_display = ""
+        self._chord_db: Optional[Dict[str, Any]] = None
+        self._current_chord: Optional[str] = None  # chord name string
+        self._current_data: Optional[Dict[str, Any]] = None  # chord position data
+        self._chord_name_display: str = ""
         self.setMinimumSize(200, 280)
         self.setMaximumWidth(280)
         self._load_chord_db()
 
-    def _load_chord_db(self):
+    def _load_chord_db(self) -> None:
         """Load the guitar chord database from JSON."""
         # Try multiple locations
         candidates = [
@@ -55,7 +58,7 @@ class ChordDiagramWidget(QWidget):
         for path in candidates:
             if path.exists():
                 try:
-                    with open(path, 'r') as f:
+                    with open(path, "r") as f:
                         self._chord_db = json.load(f)
                     logger.info(f"Loaded guitar chord DB: {len(self._chord_db.get('chords', {}))} keys")
                     return
@@ -64,7 +67,7 @@ class ChordDiagramWidget(QWidget):
 
         logger.warning("Guitar chord database not found")
 
-    def set_chord(self, chord_name: str):
+    def set_chord(self, chord_name: str) -> None:
         """
         Set the chord to display.
 
@@ -83,7 +86,7 @@ class ChordDiagramWidget(QWidget):
 
         self.update()  # Trigger repaint
 
-    def _lookup_chord(self, chord_name: str) -> Optional[Dict]:
+    def _lookup_chord(self, chord_name: str) -> Optional[Dict[str, Any]]:
         """Look up chord fingering data from the database."""
         if not self._chord_db:
             return None
@@ -106,20 +109,20 @@ class ChordDiagramWidget(QWidget):
             if chord_entry.get("suffix") == suffix:
                 positions = chord_entry.get("positions", [])
                 if positions:
-                    return positions[0]  # Return first position (most common)
+                    return positions[0]  # type: ignore[no-any-return]  # Return first position (most common)
                 break
 
         return None
 
     @staticmethod
-    def _parse_chord_name(name: str):
+    def _parse_chord_name(name: str) -> Tuple[Optional[str], Optional[str]]:
         """Parse 'Am7' into ('A', 'minor7'), 'C' into ('C', 'major'), etc."""
         if not name or name == "N":
             return None, None
 
         # Extract root note
         i = 1
-        if len(name) > 1 and name[1] in ('#', 'b'):
+        if len(name) > 1 and name[1] in ("#", "b"):
             i = 2
         key = name[:i]
         remainder = name[i:]
@@ -149,17 +152,27 @@ class ChordDiagramWidget(QWidget):
     def _key_to_db_key(key: str) -> str:
         """Convert note name to chord DB key format."""
         mapping = {
-            "C": "C", "C#": "Csharp", "Db": "Csharp",
-            "D": "D", "D#": "Eb", "Eb": "Eb",
+            "C": "C",
+            "C#": "Csharp",
+            "Db": "Csharp",
+            "D": "D",
+            "D#": "Eb",
+            "Eb": "Eb",
             "E": "E",
-            "F": "F", "F#": "Fsharp", "Gb": "Fsharp",
-            "G": "G", "G#": "Ab", "Ab": "Ab",
-            "A": "A", "A#": "Bb", "Bb": "Bb",
+            "F": "F",
+            "F#": "Fsharp",
+            "Gb": "Fsharp",
+            "G": "G",
+            "G#": "Ab",
+            "Ab": "Ab",
+            "A": "A",
+            "A#": "Bb",
+            "Bb": "Bb",
             "B": "B",
         }
         return mapping.get(key, key)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent) -> None:
         """Render the chord diagram."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -174,17 +187,18 @@ class ChordDiagramWidget(QWidget):
         painter.setPen(QColor("#cdd6f4"))
         name_font = QFont("Segoe UI", 18, QFont.Weight.Bold)
         painter.setFont(name_font)
-        painter.drawText(QRectF(0, 5, w, 35), Qt.AlignmentFlag.AlignCenter,
-                         self._chord_name_display or "—")
+        painter.drawText(QRectF(0, 5, w, 35), Qt.AlignmentFlag.AlignCenter, self._chord_name_display or "—")
 
         if not self._current_data:
             # No data — show message
             painter.setPen(QColor("#6c7086"))
             msg_font = QFont("Segoe UI", 10)
             painter.setFont(msg_font)
-            painter.drawText(QRectF(0, h // 2 - 20, w, 40),
-                             Qt.AlignmentFlag.AlignCenter,
-                             "Sin diagrama" if self._current_chord else "Selecciona un acorde")
+            painter.drawText(
+                QRectF(0, h // 2 - 20, w, 40),
+                Qt.AlignmentFlag.AlignCenter,
+                "Sin diagrama" if self._current_chord else "Selecciona un acorde",
+            )
             painter.end()
             return
 
@@ -204,29 +218,25 @@ class ChordDiagramWidget(QWidget):
         # Draw nut (thick line at top if base fret = 1)
         if base_fret == 1:
             painter.setPen(QPen(QColor("#cdd6f4"), 4))
-            painter.drawLine(int(fretboard_x), int(fretboard_y),
-                             int(fretboard_x + fretboard_w), int(fretboard_y))
+            painter.drawLine(int(fretboard_x), int(fretboard_y), int(fretboard_x + fretboard_w), int(fretboard_y))
         else:
             # Show base fret number
             painter.setPen(QColor("#a6adc8"))
             fret_font = QFont("Segoe UI", 10)
             painter.setFont(fret_font)
-            painter.drawText(int(fretboard_x - 25), int(fretboard_y + fret_spacing / 2 + 5),
-                             f"{base_fret}fr")
+            painter.drawText(int(fretboard_x - 25), int(fretboard_y + fret_spacing / 2 + 5), f"{base_fret}fr")
 
         # Draw fret lines
         painter.setPen(QPen(QColor("#585b70"), 1))
         for i in range(self.NUM_FRETS + 1):
             y = fretboard_y + i * fret_spacing
-            painter.drawLine(int(fretboard_x), int(y),
-                             int(fretboard_x + fretboard_w), int(y))
+            painter.drawLine(int(fretboard_x), int(y), int(fretboard_x + fretboard_w), int(y))
 
         # Draw strings
         painter.setPen(QPen(QColor("#7f849c"), 1))
         for i in range(self.NUM_STRINGS):
             x = fretboard_x + i * string_spacing
-            painter.drawLine(int(x), int(fretboard_y),
-                             int(x), int(fretboard_y + fretboard_h))
+            painter.drawLine(int(x), int(fretboard_y), int(x), int(fretboard_y + fretboard_h))
 
         # Draw barres
         if barres:
@@ -260,10 +270,8 @@ class ChordDiagramWidget(QWidget):
                 size = 8
                 cx = x
                 cy = fretboard_y - 15
-                painter.drawLine(int(cx - size), int(cy - size),
-                                 int(cx + size), int(cy + size))
-                painter.drawLine(int(cx - size), int(cy + size),
-                                 int(cx + size), int(cy - size))
+                painter.drawLine(int(cx - size), int(cy - size), int(cx + size), int(cy + size))
+                painter.drawLine(int(cx - size), int(cy + size), int(cx + size), int(cy - size))
 
             elif fret_val == 0:
                 # Open string (O)
@@ -276,18 +284,18 @@ class ChordDiagramWidget(QWidget):
                 y = fretboard_y + (fret_val - 0.5) * fret_spacing
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(QBrush(QColor("#89b4fa")))
-                painter.drawEllipse(QRectF(x - dot_radius, y - dot_radius,
-                                           dot_radius * 2, dot_radius * 2))
+                painter.drawEllipse(QRectF(x - dot_radius, y - dot_radius, dot_radius * 2, dot_radius * 2))
 
                 # Draw finger number
                 if fingers and string_idx < len(fingers) and fingers[string_idx] > 0:
                     painter.setPen(QColor("#1e1e2e"))
                     finger_font = QFont("Segoe UI", 8, QFont.Weight.Bold)
                     painter.setFont(finger_font)
-                    painter.drawText(QRectF(x - dot_radius, y - dot_radius,
-                                            dot_radius * 2, dot_radius * 2),
-                                     Qt.AlignmentFlag.AlignCenter,
-                                     str(fingers[string_idx]))
+                    painter.drawText(
+                        QRectF(x - dot_radius, y - dot_radius, dot_radius * 2, dot_radius * 2),
+                        Qt.AlignmentFlag.AlignCenter,
+                        str(fingers[string_idx]),
+                    )
 
         # Draw string labels at bottom (E A D G B E)
         string_names = ["E", "A", "D", "G", "B", "E"]
@@ -296,12 +304,11 @@ class ChordDiagramWidget(QWidget):
         painter.setFont(label_font)
         for i, name in enumerate(string_names):
             x = fretboard_x + i * string_spacing
-            painter.drawText(QRectF(x - 10, fretboard_y + fretboard_h + 3, 20, 15),
-                             Qt.AlignmentFlag.AlignCenter, name)
+            painter.drawText(QRectF(x - 10, fretboard_y + fretboard_h + 3, 20, 15), Qt.AlignmentFlag.AlignCenter, name)
 
         painter.end()
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear the current chord display."""
         self._current_chord = None
         self._current_data = None

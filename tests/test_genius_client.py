@@ -4,16 +4,19 @@ TDD Phase: RED (tests written before implementation)
 
 Created: November 17, 2025
 """
+
 import sys
-import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 import requests
 
 
-class TestGeniusClient(unittest.TestCase):
+class TestGeniusClient:
     """Test Genius API client functionality"""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup(self):
         """Set up test fixtures"""
         self.test_token = "test_genius_token_12345"
         self.test_title = "Bohemian Rhapsody"
@@ -27,18 +30,19 @@ class TestGeniusClient(unittest.TestCase):
         self.mock_lyricsgenius = MagicMock()
         self.mock_genius_instance = MagicMock()
         self.mock_lyricsgenius.Genius.return_value = self.mock_genius_instance
-        sys.modules['lyricsgenius'] = self.mock_lyricsgenius
+        sys.modules["lyricsgenius"] = self.mock_lyricsgenius
 
         # Force reimport of GeniusClient so it picks up the mocked module.
         for key in list(sys.modules.keys()):
-            if key in ('api.genius_client', 'src.api.genius_client'):
+            if key in ("api.genius_client", "src.api.genius_client"):
                 del sys.modules[key]
 
-    def tearDown(self):
-        """Remove the lyricsgenius mock from sys.modules after each test."""
-        sys.modules.pop('lyricsgenius', None)
+        yield
+
+        # Remove the lyricsgenius mock from sys.modules after each test.
+        sys.modules.pop("lyricsgenius", None)
         for key in list(sys.modules.keys()):
-            if key in ('api.genius_client', 'src.api.genius_client'):
+            if key in ("api.genius_client", "src.api.genius_client"):
                 del sys.modules[key]
 
     # ------------------------------------------------------------------
@@ -48,9 +52,11 @@ class TestGeniusClient(unittest.TestCase):
     def _get_client_class(self):
         try:
             from api.genius_client import GeniusClient
+
             return GeniusClient
         except ImportError:
             from src.api.genius_client import GeniusClient
+
             return GeniusClient
 
     def test_01_client_initialization_with_token(self):
@@ -59,19 +65,19 @@ class TestGeniusClient(unittest.TestCase):
 
         client = GeniusClient(self.test_token)
 
-        self.assertIsNotNone(client)
-        self.assertEqual(client.access_token, self.test_token)
-        self.assertIsNotNone(client._cache)
-        self.assertEqual(len(client._cache), 0)
+        assert client is not None
+        assert client.access_token == self.test_token
+        assert client._cache is not None
+        assert len(client._cache) == 0
 
     def test_02_client_initialization_without_token(self):
         """GeniusClient should raise error without token"""
         GeniusClient = self._get_client_class()
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             GeniusClient(None)
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             GeniusClient("")
 
     def test_03_search_lyrics_success(self):
@@ -85,10 +91,8 @@ class TestGeniusClient(unittest.TestCase):
         client = GeniusClient(self.test_token)
         result = client.search_lyrics(self.test_title, self.test_artist)
 
-        self.assertEqual(result, self.test_lyrics)
-        self.mock_genius_instance.search_song.assert_called_once_with(
-            self.test_title, self.test_artist
-        )
+        assert result == self.test_lyrics
+        self.mock_genius_instance.search_song.assert_called_once_with(self.test_title, self.test_artist)
 
     def test_04_search_lyrics_not_found(self):
         """Should return None when lyrics not found"""
@@ -99,7 +103,7 @@ class TestGeniusClient(unittest.TestCase):
         client = GeniusClient(self.test_token)
         result = client.search_lyrics("NonexistentSong", "UnknownArtist")
 
-        self.assertIsNone(result)
+        assert result is None
 
     def test_05_search_lyrics_api_error(self):
         """Should handle API errors gracefully"""
@@ -111,7 +115,7 @@ class TestGeniusClient(unittest.TestCase):
         client = GeniusClient(self.test_token)
         result = client.search_lyrics(self.test_title, self.test_artist)
 
-        self.assertIsNone(result)
+        assert result is None
 
     def test_06_cache_lyrics(self):
         """Should cache lyrics to avoid repeated API calls"""
@@ -125,13 +129,13 @@ class TestGeniusClient(unittest.TestCase):
 
         # First call - should hit API
         result1 = client.search_lyrics(self.test_title, self.test_artist)
-        self.assertEqual(result1, self.test_lyrics)
-        self.assertEqual(self.mock_genius_instance.search_song.call_count, 1)
+        assert result1 == self.test_lyrics
+        assert self.mock_genius_instance.search_song.call_count == 1
 
         # Second call - should use cache
         result2 = client.search_lyrics(self.test_title, self.test_artist)
-        self.assertEqual(result2, self.test_lyrics)
-        self.assertEqual(self.mock_genius_instance.search_song.call_count, 1)  # Still 1 (cached)
+        assert result2 == self.test_lyrics
+        assert self.mock_genius_instance.search_song.call_count == 1  # Still 1 (cached)
 
     def test_07_cache_case_insensitive(self):
         """Cache should be case-insensitive"""
@@ -145,12 +149,12 @@ class TestGeniusClient(unittest.TestCase):
 
         # First call with lowercase
         result1 = client.search_lyrics("bohemian rhapsody", "queen")
-        self.assertEqual(result1, self.test_lyrics)
+        assert result1 == self.test_lyrics
 
         # Second call with different case - should use cache
         result2 = client.search_lyrics("Bohemian Rhapsody", "QUEEN")
-        self.assertEqual(result2, self.test_lyrics)
-        self.assertEqual(self.mock_genius_instance.search_song.call_count, 1)  # Cached
+        assert result2 == self.test_lyrics
+        assert self.mock_genius_instance.search_song.call_count == 1  # Cached
 
     def test_08_empty_title_or_artist(self):
         """Should handle empty title or artist"""
@@ -160,15 +164,15 @@ class TestGeniusClient(unittest.TestCase):
 
         # Empty title
         result1 = client.search_lyrics("", self.test_artist)
-        self.assertIsNone(result1)
+        assert result1 is None
 
         # Empty artist
         result2 = client.search_lyrics(self.test_title, "")
-        self.assertIsNone(result2)
+        assert result2 is None
 
         # Both empty
         result3 = client.search_lyrics("", "")
-        self.assertIsNone(result3)
+        assert result3 is None
 
     def test_09_clear_cache(self):
         """Should be able to clear cache"""
@@ -182,15 +186,15 @@ class TestGeniusClient(unittest.TestCase):
 
         # Search and cache
         client.search_lyrics(self.test_title, self.test_artist)
-        self.assertEqual(len(client._cache), 1)
+        assert len(client._cache) == 1
 
         # Clear cache
         client.clear_cache()
-        self.assertEqual(len(client._cache), 0)
+        assert len(client._cache) == 0
 
         # Search again - should hit API
         client.search_lyrics(self.test_title, self.test_artist)
-        self.assertEqual(self.mock_genius_instance.search_song.call_count, 2)
+        assert self.mock_genius_instance.search_song.call_count == 2
 
     def test_10_song_without_lyrics(self):
         """Should handle songs that exist but have no lyrics"""
@@ -203,8 +207,4 @@ class TestGeniusClient(unittest.TestCase):
         client = GeniusClient(self.test_token)
         result = client.search_lyrics(self.test_title, self.test_artist)
 
-        self.assertIsNone(result)
-
-
-if __name__ == '__main__':
-    unittest.main()
+        assert result is None

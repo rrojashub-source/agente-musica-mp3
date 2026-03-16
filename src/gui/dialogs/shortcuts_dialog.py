@@ -4,17 +4,27 @@ Keyboard Shortcuts Help Dialog
 Displays a table of all available keyboard shortcuts for NEXUS Music Manager.
 """
 
-from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem,
-    QPushButton, QLabel, QHeaderView
-)
+from __future__ import annotations
+
+from typing import List, Optional, Tuple
+
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QDialog,
+    QHeaderView,
+    QLabel,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class ShortcutsDialog(QDialog):
     """Display keyboard shortcuts help dialog"""
 
-    def __init__(self, shortcuts_list, parent=None):
+    def __init__(self, shortcuts_list: List[Tuple[str, str]], parent: Optional[QWidget] = None) -> None:
         """
         Initialize shortcuts help dialog
 
@@ -23,10 +33,10 @@ class ShortcutsDialog(QDialog):
             parent: Parent widget (optional)
         """
         super().__init__(parent)
-        self.shortcuts_list = shortcuts_list
+        self.shortcuts_list: List[Tuple[str, str]] = shortcuts_list
         self._init_ui()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize UI components - Bilingual (ES/EN)"""
         self.setWindowTitle("Atajos de Teclado / Keyboard Shortcuts")
         self.setMinimumSize(650, 500)

@@ -13,36 +13,41 @@ Usage:
     server = RemoteServer.get_instance()
     server.start(port=8080)
 """
-import os
+
 import json
+import logging
+import os
 import secrets
 import socket
-import logging
 import threading
 import time
 from collections import defaultdict
-from pathlib import Path
-from typing import Optional, Dict, Any, Callable
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from functools import wraps
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 try:
-    from flask import Flask, jsonify, request, send_from_directory, render_template_string
+    from flask import Flask, jsonify, render_template_string, request, send_from_directory
     from flask_cors import CORS
+
     HAS_FLASK = True
 except ImportError:
     HAS_FLASK = False
 
 try:
-    import qrcode
-    from io import BytesIO
     import base64
+    from io import BytesIO
+
+    import qrcode
+
     HAS_QRCODE = True
 except ImportError:
     HAS_QRCODE = False
 
 try:
     from PySide6.QtCore import QObject, Signal
+
     HAS_QT = True
 except ImportError:
     HAS_QT = False
@@ -54,6 +59,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class NowPlayingInfo:
     """Current playback state"""
+
     title: str = ""
     artist: str = ""
     album: str = ""
@@ -67,13 +73,14 @@ class NowPlayingInfo:
 @dataclass
 class QueueItem:
     """Queue item info"""
+
     id: int
     title: str
     artist: str
     duration: int
 
 
-class RemoteServer(QObject if HAS_QT else object):
+class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
     """
     REST API server for remote control.
 
@@ -92,7 +99,7 @@ class RemoteServer(QObject if HAS_QT else object):
     - GET /qr - QR code for connection
     """
 
-    _instance: Optional['RemoteServer'] = None
+    _instance: Optional["RemoteServer"] = None
 
     # Signals
     if HAS_QT:
@@ -101,36 +108,37 @@ class RemoteServer(QObject if HAS_QT else object):
         command_received = Signal(str, dict)  # command, params
         client_connected = Signal(str)  # client_ip
 
-    def __init__(self):
+    def __init__(self) -> None:
         if HAS_QT:
             super().__init__()
 
-        self._app: Optional[Flask] = None
+        self._app: Optional[Any] = None
         self._server_thread: Optional[threading.Thread] = None
-        self._is_running = False
-        self._host = "127.0.0.1"
-        self._port = 8080
+        self._is_running: bool = False
+        self._host: str = "127.0.0.1"
+        self._port: int = 8080
 
-        # Auth token (generated per session)
-        self._auth_token: str = secrets.token_urlsafe(32)
+        # Auth token with expiration (24h)
+        self._token_max_age: int = 86400  # 24 hours in seconds
+        self._auth_token: str = self._generate_token()
 
         # Rate limiting per IP: {ip: [timestamps]}
-        self._rate_limit_requests: Dict[str, list] = defaultdict(list)
-        self._rate_limit_max = 60  # requests per minute
-        self._rate_limit_window = 60  # seconds
+        self._rate_limit_requests: Dict[str, List[float]] = defaultdict(list)
+        self._rate_limit_max: int = 60  # requests per minute
+        self._rate_limit_window: int = 60  # seconds
 
         # Callbacks for player control
-        self._callbacks: Dict[str, Callable] = {}
+        self._callbacks: Dict[str, Callable[..., Any]] = {}
 
         # Current state (updated by player service)
-        self._now_playing = NowPlayingInfo()
-        self._queue: list = []
+        self._now_playing: NowPlayingInfo = NowPlayingInfo()
+        self._queue: List[Any] = []
 
         if HAS_FLASK:
             self._setup_app()
 
     @classmethod
-    def get_instance(cls) -> 'RemoteServer':
+    def get_instance(cls) -> "RemoteServer":
         """Get singleton instance"""
         if cls._instance is None:
             cls._instance = cls()
@@ -143,64 +151,75 @@ class RemoteServer(QObject if HAS_QT else object):
             cls._instance.stop()
         cls._instance = None
 
-    def _setup_app(self):
+    def _setup_app(self) -> None:
         """Setup Flask application with security hardening"""
         self._app = Flask(__name__)
 
-        # CORS: only allow localhost origins
-        CORS(self._app, origins=[
-            "http://127.0.0.1:*",
-            "http://localhost:*",
-            "http://192.168.*.*:*",  # LAN for mobile remote
-        ])
+        # CORS: only allow localhost and this server's IP
+        CORS(
+            self._app,
+            origins=[
+                "http://127.0.0.1:*",
+                "http://localhost:*",
+                f"http://{self.get_local_ip()}:*",
+            ],
+        )
 
         # Disable Flask logging in production
-        log = logging.getLogger('werkzeug')
+        log = logging.getLogger("werkzeug")
         log.setLevel(logging.WARNING)
 
         # Rate limiting middleware
         @self._app.before_request
-        def _rate_limit():
+        def _rate_limit() -> Any:
             client_ip = request.remote_addr or "unknown"
             now = time.time()
             window_start = now - self._rate_limit_window
 
             # Clean old entries
-            self._rate_limit_requests[client_ip] = [
-                t for t in self._rate_limit_requests[client_ip]
-                if t > window_start
-            ]
+            self._rate_limit_requests[client_ip] = [t for t in self._rate_limit_requests[client_ip] if t > window_start]
 
             if len(self._rate_limit_requests[client_ip]) >= self._rate_limit_max:
                 logger.warning(f"Rate limit exceeded for {client_ip}")
-                return jsonify({'error': 'Rate limit exceeded'}), 429
+                return jsonify({"error": "Rate limit exceeded"}), 429
 
             self._rate_limit_requests[client_ip].append(now)
 
         self._register_routes()
 
-    def _require_auth(self, f):
-        """Decorator: require valid auth token in Authorization header or query param"""
+    def _require_auth(self, f: Callable[..., Any]) -> Callable[..., Any]:
+        """Decorator: require valid auth token in Authorization Bearer header only"""
+
         @wraps(f)
-        def decorated(*args, **kwargs):
-            # Check Authorization header
-            auth_header = request.headers.get('Authorization', '')
+        def decorated(*args: Any, **kwargs: Any) -> Any:
+            auth_header = request.headers.get("Authorization", "")
             token = None
-            if auth_header.startswith('Bearer '):
+            if auth_header.startswith("Bearer "):
                 token = auth_header[7:]
 
-            # Fallback: check query parameter (for initial page load)
-            if not token:
-                token = request.args.get('token')
-
-            if token != self._auth_token:
+            if not token or not self._validate_token(token):
                 logger.warning(f"Unauthorized access attempt from {request.remote_addr}")
-                return jsonify({'error': 'Unauthorized'}), 401
+                return jsonify({"error": "Unauthorized"}), 401
 
             return f(*args, **kwargs)
+
         return decorated
 
-    def _register_routes(self):
+    def _generate_token(self) -> str:
+        """Generate a token with embedded timestamp for expiration"""
+        return f"{secrets.token_urlsafe(32)}.{int(time.time())}"
+
+    def _validate_token(self, token: str) -> bool:
+        """Validate token matches and has not expired"""
+        if token != self._auth_token:
+            return False
+        try:
+            timestamp = int(token.rsplit(".", 1)[1])
+            return (time.time() - timestamp) < self._token_max_age
+        except (IndexError, ValueError):
+            return False
+
+    def _register_routes(self) -> None:
         """Register API routes"""
         app = self._app
 
@@ -208,20 +227,20 @@ class RemoteServer(QObject if HAS_QT else object):
         # Web Interface
         # ==========================================
 
-        @app.route('/')
-        def index():
-            """Mobile web interface — requires token in query param"""
-            token = request.args.get('token')
-            if token != self._auth_token:
-                return jsonify({'error': 'Unauthorized. Scan QR code to connect.'}), 401
+        @app.route("/")  # type: ignore[union-attr]
+        def index() -> Any:
+            """Mobile web interface — requires token in query param (initial load via QR)"""
+            token = request.args.get("token", "")
+            if not self._validate_token(token):
+                return jsonify({"error": "Unauthorized. Scan QR code to connect."}), 401
             return render_template_string(MOBILE_HTML, auth_token=self._auth_token)
 
-        @app.route('/qr')
+        @app.route("/qr")  # type: ignore[union-attr]
         @self._require_auth
-        def qr_code():
+        def qr_code() -> Any:
             """Generate QR code for connection (includes auth token)"""
             if not HAS_QRCODE:
-                return jsonify({'error': 'QR code not available'}), 500
+                return jsonify({"error": "QR code not available"}), 500
 
             url = f"http://{self.get_local_ip()}:{self._port}?token={self._auth_token}"
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
@@ -230,167 +249,169 @@ class RemoteServer(QObject if HAS_QT else object):
 
             img = qr.make_image(fill_color="black", back_color="white")
             buffer = BytesIO()
-            img.save(buffer, format='PNG')
+            img.save(buffer, format="PNG")
             img_str = base64.b64encode(buffer.getvalue()).decode()
 
-            return jsonify({
-                'url': url,
-                'qr_image': f"data:image/png;base64,{img_str}"
-            })
+            return jsonify({"url": url, "qr_image": f"data:image/png;base64,{img_str}"})
 
         # ==========================================
         # Playback Control API
         # ==========================================
 
-        @app.route('/api/status')
+        @app.route("/api/status")  # type: ignore[union-attr]
         @self._require_auth
-        def get_status():
+        def get_status() -> Any:
             """Get current playback status"""
-            return jsonify({
-                'now_playing': asdict(self._now_playing),
-                'queue_length': len(self._queue)
-            })
+            return jsonify({"now_playing": asdict(self._now_playing), "queue_length": len(self._queue)})
 
-        @app.route('/api/play', methods=['POST'])
+        @app.route("/api/play", methods=["POST"])  # type: ignore[union-attr]
         @self._require_auth
-        def play():
+        def play() -> Any:
             """Play/resume playback"""
-            self._execute_callback('play')
+            self._execute_callback("play")
             if HAS_QT:
-                self.command_received.emit('play', {})
-            return jsonify({'success': True, 'action': 'play'})
+                self.command_received.emit("play", {})
+            return jsonify({"success": True, "action": "play"})
 
-        @app.route('/api/pause', methods=['POST'])
+        @app.route("/api/pause", methods=["POST"])  # type: ignore[union-attr]
         @self._require_auth
-        def pause():
+        def pause() -> Any:
             """Pause playback"""
-            self._execute_callback('pause')
+            self._execute_callback("pause")
             if HAS_QT:
-                self.command_received.emit('pause', {})
-            return jsonify({'success': True, 'action': 'pause'})
+                self.command_received.emit("pause", {})
+            return jsonify({"success": True, "action": "pause"})
 
-        @app.route('/api/toggle', methods=['POST'])
+        @app.route("/api/toggle", methods=["POST"])  # type: ignore[union-attr]
         @self._require_auth
-        def toggle():
+        def toggle() -> Any:
             """Toggle play/pause"""
-            self._execute_callback('toggle')
+            self._execute_callback("toggle")
             if HAS_QT:
-                self.command_received.emit('toggle', {})
-            return jsonify({'success': True, 'action': 'toggle'})
+                self.command_received.emit("toggle", {})
+            return jsonify({"success": True, "action": "toggle"})
 
-        @app.route('/api/next', methods=['POST'])
+        @app.route("/api/next", methods=["POST"])  # type: ignore[union-attr]
         @self._require_auth
-        def next_track():
+        def next_track() -> Any:
             """Skip to next track"""
-            self._execute_callback('next')
+            self._execute_callback("next")
             if HAS_QT:
-                self.command_received.emit('next', {})
-            return jsonify({'success': True, 'action': 'next'})
+                self.command_received.emit("next", {})
+            return jsonify({"success": True, "action": "next"})
 
-        @app.route('/api/previous', methods=['POST'])
+        @app.route("/api/previous", methods=["POST"])  # type: ignore[union-attr]
         @self._require_auth
-        def previous_track():
+        def previous_track() -> Any:
             """Go to previous track"""
-            self._execute_callback('previous')
+            self._execute_callback("previous")
             if HAS_QT:
-                self.command_received.emit('previous', {})
-            return jsonify({'success': True, 'action': 'previous'})
+                self.command_received.emit("previous", {})
+            return jsonify({"success": True, "action": "previous"})
 
-        @app.route('/api/volume', methods=['POST'])
+        @app.route("/api/volume", methods=["POST"])  # type: ignore[union-attr]
         @self._require_auth
-        def set_volume():
+        def set_volume() -> Any:
             """Set volume (0-100)"""
             data = request.get_json() or {}
-            volume = data.get('volume', 100)
+            volume = data.get("volume", 100)
             volume = max(0, min(100, int(volume)))
 
-            self._execute_callback('volume', volume)
+            self._execute_callback("volume", volume)
             self._now_playing.volume = volume
 
             if HAS_QT:
-                self.command_received.emit('volume', {'volume': volume})
-            return jsonify({'success': True, 'volume': volume})
+                self.command_received.emit("volume", {"volume": volume})
+            return jsonify({"success": True, "volume": volume})
 
-        @app.route('/api/seek', methods=['POST'])
+        @app.route("/api/seek", methods=["POST"])  # type: ignore[union-attr]
         @self._require_auth
-        def seek():
+        def seek() -> Any:
             """Seek to position (seconds)"""
             data = request.get_json() or {}
-            position = data.get('position', 0)
+            position = data.get("position", 0)
 
-            self._execute_callback('seek', position)
+            self._execute_callback("seek", position)
             if HAS_QT:
-                self.command_received.emit('seek', {'position': position})
-            return jsonify({'success': True, 'position': position})
+                self.command_received.emit("seek", {"position": position})
+            return jsonify({"success": True, "position": position})
 
         # ==========================================
         # Queue API
         # ==========================================
 
-        @app.route('/api/queue')
+        @app.route("/api/queue")  # type: ignore[union-attr]
         @self._require_auth
-        def get_queue():
+        def get_queue() -> Any:
             """Get current queue"""
-            return jsonify({
-                'queue': [asdict(item) if hasattr(item, '__dataclass_fields__') else item
-                         for item in self._queue]
-            })
+            return jsonify(
+                {"queue": [asdict(item) if hasattr(item, "__dataclass_fields__") else item for item in self._queue]}
+            )
 
-        @app.route('/api/queue/add', methods=['POST'])
+        @app.route("/api/queue/add", methods=["POST"])  # type: ignore[union-attr]
         @self._require_auth
-        def add_to_queue():
+        def add_to_queue() -> Any:
             """Add song to queue"""
             data = request.get_json() or {}
-            song_id = data.get('song_id')
+            song_id = data.get("song_id")
 
             if song_id:
-                self._execute_callback('queue_add', song_id)
+                self._execute_callback("queue_add", song_id)
                 if HAS_QT:
-                    self.command_received.emit('queue_add', {'song_id': song_id})
-                return jsonify({'success': True, 'song_id': song_id})
-            return jsonify({'success': False, 'error': 'No song_id provided'}), 400
+                    self.command_received.emit("queue_add", {"song_id": song_id})
+                return jsonify({"success": True, "song_id": song_id})
+            return jsonify({"success": False, "error": "No song_id provided"}), 400
 
-        @app.route('/api/queue/clear', methods=['POST'])
+        @app.route("/api/queue/clear", methods=["POST"])  # type: ignore[union-attr]
         @self._require_auth
-        def clear_queue():
+        def clear_queue() -> Any:
             """Clear queue"""
-            self._execute_callback('queue_clear')
+            self._execute_callback("queue_clear")
             if HAS_QT:
-                self.command_received.emit('queue_clear', {})
-            return jsonify({'success': True, 'action': 'queue_clear'})
+                self.command_received.emit("queue_clear", {})
+            return jsonify({"success": True, "action": "queue_clear"})
 
         # ==========================================
         # Library API
         # ==========================================
 
-        @app.route('/api/search')
+        @app.route("/api/search")  # type: ignore[union-attr]
         @self._require_auth
-        def search():
+        def search() -> Any:
             """Search library"""
-            query = request.args.get('q', '')
-            limit = request.args.get('limit', 20, type=int)
+            query = request.args.get("q", "")
+            limit = request.args.get("limit", 20, type=int)
 
-            results = self._execute_callback('search', query, limit) or []
-            return jsonify({'results': results, 'query': query})
+            results = self._execute_callback("search", query, limit) or []
+            return jsonify({"results": results, "query": query})
 
-        @app.route('/api/library/recent')
+        @app.route("/api/library/recent")  # type: ignore[union-attr]
         @self._require_auth
-        def recent():
+        def recent() -> Any:
             """Get recently played"""
-            limit = request.args.get('limit', 10, type=int)
-            results = self._execute_callback('recent', limit) or []
-            return jsonify({'results': results})
+            limit = request.args.get("limit", 10, type=int)
+            results = self._execute_callback("recent", limit) or []
+            return jsonify({"results": results})
 
-    def _execute_callback(self, name: str, *args):
+        @app.route("/api/refresh-token", methods=["POST"])  # type: ignore[union-attr]
+        @self._require_auth
+        def refresh_token() -> Any:
+            """Refresh auth token (extends expiration)"""
+            self._auth_token = self._generate_token()
+            return jsonify({"token": self._auth_token})
+
+    def _execute_callback(self, name: str, *args: Any) -> Any:
         """Execute registered callback"""
-        logger.debug(f"Executing callback '{name}', registered: {name in self._callbacks}, all callbacks: {list(self._callbacks.keys())}")
+        logger.debug(
+            f"Executing callback '{name}', registered: {name in self._callbacks}, all callbacks: {list(self._callbacks.keys())}"
+        )
         if name in self._callbacks:
             try:
                 logger.info(f"Calling callback '{name}' with args: {args}")
                 result = self._callbacks[name](*args)
                 logger.info(f"Callback '{name}' executed successfully")
                 return result
-            except Exception as e:
+            except Exception as e:  # callback isolation - user-registered code may raise anything
                 # Broad catch intentional: callbacks are user-registered and can raise
                 # any exception; the server must not crash on a bad callback.
                 logger.error(f"Callback error [{name}]: {e}")
@@ -402,7 +423,7 @@ class RemoteServer(QObject if HAS_QT else object):
     # Public API
     # ==========================================
 
-    def register_callback(self, name: str, callback: Callable) -> None:
+    def register_callback(self, name: str, callback: Callable[..., Any]) -> None:
         """Register a callback for remote commands"""
         self._callbacks[name] = callback
         logger.info(f"Registered callback '{name}', total callbacks: {list(self._callbacks.keys())}")
@@ -411,7 +432,7 @@ class RemoteServer(QObject if HAS_QT else object):
         """Update current playback info"""
         self._now_playing = info
 
-    def update_queue(self, queue: list) -> None:
+    def update_queue(self, queue: List[Any]) -> None:
         """Update queue"""
         self._queue = queue
 
@@ -433,9 +454,9 @@ class RemoteServer(QObject if HAS_QT else object):
         self._port = port
         self._host = host
 
-        def run_server():
+        def run_server() -> None:
             try:
-                self._app.run(host=host, port=port, threaded=True, use_reloader=False)
+                self._app.run(host=host, port=port, threaded=True, use_reloader=False)  # type: ignore[union-attr]
             except (OSError, RuntimeError) as e:
                 logger.error(f"Server error: {e}")
 
@@ -477,7 +498,7 @@ class RemoteServer(QObject if HAS_QT else object):
             s.connect(("8.8.8.8", 80))
             ip = s.getsockname()[0]
             s.close()
-            return ip
+            return ip  # type: ignore[no-any-return]
         except OSError:
             return "127.0.0.1"
 
@@ -486,7 +507,7 @@ class RemoteServer(QObject if HAS_QT else object):
 # Mobile Web Interface HTML
 # ==========================================
 
-MOBILE_HTML = '''
+MOBILE_HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -753,4 +774,4 @@ MOBILE_HTML = '''
     </script>
 </body>
 </html>
-'''
+"""

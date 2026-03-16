@@ -18,11 +18,12 @@ Features:
 
 Created: December 12, 2025
 """
-import re
+
 import logging
+import re
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Tuple
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +31,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LRCLine:
     """Single line of synchronized lyrics"""
+
     time_ms: int  # Timestamp in milliseconds
-    text: str     # Lyrics text
+    text: str  # Lyrics text
 
     @property
     def time_seconds(self) -> float:
@@ -53,12 +55,13 @@ class LRCLine:
 @dataclass
 class LRCMetadata:
     """LRC file metadata"""
+
     artist: Optional[str] = None
     title: Optional[str] = None
     album: Optional[str] = None
     author: Optional[str] = None  # Lyrics author
     length: Optional[str] = None  # Song length
-    offset: int = 0               # Timing offset in ms
+    offset: int = 0  # Timing offset in ms
 
 
 class LRCParser:
@@ -79,10 +82,10 @@ class LRCParser:
     """
 
     # Regex patterns
-    TIME_PATTERN = re.compile(r'\[(\d{2}):(\d{2})\.(\d{2,3})\]')
-    METADATA_PATTERN = re.compile(r'\[([a-z]+):(.*?)\]', re.IGNORECASE)
+    TIME_PATTERN = re.compile(r"\[(\d{2}):(\d{2})\.(\d{2,3})\]")
+    METADATA_PATTERN = re.compile(r"\[([a-z]+):(.*?)\]", re.IGNORECASE)
 
-    def __init__(self):
+    def __init__(self) -> None:
         logger.debug("LRCParser initialized")
 
     def parse(self, content: str) -> Tuple[List[LRCLine], LRCMetadata]:
@@ -101,7 +104,7 @@ class LRCParser:
         if not content:
             return lines, metadata
 
-        for line in content.split('\n'):
+        for line in content.split("\n"):
             line = line.strip()
             if not line:
                 continue
@@ -128,20 +131,20 @@ class LRCParser:
         logger.debug(f"Parsed {len(lines)} lyrics lines")
         return lines, metadata
 
-    def _parse_metadata_tag(self, metadata: LRCMetadata, tag: str, value: str):
+    def _parse_metadata_tag(self, metadata: LRCMetadata, tag: str, value: str) -> None:
         """Parse metadata tag and update metadata object"""
         tag_mapping = {
-            'ar': 'artist',
-            'ti': 'title',
-            'al': 'album',
-            'au': 'author',
-            'length': 'length',
-            'offset': 'offset'
+            "ar": "artist",
+            "ti": "title",
+            "al": "album",
+            "au": "author",
+            "length": "length",
+            "offset": "offset",
         }
 
         if tag in tag_mapping:
             attr = tag_mapping[tag]
-            if attr == 'offset':
+            if attr == "offset":
                 try:
                     metadata.offset = int(value)
                 except ValueError:
@@ -155,7 +158,7 @@ class LRCParser:
 
         Example: [00:12.00][00:24.00]Repeated lyrics
         """
-        result = []
+        result: list[LRCLine] = []
 
         # Find all timestamps
         timestamps = []
@@ -174,16 +177,16 @@ class LRCParser:
             timestamps.append(total_ms)
 
         if not timestamps:
-            return result
+            return result  # type: ignore[return-value]
 
         # Get text after all timestamps
-        text = self.TIME_PATTERN.sub('', line).strip()
+        text = self.TIME_PATTERN.sub("", line).strip()
 
         # Create LRCLine for each timestamp
         for time_ms in timestamps:
-            result.append(LRCLine(time_ms=time_ms, text=text))
+            result.append(LRCLine(time_ms=time_ms, text=text))  # type: ignore[arg-type]
 
-        return result
+        return result  # type: ignore[return-value]
 
     def parse_file(self, filepath: str) -> Tuple[List[LRCLine], LRCMetadata]:
         """
@@ -202,7 +205,7 @@ class LRCParser:
             return [], LRCMetadata()
 
         # Try different encodings
-        for encoding in ['utf-8', 'utf-8-sig', 'cp1252', 'latin-1']:
+        for encoding in ["utf-8", "utf-8-sig", "cp1252", "latin-1"]:
             try:
                 content = path.read_text(encoding=encoding)
                 return self.parse(content)
@@ -259,11 +262,7 @@ class LRCParser:
         return current_idx
 
     def get_surrounding_lines(
-        self,
-        lines: List[LRCLine],
-        position_ms: int,
-        before: int = 3,
-        after: int = 5
+        self, lines: List[LRCLine], position_ms: int, before: int = 3, after: int = 5
     ) -> Tuple[List[LRCLine], int]:
         """
         Get lines surrounding current position for display
@@ -281,7 +280,7 @@ class LRCParser:
 
         if current_idx < 0:
             # Before first line - show first few lines
-            return lines[:before + after + 1], -1
+            return lines[: before + after + 1], -1
 
         start = max(0, current_idx - before)
         end = min(len(lines), current_idx + after + 1)
@@ -292,10 +291,7 @@ class LRCParser:
         return surrounding, relative_idx
 
     def generate_lrc(
-        self,
-        lyrics: str,
-        timings: Optional[List[int]] = None,
-        metadata: Optional[Dict[str, str]] = None
+        self, lyrics: str, timings: Optional[List[int]] = None, metadata: Optional[Dict[str, str]] = None
     ) -> str:
         """
         Generate LRC content from plain lyrics and timings
@@ -308,17 +304,17 @@ class LRCParser:
         Returns:
             LRC formatted string
         """
-        lines = [l.strip() for l in lyrics.split('\n') if l.strip()]
+        lines = [l.strip() for l in lyrics.split("\n") if l.strip()]
 
         result = []
 
         # Add metadata header
         if metadata:
-            if 'title' in metadata:
+            if "title" in metadata:
                 result.append(f"[ti:{metadata['title']}]")
-            if 'artist' in metadata:
+            if "artist" in metadata:
                 result.append(f"[ar:{metadata['artist']}]")
-            if 'album' in metadata:
+            if "album" in metadata:
                 result.append(f"[al:{metadata['album']}]")
             result.append("")  # Empty line after metadata
 
@@ -334,7 +330,7 @@ class LRCParser:
                 lrc_line = LRCLine(time_ms=time_ms, text=line)
                 result.append(str(lrc_line))
 
-        return '\n'.join(result)
+        return "\n".join(result)
 
     def find_lrc_file(self, audio_path: str) -> Optional[str]:
         """
@@ -353,18 +349,18 @@ class LRCParser:
         audio = Path(audio_path)
 
         # Same directory, same name
-        lrc_path = audio.with_suffix('.lrc')
+        lrc_path = audio.with_suffix(".lrc")
         if lrc_path.exists():
             return str(lrc_path)
 
         # Lyrics subfolder
-        lyrics_folder = audio.parent / 'lyrics'
+        lyrics_folder = audio.parent / "lyrics"
         lrc_in_folder = lyrics_folder / f"{audio.stem}.lrc"
         if lrc_in_folder.exists():
             return str(lrc_in_folder)
 
         # Case-insensitive search
-        for ext in ['.lrc', '.LRC', '.Lrc']:
+        for ext in [".lrc", ".LRC", ".Lrc"]:
             lrc_path = audio.with_suffix(ext)
             if lrc_path.exists():
                 return str(lrc_path)

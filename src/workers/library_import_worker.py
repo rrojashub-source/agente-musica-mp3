@@ -14,16 +14,20 @@ Features:
 
 Created: November 13, 2025
 """
-import os
+
 import logging
+import os
 from pathlib import Path
-from typing import Optional, Dict, List
-from PySide6.QtCore import QThread, Signal
+from typing import Any, Dict, List, Optional
+
+from PySide6.QtCore import Signal
+
+from gui.base.base_worker import BaseWorker
 
 logger = logging.getLogger(__name__)
 
 
-def extract_metadata(file_path: str) -> Optional[Dict]:
+def extract_metadata(file_path: str) -> Optional[Dict[str, Any]]:
     """
     Extract metadata from MP3 file using mutagen
 
@@ -46,8 +50,8 @@ def extract_metadata(file_path: str) -> Optional[Dict]:
         - file_size (int): File size in bytes
     """
     try:
-        from mutagen.mp3 import MP3
         from mutagen.id3 import ID3
+        from mutagen.mp3 import MP3
 
         # Normalize path to canonical format (absolute, resolved symlinks, correct separators)
         normalized_path = str(Path(file_path).resolve())
@@ -65,31 +69,31 @@ def extract_metadata(file_path: str) -> Optional[Dict]:
 
         # Extract metadata with defaults (IMPORTANT: Use normalized_path for storage)
         song_data = {
-            'title': str(tags.get('TIT2', 'Unknown')),
-            'artist': str(tags.get('TPE1', 'Unknown Artist')),
-            'album': str(tags.get('TALB', 'Unknown Album')),
-            'year': None,
-            'genre': str(tags.get('TCON', '')) if tags.get('TCON') else None,
-            'duration': int(audio.info.length),
-            'bitrate': audio.info.bitrate,
-            'sample_rate': audio.info.sample_rate,
-            'file_path': normalized_path,  # Store normalized path
-            'file_size': os.path.getsize(normalized_path)
+            "title": str(tags.get("TIT2", "Unknown")),
+            "artist": str(tags.get("TPE1", "Unknown Artist")),
+            "album": str(tags.get("TALB", "Unknown Album")),
+            "year": None,
+            "genre": str(tags.get("TCON", "")) if tags.get("TCON") else None,
+            "duration": int(audio.info.length),  # type: ignore[attr-defined]
+            "bitrate": audio.info.bitrate,  # type: ignore[attr-defined]
+            "sample_rate": audio.info.sample_rate,  # type: ignore[attr-defined]
+            "file_path": normalized_path,  # Store normalized path
+            "file_size": os.path.getsize(normalized_path),
         }
 
         # Parse year from TDRC tag (handles various formats)
-        if tags.get('TDRC'):
+        if tags.get("TDRC"):
             try:
-                year_str = str(tags.get('TDRC'))
+                year_str = str(tags.get("TDRC"))
                 # Extract first 4 digits
                 year = int(year_str[:4])
-                song_data['year'] = year
+                song_data["year"] = year
             except (ValueError, IndexError):
                 logger.warning(f"Could not parse year from: {tags.get('TDRC')}")
 
         # Clean up "Unknown" to None for optional fields
-        if song_data['title'] == 'Unknown':
-            song_data['title'] = Path(normalized_path).stem  # Use filename as fallback
+        if song_data["title"] == "Unknown":
+            song_data["title"] = Path(normalized_path).stem  # Use filename as fallback
 
         return song_data
 
@@ -98,33 +102,26 @@ def extract_metadata(file_path: str) -> Optional[Dict]:
         return None
 
 
-class LibraryImportWorker(QThread):
+class LibraryImportWorker(BaseWorker):
     """
     Background worker for importing MP3 library
 
     Scans folder recursively for .mp3 files, extracts metadata,
     and imports into database with real-time progress updates.
 
-    Signals:
+    Signals (inherited from BaseWorker):
         progress(int, str): Progress percentage (0-100) and status message
-        song_imported(dict): Emitted for each successfully imported song
-        finished(dict): Emitted when complete with summary:
-            {
-                'success': int,    # Songs successfully imported
-                'failed': int,     # Songs that failed to import
-                'skipped': int,    # Duplicate songs skipped
-                'errors': [str]    # List of error messages
-            }
+        finished(object): Emitted when complete with summary dict
         error(str): Emitted on fatal error
+
+    Custom signals:
+        song_imported(dict): Emitted for each successfully imported song
     """
 
-    # Signals
-    progress = Signal(int, str)  # (percentage, status_message)
+    # Custom signal (not in BaseWorker)
     song_imported = Signal(dict)  # Song data dictionary
-    finished = Signal(dict)  # Summary dictionary
-    error = Signal(str)  # Fatal error message
 
-    def __init__(self, db_manager, folder_path: str, recursive: bool = True, max_duration: int = 900):
+    def __init__(self, db_manager: Any, folder_path: str, recursive: bool = True, max_duration: int = 900) -> None:
         """
         Initialize import worker
 
@@ -136,20 +133,20 @@ class LibraryImportWorker(QThread):
                          Songs longer than this are skipped (prevents importing playlists)
         """
         super().__init__()
-        self.db_manager = db_manager
-        self.folder_path = folder_path
-        self.recursive = recursive
-        self.max_duration = max_duration  # Skip ultra-long files (playlists)
+        self.db_manager: Any = db_manager
+        self.folder_path: str = folder_path
+        self.recursive: bool = recursive
+        self.max_duration: int = max_duration  # Skip ultra-long files (playlists)
 
         # State tracking
-        self.success_count = 0
-        self.failed_count = 0
-        self.skipped_count = 0
-        self.errors = []
+        self.success_count: int = 0
+        self.failed_count: int = 0
+        self.skipped_count: int = 0
+        self.errors: List[str] = []
 
-    def run(self):
+    def do_work(self) -> dict:
         """
-        Run import in background thread
+        Run import in background thread.
 
         Workflow:
         1. Scan folder for .mp3 files
@@ -158,62 +155,50 @@ class LibraryImportWorker(QThread):
             - Extract metadata
             - Insert into database
             - Emit progress signal
-        3. Emit finished signal with summary
+        3. Return summary dict (emitted via finished signal by BaseWorker)
         """
-        try:
-            self.progress.emit(0, "Starting import...")
+        self.report_progress(0, "Starting import...")
 
-            # Scan for MP3 files
-            mp3_files = self._scan_folder()
+        # Scan for MP3 files
+        mp3_files = self._scan_folder()
 
-            if len(mp3_files) == 0:
-                logger.info("No MP3 files found")
-                self.progress.emit(100, "No MP3 files found")
-                self.finished.emit({
-                    'success': 0,
-                    'failed': 0,
-                    'skipped': 0,
-                    'errors': []
-                })
-                return
+        if len(mp3_files) == 0:
+            logger.info("No MP3 files found")
+            self.report_progress(100, "No MP3 files found")
+            return {"success": 0, "failed": 0, "skipped": 0, "errors": []}
 
-            total_files = len(mp3_files)
-            logger.info(f"Found {total_files} MP3 files")
+        total_files = len(mp3_files)
+        logger.info(f"Found {total_files} MP3 files")
 
-            # Process each MP3
-            for idx, mp3_file in enumerate(mp3_files):
-                try:
-                    self._process_file(mp3_file)
-                except (OSError, ValueError, UnicodeDecodeError) as e:
-                    self.failed_count += 1
-                    error_msg = f"Failed to process {mp3_file}: {e}"
-                    self.errors.append(error_msg)
-                    logger.error(error_msg)
+        # Process each MP3
+        for idx, mp3_file in enumerate(mp3_files):
+            try:
+                self._process_file(mp3_file)
+            except (OSError, ValueError, UnicodeDecodeError) as e:
+                self.failed_count += 1
+                error_msg = f"Failed to process {mp3_file}: {e}"
+                self.errors.append(error_msg)
+                logger.error(error_msg)
 
-                # Update progress
-                percentage = int(((idx + 1) / total_files) * 100)
-                self.progress.emit(
-                    percentage,
-                    f"Importing... ({idx + 1}/{total_files} files)"
-                )
+            # Update progress
+            percentage = int(((idx + 1) / total_files) * 100)
+            self.report_progress(percentage, f"Importing... ({idx + 1}/{total_files} files)")
 
-            # Emit completion
-            self.progress.emit(100, "Import complete")
-            self.finished.emit({
-                'success': self.success_count,
-                'failed': self.failed_count,
-                'skipped': self.skipped_count,
-                'errors': self.errors[:10]  # Limit to first 10 errors
-            })
+        # Return summary (BaseWorker emits via finished signal)
+        self.report_progress(100, "Import complete")
+        summary = {
+            "success": self.success_count,
+            "failed": self.failed_count,
+            "skipped": self.skipped_count,
+            "errors": self.errors[:10],  # Limit to first 10 errors
+        }
 
-            logger.info(
-                f"Import complete: {self.success_count} success, "
-                f"{self.failed_count} failed, {self.skipped_count} skipped"
-            )
+        logger.info(
+            f"Import complete: {self.success_count} success, "
+            f"{self.failed_count} failed, {self.skipped_count} skipped"
+        )
 
-        except RuntimeError as e:
-            logger.error(f"Fatal import error: {e}")
-            self.error.emit(str(e))
+        return summary
 
     def _scan_folder(self) -> List[str]:
         """
@@ -222,30 +207,24 @@ class LibraryImportWorker(QThread):
         Returns:
             List of absolute file paths
         """
-        mp3_files = []
+        mp3_files: list[str] = []
 
         folder = Path(self.folder_path)
 
         if not folder.exists():
             logger.error(f"Folder not found: {folder}")
-            return mp3_files
+            return mp3_files  # type: ignore[return-value]
 
         if self.recursive:
             # Recursive scan
-            mp3_files = [
-                str(f) for f in folder.rglob("*.mp3")
-                if f.is_file()
-            ]
+            mp3_files = [str(f) for f in folder.rglob("*.mp3") if f.is_file()]  # type: ignore[misc]
         else:
             # Non-recursive (only top level)
-            mp3_files = [
-                str(f) for f in folder.glob("*.mp3")
-                if f.is_file()
-            ]
+            mp3_files = [str(f) for f in folder.glob("*.mp3") if f.is_file()]  # type: ignore[misc]
 
-        return mp3_files
+        return mp3_files  # type: ignore[return-value]
 
-    def _process_file(self, file_path: str):
+    def _process_file(self, file_path: str) -> None:
         """
         Process single MP3 file with INTELLIGENT duplicate detection
 
@@ -289,7 +268,7 @@ class LibraryImportWorker(QThread):
             return
 
         # VALIDATION: Skip ultra-long files (playlists, mixes, etc.)
-        duration = metadata.get('duration', 0)
+        duration = metadata.get("duration", 0)
         if duration > self.max_duration:
             self.skipped_count += 1
             duration_min = duration / 60
@@ -303,16 +282,13 @@ class LibraryImportWorker(QThread):
         # LEVEL 2: Check by metadata (title + artist + duration ±3s)
         # This catches files that were moved/organized to different paths
         existing = self.db_manager.find_by_metadata(
-            title=metadata['title'],
-            artist=metadata['artist'],
-            duration=metadata['duration'],
-            tolerance=3
+            title=metadata["title"], artist=metadata["artist"], duration=metadata["duration"], tolerance=3
         )
 
         if existing:
             # File was moved! Update path instead of adding duplicate
-            old_path = existing.get('file_path', 'unknown')
-            self.db_manager.update_song_path(existing['id'], normalized_path)
+            old_path = existing.get("file_path", "unknown")
+            self.db_manager.update_song_path(existing["id"], normalized_path)
             self.skipped_count += 1
             logger.info(f"Updated path for song ID {existing['id']}: {old_path} -> {normalized_path}")
             return
@@ -329,6 +305,6 @@ class LibraryImportWorker(QThread):
 
         # Success
         self.success_count += 1
-        metadata['id'] = song_id
+        metadata["id"] = song_id
         self.song_imported.emit(metadata)
         logger.debug(f"Imported: {metadata['title']} (ID: {song_id})")

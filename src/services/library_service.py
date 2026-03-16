@@ -12,13 +12,15 @@ Features:
 
 import logging
 import sqlite3
-from pathlib import Path
-from typing import Optional, List, Dict, Any, Callable
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime
-import threading
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QObject, Signal
+
+from database.manager import ALLOWED_SONG_FIELDS
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Song:
     """Domain model for a song"""
+
     id: int
     title: str
     artist: Optional[str] = None
@@ -41,46 +44,47 @@ class Song:
     last_played: Optional[datetime] = None
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Song':
+    def from_dict(cls, data: Dict[str, Any]) -> "Song":
         """Create Song from dictionary"""
         return cls(
-            id=data.get('id', 0),
-            title=data.get('title', 'Unknown'),
-            artist=data.get('artist'),
-            album=data.get('album'),
-            year=data.get('year'),
-            genre=data.get('genre'),
-            duration=data.get('duration'),
-            file_path=data.get('file_path'),
-            bitrate=data.get('bitrate'),
-            play_count=data.get('play_count', 0),
-            rating=data.get('rating', 0),
-            date_added=data.get('date_added'),
-            last_played=data.get('last_played')
+            id=data.get("id", 0),
+            title=data.get("title", "Unknown"),
+            artist=data.get("artist"),
+            album=data.get("album"),
+            year=data.get("year"),
+            genre=data.get("genre"),
+            duration=data.get("duration"),
+            file_path=data.get("file_path"),
+            bitrate=data.get("bitrate"),
+            play_count=data.get("play_count", 0),
+            rating=data.get("rating", 0),
+            date_added=data.get("date_added"),
+            last_played=data.get("last_played"),
         )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {
-            'id': self.id,
-            'title': self.title,
-            'artist': self.artist,
-            'album': self.album,
-            'year': self.year,
-            'genre': self.genre,
-            'duration': self.duration,
-            'file_path': self.file_path,
-            'bitrate': self.bitrate,
-            'play_count': self.play_count,
-            'rating': self.rating,
-            'date_added': self.date_added,
-            'last_played': self.last_played
+            "id": self.id,
+            "title": self.title,
+            "artist": self.artist,
+            "album": self.album,
+            "year": self.year,
+            "genre": self.genre,
+            "duration": self.duration,
+            "file_path": self.file_path,
+            "bitrate": self.bitrate,
+            "play_count": self.play_count,
+            "rating": self.rating,
+            "date_added": self.date_added,
+            "last_played": self.last_played,
         }
 
 
 @dataclass
 class LibraryStats:
     """Statistics for the library"""
+
     total_songs: int = 0
     total_artists: int = 0
     total_albums: int = 0
@@ -89,15 +93,15 @@ class LibraryStats:
     total_size_mb: float = 0.0
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'LibraryStats':
+    def from_dict(cls, data: Dict[str, Any]) -> "LibraryStats":
         """Create from dictionary"""
         return cls(
-            total_songs=data.get('total_songs', 0),
-            total_artists=data.get('total_artists', 0),
-            total_albums=data.get('total_albums', 0),
-            total_genres=data.get('total_genres', 0),
-            total_duration_hours=data.get('total_duration_hours', 0.0),
-            total_size_mb=data.get('total_size_mb', 0.0)
+            total_songs=data.get("total_songs", 0),
+            total_artists=data.get("total_artists", 0),
+            total_albums=data.get("total_albums", 0),
+            total_genres=data.get("total_genres", 0),
+            total_duration_hours=data.get("total_duration_hours", 0.0),
+            total_size_mb=data.get("total_size_mb", 0.0),
         )
 
 
@@ -127,10 +131,10 @@ class LibraryService(QObject):
     error_occurred = Signal(str)  # error_message
 
     # Singleton (class-level, not instance-level for QObject compatibility)
-    _instance: Optional['LibraryService'] = None
-    _lock = threading.Lock()
+    _instance: Optional["LibraryService"] = None
+    _lock: threading.Lock = threading.Lock()
 
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: Optional[str] = None) -> None:
         """
         Initialize LibraryService
 
@@ -139,16 +143,16 @@ class LibraryService(QObject):
         """
         super().__init__()
 
-        self._db_path = db_path
-        self._db_manager = None
+        self._db_path: Optional[str] = db_path
+        self._db_manager: Any = None
         self._stats_cache: Optional[LibraryStats] = None
         self._stats_cache_time: Optional[datetime] = None
-        self._stats_cache_ttl = 60  # Cache TTL in seconds
+        self._stats_cache_ttl: int = 60  # Cache TTL in seconds
 
         logger.info(f"LibraryService initialized with db: {db_path}")
 
     @classmethod
-    def get_instance(cls, db_path: str = None) -> 'LibraryService':
+    def get_instance(cls, db_path: Optional[str] = None) -> "LibraryService":
         """Get singleton instance (thread-safe)"""
         if cls._instance is None:
             with cls._lock:
@@ -157,16 +161,17 @@ class LibraryService(QObject):
         return cls._instance
 
     @classmethod
-    def reset_instance(cls):
+    def reset_instance(cls) -> None:
         """Reset singleton (for testing)"""
         with cls._lock:
             cls._instance = None
 
     @property
-    def db(self):
+    def db(self) -> Any:
         """Lazy-load database manager"""
         if self._db_manager is None:
             from database.manager import DatabaseManager
+
             self._db_manager = DatabaseManager(self._db_path)
         return self._db_manager
 
@@ -177,10 +182,7 @@ class LibraryService(QObject):
     def get_song(self, song_id: int) -> Optional[Song]:
         """Get song by ID"""
         try:
-            result = self.db.fetch_one(
-                "SELECT * FROM songs WHERE id = ?",
-                (song_id,)
-            )
+            result = self.db.fetch_one("SELECT * FROM songs WHERE id = ?", (song_id,))
             return Song.from_dict(result) if result else None
         except sqlite3.Error as e:
             logger.error(f"Error getting song {song_id}: {e}")
@@ -190,10 +192,7 @@ class LibraryService(QObject):
     def get_song_by_path(self, file_path: str) -> Optional[Song]:
         """Get song by file path"""
         try:
-            result = self.db.fetch_one(
-                "SELECT * FROM songs WHERE file_path = ?",
-                (file_path,)
-            )
+            result = self.db.fetch_one("SELECT * FROM songs WHERE file_path = ?", (file_path,))
             return Song.from_dict(result) if result else None
         except sqlite3.Error as e:
             logger.error(f"Error getting song by path {file_path}: {e}")
@@ -215,7 +214,7 @@ class LibraryService(QObject):
                 self.song_added.emit(song_id)
                 self._invalidate_stats_cache()
                 logger.info(f"Added song: {song_data.get('title')} (ID: {song_id})")
-            return song_id
+            return song_id  # type: ignore[no-any-return]
         except sqlite3.Error as e:
             logger.error(f"Error adding song: {e}")
             self.error_occurred.emit(f"Failed to add song: {e}")
@@ -237,9 +236,13 @@ class LibraryService(QObject):
             fields = []
             values = []
             for key, value in updates.items():
-                if key != 'id':
-                    fields.append(f"{key} = ?")
-                    values.append(value)
+                if key == "id":
+                    continue
+                if key not in ALLOWED_SONG_FIELDS:
+                    logger.warning(f"Skipping invalid update field: {key}")
+                    continue
+                fields.append(f"{key} = ?")
+                values.append(value)
 
             if not fields:
                 return False
@@ -295,10 +298,7 @@ class LibraryService(QObject):
     def get_all_songs(self, limit: int = 10000, offset: int = 0) -> List[Song]:
         """Get all songs with pagination"""
         try:
-            results = self.db.fetch_all(
-                "SELECT * FROM songs ORDER BY title LIMIT ? OFFSET ?",
-                (limit, offset)
-            )
+            results = self.db.fetch_all("SELECT * FROM songs ORDER BY title LIMIT ? OFFSET ?", (limit, offset))
             return [Song.from_dict(r) for r in results]
         except sqlite3.Error as e:
             logger.error(f"Error getting all songs: {e}")
@@ -320,10 +320,7 @@ class LibraryService(QObject):
     def get_by_artist(self, artist: str) -> List[Song]:
         """Get all songs by artist"""
         try:
-            results = self.db.fetch_all(
-                "SELECT * FROM songs WHERE artist = ? ORDER BY album, title",
-                (artist,)
-            )
+            results = self.db.fetch_all("SELECT * FROM songs WHERE artist = ? ORDER BY album, title", (artist,))
             return [Song.from_dict(r) for r in results]
         except sqlite3.Error as e:
             logger.error(f"Error getting songs by artist: {e}")
@@ -334,13 +331,11 @@ class LibraryService(QObject):
         try:
             if artist:
                 results = self.db.fetch_all(
-                    "SELECT * FROM songs WHERE album = ? AND artist = ? ORDER BY track_number, title",
-                    (album, artist)
+                    "SELECT * FROM songs WHERE album = ? AND artist = ? ORDER BY track_number, title", (album, artist)
                 )
             else:
                 results = self.db.fetch_all(
-                    "SELECT * FROM songs WHERE album = ? ORDER BY track_number, title",
-                    (album,)
+                    "SELECT * FROM songs WHERE album = ? ORDER BY track_number, title", (album,)
                 )
             return [Song.from_dict(r) for r in results]
         except sqlite3.Error as e:
@@ -351,8 +346,7 @@ class LibraryService(QObject):
         """Get all songs of a genre"""
         try:
             results = self.db.fetch_all(
-                "SELECT * FROM songs WHERE genre LIKE ? ORDER BY artist, album, title",
-                (f"%{genre}%",)
+                "SELECT * FROM songs WHERE genre LIKE ? ORDER BY artist, album, title", (f"%{genre}%",)
             )
             return [Song.from_dict(r) for r in results]
         except sqlite3.Error as e:
@@ -367,7 +361,7 @@ class LibraryService(QObject):
                    WHERE date_added >= datetime('now', ? || ' days')
                    ORDER BY date_added DESC
                    LIMIT ?""",
-                (f"-{days}", limit)
+                (f"-{days}", limit),
             )
             return [Song.from_dict(r) for r in results]
         except sqlite3.Error as e:
@@ -378,8 +372,7 @@ class LibraryService(QObject):
         """Get most played songs"""
         try:
             results = self.db.fetch_all(
-                "SELECT * FROM songs WHERE play_count > 0 ORDER BY play_count DESC LIMIT ?",
-                (limit,)
+                "SELECT * FROM songs WHERE play_count > 0 ORDER BY play_count DESC LIMIT ?", (limit,)
             )
             return [Song.from_dict(r) for r in results]
         except sqlite3.Error as e:
@@ -400,16 +393,15 @@ class LibraryService(QObject):
         now = datetime.now()
 
         # Check cache validity
-        if (not force_refresh
-            and self._stats_cache is not None
-            and self._stats_cache_time is not None):
+        if not force_refresh and self._stats_cache is not None and self._stats_cache_time is not None:
             age = (now - self._stats_cache_time).total_seconds()
             if age < self._stats_cache_ttl:
                 return self._stats_cache
 
         # Fetch fresh stats
         try:
-            result = self.db.fetch_one("""
+            result = self.db.fetch_one(
+                """
                 SELECT
                     COUNT(*) as total_songs,
                     COUNT(DISTINCT artist) as total_artists,
@@ -417,7 +409,8 @@ class LibraryService(QObject):
                     COUNT(DISTINCT genre) as total_genres,
                     COALESCE(SUM(duration) / 3600.0, 0) as total_duration_hours
                 FROM songs
-            """)
+            """
+            )
 
             if result:
                 self._stats_cache = LibraryStats.from_dict(result)
@@ -430,7 +423,7 @@ class LibraryService(QObject):
             logger.error(f"Error getting stats: {e}")
             return LibraryStats()
 
-    def _invalidate_stats_cache(self):
+    def _invalidate_stats_cache(self) -> None:
         """Invalidate statistics cache"""
         self._stats_cache = None
         self._stats_cache_time = None
@@ -442,10 +435,8 @@ class LibraryService(QObject):
     def get_all_artists(self) -> List[str]:
         """Get list of all unique artists"""
         try:
-            results = self.db.fetch_all(
-                "SELECT DISTINCT artist FROM songs WHERE artist IS NOT NULL ORDER BY artist"
-            )
-            return [r['artist'] for r in results if r['artist']]
+            results = self.db.fetch_all("SELECT DISTINCT artist FROM songs WHERE artist IS NOT NULL ORDER BY artist")
+            return [r["artist"] for r in results if r["artist"]]
         except sqlite3.Error as e:
             logger.error(f"Error getting artists: {e}")
             return []
@@ -453,10 +444,8 @@ class LibraryService(QObject):
     def get_all_albums(self) -> List[str]:
         """Get list of all unique albums"""
         try:
-            results = self.db.fetch_all(
-                "SELECT DISTINCT album FROM songs WHERE album IS NOT NULL ORDER BY album"
-            )
-            return [r['album'] for r in results if r['album']]
+            results = self.db.fetch_all("SELECT DISTINCT album FROM songs WHERE album IS NOT NULL ORDER BY album")
+            return [r["album"] for r in results if r["album"]]
         except sqlite3.Error as e:
             logger.error(f"Error getting albums: {e}")
             return []
@@ -464,10 +453,8 @@ class LibraryService(QObject):
     def get_all_genres(self) -> List[str]:
         """Get list of all unique genres"""
         try:
-            results = self.db.fetch_all(
-                "SELECT DISTINCT genre FROM songs WHERE genre IS NOT NULL ORDER BY genre"
-            )
-            return [r['genre'] for r in results if r['genre']]
+            results = self.db.fetch_all("SELECT DISTINCT genre FROM songs WHERE genre IS NOT NULL ORDER BY genre")
+            return [r["genre"] for r in results if r["genre"]]
         except sqlite3.Error as e:
             logger.error(f"Error getting genres: {e}")
             return []
@@ -484,7 +471,7 @@ class LibraryService(QObject):
                    SET play_count = play_count + 1,
                        last_played = datetime('now')
                    WHERE id = ?""",
-                (song_id,)
+                (song_id,),
             )
             self.song_updated.emit(song_id)
             return True
@@ -496,13 +483,13 @@ class LibraryService(QObject):
         """Set song rating (0-5)"""
         if not 0 <= rating <= 5:
             return False
-        return self.update_song(song_id, {'rating': rating})
+        return self.update_song(song_id, {"rating": rating})
 
     # ==========================================
     # Cleanup
     # ==========================================
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup resources"""
         if self._db_manager:
             self._db_manager.close()

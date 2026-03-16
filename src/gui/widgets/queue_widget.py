@@ -9,13 +9,26 @@ Features:
 - Clear completed items
 - Auto-refresh on queue updates
 """
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,
-    QTableWidgetItem, QProgressBar, QHeaderView
-)
-from PySide6.QtCore import Qt, Slot, QTimer
+
+from __future__ import annotations
+
 import logging
 import time
+from typing import Any, Dict, Optional
+
+from PySide6.QtCore import Qt, QTimer, Slot
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QHeaderView,
+    QProgressBar,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
+from gui.themes.style_constants import Styles
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -37,7 +50,7 @@ class QueueWidget(QWidget):
     +---------------------------------------------------+
     """
 
-    def __init__(self, download_queue=None):
+    def __init__(self, download_queue: Any = None) -> None:
         """
         Initialize queue widget
 
@@ -46,18 +59,18 @@ class QueueWidget(QWidget):
         """
         super().__init__()
 
-        self.download_queue = download_queue
+        self.download_queue: Any = download_queue
 
         # Track item widgets for updates
-        self._item_rows = {}  # item_id -> row_index
+        self._item_rows: Dict[str, int] = {}  # item_id -> row_index
 
         # Throttle refresh to avoid UI freezing
-        self._last_refresh_time = 0
-        self._min_refresh_interval = 0.1  # 100ms minimum between refreshes
+        self._last_refresh_time: float = 0
+        self._min_refresh_interval: float = 0.1  # 100ms minimum between refreshes
 
         # Pending refresh flag (for throttled refreshes)
-        self._pending_refresh = False
-        self._refresh_timer = QTimer()
+        self._pending_refresh: bool = False
+        self._refresh_timer: QTimer = QTimer()
         self._refresh_timer.setSingleShot(True)
         self._refresh_timer.timeout.connect(self._do_pending_refresh)
 
@@ -70,7 +83,7 @@ class QueueWidget(QWidget):
 
         logger.info("QueueWidget initialized")
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         """Setup user interface"""
         layout = QVBoxLayout()
 
@@ -94,7 +107,7 @@ class QueueWidget(QWidget):
         # Queue table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(['Title', 'Artist', 'Progress', 'Status', 'Actions'])
+        self.table.setHorizontalHeaderLabels(["Title", "Artist", "Progress", "Status", "Actions"])
 
         # Column widths
         header = self.table.horizontalHeader()
@@ -113,28 +126,28 @@ class QueueWidget(QWidget):
 
         self.setLayout(layout)
 
-    def _connect_queue_signals(self):
+    def _connect_queue_signals(self) -> None:
         """Connect download queue signals to update handlers"""
         if not self.download_queue:
             return
 
         # Connect all queue signals
-        if hasattr(self.download_queue, 'item_added'):
+        if hasattr(self.download_queue, "item_added"):
             self.download_queue.item_added.connect(self._on_item_added)
 
-        if hasattr(self.download_queue, 'item_started'):
+        if hasattr(self.download_queue, "item_started"):
             self.download_queue.item_started.connect(self._on_item_started)
 
-        if hasattr(self.download_queue, 'item_progress'):
+        if hasattr(self.download_queue, "item_progress"):
             self.download_queue.item_progress.connect(self._on_item_progress)
 
-        if hasattr(self.download_queue, 'item_completed'):
+        if hasattr(self.download_queue, "item_completed"):
             self.download_queue.item_completed.connect(self._on_item_completed)
 
-        if hasattr(self.download_queue, 'item_failed'):
+        if hasattr(self.download_queue, "item_failed"):
             self.download_queue.item_failed.connect(self._on_item_failed)
 
-    def refresh_display(self):
+    def refresh_display(self) -> None:
         """Refresh queue display with current items (throttled)"""
         if not self.download_queue:
             logger.warning("No download queue available")
@@ -155,12 +168,12 @@ class QueueWidget(QWidget):
         # Perform actual refresh
         self._do_refresh()
 
-    def _do_pending_refresh(self):
+    def _do_pending_refresh(self) -> None:
         """Execute pending refresh"""
         self._pending_refresh = False
         self._do_refresh()
 
-    def _do_refresh(self):
+    def _do_refresh(self) -> None:
         """Actual refresh implementation"""
         # Get all items from queue
         items = self.download_queue.get_all_items()
@@ -176,7 +189,7 @@ class QueueWidget(QWidget):
         self._last_refresh_time = time.time()
         logger.debug(f"Queue display refreshed: {len(items)} items")
 
-    def _add_item_to_table(self, row_index: int, item_id: str, item: dict):
+    def _add_item_to_table(self, row_index: int, item_id: str, item: Dict[str, Any]) -> None:
         """
         Add item to table
 
@@ -189,29 +202,29 @@ class QueueWidget(QWidget):
         self._item_rows[item_id] = row_index
 
         # Title
-        metadata = item.get('metadata', {})
-        title = metadata.get('title', 'Unknown')
+        metadata = item.get("metadata", {})
+        title = metadata.get("title", "Unknown")
         self.table.setItem(row_index, 0, QTableWidgetItem(title))
 
         # Artist
-        artist = metadata.get('artist', 'Unknown')
+        artist = metadata.get("artist", "Unknown")
         self.table.setItem(row_index, 1, QTableWidgetItem(artist))
 
         # Progress bar (enhanced with status-aware styling)
-        progress = item.get('progress', 0)
-        status = item.get('status', 'pending')
+        progress = item.get("progress", 0)
+        status = item.get("status", "pending")
         progress_bar = self._create_progress_bar(progress, status)
         self.table.setCellWidget(row_index, 2, progress_bar)
 
         # Status
-        status = item.get('status', 'unknown')
+        status = item.get("status", "unknown")
         self.table.setItem(row_index, 3, QTableWidgetItem(status.capitalize()))
 
         # Action buttons
         action_widget = self._create_action_buttons(item_id, status)
         self.table.setCellWidget(row_index, 4, action_widget)
 
-    def _create_progress_bar(self, progress: int, status: str = 'pending') -> QProgressBar:
+    def _create_progress_bar(self, progress: int, status: str = "pending") -> QProgressBar:
         """
         Create enhanced progress bar widget with status-aware styling
 
@@ -228,36 +241,21 @@ class QueueWidget(QWidget):
         progress_bar.setTextVisible(True)
 
         # Status-aware format and styling
-        if status == 'completed':
+        if status == "completed":
             progress_bar.setFormat("✅ Completado / Done")
-            progress_bar.setStyleSheet("""
-                QProgressBar { border: 1px solid #4CAF50; border-radius: 3px; }
-                QProgressBar::chunk { background-color: #4CAF50; }
-            """)
-        elif status == 'failed':
+            progress_bar.setStyleSheet(Styles.PROGRESS_COMPLETED)
+        elif status == "failed":
             progress_bar.setFormat("❌ Error")
-            progress_bar.setStyleSheet("""
-                QProgressBar { border: 1px solid #f44336; border-radius: 3px; }
-                QProgressBar::chunk { background-color: #f44336; }
-            """)
-        elif status == 'paused':
+            progress_bar.setStyleSheet(Styles.PROGRESS_FAILED)
+        elif status == "paused":
             progress_bar.setFormat(f"⏸ {progress}% Pausado / Paused")
-            progress_bar.setStyleSheet("""
-                QProgressBar { border: 1px solid #ff9800; border-radius: 3px; }
-                QProgressBar::chunk { background-color: #ff9800; }
-            """)
-        elif status == 'downloading':
+            progress_bar.setStyleSheet(Styles.PROGRESS_PAUSED)
+        elif status == "downloading":
             progress_bar.setFormat(f"⬇️ {progress}%")
-            progress_bar.setStyleSheet("""
-                QProgressBar { border: 1px solid #2196F3; border-radius: 3px; }
-                QProgressBar::chunk { background-color: #2196F3; }
-            """)
+            progress_bar.setStyleSheet(Styles.PROGRESS_DOWNLOADING)
         else:  # pending
             progress_bar.setFormat("⏳ En cola / Queued")
-            progress_bar.setStyleSheet("""
-                QProgressBar { border: 1px solid #9e9e9e; border-radius: 3px; }
-                QProgressBar::chunk { background-color: #9e9e9e; }
-            """)
+            progress_bar.setStyleSheet(Styles.PROGRESS_PENDING)
 
         return progress_bar
 
@@ -277,7 +275,7 @@ class QueueWidget(QWidget):
         layout.setContentsMargins(2, 2, 2, 2)
 
         # Pause button (only for downloading items)
-        if status == 'downloading':
+        if status == "downloading":
             pause_btn = QPushButton("⏸")
             pause_btn.setMaximumWidth(30)
             pause_btn.setToolTip("Pause download")
@@ -286,7 +284,7 @@ class QueueWidget(QWidget):
             layout.addWidget(pause_btn)
 
         # Resume button (only for paused items)
-        elif status == 'paused':
+        elif status == "paused":
             resume_btn = QPushButton("▶")
             resume_btn.setMaximumWidth(30)
             resume_btn.setToolTip("Resume download")
@@ -295,7 +293,7 @@ class QueueWidget(QWidget):
             layout.addWidget(resume_btn)
 
         # Cancel button (for pending/downloading/paused)
-        if status in ['pending', 'downloading', 'paused']:
+        if status in ["pending", "downloading", "paused"]:
             cancel_btn = QPushButton("❌")
             cancel_btn.setMaximumWidth(30)
             cancel_btn.setToolTip("Cancel download")
@@ -304,14 +302,14 @@ class QueueWidget(QWidget):
             layout.addWidget(cancel_btn)
 
         # Completed indicator
-        if status == 'completed':
+        if status == "completed":
             completed_label = QPushButton("✓")
             completed_label.setEnabled(False)
             completed_label.setMaximumWidth(30)
             layout.addWidget(completed_label)
 
         # Failed indicator
-        if status == 'failed':
+        if status == "failed":
             failed_label = QPushButton("✗")
             failed_label.setEnabled(False)
             failed_label.setMaximumWidth(30)
@@ -320,7 +318,7 @@ class QueueWidget(QWidget):
         widget.setLayout(layout)
         return widget
 
-    def _on_pause_clicked(self, item_id: str):
+    def _on_pause_clicked(self, item_id: str) -> None:
         """
         Handle pause button click
 
@@ -332,7 +330,7 @@ class QueueWidget(QWidget):
             logger.info(f"Paused item: {item_id}")
             self.refresh_display()
 
-    def _on_resume_clicked(self, item_id: str):
+    def _on_resume_clicked(self, item_id: str) -> None:
         """
         Handle resume button click
 
@@ -344,7 +342,7 @@ class QueueWidget(QWidget):
             logger.info(f"Resumed item: {item_id}")
             self.refresh_display()
 
-    def _on_cancel_clicked(self, item_id: str):
+    def _on_cancel_clicked(self, item_id: str) -> None:
         """
         Handle cancel button click
 
@@ -356,38 +354,38 @@ class QueueWidget(QWidget):
             logger.info(f"Cancelled item: {item_id}")
             self.refresh_display()
 
-    def _on_clear_completed_clicked(self):
+    def _on_clear_completed_clicked(self) -> None:
         """Handle clear completed button click"""
         if not self.download_queue:
             return
 
         # Clear completed items from queue
-        if hasattr(self.download_queue, 'clear_completed'):
+        if hasattr(self.download_queue, "clear_completed"):
             self.download_queue.clear_completed()
         else:
             # Fallback: manually remove completed items
             items = self.download_queue.get_all_items()
             for item_id, item in list(items.items()):
-                if item['status'] == 'completed':
+                if item["status"] == "completed":
                     self.download_queue.cancel(item_id)
 
         logger.info("Cleared completed items")
         self.refresh_display()
 
     @Slot(str, dict)
-    def _on_item_added(self, item_id: str, metadata: dict):
+    def _on_item_added(self, item_id: str, metadata: Dict[str, Any]) -> None:
         """Handle new item added to queue"""
         logger.info(f"Item added to queue: {metadata.get('title', item_id)}")
         self.refresh_display()
 
     @Slot(str)
-    def _on_item_started(self, item_id: str):
+    def _on_item_started(self, item_id: str) -> None:
         """Handle download started"""
         logger.info(f"Download started: {item_id}")
         self.refresh_display()
 
     @Slot(str, int)
-    def _on_item_progress(self, item_id: str, progress: int):
+    def _on_item_progress(self, item_id: str, progress: int) -> None:
         """
         Handle item progress update signal
 
@@ -407,7 +405,7 @@ class QueueWidget(QWidget):
             progress_bar.setFormat(f"{progress}%")
 
     @Slot(str, dict)
-    def _on_item_completed(self, item_id: str, metadata: dict):
+    def _on_item_completed(self, item_id: str, metadata: Dict[str, Any]) -> None:
         """
         Handle item completed signal
 
@@ -419,7 +417,7 @@ class QueueWidget(QWidget):
         self.refresh_display()
 
     @Slot(str, str)
-    def _on_item_failed(self, item_id: str, error: str):
+    def _on_item_failed(self, item_id: str, error: str) -> None:
         """
         Handle item failed signal
 

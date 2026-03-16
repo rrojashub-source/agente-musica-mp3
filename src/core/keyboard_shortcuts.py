@@ -15,9 +15,11 @@ Usage:
 """
 
 import logging
-from PySide6.QtCore import QObject, Qt, QEvent, Signal
-from PySide6.QtWidgets import QLineEdit, QTextEdit, QPlainTextEdit, QApplication
+from typing import Any, List, Optional, Tuple
+
+from PySide6.QtCore import QEvent, QObject, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtWidgets import QApplication, QLineEdit, QPlainTextEdit, QTextEdit, QWidget
 
 logger = logging.getLogger(__name__)
 
@@ -36,21 +38,21 @@ class KeyboardShortcutManager(QObject):
     # Signals
     play_pause_requested = Signal()
     seek_backward_requested = Signal(int)  # seconds
-    seek_forward_requested = Signal(int)   # seconds
+    seek_forward_requested = Signal(int)  # seconds
     volume_change_requested = Signal(int)  # delta percentage
     mute_toggled = Signal()
     focus_search_requested = Signal()
     switch_to_tab_requested = Signal(str)  # tab name
 
-    _instance = None  # For optional singleton at app level
+    _instance: Optional["KeyboardShortcutManager"] = None  # For optional singleton at app level
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional[QObject] = None) -> None:
         """Initialize keyboard shortcuts manager"""
         super().__init__(parent)
-        self._actions = []  # Store QAction instances
+        self._actions: List[QAction] = []  # Store QAction instances
         logger.info("KeyboardShortcutManager initialized")
 
-    def setup_shortcuts(self, main_window):
+    def setup_shortcuts(self, main_window: QWidget) -> None:
         """
         Setup application-wide shortcuts using QAction (high priority)
 
@@ -80,17 +82,17 @@ class KeyboardShortcutManager(QObject):
 
         logger.info("QAction-based shortcuts configured (Left/Right seek)")
 
-    def _on_seek_left_activated(self):
+    def _on_seek_left_activated(self) -> None:
         """Handle Left arrow shortcut activation"""
         logger.debug("ACTION: Left Arrow activated (Seek -5s)")
         self.seek_backward_requested.emit(5)
 
-    def _on_seek_right_activated(self):
+    def _on_seek_right_activated(self) -> None:
         """Handle Right arrow shortcut activation"""
         logger.debug("ACTION: Right Arrow activated (Seek +5s)")
         self.seek_forward_requested.emit(5)
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         """
         Global event filter for keyboard shortcuts
 
@@ -123,7 +125,7 @@ class KeyboardShortcutManager(QObject):
 
         return False  # Let event propagate
 
-    def _is_typing_context(self, widget):
+    def _is_typing_context(self, widget: QObject) -> bool:
         """
         Check if user is typing in a text field
 
@@ -145,7 +147,7 @@ class KeyboardShortcutManager(QObject):
 
         return False
 
-    def _handle_shortcut(self, key):
+    def _handle_shortcut(self, key: int) -> bool:
         """
         Handle plain key shortcuts (no modifiers)
 
@@ -182,7 +184,7 @@ class KeyboardShortcutManager(QObject):
 
         return False
 
-    def _handle_ctrl_shortcut(self, key):
+    def _handle_ctrl_shortcut(self, key: int) -> bool:
         """
         Handle Ctrl+Key shortcuts
 
@@ -198,18 +200,18 @@ class KeyboardShortcutManager(QObject):
             return True
 
         elif key == Qt.Key.Key_L:
-            self.switch_to_tab_requested.emit('library')
+            self.switch_to_tab_requested.emit("library")
             logger.debug("Shortcut: Ctrl+L (Library Tab)")
             return True
 
         elif key == Qt.Key.Key_D:
-            self.switch_to_tab_requested.emit('queue')
+            self.switch_to_tab_requested.emit("queue")
             logger.debug("Shortcut: Ctrl+D (Queue Tab)")
             return True
 
         return False
 
-    def get_shortcuts(self):
+    def get_shortcuts(self) -> List[Tuple[str, str]]:
         """
         Get list of all shortcuts for display in help dialog - Bilingual (ES/EN)
 
@@ -224,12 +226,10 @@ class KeyboardShortcutManager(QObject):
             ("↑ (Up / Arriba)", "Volumen +10% / Volume +10%"),
             ("↓ (Down / Abajo)", "Volumen -10% / Volume -10%"),
             ("M", "Silenciar / Mute"),
-
             # Navigation / Navegación
             ("Ctrl+F", "Ir a Búsqueda / Focus Search"),
             ("Ctrl+L", "Pestaña Biblioteca / Library Tab"),
             ("Ctrl+D", "Pestaña Cola / Queue Tab"),
-
             # Application / Aplicación
             ("Ctrl+T", "Cambiar Tema / Toggle Theme"),
             ("Ctrl+K", "Configurar API / API Settings"),

@@ -8,24 +8,29 @@ Part of the AudioEmbeddings split (Phase 2.3).
 
 Created: 2026-03-11 (extracted from audio_embeddings.py)
 """
+
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
 try:
     from pydub import AudioSegment
+
     PYDUB_AVAILABLE = True
 except ImportError:
     PYDUB_AVAILABLE = False
 
-from core.audio_feature_extractor import SAMPLE_RATE, FRAME_SIZE, HOP_SIZE
+from core.audio_feature_extractor import FRAME_SIZE, HOP_SIZE, SAMPLE_RATE
 from core.bpm_detector import BPMDetector
 
 # Mood categories
-MOODS = ['Energetic', 'Happy', 'Calm', 'Sad', 'Intense']
+MOODS = ["Energetic", "Happy", "Calm", "Sad", "Intense"]
 
 
 class MoodClassifier:
@@ -42,17 +47,17 @@ class MoodClassifier:
 
     def __init__(
         self,
-        bpm_detector: BPMDetector = None,
+        bpm_detector: Optional[BPMDetector] = None,
         sample_rate: int = SAMPLE_RATE,
         frame_size: int = FRAME_SIZE,
         hop_size: int = HOP_SIZE,
-    ):
-        self.bpm_detector = bpm_detector or BPMDetector(sample_rate)
-        self.sample_rate = sample_rate
-        self.frame_size = frame_size
-        self.hop_size = hop_size
+    ) -> None:
+        self.bpm_detector: BPMDetector = bpm_detector or BPMDetector(sample_rate)
+        self.sample_rate: int = sample_rate
+        self.frame_size: int = frame_size
+        self.hop_size: int = hop_size
 
-    def classify(self, file_path: str) -> Optional[Dict]:
+    def classify(self, file_path: str) -> Optional[Dict[str, Any]]:
         """
         Classify the mood/energy of an audio file.
 
@@ -77,7 +82,7 @@ class MoodClassifier:
             audio = audio.set_frame_rate(self.sample_rate)
 
             samples = np.array(audio.get_array_of_samples(), dtype=np.float32)
-            samples = samples / (2 ** 15)
+            samples = samples / (2**15)  # type: ignore[assignment]
 
             mood_features = self.extract_mood_features(samples)
 
@@ -93,7 +98,7 @@ class MoodClassifier:
             logger.error(f"Mood classification failed for {file_path}: {e}")
             return None
 
-    def extract_mood_features(self, samples: np.ndarray) -> Optional[Dict]:
+    def extract_mood_features(self, samples: Any) -> Optional[Dict[str, Any]]:
         """
         Extract features relevant to mood classification.
 
@@ -124,7 +129,7 @@ class MoodClassifier:
 
                 fft = np.fft.rfft(windowed)
                 magnitude = np.abs(fft)
-                freqs = np.fft.rfftfreq(len(windowed), 1/self.sample_rate)
+                freqs = np.fft.rfftfreq(len(windowed), 1 / self.sample_rate)
 
                 # Spectral centroid (brightness)
                 if np.sum(magnitude) > 0:
@@ -141,7 +146,7 @@ class MoodClassifier:
                 spectral_flatness_vals.append(flatness)
 
                 # RMS energy
-                rms = np.sqrt(np.mean(frame ** 2))
+                rms = np.sqrt(np.mean(frame**2))
                 rms_values.append(rms)
 
                 # Zero crossing rate
@@ -156,22 +161,22 @@ class MoodClassifier:
             bpm = self.bpm_detector.estimate_bpm(samples)
 
             return {
-                'brightness': np.mean(spectral_centroids),
-                'brightness_std': np.std(spectral_centroids),
-                'flatness': np.mean(spectral_flatness_vals),
-                'energy': np.mean(rms_values),
-                'energy_std': np.std(rms_values),
-                'zcr': np.mean(zcrs),
-                'low_energy_ratio': low_energy_ratio,
-                'tempo': bpm or 100,  # Default to 100 if detection failed
-                'dynamic_range': np.max(rms_values) - np.min(rms_values)
+                "brightness": np.mean(spectral_centroids),
+                "brightness_std": np.std(spectral_centroids),
+                "flatness": np.mean(spectral_flatness_vals),
+                "energy": np.mean(rms_values),
+                "energy_std": np.std(rms_values),
+                "zcr": np.mean(zcrs),
+                "low_energy_ratio": low_energy_ratio,
+                "tempo": bpm or 100,  # Default to 100 if detection failed
+                "dynamic_range": np.max(rms_values) - np.min(rms_values),
             }
 
         except (ValueError, TypeError, IndexError) as e:
             logger.error(f"Mood feature extraction failed: {e}")
             return None
 
-    def classify_from_features(self, features: Dict) -> Dict:
+    def classify_from_features(self, features: Dict[str, Any]) -> Dict[str, Any]:
         """
         Classify mood from extracted features using rule-based heuristics.
 
@@ -183,33 +188,33 @@ class MoodClassifier:
             confidence (0-100), bpm
         """
         # Normalize features to 0-100 scale
-        brightness = min(100, features['brightness'] / 40)     # ~4000Hz max
-        tempo = min(100, max(0, (features['tempo'] - 60) / 1.4))  # 60-200 BPM
-        energy = min(100, features['energy'] * 500)              # RMS ~0-0.2
-        flatness = min(100, features['flatness'] * 100)
-        zcr = min(100, features['zcr'] * 1000)
-        dynamics = min(100, features['dynamic_range'] * 500)
+        brightness = min(100, features["brightness"] / 40)  # ~4000Hz max
+        tempo = min(100, max(0, (features["tempo"] - 60) / 1.4))  # 60-200 BPM
+        energy = min(100, features["energy"] * 500)  # RMS ~0-0.2
+        flatness = min(100, features["flatness"] * 100)
+        zcr = min(100, features["zcr"] * 1000)
+        dynamics = min(100, features["dynamic_range"] * 500)
 
         # Calculate composite scores
-        energy_score = (energy * 0.5 + tempo * 0.3 + dynamics * 0.2)
-        valence_score = (brightness * 0.4 + (100 - flatness) * 0.3 + tempo * 0.3)
+        energy_score = energy * 0.5 + tempo * 0.3 + dynamics * 0.2
+        valence_score = brightness * 0.4 + (100 - flatness) * 0.3 + tempo * 0.3
 
         # Mood classification rules
         mood_scores = {
-            'Energetic': (tempo * 0.4 + energy * 0.4 + brightness * 0.2),
-            'Happy': (valence_score * 0.5 + tempo * 0.3 + brightness * 0.2),
-            'Calm': (100 - energy_score) * 0.5 + (100 - tempo) * 0.3 + (100 - brightness) * 0.2,
-            'Sad': (100 - valence_score) * 0.4 + (100 - tempo) * 0.4 + flatness * 0.2,
-            'Intense': energy * 0.4 + dynamics * 0.3 + zcr * 0.3
+            "Energetic": (tempo * 0.4 + energy * 0.4 + brightness * 0.2),
+            "Happy": (valence_score * 0.5 + tempo * 0.3 + brightness * 0.2),
+            "Calm": (100 - energy_score) * 0.5 + (100 - tempo) * 0.3 + (100 - brightness) * 0.2,
+            "Sad": (100 - valence_score) * 0.4 + (100 - tempo) * 0.4 + flatness * 0.2,
+            "Intense": energy * 0.4 + dynamics * 0.3 + zcr * 0.3,
         }
 
-        primary_mood = max(mood_scores, key=mood_scores.get)
+        primary_mood = max(mood_scores, key=mood_scores.get)  # type: ignore[arg-type]
         confidence = min(100, mood_scores[primary_mood])
 
         return {
-            'mood': primary_mood,
-            'energy': int(energy_score),
-            'valence': int(valence_score),
-            'confidence': int(confidence),
-            'bpm': features['tempo']
+            "mood": primary_mood,
+            "energy": int(energy_score),
+            "valence": int(valence_score),
+            "confidence": int(confidence),
+            "bpm": features["tempo"],
         }

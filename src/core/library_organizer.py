@@ -10,13 +10,16 @@ Organize music library into structured folder hierarchy:
 
 Created: November 13, 2025
 """
+
+from __future__ import annotations
+
 import logging
 import os
-import shutil
 import re
+import shutil
 import sqlite3
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -58,19 +61,20 @@ class LibraryOrganizer:
         )
     """
 
-    def __init__(self, db_manager):
+    def __init__(self, db_manager: Any) -> None:
         """
         Initialize library organizer
 
         Args:
             db_manager: Database manager instance
         """
-        self.db = db_manager
-        self._history = []  # For rollback
+        self.db: Any = db_manager
+        self._history: List[Dict[str, Any]] = []  # For rollback
         logger.info("LibraryOrganizer initialized")
 
-    def organize(self, base_path: str, template: str, songs: List[Dict],
-                 move: bool = True, dry_run: bool = False) -> Dict:
+    def organize(
+        self, base_path: str, template: str, songs: List[Dict[str, Any]], move: bool = True, dry_run: bool = False
+    ) -> Dict[str, Any]:
         """
         Organize songs into folder structure
 
@@ -91,12 +95,7 @@ class LibraryOrganizer:
         """
         logger.info(f"Organizing {len(songs)} songs (dry_run={dry_run})")
 
-        result = {
-            'success': 0,
-            'failed': 0,
-            'errors': [],
-            'preview': []
-        }
+        result: Dict[str, Any] = {"success": 0, "failed": 0, "errors": [], "preview": []}
 
         self._history = []
 
@@ -105,16 +104,14 @@ class LibraryOrganizer:
                 # Build target path
                 target_path = self.build_path(base_path, template, song)
 
-                old_path = song.get('file_path', '')
+                old_path = song.get("file_path", "")
 
                 if dry_run:
                     # Preview mode - don't move files
-                    result['preview'].append({
-                        'old': old_path,
-                        'new': str(target_path),
-                        'song': song
-                    })
-                    result['success'] += 1
+                    result["preview"].append(
+                        {"old": old_path, "new": str(target_path), "song": song}  # type: ignore[union-attr]
+                    )
+                    result["success"] += 1  # type: ignore[operator]
                 else:
                     # Actually move/copy file
                     if os.path.exists(old_path):
@@ -123,7 +120,7 @@ class LibraryOrganizer:
 
                         # Handle name conflicts
                         if os.path.exists(target_path):
-                            target_path = self._handle_name_conflict(target_path)
+                            target_path = Path(self._handle_name_conflict(str(target_path)))  # type: ignore[assignment]
 
                         # Move or copy
                         if move:
@@ -133,32 +130,28 @@ class LibraryOrganizer:
 
                         if success:
                             # Update database
-                            self._update_database_path(song['id'], str(target_path))
+                            self._update_database_path(song["id"], str(target_path))
 
                             # Store for rollback
-                            self._history.append({
-                                'old': old_path,
-                                'new': str(target_path),
-                                'song_id': song['id']
-                            })
+                            self._history.append({"old": old_path, "new": str(target_path), "song_id": song["id"]})
 
-                            result['success'] += 1
+                            result["success"] += 1  # type: ignore[operator]
                         else:
-                            result['failed'] += 1
-                            result['errors'].append(f"Failed to move: {old_path}")
+                            result["failed"] += 1  # type: ignore[operator]
+                            result["errors"].append(f"Failed to move: {old_path}")  # type: ignore[union-attr]
                     else:
-                        result['failed'] += 1
-                        result['errors'].append(f"File not found: {old_path}")
+                        result["failed"] += 1  # type: ignore[operator]
+                        result["errors"].append(f"File not found: {old_path}")  # type: ignore[union-attr]
 
             except (OSError, sqlite3.Error, ValueError) as e:
-                result['failed'] += 1
-                result['errors'].append(f"Error: {song.get('file_path', 'unknown')}: {str(e)}")
+                result["failed"] += 1  # type: ignore[operator]
+                result["errors"].append(f"Error: {song.get('file_path', 'unknown')}: {str(e)}")  # type: ignore[union-attr]
                 logger.error(f"Organization error: {e}")
 
         logger.info(f"Organization complete: {result['success']} success, {result['failed']} failed")
         return result
 
-    def build_path(self, base_path: str, template: str, song: Dict) -> Path:
+    def build_path(self, base_path: str, template: str, song: Dict[str, Any]) -> Path:
         """
         Build target path from template and song metadata
 
@@ -172,12 +165,12 @@ class LibraryOrganizer:
         """
         # Get metadata with fallbacks
         metadata = {
-            'artist': self._sanitize_path(song.get('artist', 'Unknown Artist')),
-            'album': self._sanitize_path(song.get('album', 'Unknown Album')),
-            'title': self._sanitize_path(song.get('title', 'Unknown')),
-            'year': song.get('year', 'Unknown'),
-            'genre': self._sanitize_path(song.get('genre', 'Unknown')),
-            'track': song.get('track', 0)
+            "artist": self._sanitize_path(song.get("artist", "Unknown Artist")),
+            "album": self._sanitize_path(song.get("album", "Unknown Album")),
+            "title": self._sanitize_path(song.get("title", "Unknown")),
+            "year": song.get("year", "Unknown"),
+            "genre": self._sanitize_path(song.get("genre", "Unknown")),
+            "track": song.get("track", 0),
         }
 
         # Format template
@@ -208,20 +201,20 @@ class LibraryOrganizer:
 
         # Remove/replace invalid filesystem characters
         # Invalid: / \ : * ? " < > |
-        text = re.sub(r'[/\\:*?"<>|]', '_', text)
+        text = re.sub(r'[/\\:*?"<>|]', "_", text)
 
         # Remove leading/trailing dots and spaces
-        text = text.strip('. ')
+        text = text.strip(". ")
 
         # Remove control characters
-        text = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', text)
+        text = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", text)
 
         if not text:
             return "Unknown"
 
         return text
 
-    def _create_directories(self, directory: str):
+    def _create_directories(self, directory: str) -> None:
         """
         Create directory structure
 
@@ -278,7 +271,7 @@ class LibraryOrganizer:
             logger.error(f"Failed to copy {source} to {target}: {e}")
             return False
 
-    def _update_database_path(self, song_id: int, new_path: str):
+    def _update_database_path(self, song_id: int, new_path: str) -> None:
         """
         Update song file path in database
 
@@ -320,7 +313,7 @@ class LibraryOrganizer:
                 # Safety limit
                 raise ValueError(f"Too many conflicts for: {file_path}")
 
-    def rollback(self):
+    def rollback(self) -> Dict[str, Any]:
         """
         Rollback last organization operation
 
@@ -328,26 +321,18 @@ class LibraryOrganizer:
         """
         if not self._history:
             logger.warning("No history to rollback")
-            return {
-                'success': 0,
-                'failed': 0,
-                'errors': ['No history to rollback']
-            }
+            return {"success": 0, "failed": 0, "errors": ["No history to rollback"]}
 
         logger.info(f"Rolling back {len(self._history)} operations")
 
-        result = {
-            'success': 0,
-            'failed': 0,
-            'errors': []
-        }
+        result: Dict[str, Any] = {"success": 0, "failed": 0, "errors": []}
 
         # Reverse history
         for operation in reversed(self._history):
             try:
-                new_path = operation['new']
-                old_path = operation['old']
-                song_id = operation['song_id']
+                new_path = operation["new"]
+                old_path = operation["old"]
+                song_id = operation["song_id"]
 
                 if os.path.exists(new_path):
                     # Create original directory if needed
@@ -359,14 +344,14 @@ class LibraryOrganizer:
                     # Update database
                     self.db.update_song_path(song_id, old_path)
 
-                    result['success'] += 1
+                    result["success"] += 1  # type: ignore[operator]
                 else:
-                    result['failed'] += 1
-                    result['errors'].append(f"File not found for rollback: {new_path}")
+                    result["failed"] += 1  # type: ignore[operator]
+                    result["errors"].append(f"File not found for rollback: {new_path}")  # type: ignore[union-attr]
 
             except (OSError, sqlite3.Error) as e:
-                result['failed'] += 1
-                result['errors'].append(f"Rollback error: {str(e)}")
+                result["failed"] += 1  # type: ignore[operator]
+                result["errors"].append(f"Rollback error: {str(e)}")  # type: ignore[union-attr]
                 logger.error(f"Rollback error: {e}")
 
         logger.info(f"Rollback complete: {result['success']} restored, {result['failed']} failed")

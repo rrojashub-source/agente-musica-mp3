@@ -11,64 +11,76 @@ Purpose: Batch rename MP3 files based on metadata patterns
 
 Created: November 13, 2025
 """
-from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QPushButton,
-    QComboBox, QLabel, QTreeWidget, QTreeWidgetItem,
-    QMessageBox, QGroupBox, QLineEdit
-)
-from PySide6.QtCore import Qt, Signal, QThread
+
+from __future__ import annotations
+
 import logging
 import os
+from typing import Any, Dict, List, Optional
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QComboBox,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from core.batch_renamer import BatchRenamer
 from gui.base import BaseTab
+from gui.base.base_worker import BaseWorker
 
 logger = logging.getLogger(__name__)
 
 
-class RenameWorker(QThread):
+class RenameWorker(BaseWorker):
     """Background worker for batch renaming"""
 
-    # Signals
-    progress = Signal(int, str)  # (percentage, status_message)
-    finished = Signal(dict)  # Result dictionary
-    error = Signal(str)  # Error message
-
-    def __init__(self, renamer, songs, template, find="", replace="", case="none", dry_run=False):
+    def __init__(
+        self,
+        renamer: BatchRenamer,
+        songs: List[Dict[str, Any]],
+        template: str,
+        find: str = "",
+        replace: str = "",
+        case: str = "none",
+        dry_run: bool = False,
+    ) -> None:
         super().__init__()
-        self.renamer = renamer
-        self.songs = songs
-        self.template = template
-        self.find = find
-        self.replace = replace
-        self.case = case
-        self.dry_run = dry_run
+        self.renamer: BatchRenamer = renamer
+        self.songs: List[Dict[str, Any]] = songs
+        self.template: str = template
+        self.find: str = find
+        self.replace: str = replace
+        self.case: str = case
+        self.dry_run: bool = dry_run
 
-    def run(self):
+    def do_work(self) -> Any:
         """Run renaming in background"""
-        try:
-            self.progress.emit(10, "Initializing rename...")
+        self.report_progress(10, "Initializing rename...")
 
-            self.progress.emit(30, f"Renaming {len(self.songs)} files...")
+        self.report_progress(30, f"Renaming {len(self.songs)} files...")
 
-            # Perform rename
-            result = self.renamer.rename_batch(
-                songs=self.songs,
-                template=self.template,
-                find=self.find,
-                replace=self.replace,
-                case=self.case,
-                dry_run=self.dry_run
-            )
+        # Perform rename
+        result = self.renamer.rename_batch(
+            songs=self.songs,
+            template=self.template,
+            find=self.find,
+            replace=self.replace,
+            case=self.case,
+            dry_run=self.dry_run,
+        )
 
-            self.progress.emit(90, "Processing results...")
+        self.report_progress(90, "Processing results...")
 
-            # Emit results
-            self.finished.emit(result)
-
-        except Exception as e:
-            logger.error(f"Rename error: {e}")
-            self.error.emit(str(e))
+        return result
 
 
 class RenameTab(BaseTab):
@@ -83,13 +95,13 @@ class RenameTab(BaseTab):
     - Execute with progress feedback
     """
 
-    def __init__(self, db_manager, parent=None):
-        self.renamer = BatchRenamer(db_manager)
-        self.rename_worker = None
-        self.last_result = None
+    def __init__(self, db_manager: Any, parent: Optional[QWidget] = None) -> None:
+        self.renamer: BatchRenamer = BatchRenamer(db_manager)
+        self.rename_worker: Optional[RenameWorker] = None
+        self.last_result: Optional[Dict[str, Any]] = None
         super().__init__(db_manager=db_manager, parent=parent)
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize user interface"""
         layout = QVBoxLayout()
 
@@ -150,11 +162,7 @@ class RenameTab(BaseTab):
         results_layout = QVBoxLayout()
 
         self.results_tree = QTreeWidget()
-        self.results_tree.setHeaderLabels([
-            "Current Filename",
-            "→",
-            "New Filename"
-        ])
+        self.results_tree.setHeaderLabels(["Current Filename", "→", "New Filename"])
         self.results_tree.setColumnWidth(0, 400)
         self.results_tree.setColumnWidth(1, 30)
         self.results_tree.setColumnWidth(2, 400)
@@ -177,7 +185,7 @@ class RenameTab(BaseTab):
 
         self.setLayout(layout)
 
-    def _populate_templates(self):
+    def _populate_templates(self) -> None:
         """Populate template combo box with common patterns"""
         templates = [
             ("Track - Title", "{track:02d} - {title}.mp3"),
@@ -190,15 +198,12 @@ class RenameTab(BaseTab):
         for display_name, template_pattern in templates:
             self.template_combo.addItem(display_name, template_pattern)
 
-    def _on_preview_clicked(self):
+    def _on_preview_clicked(self) -> None:
         """Handle preview button click"""
         songs = self.db.get_all_songs()
 
         if len(songs) == 0:
-            QMessageBox.information(
-                self, "Empty Library",
-                "No songs in library to rename."
-            )
+            QMessageBox.information(self, "Empty Library", "No songs in library to rename.")
             return
 
         logger.info(f"Previewing rename for {len(songs)} songs")
@@ -209,24 +214,23 @@ class RenameTab(BaseTab):
         case = self.case_combo.currentData()
 
         self.rename_worker = RenameWorker(
-            self.renamer, songs, template,
-            find=find, replace=replace, case=case, dry_run=True
+            self.renamer, songs, template, find=find, replace=replace, case=case, dry_run=True
         )
         self.connect_worker(
             self.rename_worker,
             on_finished=self._on_preview_finished,
             on_error=self._on_worker_error,
-            action_button=self.preview_button
+            action_button=self.preview_button,
         )
         self.rename_worker.start()
 
-    def _on_apply_clicked(self):
+    def _on_apply_clicked(self) -> None:
         """Handle apply button click"""
         if not self.show_confirm(
             f"Apply rename to all files?\n\n"
             f"Template: {self.template_combo.currentText()}\n"
             f"This will rename files permanently.",
-            "Confirm Rename"
+            "Confirm Rename",
         ):
             return
 
@@ -241,90 +245,73 @@ class RenameTab(BaseTab):
         case = self.case_combo.currentData()
 
         self.rename_worker = RenameWorker(
-            self.renamer, songs, template,
-            find=find, replace=replace, case=case, dry_run=False
+            self.renamer, songs, template, find=find, replace=replace, case=case, dry_run=False
         )
         self.connect_worker(
             self.rename_worker,
             on_finished=self._on_apply_finished,
             on_error=self._on_worker_error,
-            action_button=self.preview_button
+            action_button=self.preview_button,
         )
         self.rename_worker.start()
 
-    def _on_preview_finished(self, result):
+    def _on_preview_finished(self, result: Dict[str, Any]) -> None:
         """Handle preview completion"""
         self.last_result = result
 
-        total_songs = result['success']
-        self.status_label.setText(
-            f"Preview: {total_songs} files will be renamed"
-        )
+        total_songs = result["success"]
+        self.status_label.setText(f"Preview: {total_songs} files will be renamed")
 
-        self._populate_preview(result['preview'])
+        self._populate_preview(result["preview"])
 
-        if result['success'] > 0:
+        if result["success"] > 0:
             self.apply_button.setEnabled(True)
 
         logger.info(f"Preview complete: {result['success']} files")
 
-    def _on_apply_finished(self, result):
+    def _on_apply_finished(self, result: Dict[str, Any]) -> None:
         """Handle execution completion"""
         self.last_result = result
         self._show_results(result)
         logger.info(f"Rename complete: {result['success']} success, {result['failed']} failed")
 
-    def _on_worker_error(self, error_message):
+    def _on_worker_error(self, error_message: str) -> None:
         """Handle worker error — ensure apply button is disabled"""
         self.apply_button.setEnabled(False)
         self.show_error(error_message)
 
-    def _populate_preview(self, preview_list):
+    def _populate_preview(self, preview_list: List[Dict[str, str]]) -> None:
         """Populate results tree with preview data"""
         self.results_tree.clear()
 
         for item in preview_list[:100]:  # Limit to first 100 for performance
-            old_path = item['old']
-            new_path = item['new']
+            old_path = item["old"]
+            new_path = item["new"]
 
             # Get just filenames
             old_filename = os.path.basename(old_path)
             new_filename = os.path.basename(new_path)
 
-            tree_item = QTreeWidgetItem([
-                old_filename,
-                "→",
-                new_filename
-            ])
+            tree_item = QTreeWidgetItem([old_filename, "→", new_filename])
 
             self.results_tree.addTopLevelItem(tree_item)
 
         if len(preview_list) > 100:
-            info_item = QTreeWidgetItem([
-                f"... and {len(preview_list) - 100} more files",
-                "",
-                ""
-            ])
+            info_item = QTreeWidgetItem([f"... and {len(preview_list) - 100} more files", "", ""])
             self.results_tree.addTopLevelItem(info_item)
 
-    def _show_results(self, result):
+    def _show_results(self, result: Dict[str, Any]) -> None:
         """Show results summary"""
-        success = result['success']
-        failed = result['failed']
-        errors = result.get('errors', [])
+        success = result["success"]
+        failed = result["failed"]
+        errors = result.get("errors", [])
 
         # Update status
-        self.status_label.setText(
-            f"Renamed: {success} success, {failed} failed"
-        )
+        self.status_label.setText(f"Renamed: {success} success, {failed} failed")
 
         # Show message box
         if failed == 0:
-            QMessageBox.information(
-                self,
-                "Rename Complete",
-                f"Successfully renamed {success} files."
-            )
+            QMessageBox.information(self, "Rename Complete", f"Successfully renamed {success} files.")
         else:
             error_text = "\n".join(errors[:5])
             if len(errors) > 5:
@@ -333,7 +320,5 @@ class RenameTab(BaseTab):
             QMessageBox.warning(
                 self,
                 "Rename Partially Complete",
-                f"Renamed {success} files.\n"
-                f"Failed to rename {failed} files.\n\n"
-                f"Errors:\n{error_text}"
+                f"Renamed {success} files.\n" f"Failed to rename {failed} files.\n\n" f"Errors:\n{error_text}",
             )

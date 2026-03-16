@@ -15,10 +15,13 @@ Documentation: https://acoustid.org/webservice
 
 Created: November 18, 2025
 """
+
 import logging
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Any, Dict, List, Optional
+
 import acoustid
+
 from utils.fpcalc_checker import FpcalcChecker
 
 logger = logging.getLogger(__name__)
@@ -32,17 +35,17 @@ class AcoustIDClient:
     then queries AcoustID database for matches.
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None) -> None:
         """
         Initialize AcoustID client
 
         Args:
             api_key: AcoustID API key (get from https://acoustid.org/new-application)
         """
-        self.api_key = api_key
+        self.api_key: Optional[str] = api_key
 
         # Check fpcalc availability
-        self.fpcalc_checker = FpcalcChecker()
+        self.fpcalc_checker: FpcalcChecker = FpcalcChecker()
 
         if not self.fpcalc_checker.is_available():
             logger.warning(
@@ -69,7 +72,7 @@ class AcoustIDClient:
 
         return True
 
-    def identify_song(self, audio_file_path: str) -> Optional[Dict]:
+    def identify_song(self, audio_file_path: str) -> Optional[Dict[str, Any]]:
         """
         Identify song using audio fingerprint
 
@@ -108,7 +111,7 @@ class AcoustIDClient:
                 apikey=self.api_key,
                 path=str(audio_path),
                 parse=True,  # Parse MusicBrainz metadata
-                fpcalc=self.fpcalc_checker.fpcalc_path  # Explicit fpcalc path
+                fpcalc=self.fpcalc_checker.fpcalc_path,  # Explicit fpcalc path
             )
 
             # Process results
@@ -118,12 +121,7 @@ class AcoustIDClient:
             for score, recording_id, title, artist in results:
                 if score > highest_score:
                     highest_score = score
-                    best_match = {
-                        'title': title,
-                        'artist': artist,
-                        'score': score,
-                        'recording_id': recording_id
-                    }
+                    best_match = {"title": title, "artist": artist, "score": score, "recording_id": recording_id}
 
             if best_match:
                 logger.info(
@@ -141,8 +139,7 @@ class AcoustIDClient:
 
         except acoustid.NoBackendError:
             logger.error(
-                "Chromaprint backend not found. Install fpcalc:\n"
-                f"{self.fpcalc_checker.get_install_instructions()}"
+                "Chromaprint backend not found. Install fpcalc:\n" f"{self.fpcalc_checker.get_install_instructions()}"
             )
             return None
 
@@ -158,7 +155,7 @@ class AcoustIDClient:
             logger.error(f"Unexpected error identifying song: {e}", exc_info=True)
             return None
 
-    def _enrich_metadata(self, match: Dict):
+    def _enrich_metadata(self, match: Dict[str, Any]) -> None:
         """
         Enrich match with additional MusicBrainz metadata
 
@@ -167,7 +164,7 @@ class AcoustIDClient:
         """
         try:
             # Get full recording details from MusicBrainz
-            recording_id = match.get('recording_id')
+            recording_id = match.get("recording_id")
             if not recording_id:
                 return
 
@@ -176,21 +173,21 @@ class AcoustIDClient:
                 apikey=self.api_key,
                 fingerprint=None,  # We already have the recording ID
                 duration=None,
-                meta='recordings releases'  # Request detailed metadata
+                meta="recordings releases",  # Request detailed metadata
             )
 
             # Parse results for album, year, etc.
             # This is a simplified version - full implementation would parse MusicBrainz data
             if results:
-                match['album'] = results.get('album', 'Unknown Album')
-                match['year'] = results.get('year')
-                match['duration'] = results.get('duration')
+                match["album"] = results.get("album", "Unknown Album")
+                match["year"] = results.get("year")
+                match["duration"] = results.get("duration")
 
         except (acoustid.WebServiceError, KeyError, TypeError) as e:
             logger.debug(f"Failed to enrich metadata: {e}")
             # Non-critical, continue with basic match
 
-    def batch_identify(self, audio_files: List[str], min_score: float = 0.7) -> Dict[str, Optional[Dict]]:
+    def batch_identify(self, audio_files: List[str], min_score: float = 0.7) -> Dict[str, Optional[Dict[str, Any]]]:
         """
         Identify multiple songs in batch
 
@@ -201,20 +198,19 @@ class AcoustIDClient:
         Returns:
             dict: {file_path: match_dict or None}
         """
-        results = {}
+        results: Dict[str, Optional[Dict[str, Any]]] = {}
 
         for audio_file in audio_files:
             match = self.identify_song(audio_file)
 
             # Filter by minimum score
-            if match and match.get('score', 0) >= min_score:
+            if match and match.get("score", 0) >= min_score:
                 results[audio_file] = match
             else:
                 results[audio_file] = None
 
         logger.info(
-            f"Batch identification complete: {len([v for v in results.values() if v])}/"
-            f"{len(audio_files)} matches"
+            f"Batch identification complete: {len([v for v in results.values() if v])}/" f"{len(audio_files)} matches"
         )
 
         return results
@@ -237,18 +233,17 @@ class AcoustIDClient:
             # Generate fingerprint only (no API call)
             # CRITICAL: Pass fpcalc path explicitly
             duration, fingerprint = acoustid.fingerprint_file(
-                str(audio_file_path),
-                fpcalc=self.fpcalc_checker.fpcalc_path
+                str(audio_file_path), fpcalc=self.fpcalc_checker.fpcalc_path
             )
 
             logger.debug(f"Generated fingerprint: {len(fingerprint)} chars, {duration}s")
-            return fingerprint
+            return str(fingerprint)
 
         except (OSError, acoustid.FingerprintGenerationError) as e:
             logger.error(f"Failed to generate fingerprint: {e}")
             return None
 
-    def lookup_fingerprint(self, fingerprint: str, duration: int) -> Optional[Dict]:
+    def lookup_fingerprint(self, fingerprint: str, duration: int) -> Optional[Dict[str, Any]]:
         """
         Look up pre-generated fingerprint
 
@@ -266,19 +261,16 @@ class AcoustIDClient:
         try:
             # Query AcoustID with fingerprint
             results = acoustid.lookup(
-                apikey=self.api_key,
-                fingerprint=fingerprint,
-                duration=duration,
-                meta='recordings releases'
+                apikey=self.api_key, fingerprint=fingerprint, duration=duration, meta="recordings releases"
             )
 
             # Parse results (similar to identify_song)
             # Simplified implementation
             if results:
                 return {
-                    'title': results.get('title', 'Unknown'),
-                    'artist': results.get('artist', 'Unknown'),
-                    'score': results.get('score', 0.0)
+                    "title": results.get("title", "Unknown"),
+                    "artist": results.get("artist", "Unknown"),
+                    "score": results.get("score", 0.0),
                 }
 
             return None

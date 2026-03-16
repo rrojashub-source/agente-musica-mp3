@@ -8,22 +8,37 @@ Features:
 - Song selection
 - Add to download queue
 """
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
-    QCheckBox, QListWidget, QLabel, QSplitter, QListWidgetItem
-)
-from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QColor
+
+from __future__ import annotations
+
 import json
 import logging
-from api.youtube_search import YouTubeSearcher
+from typing import Any, Dict, List, Optional
+
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
+)
+
 from api.spotify_search import SpotifySearcher
+from api.youtube_search import YouTubeSearcher
+from gui.base import BaseTab
 
 # Setup logger
 logger = logging.getLogger(__name__)
 
 
-class SearchTab(QWidget):
+class SearchTab(BaseTab):
     """
     Search tab for YouTube and Spotify music search
 
@@ -40,75 +55,37 @@ class SearchTab(QWidget):
     +----------------------------------+
     """
 
-    def __init__(self, download_queue=None):
+    def __init__(self, download_queue: Any = None) -> None:
         """
         Initialize search tab
 
         Args:
             download_queue (DownloadQueue): Download queue instance (optional)
         """
-        super().__init__()
+        # Initialize state BEFORE super().__init__() which calls _init_ui()
+        self.download_queue: Any = download_queue
+        self.selected_songs: List[Dict[str, Any]] = []
+        self.youtube_searcher: Optional[YouTubeSearcher] = None
+        self.spotify_searcher: Optional[SpotifySearcher] = None
+        self._credentials_missing: bool = True
 
-        # Initialize API searchers
-        from pathlib import Path
-        import json
-        import os
+        self._load_credentials()
 
-        # Load API credentials (try multiple sources)
-        youtube_api_key = None
-        spotify_client_id = None
-        spotify_client_secret = None
+        super().__init__(db_manager=None, parent=None)
 
-        # Priority 0: OS Keyring (most secure, used by API Settings dialog)
-        try:
-            import keyring
-            youtube_api_key = keyring.get_password("nexus_music", "youtube_api_key")
-            spotify_client_id = keyring.get_password("nexus_music", "spotify_client_id")
-            spotify_client_secret = keyring.get_password("nexus_music", "spotify_client_secret")
-            if youtube_api_key or spotify_client_id or spotify_client_secret:
-                logger.info("Loaded credentials from OS keyring")
-        except ImportError:
-            logger.debug("keyring module not available")
-        except (RuntimeError, OSError) as e:
-            logger.warning(f"Failed to load from keyring: {e}")
+        # Show API configuration dialog if credentials missing
+        if self._credentials_missing:
+            self._show_missing_credentials_prompt()
 
-        # Priority 1: Environment variables
-        youtube_api_key = youtube_api_key or os.getenv('YOUTUBE_API_KEY')
-        spotify_client_id = spotify_client_id or os.getenv('SPOTIFY_CLIENT_ID')
-        spotify_client_secret = spotify_client_secret or os.getenv('SPOTIFY_CLIENT_SECRET')
+        logger.info("SearchTab initialized")
 
-        # Priority 2: .env file (if python-dotenv is available)
-        if not all([youtube_api_key, spotify_client_id, spotify_client_secret]):
-            try:
-                from dotenv import load_dotenv
-                env_path = Path('.env')
-                if env_path.exists():
-                    load_dotenv(env_path)
-                    youtube_api_key = youtube_api_key or os.getenv('YOUTUBE_API_KEY')
-                    spotify_client_id = spotify_client_id or os.getenv('SPOTIFY_CLIENT_ID')
-                    spotify_client_secret = spotify_client_secret or os.getenv('SPOTIFY_CLIENT_SECRET')
-                    logger.info("Loaded credentials from .env file")
-            except ImportError:
-                logger.debug("python-dotenv not available, skipping .env file")
+    def _load_credentials(self) -> None:
+        """Load API credentials using centralized credential utility."""
+        from utils.credentials import load_credential
 
-        # Priority 3: Credentials file (fallback for development)
-        if not all([youtube_api_key, spotify_client_id, spotify_client_secret]):
-            credentials_path = os.getenv('CREDENTIALS_PATH') or str(Path.home() / ".claude" / "secrets" / "credentials.json")
-            try:
-                with open(credentials_path) as f:
-                    secrets = json.load(f)
-
-                youtube_api_key = youtube_api_key or secrets['apis']['youtube']['api_key']
-                spotify_client_id = spotify_client_id or secrets['apis']['spotify']['client_id']
-                spotify_client_secret = spotify_client_secret or secrets['apis']['spotify']['client_secret']
-                logger.info(f"Loaded credentials from {credentials_path}")
-
-            except FileNotFoundError:
-                logger.warning(f"Credentials file not found: {credentials_path}")
-            except KeyError as e:
-                logger.error(f"Missing key in credentials file: {e}")
-            except (json.JSONDecodeError, ValueError, OSError) as e:
-                logger.error(f"Failed to load credentials file: {e}")
+        youtube_api_key = load_credential("youtube_api_key")
+        spotify_client_id = load_credential("spotify_client_id")
+        spotify_client_secret = load_credential("spotify_client_secret")
 
         # Initialize searchers if credentials available
         if youtube_api_key and spotify_client_id and spotify_client_secret:
@@ -122,30 +99,10 @@ class SearchTab(QWidget):
                 self.spotify_searcher = None
         else:
             logger.warning("Missing API credentials - Search functionality will be limited")
-            logger.warning("Set YOUTUBE_API_KEY, SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET")
-            logger.warning("Or create .env file (see .env.example)")
-            self.youtube_searcher = None
-            self.spotify_searcher = None
 
-        # Download queue
-        self.download_queue = download_queue
-
-        # Selected songs
-        self.selected_songs = []
-
-        # Track if credentials are missing
         self._credentials_missing = not (youtube_api_key and spotify_client_id and spotify_client_secret)
 
-        # Setup UI
-        self._setup_ui()
-
-        # Show API configuration dialog if credentials missing
-        if self._credentials_missing:
-            self._show_missing_credentials_prompt()
-
-        logger.info("SearchTab initialized")
-
-    def _setup_ui(self):
+    def _init_ui(self) -> None:
         """Setup user interface"""
         layout = QVBoxLayout()
 
@@ -229,7 +186,7 @@ class SearchTab(QWidget):
 
         self.setLayout(layout)
 
-    def on_search_clicked(self):
+    def on_search_clicked(self) -> bool:
         """
         Handle search button click
 
@@ -255,7 +212,7 @@ class SearchTab(QWidget):
         logger.info(f"Search completed for: {query}")
         return True
 
-    def _search_youtube(self, query: str):
+    def _search_youtube(self, query: str) -> None:
         """
         Search YouTube
 
@@ -263,12 +220,12 @@ class SearchTab(QWidget):
             query (str): Search query
         """
         try:
-            results = self.youtube_searcher.search(query, max_results=10)
+            results = self.youtube_searcher.search(query, max_results=10)  # type: ignore[union-attr]
             self._display_youtube_results(results)
         except (KeyError, ValueError, TypeError) as e:
             logger.error(f"YouTube search error: {e}")
 
-    def _search_spotify(self, query: str):
+    def _search_spotify(self, query: str) -> None:
         """
         Search Spotify
 
@@ -276,12 +233,12 @@ class SearchTab(QWidget):
             query (str): Search query
         """
         try:
-            results = self.spotify_searcher.search_tracks(query, limit=10)
+            results = self.spotify_searcher.search_tracks(query, limit=10)  # type: ignore[union-attr]
             self._display_spotify_results(results)
         except (KeyError, ValueError, TypeError) as e:
             logger.error(f"Spotify search error: {e}")
 
-    def _display_youtube_results(self, results: list):
+    def _display_youtube_results(self, results: List[Dict[str, Any]]) -> None:
         """
         Display YouTube results in UI
 
@@ -297,7 +254,7 @@ class SearchTab(QWidget):
 
         logger.info(f"Displayed {len(results)} YouTube results")
 
-    def _display_spotify_results(self, results: list):
+    def _display_spotify_results(self, results: List[Dict[str, Any]]) -> None:
         """
         Display Spotify results in UI
 
@@ -313,19 +270,19 @@ class SearchTab(QWidget):
 
         logger.info(f"Displayed {len(results)} Spotify results")
 
-    def _on_youtube_item_clicked(self, item):
+    def _on_youtube_item_clicked(self, item: QListWidgetItem) -> None:
         """Handle YouTube item double-click — download directly"""
         data = item.data(Qt.ItemDataRole.UserRole)
-        data['source'] = 'youtube'
+        data["source"] = "youtube"
         self._download_single(data)
 
-    def _on_spotify_item_clicked(self, item):
+    def _on_spotify_item_clicked(self, item: QListWidgetItem) -> None:
         """Handle Spotify item double-click — download directly"""
         data = item.data(Qt.ItemDataRole.UserRole)
-        data['source'] = 'spotify'
+        data["source"] = "spotify"
         self._download_single(data)
 
-    def _download_single(self, song_data: dict):
+    def _download_single(self, song_data: Dict[str, Any]) -> None:
         """Download a single song immediately on double-click"""
         if not self.download_queue:
             logger.warning("No download queue available")
@@ -335,9 +292,9 @@ class SearchTab(QWidget):
             video_url = None
             metadata = song_data
 
-            if song_data['source'] == 'youtube':
+            if song_data["source"] == "youtube":
                 video_url = f"https://www.youtube.com/watch?v={song_data['video_id']}"
-            elif song_data['source'] == 'spotify':
+            elif song_data["source"] == "spotify":
                 converted = self._convert_spotify_to_youtube(song_data)
                 if converted:
                     video_url = f"https://www.youtube.com/watch?v={converted['video_id']}"
@@ -348,14 +305,14 @@ class SearchTab(QWidget):
 
             if video_url:
                 self.download_queue.add(video_url=video_url, metadata=metadata)
-                title = metadata.get('title', 'Unknown')
+                title = metadata.get("title", "Unknown")
                 logger.info(f"Direct download queued: {title}")
                 self.selected_count_label.setText(f"Downloading: {title}")
 
         except (KeyError, ValueError, TypeError) as e:
             logger.error(f"Failed to queue download: {e}")
 
-    def _add_to_selection(self, song_data: dict):
+    def _add_to_selection(self, song_data: Dict[str, Any]) -> None:
         """
         Add song to selection
 
@@ -366,7 +323,7 @@ class SearchTab(QWidget):
         self._update_selected_count()
         logger.info(f"Added to selection: {song_data.get('title', 'Unknown')}")
 
-    def _convert_spotify_to_youtube(self, spotify_song: dict) -> dict:
+    def _convert_spotify_to_youtube(self, spotify_song: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Convert Spotify song to YouTube video by searching
 
@@ -382,8 +339,8 @@ class SearchTab(QWidget):
 
         try:
             # Build search query from Spotify metadata
-            artist = spotify_song.get('artist', '')
-            title = spotify_song.get('title', '')
+            artist = spotify_song.get("artist", "")
+            title = spotify_song.get("title", "")
             search_query = f"{artist} {title}".strip()
 
             if not search_query:
@@ -401,12 +358,12 @@ class SearchTab(QWidget):
 
                 # Merge Spotify metadata with YouTube video_id
                 converted = {
-                    'source': 'spotify_converted',
-                    'video_id': youtube_video['video_id'],
-                    'title': title,  # Use Spotify title (cleaner)
-                    'artist': artist,  # Use Spotify artist (cleaner)
-                    'youtube_title': youtube_video['title'],  # Keep original for reference
-                    'spotify_metadata': spotify_song  # Keep full Spotify metadata
+                    "source": "spotify_converted",
+                    "video_id": youtube_video["video_id"],
+                    "title": title,  # Use Spotify title (cleaner)
+                    "artist": artist,  # Use Spotify artist (cleaner)
+                    "youtube_title": youtube_video["title"],  # Keep original for reference
+                    "spotify_metadata": spotify_song,  # Keep full Spotify metadata
                 }
 
                 return converted
@@ -418,12 +375,12 @@ class SearchTab(QWidget):
             logger.error(f"Error converting Spotify to YouTube: {e}")
             return None
 
-    def _update_selected_count(self):
+    def _update_selected_count(self) -> None:
         """Update selected songs counter"""
         count = len(self.selected_songs)
         self.selected_count_label.setText(f"Selected: {count} songs")
 
-    def on_add_to_library_clicked(self):
+    def on_add_to_library_clicked(self) -> None:
         """
         Handle 'Add to Library' button click
 
@@ -432,20 +389,16 @@ class SearchTab(QWidget):
         if not self.selected_songs:
             logger.warning("No songs selected")
             from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(
-                self,
-                "No Songs Selected",
-                "Please select songs first by double-clicking on them."
-            )
+
+            QMessageBox.warning(self, "No Songs Selected", "Please select songs first by double-clicking on them.")
             return
 
         if not self.download_queue:
             logger.warning("No download queue available")
             from PySide6.QtWidgets import QMessageBox
+
             QMessageBox.critical(
-                self,
-                "Download Queue Error",
-                "Download queue is not available. Please restart the application."
+                self, "Download Queue Error", "Download queue is not available. Please restart the application."
             )
             return
 
@@ -464,11 +417,11 @@ class SearchTab(QWidget):
                 metadata = song
 
                 # Determine URL based on source
-                if song['source'] == 'youtube':
+                if song["source"] == "youtube":
                     # Direct YouTube download
                     video_url = f"https://www.youtube.com/watch?v={song['video_id']}"
 
-                elif song['source'] == 'spotify':
+                elif song["source"] == "spotify":
                     # Convert Spotify to YouTube
                     logger.info(f"Converting Spotify song: {song.get('artist', '')} - {song.get('title', '')}")
                     converted = self._convert_spotify_to_youtube(song)
@@ -489,10 +442,7 @@ class SearchTab(QWidget):
 
                 # Add to queue if we have a valid URL
                 if video_url:
-                    self.download_queue.add(
-                        video_url=video_url,
-                        metadata=metadata
-                    )
+                    self.download_queue.add(video_url=video_url, metadata=metadata)
 
                     logger.info(f"Added to queue: {metadata.get('title', 'Unknown')}")
                     added_count += 1
@@ -511,6 +461,7 @@ class SearchTab(QWidget):
         # Show confirmation
         if added_count > 0:
             from PySide6.QtWidgets import QMessageBox
+
             message = f"Added {added_count} song(s) to download queue!\n\n"
 
             # Show conversion stats
@@ -525,9 +476,12 @@ class SearchTab(QWidget):
             message += "Check the '📥 Queue' tab to see download progress."
 
             QMessageBox.information(self, "Success", message)
-            logger.info(f"Added {added_count} songs to download queue (Spotify converted: {spotify_converted}, failed: {spotify_failed})")
+            logger.info(
+                f"Added {added_count} songs to download queue (Spotify converted: {spotify_converted}, failed: {spotify_failed})"
+            )
         else:
             from PySide6.QtWidgets import QMessageBox
+
             message = "No songs were added to the queue.\n\n"
 
             if spotify_failed > 0:
@@ -541,7 +495,7 @@ class SearchTab(QWidget):
 
             QMessageBox.warning(self, "No Songs Added", message)
 
-    def _show_missing_credentials_prompt(self):
+    def _show_missing_credentials_prompt(self) -> None:
         """
         Show prompt to configure API keys when credentials are missing
 
@@ -550,7 +504,7 @@ class SearchTab(QWidget):
         from PySide6.QtCore import QTimer
         from PySide6.QtWidgets import QMessageBox
 
-        def show_dialog():
+        def show_dialog() -> None:
             # Show informative message first
             reply = QMessageBox.information(
                 self,
@@ -560,7 +514,7 @@ class SearchTab(QWidget):
                 "• Spotify Client ID and Client Secret\n\n"
                 "Would you like to configure them now?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.Yes
+                QMessageBox.StandardButton.Yes,
             )
 
             if reply == QMessageBox.StandardButton.Yes:
@@ -576,42 +530,32 @@ class SearchTab(QWidget):
         # Delay dialog until UI is ready (500ms)
         QTimer.singleShot(500, show_dialog)
 
-    def _on_keys_saved(self):
-        """
-        Handle keys saved event - reload credentials and initialize searchers
-        """
-        import keyring
+    def _on_keys_saved(self) -> None:
+        """Handle keys saved event - reload credentials and initialize searchers."""
+        from utils.credentials import load_credential
 
         logger.info("API keys saved - reloading credentials")
 
-        try:
-            # Load from keyring
-            youtube_api_key = keyring.get_password("nexus_music", "youtube_api_key")
-            spotify_client_id = keyring.get_password("nexus_music", "spotify_client_id")
-            spotify_client_secret = keyring.get_password("nexus_music", "spotify_client_secret")
+        youtube_api_key = load_credential("youtube_api_key")
+        spotify_client_id = load_credential("spotify_client_id")
+        spotify_client_secret = load_credential("spotify_client_secret")
 
-            # Re-initialize searchers
-            if youtube_api_key and spotify_client_id and spotify_client_secret:
+        if youtube_api_key and spotify_client_id and spotify_client_secret:
+            try:
                 self.youtube_searcher = YouTubeSearcher(youtube_api_key)
                 self.spotify_searcher = SpotifySearcher(spotify_client_id, spotify_client_secret)
                 self._credentials_missing = False
-
                 logger.info("API searchers re-initialized successfully")
 
                 from PySide6.QtWidgets import QMessageBox
-                QMessageBox.information(
-                    self,
-                    "Success",
-                    "API credentials configured successfully!\n\nYou can now search for music."
-                )
-            else:
-                logger.warning("Some credentials still missing after save")
 
-        except (RuntimeError, OSError) as e:
-            logger.error(f"Error reloading credentials: {e}")
-            from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(
-                self,
-                "Error",
-                f"Failed to reload credentials:\n{str(e)}"
-            )
+                QMessageBox.information(
+                    self, "Success", "API credentials configured successfully!\n\nYou can now search for music."
+                )
+            except (RuntimeError, OSError) as e:
+                logger.error(f"Error reloading credentials: {e}")
+                from PySide6.QtWidgets import QMessageBox
+
+                QMessageBox.warning(self, "Error", f"Failed to reload credentials:\n{str(e)}")
+        else:
+            logger.warning("Some credentials still missing after save")

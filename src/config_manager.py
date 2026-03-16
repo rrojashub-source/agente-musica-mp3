@@ -7,7 +7,7 @@ Project: AGENTE_MUSICA_MP3_001
 
 import json
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 
 class ConfigManager:
@@ -19,23 +19,24 @@ class ConfigManager:
     - First run flag
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Config directory in user home
-        self.config_dir = Path.home() / ".nexus_music"
-        self.config_file = self.config_dir / "config.json"
+        self.config_dir: Path = Path.home() / ".nexus_music"
+        self.config_file: Path = self.config_dir / "config.json"
 
         # Ensure config directory exists
         self.config_dir.mkdir(parents=True, exist_ok=True)
 
         # Default configuration
-        self.config = self.load_config()
+        self.config: Dict[str, Any] = self.load_config()
 
     def load_config(self) -> Dict[str, Any]:
         """Load configuration from file"""
         if self.config_file.exists():
             try:
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                with open(self.config_file, "r", encoding="utf-8") as f:
+                    result: Dict[str, Any] = json.load(f)
+                    return result  # type: ignore[no-any-return]
             except (json.JSONDecodeError, OSError) as e:
                 print(f"Warning: Failed to load config: {e}")
                 return self.get_default_config()
@@ -51,13 +52,13 @@ class ConfigManager:
             "language": "es",
             "use_demo_database": False,
             "last_scan_date": None,
-            "audio_files_count": 0
+            "audio_files_count": 0,
         }
 
-    def save_config(self):
+    def save_config(self) -> bool:
         """Save configuration to file"""
         try:
-            with open(self.config_file, 'w', encoding='utf-8') as f:
+            with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
             return True
         except (OSError, json.JSONDecodeError) as e:
@@ -66,9 +67,10 @@ class ConfigManager:
 
     def is_first_run(self) -> bool:
         """Check if this is first run"""
-        return self.config.get("first_run", True)
+        result: bool = self.config.get("first_run", True)
+        return result  # type: ignore[no-any-return]
 
-    def set_first_run_complete(self):
+    def set_first_run_complete(self) -> None:
         """Mark first run as complete"""
         self.config["first_run"] = False
         self.save_config()
@@ -77,25 +79,27 @@ class ConfigManager:
         """Get configured library path"""
         return self.config.get("library_path")
 
-    def set_library_path(self, path: str):
+    def set_library_path(self, path: str) -> None:
         """Set library path"""
         self.config["library_path"] = path
         self.save_config()
 
     def get_download_directory(self) -> str:
         """Get download directory"""
-        return self.config.get("download_directory", str(Path.home() / "Music" / "NEXUS_Downloads"))
+        result: str = self.config.get("download_directory", str(Path.home() / "Music" / "NEXUS_Downloads"))
+        return result  # type: ignore[no-any-return]
 
-    def set_download_directory(self, path: str):
+    def set_download_directory(self, path: str) -> None:
         """Set download directory"""
         self.config["download_directory"] = path
         self.save_config()
 
     def get_language(self) -> str:
         """Get language preference"""
-        return self.config.get("language", "es")
+        result: str = self.config.get("language", "es")
+        return result  # type: ignore[no-any-return]
 
-    def set_language(self, language: str):
+    def set_language(self, language: str) -> None:
         """Set language preference"""
         self.config["language"] = language
         self.save_config()
@@ -104,19 +108,20 @@ class ConfigManager:
         """Check if should use demo database"""
         return self.config.get("use_demo_database", False) or self.get_library_path() is None
 
-    def set_use_demo_database(self, use_demo: bool):
+    def set_use_demo_database(self, use_demo: bool) -> None:
         """Set whether to use demo database"""
         self.config["use_demo_database"] = use_demo
         self.save_config()
 
-    def set_audio_files_count(self, count: int):
+    def set_audio_files_count(self, count: int) -> None:
         """Set total audio files found"""
         self.config["audio_files_count"] = count
         self.save_config()
 
     def get_audio_files_count(self) -> int:
         """Get total audio files"""
-        return self.config.get("audio_files_count", 0)
+        result: int = self.config.get("audio_files_count", 0)
+        return result  # type: ignore[no-any-return]
 
     def get_database_path(self) -> str:
         """Get appropriate database path"""
@@ -129,7 +134,7 @@ class ConfigManager:
             db_dir.mkdir(exist_ok=True)
             return str(db_dir / "user_library.db")
 
-    def reset_config(self):
+    def reset_config(self) -> None:
         """Reset configuration to defaults"""
         self.config = self.get_default_config()
         self.save_config()

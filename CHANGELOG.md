@@ -7,12 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [2.1.0] - 2026-03-15
 
-### Planned
-- Visualizer plugin (connect to existing visualizer)
-- Auto-DJ plugin (smart transitions)
-- Packaging (.exe) - PyInstaller build
+### Security
+- **CORS hardened** — Restricted from wildcard LAN to specific server IP only
+- **Bearer-only auth** — Removed query parameter token fallback from remote API
+- **Token expiration** — Auth tokens now expire after 24 hours with `/api/refresh-token` endpoint
+- **SQL injection fix** — Added column name allowlist in `DatabaseManager` and `LibraryService`
+- **Plugin whitelist** — Default-deny sandbox for plugin loading
+
+### Added
+- **Type hints** — Full type annotations across all 111 source files; mypy strict mode passes with 0 errors
+- **CI/CD pipeline** — GitHub Actions with test (Python 3.11-3.13), mypy, bandit, flake8, and Windows build jobs
+- **Pre-commit hooks** — black, isort, flake8 auto-run on commit
+- **BaseWorker pattern** — All 6 tab workers migrated to shared `BaseWorker` base class
+- **Centralized credentials** — `utils/credentials.py` with 4-tier fallback (keyring > env > .env > JSON)
+- **Style constants** — `gui/themes/style_constants.py` replacing 34+ inline `setStyleSheet()` calls
+- **Coverage reporting** — pytest configured with `--cov-fail-under=80`
+- **Shared test fixtures** — Centralized `qapp`, `temp_db`, `temp_music_folder`, `mock_db_manager` in conftest.py
+- **New tests** — 100+ new tests for core modules (mood, BPM, recommendations, cover art, metadata, waveform, cleanup, acoustid, adapters, chords, constants, fpcalc, subprocess)
+- **Guitar chord database** — tombatossals/chords-db integrated for chord diagram display
+
+### Changed
+- **PySide6 migration** — Complete GUI framework migration from PyQt6 (Fase 3)
+- **python-mpv** — Audio player replaced pygame with python-mpv for gapless playback
+- **Tests standardized** — 13 test files converted from unittest.TestCase to pure pytest style
+- **Facade pattern** — main.py refactored from 800+ LOC to 340 LOC using controllers
+- **Packaging** — Inno Setup installer replacing PyInstaller onefile exe
+
+### Fixed
+- **GUI freeze on Play** — `find_similar()` moved to background thread
+- **libmpv-2.dll path** — Resolved for PyInstaller/Nuitka builds
+- **scipy in bundle** — Included for librosa chord detection
+
+### Removed
+- Orphan files: `correction_engine.py`, `folder_manager.py`, `help_tab.py`, `library_import_worker.py` (old), test robustness MP3s
 
 ---
 

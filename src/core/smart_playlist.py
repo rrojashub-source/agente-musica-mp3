@@ -12,19 +12,23 @@ Features:
 
 Created: November 24, 2025
 """
-import logging
+
+from __future__ import annotations
+
 import json
+import logging
 import sqlite3
-from typing import List, Dict, Optional, Any, Callable
-from dataclasses import dataclass, field, asdict
-from enum import Enum
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class RuleOperator(Enum):
     """Operators for rule conditions"""
+
     EQUALS = "equals"
     NOT_EQUALS = "not_equals"
     CONTAINS = "contains"
@@ -41,6 +45,7 @@ class RuleOperator(Enum):
 
 class RuleField(Enum):
     """Available fields for rules"""
+
     TITLE = "title"
     ARTIST = "artist"
     ALBUM = "album"
@@ -57,6 +62,7 @@ class RuleField(Enum):
 
 class CombineMode(Enum):
     """How to combine multiple rules"""
+
     ALL = "all"  # AND - all rules must match
     ANY = "any"  # OR - any rule must match
 
@@ -64,17 +70,18 @@ class CombineMode(Enum):
 @dataclass
 class PlaylistRule:
     """A single rule for smart playlist matching"""
+
     field: str  # RuleField value
     operator: str  # RuleOperator value
     value: Any  # Value to compare against
     value2: Optional[Any] = None  # Second value for BETWEEN operator
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization"""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'PlaylistRule':
+    def from_dict(cls, data: Dict[str, Any]) -> PlaylistRule:
         """Create from dictionary"""
         return cls(**data)
 
@@ -82,6 +89,7 @@ class PlaylistRule:
 @dataclass
 class SmartPlaylistConfig:
     """Configuration for a smart playlist"""
+
     name: str
     rules: List[PlaylistRule] = field(default_factory=list)
     combine_mode: str = CombineMode.ALL.value
@@ -91,32 +99,32 @@ class SmartPlaylistConfig:
     auto_refresh: bool = True
     description: str = ""
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
-            'name': self.name,
-            'rules': [r.to_dict() for r in self.rules],
-            'combine_mode': self.combine_mode,
-            'limit': self.limit,
-            'sort_by': self.sort_by,
-            'sort_ascending': self.sort_ascending,
-            'auto_refresh': self.auto_refresh,
-            'description': self.description,
+            "name": self.name,
+            "rules": [r.to_dict() for r in self.rules],
+            "combine_mode": self.combine_mode,
+            "limit": self.limit,
+            "sort_by": self.sort_by,
+            "sort_ascending": self.sort_ascending,
+            "auto_refresh": self.auto_refresh,
+            "description": self.description,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'SmartPlaylistConfig':
+    def from_dict(cls, data: Dict[str, Any]) -> SmartPlaylistConfig:
         """Create from dictionary"""
-        rules = [PlaylistRule.from_dict(r) for r in data.get('rules', [])]
+        rules = [PlaylistRule.from_dict(r) for r in data.get("rules", [])]
         return cls(
-            name=data['name'],
+            name=data["name"],
             rules=rules,
-            combine_mode=data.get('combine_mode', CombineMode.ALL.value),
-            limit=data.get('limit', 0),
-            sort_by=data.get('sort_by', 'title'),
-            sort_ascending=data.get('sort_ascending', True),
-            auto_refresh=data.get('auto_refresh', True),
-            description=data.get('description', ''),
+            combine_mode=data.get("combine_mode", CombineMode.ALL.value),
+            limit=data.get("limit", 0),
+            sort_by=data.get("sort_by", "title"),
+            sort_ascending=data.get("sort_ascending", True),
+            auto_refresh=data.get("auto_refresh", True),
+            description=data.get("description", ""),
         )
 
 
@@ -145,20 +153,20 @@ class SmartPlaylistEngine:
         most_played = engine.get_most_played(limit=50)
     """
 
-    def __init__(self, library_db=None):
+    def __init__(self, library_db: Any = None) -> None:
         """
         Initialize smart playlist engine
 
         Args:
             library_db: Database connection for querying library
         """
-        self.library_db = library_db
+        self.library_db: Any = library_db
         self._playlists: Dict[str, SmartPlaylistConfig] = {}
-        self._cache: Dict[str, List[Dict]] = {}
+        self._cache: Dict[str, List[Dict[str, Any]]] = {}
 
         logger.info("SmartPlaylistEngine initialized")
 
-    def set_library_db(self, library_db):
+    def set_library_db(self, library_db: Any) -> None:
         """Set or update library database connection"""
         self.library_db = library_db
         self._cache.clear()  # Invalidate cache
@@ -222,7 +230,7 @@ class SmartPlaylistEngine:
     # Playlist Generation
     # ==========================================
 
-    def generate_playlist(self, config: SmartPlaylistConfig, use_cache: bool = True) -> List[Dict]:
+    def generate_playlist(self, config: SmartPlaylistConfig, use_cache: bool = True) -> List[Dict[str, Any]]:
         """
         Generate playlist by applying rules to library
 
@@ -257,7 +265,7 @@ class SmartPlaylistEngine:
 
         # Apply limit
         if config.limit > 0:
-            matching_songs = matching_songs[:config.limit]
+            matching_songs = matching_songs[: config.limit]
 
         # Cache results
         if config.name:
@@ -266,7 +274,7 @@ class SmartPlaylistEngine:
         logger.info(f"Generated '{config.name}': {len(matching_songs)} songs")
         return matching_songs
 
-    def refresh_playlist(self, name: str) -> List[Dict]:
+    def refresh_playlist(self, name: str) -> List[Dict[str, Any]]:
         """Refresh a playlist (regenerate, ignoring cache)"""
         config = self._playlists.get(name)
         if not config:
@@ -275,7 +283,7 @@ class SmartPlaylistEngine:
         self._cache.pop(name, None)
         return self.generate_playlist(config, use_cache=False)
 
-    def refresh_all(self):
+    def refresh_all(self) -> None:
         """Refresh all playlists"""
         self._cache.clear()
         for name in self._playlists:
@@ -285,7 +293,7 @@ class SmartPlaylistEngine:
     # Built-in Smart Playlists
     # ==========================================
 
-    def get_recently_added(self, days: int = 30, limit: int = 100) -> List[Dict]:
+    def get_recently_added(self, days: int = 30, limit: int = 100) -> List[Dict[str, Any]]:
         """
         Get recently added songs
 
@@ -295,152 +303,111 @@ class SmartPlaylistEngine:
         """
         config = SmartPlaylistConfig(
             name="_recently_added",
-            rules=[
-                PlaylistRule(
-                    field=RuleField.DATE_ADDED.value,
-                    operator=RuleOperator.IN_LAST.value,
-                    value=days
-                )
-            ],
+            rules=[PlaylistRule(field=RuleField.DATE_ADDED.value, operator=RuleOperator.IN_LAST.value, value=days)],
             combine_mode=CombineMode.ALL.value,
             limit=limit,
             sort_by="date_added",
             sort_ascending=False,
-            description=f"Songs added in the last {days} days"
+            description=f"Songs added in the last {days} days",
         )
         return self.generate_playlist(config, use_cache=False)
 
-    def get_recently_played(self, days: int = 7, limit: int = 50) -> List[Dict]:
+    def get_recently_played(self, days: int = 7, limit: int = 50) -> List[Dict[str, Any]]:
         """Get recently played songs"""
         config = SmartPlaylistConfig(
             name="_recently_played",
-            rules=[
-                PlaylistRule(
-                    field=RuleField.LAST_PLAYED.value,
-                    operator=RuleOperator.IN_LAST.value,
-                    value=days
-                )
-            ],
+            rules=[PlaylistRule(field=RuleField.LAST_PLAYED.value, operator=RuleOperator.IN_LAST.value, value=days)],
             combine_mode=CombineMode.ALL.value,
             limit=limit,
             sort_by="last_played",
             sort_ascending=False,
-            description=f"Songs played in the last {days} days"
+            description=f"Songs played in the last {days} days",
         )
         return self.generate_playlist(config, use_cache=False)
 
-    def get_most_played(self, limit: int = 50) -> List[Dict]:
+    def get_most_played(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Get most played songs"""
         config = SmartPlaylistConfig(
             name="_most_played",
-            rules=[
-                PlaylistRule(
-                    field=RuleField.PLAY_COUNT.value,
-                    operator=RuleOperator.GREATER_THAN.value,
-                    value=0
-                )
-            ],
+            rules=[PlaylistRule(field=RuleField.PLAY_COUNT.value, operator=RuleOperator.GREATER_THAN.value, value=0)],
             combine_mode=CombineMode.ALL.value,
             limit=limit,
             sort_by="play_count",
             sort_ascending=False,
-            description="Most frequently played songs"
+            description="Most frequently played songs",
         )
         return self.generate_playlist(config, use_cache=False)
 
-    def get_never_played(self, limit: int = 100) -> List[Dict]:
+    def get_never_played(self, limit: int = 100) -> List[Dict[str, Any]]:
         """Get songs that have never been played"""
         config = SmartPlaylistConfig(
             name="_never_played",
-            rules=[
-                PlaylistRule(
-                    field=RuleField.PLAY_COUNT.value,
-                    operator=RuleOperator.EQUALS.value,
-                    value=0
-                )
-            ],
+            rules=[PlaylistRule(field=RuleField.PLAY_COUNT.value, operator=RuleOperator.EQUALS.value, value=0)],
             combine_mode=CombineMode.ALL.value,
             limit=limit,
             sort_by="date_added",
             sort_ascending=False,
-            description="Songs you haven't listened to yet"
+            description="Songs you haven't listened to yet",
         )
         return self.generate_playlist(config, use_cache=False)
 
-    def get_by_genre(self, genre: str, limit: int = 0) -> List[Dict]:
+    def get_by_genre(self, genre: str, limit: int = 0) -> List[Dict[str, Any]]:
         """Get songs by genre"""
         config = SmartPlaylistConfig(
             name=f"_genre_{genre}",
-            rules=[
-                PlaylistRule(
-                    field=RuleField.GENRE.value,
-                    operator=RuleOperator.CONTAINS.value,
-                    value=genre
-                )
-            ],
+            rules=[PlaylistRule(field=RuleField.GENRE.value, operator=RuleOperator.CONTAINS.value, value=genre)],
             combine_mode=CombineMode.ALL.value,
             limit=limit,
             sort_by="artist",
             sort_ascending=True,
-            description=f"All {genre} songs"
+            description=f"All {genre} songs",
         )
         return self.generate_playlist(config, use_cache=False)
 
-    def get_by_artist(self, artist: str, limit: int = 0) -> List[Dict]:
+    def get_by_artist(self, artist: str, limit: int = 0) -> List[Dict[str, Any]]:
         """Get songs by artist"""
         config = SmartPlaylistConfig(
             name=f"_artist_{artist}",
-            rules=[
-                PlaylistRule(
-                    field=RuleField.ARTIST.value,
-                    operator=RuleOperator.CONTAINS.value,
-                    value=artist
-                )
-            ],
+            rules=[PlaylistRule(field=RuleField.ARTIST.value, operator=RuleOperator.CONTAINS.value, value=artist)],
             combine_mode=CombineMode.ALL.value,
             limit=limit,
             sort_by="album",
             sort_ascending=True,
-            description=f"All songs by {artist}"
+            description=f"All songs by {artist}",
         )
         return self.generate_playlist(config, use_cache=False)
 
-    def get_by_decade(self, decade: int, limit: int = 0) -> List[Dict]:
+    def get_by_decade(self, decade: int, limit: int = 0) -> List[Dict[str, Any]]:
         """Get songs from a specific decade (e.g., 1980 for 80s)"""
         config = SmartPlaylistConfig(
             name=f"_decade_{decade}s",
             rules=[
                 PlaylistRule(
-                    field=RuleField.YEAR.value,
-                    operator=RuleOperator.BETWEEN.value,
-                    value=decade,
-                    value2=decade + 9
+                    field=RuleField.YEAR.value, operator=RuleOperator.BETWEEN.value, value=decade, value2=decade + 9
                 )
             ],
             combine_mode=CombineMode.ALL.value,
             limit=limit,
             sort_by="year",
             sort_ascending=True,
-            description=f"Songs from the {decade}s"
+            description=f"Songs from the {decade}s",
         )
         return self.generate_playlist(config, use_cache=False)
 
-    def get_top_rated(self, min_rating: int = 4, limit: int = 50) -> List[Dict]:
+    def get_top_rated(self, min_rating: int = 4, limit: int = 50) -> List[Dict[str, Any]]:
         """Get top rated songs"""
         config = SmartPlaylistConfig(
             name="_top_rated",
             rules=[
                 PlaylistRule(
-                    field=RuleField.RATING.value,
-                    operator=RuleOperator.GREATER_THAN.value,
-                    value=min_rating - 1
+                    field=RuleField.RATING.value, operator=RuleOperator.GREATER_THAN.value, value=min_rating - 1
                 )
             ],
             combine_mode=CombineMode.ALL.value,
             limit=limit,
             sort_by="rating",
             sort_ascending=False,
-            description=f"Songs rated {min_rating}+ stars"
+            description=f"Songs rated {min_rating}+ stars",
         )
         return self.generate_playlist(config, use_cache=False)
 
@@ -448,18 +415,20 @@ class SmartPlaylistEngine:
     # Internal Methods
     # ==========================================
 
-    def _get_all_songs(self) -> List[Dict]:
+    def _get_all_songs(self) -> List[Dict[str, Any]]:
         """Get all songs from library database"""
         if not self.library_db:
             return []
 
         try:
             # Try different methods depending on library_db type
-            if hasattr(self.library_db, 'get_all_songs'):
-                return self.library_db.get_all_songs()
-            elif hasattr(self.library_db, 'search'):
-                return self.library_db.search("")
-            elif hasattr(self.library_db, 'execute'):
+            if hasattr(self.library_db, "get_all_songs"):
+                result: list[dict[str, Any]] = self.library_db.get_all_songs()
+                return result  # type: ignore[no-any-return]
+            elif hasattr(self.library_db, "search"):
+                result2: list[dict[str, Any]] = self.library_db.search("")
+                return result2  # type: ignore[no-any-return]
+            elif hasattr(self.library_db, "execute"):
                 # Direct SQLite connection
                 cursor = self.library_db.execute("SELECT * FROM songs")
                 columns = [desc[0] for desc in cursor.description]
@@ -471,7 +440,9 @@ class SmartPlaylistEngine:
             logger.error(f"Failed to get songs from library: {e}")
             return []
 
-    def _apply_rules(self, songs: List[Dict], rules: List[PlaylistRule], combine_mode: str) -> List[Dict]:
+    def _apply_rules(
+        self, songs: List[Dict[str, Any]], rules: List[PlaylistRule], combine_mode: str
+    ) -> List[Dict[str, Any]]:
         """Apply rules to filter songs"""
         if not rules:
             return songs
@@ -492,7 +463,7 @@ class SmartPlaylistEngine:
 
         return matching
 
-    def _evaluate_rule(self, song: Dict, rule: PlaylistRule) -> bool:
+    def _evaluate_rule(self, song: Dict[str, Any], rule: PlaylistRule) -> bool:
         """Evaluate a single rule against a song"""
         field_value = song.get(rule.field)
         compare_value = rule.value
@@ -514,10 +485,10 @@ class SmartPlaylistEngine:
 
         try:
             if operator == RuleOperator.EQUALS.value:
-                return field_value == compare_value
+                return bool(field_value == compare_value)  # type: ignore[no-any-return]
 
             elif operator == RuleOperator.NOT_EQUALS.value:
-                return field_value != compare_value
+                return bool(field_value != compare_value)  # type: ignore[no-any-return]
 
             elif operator == RuleOperator.CONTAINS.value:
                 return str(compare_value) in str(field_value)
@@ -539,7 +510,7 @@ class SmartPlaylistEngine:
 
             elif operator == RuleOperator.BETWEEN.value:
                 val = float(field_value)
-                return float(compare_value) <= val <= float(rule.value2)
+                return float(compare_value) <= val <= float(rule.value2 or 0)  # type: ignore[arg-type]
 
             elif operator == RuleOperator.IN_LAST.value:
                 # Compare dates - value is number of days
@@ -568,14 +539,10 @@ class SmartPlaylistEngine:
 
         return False
 
-    def _sort_songs(self, songs: List[Dict], sort_by: str, ascending: bool) -> List[Dict]:
+    def _sort_songs(self, songs: List[Dict[str, Any]], sort_by: str, ascending: bool) -> List[Dict[str, Any]]:
         """Sort songs by field"""
         try:
-            return sorted(
-                songs,
-                key=lambda s: (s.get(sort_by) is None, s.get(sort_by, '')),
-                reverse=not ascending
-            )
+            return sorted(songs, key=lambda s: (s.get(sort_by) is None, s.get(sort_by, "")), reverse=not ascending)
         except (TypeError, ValueError) as e:
             logger.warning(f"Sort failed: {e}")
             return songs
@@ -587,15 +554,9 @@ class SmartPlaylistEngine:
     def save_to_json(self, filepath: str) -> bool:
         """Save all playlists to JSON file"""
         try:
-            data = {
-                'version': '1.0',
-                'playlists': {
-                    name: config.to_dict()
-                    for name, config in self._playlists.items()
-                }
-            }
+            data = {"version": "1.0", "playlists": {name: config.to_dict() for name, config in self._playlists.items()}}
 
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
 
             logger.info(f"Saved {len(self._playlists)} playlists to {filepath}")
@@ -608,10 +569,10 @@ class SmartPlaylistEngine:
     def load_from_json(self, filepath: str) -> bool:
         """Load playlists from JSON file"""
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            playlists_data = data.get('playlists', {})
+            playlists_data = data.get("playlists", {})
             self._playlists.clear()
 
             for name, config_data in playlists_data.items():
@@ -632,18 +593,13 @@ class SmartPlaylistEngine:
 # Convenience Functions
 # ==========================================
 
+
 def create_genre_playlist(genre: str) -> SmartPlaylistConfig:
     """Create a simple genre-based playlist config"""
     return SmartPlaylistConfig(
         name=f"{genre} Music",
-        rules=[
-            PlaylistRule(
-                field=RuleField.GENRE.value,
-                operator=RuleOperator.CONTAINS.value,
-                value=genre
-            )
-        ],
-        description=f"All {genre} songs"
+        rules=[PlaylistRule(field=RuleField.GENRE.value, operator=RuleOperator.CONTAINS.value, value=genre)],
+        description=f"All {genre} songs",
     )
 
 
@@ -653,13 +609,10 @@ def create_decade_playlist(decade: int) -> SmartPlaylistConfig:
         name=f"The {decade}s",
         rules=[
             PlaylistRule(
-                field=RuleField.YEAR.value,
-                operator=RuleOperator.BETWEEN.value,
-                value=decade,
-                value2=decade + 9
+                field=RuleField.YEAR.value, operator=RuleOperator.BETWEEN.value, value=decade, value2=decade + 9
             )
         ],
-        description=f"Songs from {decade}-{decade+9}"
+        description=f"Songs from {decade}-{decade+9}",
     )
 
 
@@ -667,14 +620,8 @@ def create_artist_playlist(artist: str) -> SmartPlaylistConfig:
     """Create an artist-based playlist config"""
     return SmartPlaylistConfig(
         name=f"Best of {artist}",
-        rules=[
-            PlaylistRule(
-                field=RuleField.ARTIST.value,
-                operator=RuleOperator.CONTAINS.value,
-                value=artist
-            )
-        ],
+        rules=[PlaylistRule(field=RuleField.ARTIST.value, operator=RuleOperator.CONTAINS.value, value=artist)],
         sort_by="play_count",
         sort_ascending=False,
-        description=f"All songs by {artist}"
+        description=f"All songs by {artist}",
     )

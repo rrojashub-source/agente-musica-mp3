@@ -24,25 +24,28 @@ import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from mutagen import File as MutagenFile
-from mutagen.id3 import ID3
 from mutagen.easyid3 import EasyID3
+from mutagen.id3 import ID3
 
 
 def get_resource_path(relative_path: str) -> Path:
     """Get absolute path to resource, works for dev and PyInstaller bundle."""
-    if hasattr(sys, '_MEIPASS') or '__compiled__' in globals():
-        base_path = Path(sys._MEIPASS) if hasattr(sys, '_MEIPASS') else Path(__file__).parent.parent
+    if hasattr(sys, "_MEIPASS") or "__compiled__" in globals():
+        base_path = Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else Path(__file__).parent.parent
     else:
         base_path = Path(__file__).parent.parent.parent  # content_filter -> services -> src
     return base_path / relative_path
+
 
 logger = logging.getLogger(__name__)
 
 
 class ContentRating(Enum):
     """Content rating categories"""
+
     EXPLICIT = "explicit"
     SUGGESTIVE = "suggestive"
     CLEAN = "clean"
@@ -54,6 +57,7 @@ class ContentRating(Enum):
 @dataclass
 class ContentScore:
     """Multi-dimensional content score"""
+
     # Primary scores (0.0 to 1.0)
     explicit_score: float = 0.0
     children_score: float = 0.0
@@ -91,25 +95,26 @@ class ContentScore:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
-            'rating': self.rating.value,
-            'explicit_score': self.explicit_score,
-            'children_score': self.children_score,
-            'christian_score': self.christian_score,
-            'clean_score': self.clean_score,
-            'profanity': self.profanity,
-            'violence': self.violence,
-            'sexual_content': self.sexual_content,
-            'substance': self.substance,
-            'positive_messages': self.positive_messages,
-            'confidence': self.confidence,
-            'source': self.source,
-            'reasons': self.reasons,
+            "rating": self.rating.value,
+            "explicit_score": self.explicit_score,
+            "children_score": self.children_score,
+            "christian_score": self.christian_score,
+            "clean_score": self.clean_score,
+            "profanity": self.profanity,
+            "violence": self.violence,
+            "sexual_content": self.sexual_content,
+            "substance": self.substance,
+            "positive_messages": self.positive_messages,
+            "confidence": self.confidence,
+            "source": self.source,
+            "reasons": self.reasons,
         }
 
 
 @dataclass
 class ClassificationResult:
     """Complete classification result for a song"""
+
     file_path: str
     artist: str
     title: str
@@ -122,14 +127,14 @@ class ClassificationResult:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {
-            'file_path': self.file_path,
-            'artist': self.artist,
-            'title': self.title,
-            'rating': self.rating.value,
-            'score': self.score.to_dict(),
-            'metadata_score': self.metadata_score.to_dict() if self.metadata_score else None,
-            'lyrics_score': self.lyrics_score.to_dict() if self.lyrics_score else None,
-            'audio_score': self.audio_score.to_dict() if self.audio_score else None,
+            "file_path": self.file_path,
+            "artist": self.artist,
+            "title": self.title,
+            "rating": self.rating.value,
+            "score": self.score.to_dict(),
+            "metadata_score": self.metadata_score.to_dict() if self.metadata_score else None,
+            "lyrics_score": self.lyrics_score.to_dict() if self.lyrics_score else None,
+            "audio_score": self.audio_score.to_dict() if self.audio_score else None,
         }
 
 
@@ -138,32 +143,34 @@ class ContentClassifier:
     Main content classifier orchestrating all tiers
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._load_artist_database()
-        self._lyrics_analyzer = None  # Lazy load
-        self._audio_analyzer = None   # Lazy load
-        self._audio_analyzer_checked = False  # Prevent repeated warnings
-        self._lyrics_analyzer_checked = False
+        self._lyrics_analyzer: Any = None  # Lazy load
+        self._audio_analyzer: Any = None  # Lazy load
+        self._audio_analyzer_checked: bool = False  # Prevent repeated warnings
+        self._lyrics_analyzer_checked: bool = False
 
-    def _load_artist_database(self):
+    def _load_artist_database(self) -> None:
         """Load artist classification database"""
         db_path = get_resource_path("data/artist_database.json")
 
         try:
-            with open(db_path, 'r', encoding='utf-8') as f:
+            with open(db_path, "r", encoding="utf-8") as f:
                 self._db = json.load(f)
 
             # Build lookup dictionaries
-            self._explicit_artists = self._db.get('explicit', {}).get('artists', {})
-            self._children_artists = self._db.get('children', {}).get('artists', {})
-            self._christian_artists = self._db.get('christian', {}).get('artists', {})
-            self._clean_artists = self._db.get('clean', {}).get('artists', {})
-            self._keywords = self._db.get('keywords', {})
-            self._genres = self._db.get('genres', {})
+            self._explicit_artists = self._db.get("explicit", {}).get("artists", {})
+            self._children_artists = self._db.get("children", {}).get("artists", {})
+            self._christian_artists = self._db.get("christian", {}).get("artists", {})
+            self._clean_artists = self._db.get("clean", {}).get("artists", {})
+            self._keywords = self._db.get("keywords", {})
+            self._genres = self._db.get("genres", {})
 
-            logger.info(f"Loaded artist database: {len(self._explicit_artists)} explicit, "
-                       f"{len(self._children_artists)} children, {len(self._christian_artists)} christian, "
-                       f"{len(self._clean_artists)} clean artists")
+            logger.info(
+                f"Loaded artist database: {len(self._explicit_artists)} explicit, "
+                f"{len(self._children_artists)} children, {len(self._christian_artists)} christian, "
+                f"{len(self._clean_artists)} clean artists"
+            )
         except (OSError, json.JSONDecodeError) as e:
             logger.error(f"Failed to load artist database: {e}")
             self._db = {}
@@ -174,8 +181,7 @@ class ContentClassifier:
             self._keywords = {}
             self._genres = {}
 
-    def classify_file(self, file_path: str, use_lyrics: bool = False,
-                      use_audio: bool = False) -> ClassificationResult:
+    def classify_file(self, file_path: str, use_lyrics: bool = False, use_audio: bool = False) -> ClassificationResult:
         """
         Classify a single audio file
 
@@ -202,8 +208,7 @@ class ContentClassifier:
 
         # Tier 3: Audio analysis (optional)
         audio_score = None
-        if use_audio and (metadata_score.confidence < 0.85 or
-                         (lyrics_score and lyrics_score.confidence < 0.85)):
+        if use_audio and (metadata_score.confidence < 0.85 or (lyrics_score and lyrics_score.confidence < 0.85)):
             audio_score = self._analyze_audio(file_path)
 
         # Combine scores
@@ -220,9 +225,9 @@ class ContentClassifier:
             audio_score=audio_score,
         )
 
-    def classify_batch(self, file_paths: List[str], use_lyrics: bool = False,
-                       use_audio: bool = False,
-                       progress_callback=None) -> List[ClassificationResult]:
+    def classify_batch(
+        self, file_paths: List[str], use_lyrics: bool = False, use_audio: bool = False, progress_callback: Any = None
+    ) -> List[ClassificationResult]:
         """
         Classify multiple files
 
@@ -249,14 +254,15 @@ class ContentClassifier:
             except (OSError, ValueError, AttributeError) as e:
                 logger.error(f"Error classifying {path}: {e}")
                 # Create error result
-                results.append(ClassificationResult(
-                    file_path=path,
-                    artist="Unknown",
-                    title=Path(path).stem,
-                    rating=ContentRating.UNKNOWN,
-                    score=ContentScore(confidence=0, source="error",
-                                      reasons=[f"Error: {str(e)}"]),
-                ))
+                results.append(
+                    ClassificationResult(
+                        file_path=path,
+                        artist="Unknown",
+                        title=Path(path).stem,
+                        rating=ContentRating.UNKNOWN,
+                        score=ContentScore(confidence=0, source="error", reasons=[f"Error: {str(e)}"]),
+                    )
+                )
 
         return results
 
@@ -269,22 +275,21 @@ class ContentClassifier:
         try:
             audio = MutagenFile(path, easy=True)
             if audio:
-                artist = audio.get('artist', ['Unknown'])[0]
-                title = audio.get('title', [path.stem])[0]
-                genre = audio.get('genre', [''])[0]
+                artist = audio.get("artist", ["Unknown"])[0]
+                title = audio.get("title", [path.stem])[0]
+                genre = audio.get("genre", [""])[0]
         except (OSError, ValueError, AttributeError) as e:
             logger.debug(f"Could not read metadata from {path}: {e}")
             # Try to parse from filename: "Artist - Title.mp3"
             name = path.stem
-            if ' - ' in name:
-                parts = name.split(' - ', 1)
+            if " - " in name:
+                parts = name.split(" - ", 1)
                 artist = parts[0].strip()
                 title = parts[1].strip()
 
         return artist, title, genre
 
-    def _analyze_metadata(self, artist: str, title: str, genre: str,
-                          filename: str) -> ContentScore:
+    def _analyze_metadata(self, artist: str, title: str, genre: str, filename: str) -> ContentScore:
         """
         Tier 1: Analyze metadata (artist, title, genre, filename)
         Fast, offline, ~70-95% accuracy for known artists
@@ -321,7 +326,7 @@ class ContentClassifier:
             score.reasons.append(f"Known clean artist: {artist} ({prob:.0%})")
 
         # Check title keywords
-        explicit_keywords = self._keywords.get('explicit_title_keywords', [])
+        explicit_keywords = self._keywords.get("explicit_title_keywords", [])
         for keyword in explicit_keywords:
             if keyword in title_lower or keyword in filename_lower:
                 score.explicit_score = max(score.explicit_score, 0.8)
@@ -330,7 +335,7 @@ class ContentClassifier:
                 score.reasons.append(f"Explicit keyword in title: '{keyword}'")
                 break
 
-        children_keywords = self._keywords.get('children_title_keywords', [])
+        children_keywords = self._keywords.get("children_title_keywords", [])
         for keyword in children_keywords:
             if keyword in title_lower or keyword in filename_lower:
                 score.children_score = max(score.children_score, 0.7)
@@ -338,7 +343,7 @@ class ContentClassifier:
                 score.reasons.append(f"Children's keyword in title: '{keyword}'")
                 break
 
-        christian_keywords = self._keywords.get('christian_title_keywords', [])
+        christian_keywords = self._keywords.get("christian_title_keywords", [])
         for keyword in christian_keywords:
             if keyword in title_lower or keyword in filename_lower:
                 score.christian_score = max(score.christian_score, 0.7)
@@ -347,7 +352,7 @@ class ContentClassifier:
                 break
 
         # Check genre
-        explicit_genres = self._genres.get('typically_explicit', [])
+        explicit_genres = self._genres.get("typically_explicit", [])
         for g in explicit_genres:
             if g in genre_lower:
                 score.explicit_score = max(score.explicit_score, 0.4)
@@ -355,7 +360,7 @@ class ContentClassifier:
                 score.reasons.append(f"Genre often explicit: '{genre}'")
                 break
 
-        clean_genres = self._genres.get('typically_clean', [])
+        clean_genres = self._genres.get("typically_clean", [])
         for g in clean_genres:
             if g in genre_lower:
                 score.clean_score = max(score.clean_score, 0.7)
@@ -363,7 +368,7 @@ class ContentClassifier:
                 score.reasons.append(f"Genre typically clean: '{genre}'")
                 break
 
-        christian_genres = self._genres.get('typically_christian', [])
+        christian_genres = self._genres.get("typically_christian", [])
         for g in christian_genres:
             if g in genre_lower:
                 score.christian_score = max(score.christian_score, 0.8)
@@ -389,6 +394,7 @@ class ContentClassifier:
             self._lyrics_analyzer_checked = True
             try:
                 from .lyrics_analyzer import LyricsAnalyzer
+
                 self._lyrics_analyzer = LyricsAnalyzer()
             except ImportError:
                 logger.warning("Lyrics analyzer not available")
@@ -397,7 +403,7 @@ class ContentClassifier:
         if self._lyrics_analyzer is None:
             return None
 
-        return self._lyrics_analyzer.analyze(artist, title)
+        return self._lyrics_analyzer.analyze(artist, title)  # type: ignore[no-any-return]
 
     def _analyze_audio(self, file_path: str) -> Optional[ContentScore]:
         """
@@ -409,6 +415,7 @@ class ContentClassifier:
             self._audio_analyzer_checked = True
             try:
                 from .audio_analyzer import AudioAnalyzer
+
                 self._audio_analyzer = AudioAnalyzer()
             except ImportError:
                 logger.warning("Audio analyzer not available (install librosa)")
@@ -417,11 +424,11 @@ class ContentClassifier:
         if self._audio_analyzer is None:
             return None
 
-        return self._audio_analyzer.analyze(file_path)
+        return self._audio_analyzer.analyze(file_path)  # type: ignore[no-any-return]
 
-    def _combine_scores(self, metadata: ContentScore,
-                        lyrics: Optional[ContentScore],
-                        audio: Optional[ContentScore]) -> ContentScore:
+    def _combine_scores(
+        self, metadata: ContentScore, lyrics: Optional[ContentScore], audio: Optional[ContentScore]
+    ) -> ContentScore:
         """Combine scores from all tiers with weighted averaging"""
 
         # If only metadata, return it
@@ -430,16 +437,16 @@ class ContentClassifier:
 
         # Weights based on typical accuracy
         weights = {
-            'metadata': 0.4,
-            'lyrics': 0.45,
-            'audio': 0.15,
+            "metadata": 0.4,
+            "lyrics": 0.45,
+            "audio": 0.15,
         }
 
-        scores = [('metadata', metadata, weights['metadata'])]
+        scores = [("metadata", metadata, weights["metadata"])]
         if lyrics:
-            scores.append(('lyrics', lyrics, weights['lyrics']))
+            scores.append(("lyrics", lyrics, weights["lyrics"]))
         if audio:
-            scores.append(('audio', audio, weights['audio']))
+            scores.append(("audio", audio, weights["audio"]))
 
         # Normalize weights
         total_weight = sum(w for _, _, w in scores)
@@ -466,13 +473,13 @@ class ContentClassifier:
     def get_stats(self) -> Dict[str, int]:
         """Get database statistics"""
         return {
-            'explicit_artists': len(self._explicit_artists),
-            'children_artists': len(self._children_artists),
-            'christian_artists': len(self._christian_artists),
-            'clean_artists': len(self._clean_artists),
-            'explicit_keywords': len(self._keywords.get('explicit_title_keywords', [])),
-            'children_keywords': len(self._keywords.get('children_title_keywords', [])),
-            'christian_keywords': len(self._keywords.get('christian_title_keywords', [])),
+            "explicit_artists": len(self._explicit_artists),
+            "children_artists": len(self._children_artists),
+            "christian_artists": len(self._christian_artists),
+            "clean_artists": len(self._clean_artists),
+            "explicit_keywords": len(self._keywords.get("explicit_title_keywords", [])),
+            "children_keywords": len(self._keywords.get("children_title_keywords", [])),
+            "christian_keywords": len(self._keywords.get("christian_title_keywords", [])),
         }
 
 

@@ -9,9 +9,10 @@ Provides song recommendations based on:
 
 Created: November 23, 2025
 """
+
 import logging
 import random
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -27,22 +28,19 @@ class RecommendationEngine:
     - Similar year (±5 years): +2 points
     """
 
-    def __init__(self, db_manager):
+    def __init__(self, db_manager: Any) -> None:
         """
         Initialize recommendation engine
 
         Args:
             db_manager: DatabaseManager instance
         """
-        self.db_manager = db_manager
+        self.db_manager: Any = db_manager
         logger.info("RecommendationEngine initialized")
 
     def get_recommendations(
-        self,
-        current_song: Dict,
-        limit: int = 10,
-        exclude_ids: Optional[List[int]] = None
-    ) -> List[Dict]:
+        self, current_song: Dict[str, Any], limit: int = 10, exclude_ids: Optional[List[int]] = None
+    ) -> List[Dict[str, Any]]:
         """
         Get recommended songs similar to current song
 
@@ -58,7 +56,7 @@ class RecommendationEngine:
             return []
 
         exclude_ids = exclude_ids or []
-        current_id = current_song.get('id')
+        current_id = current_song.get("id")
         if current_id:
             exclude_ids.append(current_id)
 
@@ -71,13 +69,13 @@ class RecommendationEngine:
         # Calculate scores for each song
         scored_songs = []
 
-        current_artist = (current_song.get('artist') or '').lower().strip()
-        current_album = (current_song.get('album') or '').lower().strip()
-        current_genre = (current_song.get('genre') or '').lower().strip()
-        current_year = current_song.get('year')
+        current_artist = (current_song.get("artist") or "").lower().strip()
+        current_album = (current_song.get("album") or "").lower().strip()
+        current_genre = (current_song.get("genre") or "").lower().strip()
+        current_year = current_song.get("year")
 
         for song in all_songs:
-            song_id = song.get('id')
+            song_id = song.get("id")
 
             # Skip excluded songs
             if song_id in exclude_ids:
@@ -86,22 +84,22 @@ class RecommendationEngine:
             score = 0
 
             # Same artist (highest weight)
-            song_artist = (song.get('artist') or '').lower().strip()
+            song_artist = (song.get("artist") or "").lower().strip()
             if song_artist and song_artist == current_artist:
                 score += 10
 
             # Same album
-            song_album = (song.get('album') or '').lower().strip()
+            song_album = (song.get("album") or "").lower().strip()
             if song_album and song_album == current_album:
                 score += 5
 
             # Same genre
-            song_genre = (song.get('genre') or '').lower().strip()
+            song_genre = (song.get("genre") or "").lower().strip()
             if song_genre and song_genre == current_genre:
                 score += 3
 
             # Similar year (within 5 years)
-            song_year = song.get('year')
+            song_year = song.get("year")
             if current_year and song_year:
                 try:
                     year_diff = abs(int(current_year) - int(song_year))
@@ -137,7 +135,7 @@ class RecommendationEngine:
 
         return recommendations
 
-    def get_random_from_genre(self, genre: str, limit: int = 5) -> List[Dict]:
+    def get_random_from_genre(self, genre: str, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Get random songs from a specific genre
 
@@ -154,15 +152,12 @@ class RecommendationEngine:
         all_songs = self.db_manager.get_all_songs()
         genre_lower = genre.lower().strip()
 
-        matching = [
-            song for song in all_songs
-            if (song.get('genre') or '').lower().strip() == genre_lower
-        ]
+        matching = [song for song in all_songs if (song.get("genre") or "").lower().strip() == genre_lower]
 
         random.shuffle(matching)
         return matching[:limit]
 
-    def get_random_from_artist(self, artist: str, limit: int = 5) -> List[Dict]:
+    def get_random_from_artist(self, artist: str, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Get random songs from a specific artist
 
@@ -179,15 +174,12 @@ class RecommendationEngine:
         all_songs = self.db_manager.get_all_songs()
         artist_lower = artist.lower().strip()
 
-        matching = [
-            song for song in all_songs
-            if (song.get('artist') or '').lower().strip() == artist_lower
-        ]
+        matching = [song for song in all_songs if (song.get("artist") or "").lower().strip() == artist_lower]
 
         random.shuffle(matching)
         return matching[:limit]
 
-    def get_discover_playlist(self, limit: int = 20) -> List[Dict]:
+    def get_discover_playlist(self, limit: int = 20) -> List[Dict[str, Any]]:
         """
         Generate a "Discover" playlist with varied songs
 
@@ -206,9 +198,9 @@ class RecommendationEngine:
             return []
 
         # Group by genre
-        by_genre = {}
+        by_genre: dict[str, list[dict[str, Any]]] = {}
         for song in all_songs:
-            genre = (song.get('genre') or 'Unknown').lower().strip()
+            genre = (song.get("genre") or "Unknown").lower().strip()
             if genre not in by_genre:
                 by_genre[genre] = []
             by_genre[genre].append(song)

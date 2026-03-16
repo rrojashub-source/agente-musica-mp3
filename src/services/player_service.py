@@ -11,15 +11,16 @@ Features:
 """
 
 import logging
-from pathlib import Path
-from typing import Optional, List, Dict, Any, Callable
+import random
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-import threading
-import random
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
-from PySide6.QtCore import QObject, Signal, QTimer
+from PySide6.QtCore import QObject, QTimer, Signal
+
 from utils.constants import POSITION_UPDATE_INTERVAL_MS
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 class PlaybackState(Enum):
     """Playback state enum"""
+
     STOPPED = "stopped"
     PLAYING = "playing"
     PAUSED = "paused"
@@ -35,6 +37,7 @@ class PlaybackState(Enum):
 
 class RepeatMode(Enum):
     """Repeat mode enum"""
+
     OFF = "off"
     ONE = "one"
     ALL = "all"
@@ -43,6 +46,7 @@ class RepeatMode(Enum):
 @dataclass
 class NowPlaying:
     """Currently playing track info"""
+
     song_id: Optional[int] = None
     file_path: Optional[str] = None
     title: Optional[str] = None
@@ -54,14 +58,14 @@ class NowPlaying:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            'song_id': self.song_id,
-            'file_path': self.file_path,
-            'title': self.title,
-            'artist': self.artist,
-            'album': self.album,
-            'duration': self.duration,
-            'position': self.position,
-            'state': self.state.value
+            "song_id": self.song_id,
+            "file_path": self.file_path,
+            "title": self.title,
+            "artist": self.artist,
+            "album": self.album,
+            "duration": self.duration,
+            "position": self.position,
+            "state": self.state.value,
         }
 
 
@@ -89,15 +93,15 @@ class PlayerService(QObject):
     error_occurred = Signal(str)
 
     # Singleton (class-level for QObject compatibility)
-    _instance: Optional['PlayerService'] = None
-    _lock = threading.Lock()
+    _instance: Optional["PlayerService"] = None
+    _lock: threading.Lock = threading.Lock()
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize PlayerService"""
         super().__init__()
 
-        self._player = None
-        self._now_playing = NowPlaying()
+        self._player: Any = None
+        self._now_playing: NowPlaying = NowPlaying()
         self._play_queue: List[Dict[str, Any]] = []
         self._queue_index: int = -1
         self._shuffle: bool = False
@@ -111,7 +115,7 @@ class PlayerService(QObject):
         logger.info("PlayerService initialized")
 
     @classmethod
-    def get_instance(cls) -> 'PlayerService':
+    def get_instance(cls) -> "PlayerService":
         """Get singleton instance (thread-safe)"""
         if cls._instance is None:
             with cls._lock:
@@ -120,39 +124,40 @@ class PlayerService(QObject):
         return cls._instance
 
     @classmethod
-    def reset_instance(cls):
+    def reset_instance(cls) -> None:
         """Reset singleton (for testing)"""
         with cls._lock:
             cls._instance = None
 
     @property
-    def player(self):
+    def player(self) -> Any:
         """Lazy-load audio player"""
         if self._player is None:
             from core.audio_player import AudioPlayer
+
             self._player = AudioPlayer()
             self._connect_player_callbacks()
         return self._player
 
-    def _connect_player_callbacks(self):
+    def _connect_player_callbacks(self) -> None:
         """Connect to audio player callbacks"""
         if self._player:
             self._player.on_track_end(self._on_track_end)
 
-    def _setup_position_timer(self):
+    def _setup_position_timer(self) -> None:
         """Setup timer for position updates"""
         self._position_timer = QTimer()
         self._position_timer.timeout.connect(self._update_position)
         self._position_timer.setInterval(POSITION_UPDATE_INTERVAL_MS)  # 4 updates per second
 
-    def _update_position(self):
+    def _update_position(self) -> None:
         """Update position and emit signal"""
         if self._now_playing.state == PlaybackState.PLAYING:
             position = self.player.get_position()
             self._now_playing.position = position
             self.position_changed.emit(position)
 
-    def _on_track_end(self, file_path: str = None):
+    def _on_track_end(self, file_path: Optional[str] = None) -> None:
         """Handle track end event"""
         self.track_ended.emit()
         self._track_play_count()
@@ -168,11 +173,12 @@ class PlayerService(QObject):
         else:
             self.stop()
 
-    def _track_play_count(self):
+    def _track_play_count(self) -> None:
         """Increment play count for current track"""
         if self._now_playing.song_id:
             try:
                 from services.library_service import LibraryService
+
                 library = LibraryService.get_instance()
                 library.increment_play_count(self._now_playing.song_id)
             except (ImportError, RuntimeError) as e:
@@ -182,8 +188,9 @@ class PlayerService(QObject):
     # Playback Control
     # ==========================================
 
-    def play(self, file_path: str = None, song_id: int = None,
-             metadata: Dict[str, Any] = None) -> bool:
+    def play(
+        self, file_path: Optional[str] = None, song_id: Optional[int] = None, metadata: Optional[Dict[str, Any]] = None
+    ) -> bool:
         """
         Start playback
 
@@ -203,12 +210,12 @@ class PlayerService(QObject):
                 self._now_playing = NowPlaying(
                     song_id=song_id,
                     file_path=file_path,
-                    title=metadata.get('title', Path(file_path).stem) if metadata else Path(file_path).stem,
-                    artist=metadata.get('artist') if metadata else None,
-                    album=metadata.get('album') if metadata else None,
-                    duration=metadata.get('duration', 0) if metadata else self.player.get_duration(),
+                    title=metadata.get("title", Path(file_path).stem) if metadata else Path(file_path).stem,
+                    artist=metadata.get("artist") if metadata else None,
+                    album=metadata.get("album") if metadata else None,
+                    duration=metadata.get("duration", 0) if metadata else self.player.get_duration(),
                     position=0.0,
-                    state=PlaybackState.LOADING
+                    state=PlaybackState.LOADING,
                 )
 
             # Start playback
@@ -216,7 +223,7 @@ class PlayerService(QObject):
                 self._now_playing.state = PlaybackState.PLAYING
                 self.state_changed.emit(PlaybackState.PLAYING)
                 self.track_changed.emit(self._now_playing)
-                self._position_timer.start()
+                self._position_timer.start()  # type: ignore[union-attr]
                 logger.info(f"Playing: {self._now_playing.title}")
                 return True
             else:
@@ -234,7 +241,7 @@ class PlayerService(QObject):
             if self.player.pause():
                 self._now_playing.state = PlaybackState.PAUSED
                 self.state_changed.emit(PlaybackState.PAUSED)
-                self._position_timer.stop()
+                self._position_timer.stop()  # type: ignore[union-attr]
                 return True
             return False
         except (OSError, RuntimeError) as e:
@@ -260,7 +267,7 @@ class PlayerService(QObject):
             self._now_playing.state = PlaybackState.STOPPED
             self._now_playing.position = 0.0
             self.state_changed.emit(PlaybackState.STOPPED)
-            self._position_timer.stop()
+            self._position_timer.stop()  # type: ignore[union-attr]
             return True
         except (OSError, RuntimeError) as e:
             logger.error(f"Error stopping: {e}")
@@ -322,7 +329,7 @@ class PlayerService(QObject):
     # Queue Management
     # ==========================================
 
-    def set_queue(self, songs: List[Dict[str, Any]], start_index: int = 0):
+    def set_queue(self, songs: List[Dict[str, Any]], start_index: int = 0) -> None:
         """
         Set play queue
 
@@ -342,12 +349,12 @@ class PlayerService(QObject):
         if songs:
             self.next()
 
-    def add_to_queue(self, song: Dict[str, Any]):
+    def add_to_queue(self, song: Dict[str, Any]) -> None:
         """Add song to end of queue"""
         self._play_queue.append(song)
         self.queue_changed.emit()
 
-    def insert_next(self, song: Dict[str, Any]):
+    def insert_next(self, song: Dict[str, Any]) -> None:
         """Insert song as next in queue"""
         insert_pos = self._queue_index + 1
         self._play_queue.insert(insert_pos, song)
@@ -363,7 +370,7 @@ class PlayerService(QObject):
             return True
         return False
 
-    def clear_queue(self):
+    def clear_queue(self) -> None:
         """Clear play queue"""
         self._play_queue.clear()
         self._queue_index = -1
@@ -395,13 +402,9 @@ class PlayerService(QObject):
         # Queue next for gapless if available
         if self._queue_index + 1 < len(self._play_queue):
             next_song = self._play_queue[self._queue_index + 1]
-            self.player.queue_next(next_song.get('file_path', ''))
+            self.player.queue_next(next_song.get("file_path", ""))
 
-        return self.play(
-            file_path=song.get('file_path'),
-            song_id=song.get('id'),
-            metadata=song
-        )
+        return self.play(file_path=song.get("file_path"), song_id=song.get("id"), metadata=song)
 
     def previous(self) -> bool:
         """Play previous track in queue"""
@@ -421,17 +424,13 @@ class PlayerService(QObject):
                 return self.seek(0)
 
         song = self._play_queue[self._queue_index]
-        return self.play(
-            file_path=song.get('file_path'),
-            song_id=song.get('id'),
-            metadata=song
-        )
+        return self.play(file_path=song.get("file_path"), song_id=song.get("id"), metadata=song)
 
     # ==========================================
     # Shuffle & Repeat
     # ==========================================
 
-    def set_shuffle(self, enabled: bool):
+    def set_shuffle(self, enabled: bool) -> None:
         """Enable/disable shuffle"""
         self._shuffle = enabled
         if enabled and self._play_queue:
@@ -441,15 +440,15 @@ class PlayerService(QObject):
         """Check if shuffle is enabled"""
         return self._shuffle
 
-    def _shuffle_queue(self):
+    def _shuffle_queue(self) -> None:
         """Shuffle the queue while keeping current track"""
         if self._queue_index >= 0 and self._queue_index < len(self._play_queue):
             current = self._play_queue[self._queue_index]
-            remaining = self._play_queue[self._queue_index + 1:]
+            remaining = self._play_queue[self._queue_index + 1 :]
             random.shuffle(remaining)
-            self._play_queue = self._play_queue[:self._queue_index + 1] + remaining
+            self._play_queue = self._play_queue[: self._queue_index + 1] + remaining
 
-    def set_repeat(self, mode: RepeatMode):
+    def set_repeat(self, mode: RepeatMode) -> None:
         """Set repeat mode"""
         self._repeat = mode
 
@@ -498,25 +497,25 @@ class PlayerService(QObject):
 
     def is_gapless_enabled(self) -> bool:
         """Check if gapless playback is enabled"""
-        return self.player.is_gapless_enabled()
+        return self.player.is_gapless_enabled()  # type: ignore[no-any-return]
 
-    def set_gapless(self, enabled: bool):
+    def set_gapless(self, enabled: bool) -> None:
         """Enable/disable gapless playback"""
         self.player.set_gapless(enabled)
 
-    def set_crossfade(self, duration_ms: int):
+    def set_crossfade(self, duration_ms: int) -> None:
         """Set crossfade duration in milliseconds"""
         self.player.set_crossfade(duration_ms)
 
     def get_crossfade(self) -> int:
         """Get crossfade duration"""
-        return self.player.get_crossfade()
+        return self.player.get_crossfade()  # type: ignore[no-any-return]
 
     # ==========================================
     # Cleanup
     # ==========================================
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup resources"""
         if self._position_timer:
             self._position_timer.stop()

@@ -1,7 +1,7 @@
 # NEXUS Music Manager - Architecture Documentation
 
-**Version:** 2.0 (Production)
-**Last Updated:** November 23, 2025
+**Version:** 2.1.0 (Refactored)
+**Last Updated:** March 15, 2026
 
 ---
 
@@ -13,15 +13,19 @@
 +-----------------------------------------------------------------------------------+
 |                                                                                    |
 |  +------------------+    +------------------+    +------------------+              |
-|  |   GUI Layer      |    |   Core Layer     |    |   Data Layer     |              |
-|  |   (PyQt6)        |<-->|   (Business)     |<-->|   (SQLite)       |              |
+|  |   GUI Layer      |    |  Controllers     |    |   Services       |              |
+|  |   (PySide6)      |<-->|  (Orchestration) |<-->|  (Business)      |              |
+|  +------------------+    +------------------+    +------------------+              |
+|         |                                              |                           |
+|  +------------------+    +------------------+    +------------------+              |
+|  |   Core Layer     |    |   API Layer      |    |   Data Layer     |              |
+|  |   (Engines)      |    |   (External)     |    |   (SQLite+FTS5)  |              |
 |  +------------------+    +------------------+    +------------------+              |
 |                                                                                    |
 |  +------------------+    +------------------+    +------------------+              |
-|  |   API Layer      |    |   Workers        |    |   Utils          |              |
-|  |   (External)     |    |   (Threading)    |    |   (Helpers)      |              |
+|  |   Workers        |    |   Plugins        |    |   Utils          |              |
+|  |   (Threading)    |    |   (Extensions)   |    |   (Helpers)      |              |
 |  +------------------+    +------------------+    +------------------+              |
-|                                                                                    |
 +-----------------------------------------------------------------------------------+
 ```
 
@@ -31,43 +35,111 @@
 
 ### 1. GUI Layer (`src/gui/`)
 
-Responsible for all user interface components using PyQt6.
+User interface components using **PySide6** (migrated from PyQt6 in Fase 3).
 
 ```
 src/gui/
-├── tabs/                    # Main application tabs
-│   ├── library_tab.py       # Music library browser (10k+ songs)
+├── base/                    # Base classes
+│   ├── base_tab.py          # BaseTab template (shared by all tabs)
+│   └── base_worker.py       # BaseWorker (shared by all background workers)
+│
+├── tabs/                    # 15 application tabs
+│   ├── library_tab.py       # Music library browser
 │   ├── search_tab.py        # YouTube + Spotify search
 │   ├── lyrics_tab.py        # Lyrics display (Genius API)
+│   ├── chords_tab.py        # Chord detection + diagram display
 │   ├── import_tab.py        # Library import from folders
 │   ├── duplicates_tab.py    # Duplicate detection UI
 │   ├── organize_tab.py      # Auto-organize library
 │   ├── rename_tab.py        # Batch rename files
-│   └── cleanup_tab.py       # Metadata cleanup
+│   ├── cleanup_tab.py       # Metadata cleanup workflow
+│   ├── statistics_tab.py    # Library analytics
+│   ├── content_filter_tab.py # Content classification
+│   ├── plugins_tab.py       # Plugin management
+│   ├── remote_tab.py        # Mobile remote control
+│   ├── cloud_sync_tab.py    # Cloud synchronization
+│   └── settings_tab.py      # Application settings
 │
 ├── widgets/                 # Reusable UI components
-│   ├── now_playing_widget.py    # Current song display + controls
-│   ├── playlist_widget.py       # Playlist management sidebar
-│   ├── visualizer_widget.py     # Audio visualizer (Bars/Circular/Brain AI)
-│   └── queue_widget.py          # Download queue display
+│   ├── now_playing_widget.py    # Current song + controls
+│   ├── playlist_widget.py       # Playlist sidebar
+│   ├── visualizer_widget.py     # Audio visualizer (4 modes)
+│   ├── queue_widget.py          # Download queue
+│   ├── album_grid_widget.py     # Album cover grid
+│   ├── equalizer_widget.py      # EQ sliders
+│   └── recommendations_widget.py # Similar songs
+│
+├── visualizers/             # OpenGL visualizers
+│   └── organic_visualizer.py    # Organic SDF visualizer (GLSL)
 │
 ├── dialogs/                 # Modal dialogs
 │   ├── api_settings_dialog.py   # API key configuration
-│   └── shortcuts_dialog.py      # Keyboard shortcuts reference
+│   └── shortcuts_dialog.py      # Keyboard shortcuts
 │
 └── themes/                  # Visual themes
-    └── __init__.py          # Theme definitions
+    ├── dark.qss             # Dark theme stylesheet
+    ├── light.qss            # Light theme stylesheet
+    └── style_constants.py   # Centralized style constants
 ```
 
-### 2. Core Layer (`src/core/`)
+#### BaseTab Pattern
 
-Business logic and processing engines.
+All tabs inherit from `BaseTab`, which provides:
+- Standard layout structure (header, content, status bar)
+- Progress reporting via `_update_progress()`
+- Worker connection via `connect_worker()`
+- Translation support via `tr()`
+
+#### BaseWorker Pattern
+
+All background workers inherit from `BaseWorker`, which provides:
+- Standard signals: `progress(int, str)`, `finished(object)`, `error(str)`
+- Abstract `do_work()` method with automatic error handling
+- Cancellation support via `cancel()` / `is_cancelled`
+- Subclasses can override signal signatures (e.g. ChordsAnalyzeWorker uses `progress(str)`)
+
+Workers using BaseWorker:
+- ScanWorker (duplicates), OrganizeWorker, RenameWorker
+- ChordsAnalyzeWorker, LyricsSearchWorker, ClassificationWorker
+
+### 2. Controllers Layer (`src/controllers/`)
+
+Orchestration layer between GUI and services (Fase 2 refactoring).
+
+```
+src/controllers/
+├── playback_controller.py   # Audio playback orchestration
+├── library_controller.py    # Library operations + signals
+├── ui_composer.py           # Main window composition + tab wiring
+└── remote_controller.py     # Remote server <-> GUI bridge
+```
+
+### 3. Services Layer (`src/services/`)
+
+Business logic decoupled from GUI.
+
+```
+src/services/
+├── library_service.py       # Library CRUD + signals
+├── download_service.py      # Download management + auto-import
+├── player_service.py        # Audio control with gapless support
+├── cloud_sync_service.py    # Google Drive sync
+├── remote_server.py         # Flask REST API + JWT auth
+└── content_filter/          # Content classification engine
+    ├── classifier.py        # Main classifier
+    └── lyrics_analyzer.py   # Lyrics-based analysis
+```
+
+### 4. Core Layer (`src/core/`)
+
+Processing engines and business logic.
 
 ```
 src/core/
-├── audio_player.py          # Pygame-based audio playback
-├── playlist_manager.py      # Playlist CRUD operations
-├── download_queue.py        # Concurrent download manager (3 workers)
+├── audio_player.py          # python-mpv audio playback (gapless)
+├── audio_embeddings.py      # 128D embeddings for similarity
+├── playlist_manager.py      # Playlist CRUD
+├── download_queue.py        # Concurrent download manager
 ├── duplicate_detector.py    # Multi-method duplicate detection
 ├── library_organizer.py     # Folder structure templates
 ├── batch_renamer.py         # File renaming with patterns
@@ -76,32 +148,19 @@ src/core/
 ├── metadata_fetcher.py      # External metadata lookup
 ├── metadata_autocompleter.py # Auto-complete suggestions
 ├── cover_art_manager.py     # Album artwork handling
+├── mood_classifier.py       # Mood detection (audio features)
+├── bpm_detector.py          # BPM detection
+├── recommendation_engine.py # Similar song recommendations
 ├── waveform_extractor.py    # Audio analysis for visualizer
 ├── spectrum_worker.py       # FFT processing thread
 ├── theme_manager.py         # Light/Dark theme switching
-├── keyboard_shortcuts.py    # Global hotkeys (Space=Play/Pause)
+├── keyboard_shortcuts.py    # Global hotkeys
 ├── cleanup_workflow.py      # Guided cleanup process
 ├── acoustid_client.py       # Audio fingerprinting
 └── api_adapters.py          # Unified API interface
 ```
 
-### 3. Data Layer (`src/database/`)
-
-SQLite database with FTS5 full-text search.
-
-```
-src/database/
-└── manager.py               # Thread-safe DatabaseManager
-    ├── Songs table          # Core music metadata
-    ├── Playlists table      # User playlists
-    ├── PlaylistSongs table  # M:N relationship
-    ├── Downloads table      # Download history
-    └── FTS5 index           # Full-text search (<100ms)
-```
-
-**Thread Safety:** Uses `threading.local()` for per-thread connections.
-
-### 4. API Layer (`src/api/`)
+### 5. API Layer (`src/api/`)
 
 External service integrations.
 
@@ -110,303 +169,142 @@ src/api/
 ├── youtube_search.py        # YouTube Data API v3
 ├── spotify_search.py        # Spotify Web API (spotipy)
 ├── musicbrainz_client.py    # MusicBrainz metadata
-└── genius_client.py         # Genius lyrics API
+├── genius_client.py         # Genius lyrics API
+└── chords_client.py         # Chord detection (librosa + chords-db)
 ```
 
-**Security:** API keys stored in OS keyring (encrypted).
+**Security:** API keys loaded via centralized `utils/credentials.py` (keyring > env > .env > credentials.json).
 
-### 5. Workers Layer (`src/workers/`)
+### 6. Data Layer (`src/database/`)
 
-Background processing threads.
+SQLite database with FTS5 full-text search and migration system.
 
 ```
-src/workers/
-├── download_worker.py       # yt-dlp download thread
-└── library_import_worker.py # Folder scanning thread
+src/database/
+├── manager.py               # Thread-safe DatabaseManager
+└── migrations/              # 6 SQL migration files
+    ├── 001_initial.sql
+    └── ...
 ```
 
-### 6. Utils Layer (`src/utils/`)
+**Thread Safety:** Uses `threading.local()` for per-thread connections.
 
-Helper utilities.
+### 7. Plugins Layer (`src/plugins/`)
+
+Extensibility system with 17 hook points.
+
+```
+src/plugins/
+├── plugin_base.py           # Abstract plugin interface
+├── plugin_manager.py        # Singleton manager (whitelist default-deny)
+└── available/               # 3 plugins
+    ├── play_counter.py      # Play count tracking
+    ├── scrobbler.py         # Last.fm/ListenBrainz
+    └── discord_rpc.py       # Discord Rich Presence
+```
+
+### 8. Utils Layer (`src/utils/`)
 
 ```
 src/utils/
-├── input_sanitizer.py       # Security: Input validation
-└── fpcalc_checker.py        # AcoustID fingerprint checker
+├── input_sanitizer.py       # Security: input validation
+├── credentials.py           # Centralized credential loading (4-tier)
+├── fpcalc_checker.py        # AcoustID fingerprint checker
+├── rate_limiter.py          # API rate limiting
+├── constants.py             # Application constants
+└── subprocess_patch.py      # PyInstaller subprocess fix
 ```
 
 ---
 
-## Data Flow Diagrams
-
-### Search & Download Flow
+## Signal Flow Between Layers
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   User      │     │  SearchTab   │     │  YouTube    │
-│   Input     │────>│  (GUI)       │────>│  API        │
-└─────────────┘     └──────────────┘     └─────────────┘
-                           │                    │
-                           │ Results            │ Search
-                           ▼                    ▼
-                    ┌──────────────┐     ┌─────────────┐
-                    │  QueueWidget │<────│  Spotify    │
-                    │  (GUI)       │     │  API        │
-                    └──────────────┘     └─────────────┘
-                           │
-                           │ Add to Queue
-                           ▼
-                    ┌──────────────┐     ┌─────────────┐
-                    │ DownloadQueue│────>│  yt-dlp     │
-                    │  (Core)      │     │  (Download) │
-                    └──────────────┘     └─────────────┘
-                           │
-                           │ Complete
-                           ▼
-                    ┌──────────────┐     ┌─────────────┐
-                    │ MetadataTagger────>│  MusicBrainz│
-                    │  (Core)      │     │  (Metadata) │
-                    └──────────────┘     └─────────────┘
-                           │
-                           │ Tagged MP3
-                           ▼
-                    ┌──────────────┐
-                    │ DatabaseManager
-                    │  (Auto-import)│
-                    └──────────────┘
+GUI (tabs/widgets)
+    │ user action
+    ▼
+Controllers (playback, library, ui_composer)
+    │ orchestrate
+    ▼
+Services (library, download, player)
+    │ business logic
+    ▼
+Core (engines) ←→ API (external) ←→ Database (SQLite)
 ```
 
-### Playback Flow
-
-```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│ LibraryTab  │     │ NowPlaying   │     │ AudioPlayer │
-│ (Double-click)───>│  Widget      │────>│  (Pygame)   │
-└─────────────┘     └──────────────┘     └─────────────┘
-      │                    │                    │
-      │                    │ Position           │ Audio Data
-      │                    ▼                    ▼
-      │             ┌──────────────┐     ┌─────────────┐
-      │             │ ProgressBar  │     │ Waveform    │
-      │             │ (Seek)       │     │ Extractor   │
-      │             └──────────────┘     └─────────────┘
-      │                                        │
-      │                                        │ FFT
-      │                                        ▼
-      │                                 ┌─────────────┐
-      │                                 │ Visualizer  │
-      │                                 │ (Bars/AI)   │
-      │                                 └─────────────┘
-      │
-      │ Also plays from:
-      ▼
-┌─────────────┐
-│ PlaylistWidget
-│ (Sidebar)   │
-└─────────────┘
-```
+Signals flow upward via PySide6 Signal/Slot:
+- Core emits → Service relays → Controller handles → GUI updates
 
 ---
 
-## Key Components
+## Remote Control Architecture
 
-### DatabaseManager (`src/database/manager.py`)
-
-Thread-safe SQLite wrapper with connection pooling.
-
-```python
-class DatabaseManager:
-    def __init__(self, db_path="data/nexus_music.db"):
-        self._local = threading.local()  # Per-thread connections
-        self._connections = []           # Track all connections
-        self._lock = threading.Lock()    # Protect connection list
-
-    @property
-    def conn(self) -> sqlite3.Connection:
-        """Returns thread-local connection (creates if needed)"""
-        if not hasattr(self._local, 'conn'):
-            self._local.conn = self._create_connection()
-        return self._local.conn
 ```
-
-### DownloadQueue (`src/core/download_queue.py`)
-
-Concurrent download manager with progress tracking.
-
-```python
-class DownloadQueue(QObject):
-    progress_updated = pyqtSignal(str, int)  # item_id, progress
-    download_complete = pyqtSignal(str, dict) # item_id, result
-
-    def __init__(self, max_workers=3):
-        self.executor = ThreadPoolExecutor(max_workers=max_workers)
-        self.queue = {}  # Active downloads
+┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
+│ Mobile       │     │ Flask REST   │     │ Remote          │
+│ Browser      │────>│ API Server   │────>│ Controller      │
+│ (HTML/JS)    │     │ (JWT auth)   │     │ (Signal bridge) │
+└─────────────┘     └──────────────┘     └─────────────────┘
+                           │                      │
+                    Bearer token            PySide6 signals
+                    CORS restricted         ▼
+                    24h expiration     PlaybackController
 ```
-
-**Fixed Bug:** Lambda closure capture by value for progress callbacks.
-
-### AudioPlayer (`src/core/audio_player.py`)
-
-Pygame-based audio playback with position tracking.
-
-```python
-class AudioPlayer(QObject):
-    position_changed = pyqtSignal(int)  # Current position in ms
-    playback_finished = pyqtSignal()
-
-    def play(self, file_path: str):
-        pygame.mixer.music.load(file_path)
-        pygame.mixer.music.play()
-```
-
-### VisualizerWidget (`src/gui/widgets/visualizer_widget.py`)
-
-Real-time audio visualization with 3 styles.
-
-- **Bars:** Classic frequency bars
-- **Circular:** Radial visualization
-- **Brain AI:** Particle-based neural network effect (250 particles)
 
 ---
 
 ## Security Measures
 
-### Input Validation (`src/utils/input_sanitizer.py`)
-
-```python
-class InputSanitizer:
-    @staticmethod
-    def sanitize_filename(name: str) -> str:
-        """Remove dangerous characters from filenames"""
-
-    @staticmethod
-    def sanitize_search_query(query: str) -> str:
-        """Prevent injection in search queries"""
-
-    @staticmethod
-    def validate_path(path: str, base_dir: str) -> bool:
-        """Prevent path traversal attacks"""
-```
-
-### API Key Storage
-
-- Keys stored in OS keyring (Windows Credential Manager / macOS Keychain)
-- Never logged or displayed in full
-- Service names: `nexus_youtube_api`, `nexus_spotify_*`, `nexus_genius_api`
-
-### SQL Injection Prevention
-
-- All queries use parameterized statements
-- No string concatenation for user input
+| Measure | Implementation |
+|---------|---------------|
+| API keys | OS keyring via `utils/credentials.py` |
+| SQL injection | Parameterized queries + column allowlist |
+| Path traversal | `validate_path()` with symlink checks |
+| Input sanitization | `InputSanitizer` for all user input |
+| Remote auth | JWT Bearer tokens (24h expiration) |
+| CORS | Restricted to server IP only |
+| Plugins | Whitelist default-deny sandbox |
+| Thread safety | RLock in AudioPlayer, DownloadQueue |
 
 ---
 
-## Performance Optimizations
+## Quality Assurance
 
-| Component | Optimization | Impact |
-|-----------|-------------|--------|
-| Database | FTS5 full-text search | <100ms search on 10k+ songs |
-| Database | WAL journal mode | Concurrent reads/writes |
-| Database | Connection pooling | Thread-safe, no locks |
-| Library | Lazy loading | Only visible rows loaded |
-| Visualizer | 30 FPS cap | CPU ~10% (was ~20%) |
-| Brain AI | 250 particles | CPU reduced 50% |
-| Downloads | 3 concurrent workers | Optimal throughput |
-
----
-
-## File Structure
-
-```
-AGENTE_MUSICA_MP3/
-├── src/                     # Source code
-│   ├── main.py              # Application entry point
-│   ├── api/                 # External API clients
-│   ├── core/                # Business logic
-│   ├── database/            # Data access layer
-│   ├── gui/                 # User interface
-│   ├── utils/               # Utilities
-│   └── workers/             # Background threads
-│
-├── data/                    # Runtime data
-│   └── nexus_music.db       # SQLite database
-│
-├── downloads/               # Downloaded MP3s
-│
-├── tests/                   # Test suite (148 tests)
-│   ├── test_*.py            # Unit tests
-│   └── conftest.py          # Pytest fixtures
-│
-├── docs/                    # Documentation
-│   ├── ARCHITECTURE.md      # This file
-│   ├── plans/               # Roadmaps and plans
-│   └── architecture/        # Technical reviews
-│
-├── requirements.txt         # Python dependencies
-├── setup.py                 # Package configuration
-├── LICENSE                  # MIT License
-└── README.md                # Project overview
-```
+| Tool | Config | Target |
+|------|--------|--------|
+| pytest | `pytest.ini` (coverage >= 80%) | 325+ tests |
+| mypy | `mypy.ini` (strict mode) | 0 errors, 111 files |
+| flake8 | CI + pre-commit | max-line-length=120 |
+| bandit | CI security scan | 0 high/critical |
+| black | pre-commit hook | Auto-format |
+| isort | pre-commit hook | Import sorting |
 
 ---
 
 ## Dependencies
 
 ### Core
-- **PyQt6** >= 6.5.0 - GUI framework
-- **pygame** >= 2.5.0 - Audio playback
-- **yt-dlp** >= 2023.10.13 - YouTube downloads
-- **mutagen** >= 1.47.0 - ID3 tag editing
-- **numpy** >= 1.24.0 - Audio processing
+- **PySide6** >= 6.6.0 - GUI framework
+- **python-mpv** - Audio playback (gapless, all formats)
+- **yt-dlp** - YouTube downloads
+- **mutagen** - ID3 tag editing
+- **numpy** - Audio processing (FFT)
 
 ### APIs
 - **google-api-python-client** - YouTube Data API
-- **spotipy** >= 2.23.0 - Spotify Web API
-- **lyricsgenius** >= 3.0.1 - Genius lyrics API
-- **musicbrainzngs** >= 0.7.1 - MusicBrainz API
+- **spotipy** - Spotify Web API
+- **lyricsgenius** - Genius lyrics API
+- **musicbrainzngs** - MusicBrainz API
 
 ### Security
-- **keyring** >= 24.0.0 - Secure credential storage
-- **python-dotenv** >= 1.0.0 - Environment configuration
+- **keyring** - Secure credential storage
+- **python-dotenv** - Environment configuration
+
+### Build
+- **PyInstaller** 6.19 + UPX (151MB bundle)
+- **Inno Setup** - Windows installer
 
 ---
 
-## Entry Points
-
-### Main Application
-```bash
-python src/main.py
-```
-
-### Windows Launcher
-```bash
-LAUNCH_NEXUS_MUSIC.bat
-```
-
-### Tests
-```bash
-pytest tests/ -v
-```
-
----
-
-## Future Architecture (Planned)
-
-### Service Layer (Phase 8)
-```
-src/services/
-├── library_service.py       # Library operations
-├── download_service.py      # Download management
-├── playback_service.py      # Audio control
-└── playlist_service.py      # Playlist operations
-```
-
-This will decouple GUI from business logic, enabling:
-- Easier testing (no PyQt dependency)
-- Future CLI interface
-- Potential REST API
-
----
-
-**Document Version:** 1.0
-**Created by:** NEXUS@CLI
+**Document Version:** 2.1
+**Last Updated:** 2026-03-15

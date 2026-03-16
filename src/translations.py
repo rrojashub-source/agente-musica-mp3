@@ -18,15 +18,12 @@ Usage:
     current = get_language()  # "es" or "en"
 """
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
 # Available languages
-LANGUAGES = {
-    "es": "Español",
-    "en": "English"
-}
+LANGUAGES = {"es": "Español", "en": "English"}
 
 # Current language (default: Spanish for Latin America market)
 _current_language = "es"
@@ -37,7 +34,6 @@ TRANSLATIONS = {
         # === Main Window ===
         "app_title": "🎵 NEXUS Gestor de Música - Edición Completa",
         "status_ready": "✅ NEXUS Gestor de Música - Listo",
-
         # === Tab Names ===
         "tab_import": "📥 Importar",
         "tab_library": "🎵 Biblioteca",
@@ -51,7 +47,6 @@ TRANSLATIONS = {
         "tab_organize": "📁 Organizar",
         "tab_cleanup": "✨ Limpieza",
         "tab_playlist": "🎵 Playlist",
-
         # === Library Tab ===
         "library_title": "📚 Biblioteca de Música",
         "library_songs": "canciones",
@@ -59,7 +54,6 @@ TRANSLATIONS = {
         "library_albums": "álbumes",
         "library_empty": "Biblioteca vacía - Importa música para comenzar",
         "library_search_placeholder": "🔍 Buscar en biblioteca...",
-
         # === Search Tab ===
         "search_title": "🔍 Buscar y Descargar",
         "search_placeholder": "🔍 Buscar artista, canción, álbum...",
@@ -72,7 +66,6 @@ TRANSLATIONS = {
         "search_selected": "Seleccionados: {count}",
         "search_no_results": "No se encontraron resultados",
         "search_error": "Error en búsqueda",
-
         # === Queue Tab ===
         "queue_title": "📥 Cola de Descargas",
         "btn_download_all": "⬇️ Descargar Todo",
@@ -85,7 +78,6 @@ TRANSLATIONS = {
         "queue_status_downloading": "Descargando",
         "queue_status_complete": "Completado",
         "queue_status_failed": "Falló",
-
         # === Duplicates Tab ===
         "duplicates_title": "🔍 Detector de Duplicados",
         "duplicates_method": "Método de Detección:",
@@ -98,7 +90,6 @@ TRANSLATIONS = {
         "btn_delete_selected": "🗑️ Eliminar Seleccionados",
         "duplicates_found": "Encontrados {count} grupos de duplicados",
         "duplicates_none": "No se encontraron duplicados",
-
         # === Organize Tab ===
         "organize_title": "📁 Auto-Organizar Biblioteca",
         "organize_target": "Directorio Destino:",
@@ -111,7 +102,6 @@ TRANSLATIONS = {
         "btn_organize": "📁 Organizar",
         "organize_copy": "Copiar archivos (mantener original)",
         "organize_move": "Mover archivos",
-
         # === Rename Tab ===
         "rename_title": "✏️ Renombrar en Lote",
         "rename_template": "Plantilla:",
@@ -119,7 +109,6 @@ TRANSLATIONS = {
         "btn_preview_rename": "👁️ Previsualizar",
         "btn_rename": "✏️ Renombrar",
         "rename_success": "Renombrados {count} archivos",
-
         # === Player / Now Playing ===
         "player_title": "▶️ Reproduciendo",
         "player_no_song": "Sin canción",
@@ -133,7 +122,6 @@ TRANSLATIONS = {
         "player_volume": "Volumen",
         "player_shuffle": "Aleatorio",
         "player_repeat": "Repetir",
-
         # === Playlist Widget ===
         "playlist_title": "🎵 Lista de Reproducción",
         "playlist_new": "Nueva Playlist",
@@ -143,14 +131,12 @@ TRANSLATIONS = {
         "playlist_remove_song": "Quitar de Playlist",
         "playlist_empty": "Playlist vacía",
         "playlist_songs_count": "{count} canciones",
-
         # === Lyrics Tab ===
         "lyrics_title": "📝 Letras",
         "lyrics_no_song": "Reproduce una canción para ver sus letras",
         "lyrics_loading": "Buscando letras...",
         "lyrics_not_found": "Letras no encontradas",
         "btn_fetch_lyrics": "🔄 Buscar Letras",
-
         # === Import Tab ===
         "import_title": "📥 Importar Biblioteca",
         "import_select_folder": "Seleccionar Carpeta",
@@ -159,13 +145,11 @@ TRANSLATIONS = {
         "import_complete": "Importación completada",
         "btn_import": "📥 Importar",
         "btn_select_folder": "📁 Seleccionar Carpeta",
-
         # === Cleanup Tab ===
         "cleanup_title": "✨ Asistente de Limpieza de Metadatos",
         "cleanup_scan": "Escanear Problemas",
         "cleanup_fix_all": "Corregir Todo",
         "cleanup_issues_found": "Encontrados {count} problemas",
-
         # === Dialogs ===
         "dialog_confirm": "Confirmar",
         "dialog_cancel": "Cancelar",
@@ -175,7 +159,6 @@ TRANSLATIONS = {
         "dialog_error": "Error",
         "dialog_success": "Éxito",
         "dialog_warning": "Advertencia",
-
         # === Settings ===
         "settings_title": "⚙️ Configuración",
         "settings_language": "Idioma:",
@@ -185,7 +168,6 @@ TRANSLATIONS = {
         "settings_downloads": "Carpeta de Descargas:",
         "settings_api_keys": "Claves de API",
         "settings_save": "Guardar Configuración",
-
         # === API Settings ===
         "api_title": "🔑 Configuración de API",
         "api_youtube": "YouTube API Key",
@@ -194,14 +176,12 @@ TRANSLATIONS = {
         "api_genius": "Genius API Token",
         "api_test": "Probar Conexión",
         "api_save": "Guardar",
-
         # === Errors ===
         "error_file_not_found": "Archivo no encontrado",
         "error_connection": "Error de conexión",
         "error_api_key": "Clave de API inválida",
         "error_download": "Error en descarga",
         "error_database": "Error de base de datos",
-
         # === Status Messages ===
         "status_loading": "Cargando...",
         "status_saving": "Guardando...",
@@ -210,7 +190,6 @@ TRANSLATIONS = {
         "status_failed": "Falló",
         "status_cancelled": "Cancelado",
         "status_theme_switched": "Cambiado a tema {theme}",
-
         # === Menu Items ===
         "menu_file": "&Archivo",
         "menu_exit": "&Salir",
@@ -223,11 +202,9 @@ TRANSLATIONS = {
         "menu_shortcuts": "&Atajos de Teclado",
         "menu_api_guide": "&Guía de Configuración API",
         "menu_about": "&Acerca de",
-
         # === Language Change ===
         "language_changed_title": "Idioma Cambiado",
         "language_changed_message": "El idioma se ha cambiado. Por favor reinicia la aplicación para ver los cambios.",
-
         # === Cloud Sync Tab ===
         "tab_cloud_sync": "☁️ Sincronización",
         "cloud_sync_title": "☁️ Sincronización en la Nube",
@@ -267,7 +244,6 @@ TRANSLATIONS = {
         "cloud_sync_import": "📥 Importar Biblioteca",
         "cloud_sync_activity_log": "Registro de Actividad",
         "cloud_sync_clear_log": "Limpiar Registro",
-
         # === Cloud Sync - Google Drive OAuth ===
         "cloud_sync_gdrive_simple_info": "Conecta tu cuenta de Google para sincronizar tu biblioteca en la nube.\nSolo se sincronizan los metadatos, no los archivos MP3.",
         "cloud_sync_connect_google": "Conectar con Google",
@@ -281,7 +257,6 @@ TRANSLATIONS = {
         "cloud_sync_missing_deps": "Dependencias faltantes",
         "cloud_sync_logout_confirm_title": "Cerrar Sesión",
         "cloud_sync_logout_confirm_msg": "¿Deseas cerrar sesión de Google Drive?\n\nTus datos sincronizados permanecerán en la nube.",
-
         # === Plugins Tab ===
         "tab_plugins": "🔌 Plugins",
         "plugins_title": "🔌 Administrador de Plugins",
@@ -302,7 +277,6 @@ TRANSLATIONS = {
         "plugins_unique_songs": "Canciones únicas",
         "plugins_avg_plays": "Promedio por canción",
         "plugins_most_played": "🏆 Más reproducidas",
-
         # === Remote Tab ===
         "tab_remote": "📱 Remoto",
         "remote_title": "📱 Control Remoto",
@@ -317,7 +291,6 @@ TRANSLATIONS = {
         "remote_status_stopped": "⚪ Servidor detenido",
         "remote_status_running": "🟢 Servidor ejecutando",
         "remote_activity_log": "Registro de Actividad",
-
         # === Content Filter Tab ===
         "tab_content_filter": "🛡️ Filtro",
         "content_filter_title": "🛡️ Filtro de Contenido",
@@ -384,7 +357,6 @@ TRANSLATIONS = {
         "content_filter_zone_export_msg": "Se exportaron {count} canciones a:\n{path}",
         "content_filter_usb_export_complete": "Exportación USB Completada",
         "content_filter_usb_export_msg": "Se exportaron {count} canciones al USB.\n\nEstructura de carpetas:\n  {base}/Infantil - Música infantil\n  {base}/Clean - Música limpia\n  {base}/Christian - Música cristiana\n  {base}/Explicit - Contenido explícito\n\nResumen guardado en: {summary}",
-
         # === Statistics Tab ===
         "tab_statistics": "📊 Estadísticas",
         "statistics_title": "📊 Estadísticas de Biblioteca",
@@ -406,7 +378,6 @@ TRANSLATIONS = {
         "statistics_hours": "horas",
         "statistics_plays": "reproducciones",
         "statistics_songs": "canciones",
-
         # === Equalizer ===
         "menu_equalizer": "🎚️ &Ecualizador...",
         "equalizer_title": "🎚️ Ecualizador de Audio",
@@ -416,12 +387,10 @@ TRANSLATIONS = {
         "equalizer_enabled": "Ecualizador Habilitado",
         "equalizer_reset": "Restablecer",
     },
-
     "en": {
         # === Main Window ===
         "app_title": "🎵 NEXUS Music Manager - Complete Edition",
         "status_ready": "✅ NEXUS Music Manager - Ready",
-
         # === Tab Names ===
         "tab_import": "📥 Import",
         "tab_library": "🎵 Library",
@@ -435,7 +404,6 @@ TRANSLATIONS = {
         "tab_organize": "📁 Organize",
         "tab_cleanup": "✨ Cleanup",
         "tab_playlist": "🎵 Playlist",
-
         # === Library Tab ===
         "library_title": "📚 Music Library",
         "library_songs": "songs",
@@ -443,7 +411,6 @@ TRANSLATIONS = {
         "library_albums": "albums",
         "library_empty": "Library empty - Import music to get started",
         "library_search_placeholder": "🔍 Search library...",
-
         # === Search Tab ===
         "search_title": "🔍 Search & Download",
         "search_placeholder": "🔍 Search artist, song, album...",
@@ -456,7 +423,6 @@ TRANSLATIONS = {
         "search_selected": "Selected: {count}",
         "search_no_results": "No results found",
         "search_error": "Search error",
-
         # === Queue Tab ===
         "queue_title": "📥 Download Queue",
         "btn_download_all": "⬇️ Download All",
@@ -469,7 +435,6 @@ TRANSLATIONS = {
         "queue_status_downloading": "Downloading",
         "queue_status_complete": "Complete",
         "queue_status_failed": "Failed",
-
         # === Duplicates Tab ===
         "duplicates_title": "🔍 Duplicate Detector",
         "duplicates_method": "Detection Method:",
@@ -482,7 +447,6 @@ TRANSLATIONS = {
         "btn_delete_selected": "🗑️ Delete Selected",
         "duplicates_found": "Found {count} duplicate groups",
         "duplicates_none": "No duplicates found",
-
         # === Organize Tab ===
         "organize_title": "📁 Auto-Organize Library",
         "organize_target": "Target Directory:",
@@ -495,7 +459,6 @@ TRANSLATIONS = {
         "btn_organize": "📁 Organize",
         "organize_copy": "Copy files (keep original)",
         "organize_move": "Move files",
-
         # === Rename Tab ===
         "rename_title": "✏️ Batch Rename",
         "rename_template": "Template:",
@@ -503,7 +466,6 @@ TRANSLATIONS = {
         "btn_preview_rename": "👁️ Preview",
         "btn_rename": "✏️ Rename",
         "rename_success": "Renamed {count} files",
-
         # === Player / Now Playing ===
         "player_title": "▶️ Now Playing",
         "player_no_song": "No song playing",
@@ -517,7 +479,6 @@ TRANSLATIONS = {
         "player_volume": "Volume",
         "player_shuffle": "Shuffle",
         "player_repeat": "Repeat",
-
         # === Playlist Widget ===
         "playlist_title": "🎵 Playlist",
         "playlist_new": "New Playlist",
@@ -527,14 +488,12 @@ TRANSLATIONS = {
         "playlist_remove_song": "Remove from Playlist",
         "playlist_empty": "Playlist empty",
         "playlist_songs_count": "{count} songs",
-
         # === Lyrics Tab ===
         "lyrics_title": "📝 Lyrics",
         "lyrics_no_song": "Play a song to see its lyrics",
         "lyrics_loading": "Searching lyrics...",
         "lyrics_not_found": "Lyrics not found",
         "btn_fetch_lyrics": "🔄 Fetch Lyrics",
-
         # === Import Tab ===
         "import_title": "📥 Import Library",
         "import_select_folder": "Select Folder",
@@ -543,13 +502,11 @@ TRANSLATIONS = {
         "import_complete": "Import complete",
         "btn_import": "📥 Import",
         "btn_select_folder": "📁 Select Folder",
-
         # === Cleanup Tab ===
         "cleanup_title": "✨ Metadata Cleanup Wizard",
         "cleanup_scan": "Scan for Issues",
         "cleanup_fix_all": "Fix All",
         "cleanup_issues_found": "Found {count} issues",
-
         # === Dialogs ===
         "dialog_confirm": "Confirm",
         "dialog_cancel": "Cancel",
@@ -559,7 +516,6 @@ TRANSLATIONS = {
         "dialog_error": "Error",
         "dialog_success": "Success",
         "dialog_warning": "Warning",
-
         # === Settings ===
         "settings_title": "⚙️ Settings",
         "settings_language": "Language:",
@@ -569,7 +525,6 @@ TRANSLATIONS = {
         "settings_downloads": "Downloads Folder:",
         "settings_api_keys": "API Keys",
         "settings_save": "Save Settings",
-
         # === API Settings ===
         "api_title": "🔑 API Configuration",
         "api_youtube": "YouTube API Key",
@@ -578,14 +533,12 @@ TRANSLATIONS = {
         "api_genius": "Genius API Token",
         "api_test": "Test Connection",
         "api_save": "Save",
-
         # === Errors ===
         "error_file_not_found": "File not found",
         "error_connection": "Connection error",
         "error_api_key": "Invalid API key",
         "error_download": "Download error",
         "error_database": "Database error",
-
         # === Status Messages ===
         "status_loading": "Loading...",
         "status_saving": "Saving...",
@@ -594,7 +547,6 @@ TRANSLATIONS = {
         "status_failed": "Failed",
         "status_cancelled": "Cancelled",
         "status_theme_switched": "Switched to {theme} theme",
-
         # === Menu Items ===
         "menu_file": "&File",
         "menu_exit": "E&xit",
@@ -607,11 +559,9 @@ TRANSLATIONS = {
         "menu_shortcuts": "&Keyboard Shortcuts",
         "menu_api_guide": "&API Setup Guide",
         "menu_about": "&About",
-
         # === Language Change ===
         "language_changed_title": "Language Changed",
         "language_changed_message": "Language has been changed. Please restart the application to see the changes.",
-
         # === Cloud Sync Tab ===
         "tab_cloud_sync": "☁️ Cloud Sync",
         "cloud_sync_title": "☁️ Cloud Sync",
@@ -651,7 +601,6 @@ TRANSLATIONS = {
         "cloud_sync_import": "📥 Import Library",
         "cloud_sync_activity_log": "Activity Log",
         "cloud_sync_clear_log": "Clear Log",
-
         # === Cloud Sync - Google Drive OAuth ===
         "cloud_sync_gdrive_simple_info": "Connect your Google account to sync your library to the cloud.\nOnly metadata is synced, not the actual MP3 files.",
         "cloud_sync_connect_google": "Connect with Google",
@@ -665,7 +614,6 @@ TRANSLATIONS = {
         "cloud_sync_missing_deps": "Missing dependencies",
         "cloud_sync_logout_confirm_title": "Logout",
         "cloud_sync_logout_confirm_msg": "Do you want to logout from Google Drive?\n\nYour synced data will remain in the cloud.",
-
         # === Plugins Tab ===
         "tab_plugins": "🔌 Plugins",
         "plugins_title": "🔌 Plugin Manager",
@@ -686,7 +634,6 @@ TRANSLATIONS = {
         "plugins_unique_songs": "Unique songs",
         "plugins_avg_plays": "Average per song",
         "plugins_most_played": "🏆 Most played",
-
         # === Remote Tab ===
         "tab_remote": "📱 Remote",
         "remote_title": "📱 Remote Control",
@@ -701,7 +648,6 @@ TRANSLATIONS = {
         "remote_status_stopped": "⚪ Server stopped",
         "remote_status_running": "🟢 Server running",
         "remote_activity_log": "Activity Log",
-
         # === Content Filter Tab ===
         "tab_content_filter": "🛡️ Filter",
         "content_filter_title": "🛡️ Content Filter",
@@ -768,7 +714,6 @@ TRANSLATIONS = {
         "content_filter_zone_export_msg": "Exported {count} songs to:\n{path}",
         "content_filter_usb_export_complete": "USB Export Complete",
         "content_filter_usb_export_msg": "Exported {count} songs to USB.\n\nFolder structure:\n  {base}/Infantil - Children's music\n  {base}/Clean - Clean music\n  {base}/Christian - Christian music\n  {base}/Explicit - Explicit content\n\nSummary saved to: {summary}",
-
         # === Statistics Tab ===
         "tab_statistics": "📊 Statistics",
         "statistics_title": "📊 Library Statistics",
@@ -790,7 +735,6 @@ TRANSLATIONS = {
         "statistics_hours": "hours",
         "statistics_plays": "plays",
         "statistics_songs": "songs",
-
         # === Equalizer ===
         "menu_equalizer": "🎚️ &Equalizer...",
         "equalizer_title": "🎚️ Audio Equalizer",
@@ -799,7 +743,7 @@ TRANSLATIONS = {
         "equalizer_delete_preset": "🗑️ Delete",
         "equalizer_enabled": "Equalizer Enabled",
         "equalizer_reset": "Reset",
-    }
+    },
 }
 
 
@@ -834,7 +778,7 @@ def get_language_name() -> str:
     return LANGUAGES.get(_current_language, "Unknown")
 
 
-def tr(key: str, **kwargs) -> str:
+def tr(key: str, **kwargs: Any) -> str:
     """
     Get translated text (main translation function)
 
@@ -868,7 +812,7 @@ def tr(key: str, **kwargs) -> str:
 
 
 # Alias for backward compatibility
-def t(key: str, **kwargs) -> str:
+def t(key: str, **kwargs: Any) -> str:
     """Alias for tr() - backward compatibility"""
     return tr(key, **kwargs)
 

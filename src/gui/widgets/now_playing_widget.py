@@ -15,18 +15,31 @@ Features:
 
 Created: November 13, 2025
 """
+
+from __future__ import annotations
+
 import logging
-from typing import Optional, Dict
 from pathlib import Path
+from typing import Any, Dict, Optional
+
+from PySide6.QtCore import QPointF, Qt, QTimer, Signal
+from PySide6.QtGui import QBrush, QColor, QEnterEvent, QPainter, QPainterPath, QPaintEvent, QPen, QPixmap, QPolygonF
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QSlider, QFrame, QMessageBox, QGraphicsDropShadowEffect
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QPointF
-from PySide6.QtGui import QPixmap, QPainter, QColor, QPen, QBrush, QPolygonF, QPainterPath
+
 from core.audio_player import PlaybackState
 from core.cover_art_manager import CoverArtManager
-from utils.constants import VISUALIZER_FRAME_INTERVAL_MS, ALBUM_ART_THUMBNAIL_SIZE
+from gui.themes.style_constants import Styles
+from utils.constants import ALBUM_ART_THUMBNAIL_SIZE, VISUALIZER_FRAME_INTERVAL_MS
 
 logger = logging.getLogger(__name__)
 
@@ -38,29 +51,29 @@ class NeonIconButton(QPushButton):
     Supports icons: play, pause, stop, prev, next, shuffle, repeat
     """
 
-    def __init__(self, icon_type: str, size: int = 40, parent=None):
+    def __init__(self, icon_type: str, size: int = 40, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
-        self.icon_type = icon_type
-        self.icon_size = size
+        self.icon_type: str = icon_type
+        self.icon_size: int = size
         self.setFixedSize(size, size)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         # Neon colors
-        self.color_cyan = QColor(0, 200, 255)
-        self.color_magenta = QColor(200, 80, 192)
-        self.color_dim = QColor(80, 80, 80)
+        self.color_cyan: QColor = QColor(0, 200, 255)
+        self.color_magenta: QColor = QColor(200, 80, 192)
+        self.color_dim: QColor = QColor(80, 80, 80)
 
         # State
-        self._hovered = False
-        self._is_play = True  # For play/pause toggle
+        self._hovered: bool = False
+        self._is_play: bool = True  # For play/pause toggle
 
         # Transparent background
-        self.setStyleSheet("background: transparent; border: none;")
+        self.setStyleSheet(Styles.BTN_TRANSPARENT)
 
         # Add glow effect
         self._setup_glow()
 
-    def _setup_glow(self):
+    def _setup_glow(self) -> None:
         """Setup the glow shadow effect"""
         self.glow = QGraphicsDropShadowEffect(self)
         self.glow.setBlurRadius(15)
@@ -72,14 +85,14 @@ class NeonIconButton(QPushButton):
         # Update glow when toggled (for checkable buttons)
         self.toggled.connect(self._on_toggled)
 
-    def _on_toggled(self, checked):
+    def _on_toggled(self, checked: bool) -> None:
         """Update glow when toggle state changes"""
         self._update_glow()
         self.update()
 
-    def _update_glow(self):
+    def _update_glow(self) -> None:
         """Update glow based on state"""
-        is_toggle = self.icon_type in ['shuffle', 'repeat', 'repeat_one', 'continue']
+        is_toggle = self.icon_type in ["shuffle", "repeat", "repeat_one", "continue"]
 
         if is_toggle:
             if self.isChecked():
@@ -103,31 +116,31 @@ class NeonIconButton(QPushButton):
                 self.glow.setBlurRadius(10)
                 self.glow.setColor(QColor(0, 150, 200, 100))
 
-    def enterEvent(self, event):
+    def enterEvent(self, event: QEnterEvent) -> None:
         self._hovered = True
         self._update_glow()
         self.update()
         super().enterEvent(event)
 
-    def leaveEvent(self, event):
+    def leaveEvent(self, event: Any) -> None:
         self._hovered = False
         self._update_glow()
         self.update()
         super().leaveEvent(event)
 
-    def set_playing(self, is_playing: bool):
+    def set_playing(self, is_playing: bool) -> None:
         """Toggle between play and pause icon"""
         self._is_play = not is_playing
         self.update()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent) -> None:
         """Draw the icon with neon effect"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # Determine color based on state
         # Toggle buttons (repeat_one, continue, shuffle) show different colors for active/inactive
-        is_toggle = self.icon_type in ['shuffle', 'repeat', 'repeat_one', 'continue']
+        is_toggle = self.icon_type in ["shuffle", "repeat", "repeat_one", "continue"]
 
         if is_toggle:
             if self.isChecked():
@@ -155,84 +168,76 @@ class NeonIconButton(QPushButton):
         scale = self.icon_size * 0.35  # Icon takes 70% of button
 
         # Draw the appropriate icon
-        if self.icon_type == 'play':
+        if self.icon_type == "play":
             if self._is_play:
                 self._draw_play(painter, cx, cy, scale)
             else:
                 self._draw_pause(painter, cx, cy, scale)
-        elif self.icon_type == 'pause':
+        elif self.icon_type == "pause":
             self._draw_pause(painter, cx, cy, scale)
-        elif self.icon_type == 'stop':
+        elif self.icon_type == "stop":
             self._draw_stop(painter, cx, cy, scale)
-        elif self.icon_type == 'prev':
+        elif self.icon_type == "prev":
             self._draw_prev(painter, cx, cy, scale)
-        elif self.icon_type == 'next':
+        elif self.icon_type == "next":
             self._draw_next(painter, cx, cy, scale)
-        elif self.icon_type == 'shuffle':
+        elif self.icon_type == "shuffle":
             self._draw_shuffle(painter, cx, cy, scale, color)
-        elif self.icon_type == 'repeat':
+        elif self.icon_type == "repeat":
             self._draw_repeat(painter, cx, cy, scale, color)
-        elif self.icon_type == 'repeat_one':
+        elif self.icon_type == "repeat_one":
             self._draw_repeat_one(painter, cx, cy, scale, color)
-        elif self.icon_type == 'continue':
+        elif self.icon_type == "continue":
             self._draw_continue(painter, cx, cy, scale, color)
 
-    def _draw_play(self, painter, cx, cy, scale):
+    def _draw_play(self, painter: QPainter, cx: float, cy: float, scale: float) -> None:
         """Draw play triangle"""
-        points = [
-            QPointF(cx - scale * 0.5, cy - scale),
-            QPointF(cx - scale * 0.5, cy + scale),
-            QPointF(cx + scale, cy)
-        ]
+        points = [QPointF(cx - scale * 0.5, cy - scale), QPointF(cx - scale * 0.5, cy + scale), QPointF(cx + scale, cy)]
         painter.drawPolygon(QPolygonF(points))
 
-    def _draw_pause(self, painter, cx, cy, scale):
+    def _draw_pause(self, painter: QPainter, cx: float, cy: float, scale: float) -> None:
         """Draw pause bars"""
         bar_width = scale * 0.35
         gap = scale * 0.25
         height = scale * 1.6
 
         # Left bar
-        painter.drawRect(int(cx - gap - bar_width), int(cy - height/2),
-                        int(bar_width), int(height))
+        painter.drawRect(int(cx - gap - bar_width), int(cy - height / 2), int(bar_width), int(height))
         # Right bar
-        painter.drawRect(int(cx + gap), int(cy - height/2),
-                        int(bar_width), int(height))
+        painter.drawRect(int(cx + gap), int(cy - height / 2), int(bar_width), int(height))
 
-    def _draw_stop(self, painter, cx, cy, scale):
+    def _draw_stop(self, painter: QPainter, cx: float, cy: float, scale: float) -> None:
         """Draw stop square"""
         size = scale * 1.4
-        painter.drawRect(int(cx - size/2), int(cy - size/2), int(size), int(size))
+        painter.drawRect(int(cx - size / 2), int(cy - size / 2), int(size), int(size))
 
-    def _draw_prev(self, painter, cx, cy, scale):
+    def _draw_prev(self, painter: QPainter, cx: float, cy: float, scale: float) -> None:
         """Draw previous icon (bar + triangle)"""
         # Bar
         bar_width = scale * 0.25
-        painter.drawRect(int(cx - scale), int(cy - scale * 0.8),
-                        int(bar_width), int(scale * 1.6))
+        painter.drawRect(int(cx - scale), int(cy - scale * 0.8), int(bar_width), int(scale * 1.6))
         # Triangle pointing left
         points = [
             QPointF(cx + scale * 0.8, cy - scale * 0.8),
             QPointF(cx + scale * 0.8, cy + scale * 0.8),
-            QPointF(cx - scale * 0.5, cy)
+            QPointF(cx - scale * 0.5, cy),
         ]
         painter.drawPolygon(QPolygonF(points))
 
-    def _draw_next(self, painter, cx, cy, scale):
+    def _draw_next(self, painter: QPainter, cx: float, cy: float, scale: float) -> None:
         """Draw next icon (triangle + bar)"""
         # Triangle pointing right
         points = [
             QPointF(cx - scale * 0.8, cy - scale * 0.8),
             QPointF(cx - scale * 0.8, cy + scale * 0.8),
-            QPointF(cx + scale * 0.5, cy)
+            QPointF(cx + scale * 0.5, cy),
         ]
         painter.drawPolygon(QPolygonF(points))
         # Bar
         bar_width = scale * 0.25
-        painter.drawRect(int(cx + scale * 0.75), int(cy - scale * 0.8),
-                        int(bar_width), int(scale * 1.6))
+        painter.drawRect(int(cx + scale * 0.75), int(cy - scale * 0.8), int(bar_width), int(scale * 1.6))
 
-    def _draw_shuffle(self, painter, cx, cy, scale, color):
+    def _draw_shuffle(self, painter: QPainter, cx: float, cy: float, scale: float, color: QColor) -> None:
         """Draw shuffle icon (crossed arrows)"""
         painter.setPen(QPen(color, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -254,13 +259,14 @@ class NeonIconButton(QPushButton):
         self._draw_small_arrow(painter, cx + scale, cy - scale * 0.5, 0)
         self._draw_small_arrow(painter, cx + scale, cy + scale * 0.5, 0)
 
-    def _draw_repeat(self, painter, cx, cy, scale, color):
+    def _draw_repeat(self, painter: QPainter, cx: float, cy: float, scale: float, color: QColor) -> None:
         """Draw repeat icon (circular arrows)"""
         painter.setPen(QPen(color, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
         # Draw arc
         from PySide6.QtCore import QRectF
+
         rect = QRectF(cx - scale, cy - scale * 0.7, scale * 2, scale * 1.4)
         painter.drawArc(rect, 30 * 16, 280 * 16)  # Almost full circle
 
@@ -268,26 +274,28 @@ class NeonIconButton(QPushButton):
         painter.setBrush(QBrush(color))
         self._draw_small_arrow(painter, cx + scale * 0.5, cy - scale * 0.7, -60)
 
-    def _draw_small_arrow(self, painter, x, y, angle):
+    def _draw_small_arrow(self, painter: QPainter, x: float, y: float, angle: float) -> None:
         """Draw a small arrow head"""
         import math
+
         size = 5
         rad = math.radians(angle)
 
         points = [
             QPointF(x, y),
             QPointF(x - size * math.cos(rad - 0.5), y - size * math.sin(rad - 0.5)),
-            QPointF(x - size * math.cos(rad + 0.5), y - size * math.sin(rad + 0.5))
+            QPointF(x - size * math.cos(rad + 0.5), y - size * math.sin(rad + 0.5)),
         ]
         painter.drawPolygon(QPolygonF(points))
 
-    def _draw_repeat_one(self, painter, cx, cy, scale, color):
+    def _draw_repeat_one(self, painter: QPainter, cx: float, cy: float, scale: float, color: QColor) -> None:
         """Draw repeat one icon (circular arrow with '1')"""
         painter.setPen(QPen(color, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
         # Draw arc (same as repeat)
         from PySide6.QtCore import QRectF
+
         rect = QRectF(cx - scale, cy - scale * 0.7, scale * 2, scale * 1.4)
         painter.drawArc(rect, 30 * 16, 280 * 16)
 
@@ -297,11 +305,12 @@ class NeonIconButton(QPushButton):
 
         # Draw "1" in center
         from PySide6.QtGui import QFont
+
         painter.setFont(QFont("Arial", int(scale * 0.9), QFont.Weight.Bold))
         painter.setPen(QPen(color))
         painter.drawText(int(cx - scale * 0.2), int(cy + scale * 0.35), "1")
 
-    def _draw_continue(self, painter, cx, cy, scale, color):
+    def _draw_continue(self, painter: QPainter, cx: float, cy: float, scale: float, color: QColor) -> None:
         """Draw continue/auto-play icon (double arrow >>|)"""
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QBrush(color))
@@ -310,7 +319,7 @@ class NeonIconButton(QPushButton):
         points1 = [
             QPointF(cx - scale * 0.9, cy - scale * 0.7),
             QPointF(cx - scale * 0.9, cy + scale * 0.7),
-            QPointF(cx - scale * 0.1, cy)
+            QPointF(cx - scale * 0.1, cy),
         ]
         painter.drawPolygon(QPolygonF(points1))
 
@@ -318,14 +327,13 @@ class NeonIconButton(QPushButton):
         points2 = [
             QPointF(cx - scale * 0.1, cy - scale * 0.7),
             QPointF(cx - scale * 0.1, cy + scale * 0.7),
-            QPointF(cx + scale * 0.7, cy)
+            QPointF(cx + scale * 0.7, cy),
         ]
         painter.drawPolygon(QPolygonF(points2))
 
         # Bar at end
         bar_width = scale * 0.2
-        painter.drawRect(int(cx + scale * 0.75), int(cy - scale * 0.7),
-                        int(bar_width), int(scale * 1.4))
+        painter.drawRect(int(cx + scale * 0.75), int(cy - scale * 0.7), int(bar_width), int(scale * 1.4))
 
 
 class NowPlayingWidget(QWidget):
@@ -366,7 +374,7 @@ class NowPlayingWidget(QWidget):
     song_ended = Signal()  # Emits when song finishes (for auto-next)
     repeat_song = Signal()  # Emits when song should repeat (for repeat one mode)
 
-    def __init__(self, audio_player=None):
+    def __init__(self, audio_player: Any = None) -> None:
         """
         Initialize Now Playing widget
 
@@ -374,14 +382,14 @@ class NowPlayingWidget(QWidget):
             audio_player: AudioPlayer instance (optional)
         """
         super().__init__()
-        self.audio_player = audio_player
-        self.current_song = None
-        self._is_seeking = False  # Prevent position update during seek
-        self._is_playing = False
-        self._is_paused = False  # Track if we're in paused state
-        self._shuffle_enabled = False  # Shuffle mode (random order)
-        self._continue_enabled = False  # Continue/auto-play mode (play next song)
-        self._repeat_one_enabled = False  # Repeat one song mode
+        self.audio_player: Any = audio_player
+        self.current_song: Optional[Dict[str, Any]] = None
+        self._is_seeking: bool = False  # Prevent position update during seek
+        self._is_playing: bool = False
+        self._is_paused: bool = False  # Track if we're in paused state
+        self._shuffle_enabled: bool = False  # Shuffle mode (random order)
+        self._continue_enabled: bool = False  # Continue/auto-play mode (play next song)
+        self._repeat_one_enabled: bool = False  # Repeat one song mode
 
         # Initialize cover art manager
         self.cover_manager = CoverArtManager()
@@ -392,7 +400,7 @@ class NowPlayingWidget(QWidget):
 
         logger.info("NowPlayingWidget initialized")
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize UI components"""
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
@@ -416,7 +424,8 @@ class NowPlayingWidget(QWidget):
         self.search_cover_button = QPushButton("🔍 Cover")
         self.search_cover_button.setFixedSize(100, 25)
         self.search_cover_button.setToolTip("Search for album cover art")
-        self.search_cover_button.setStyleSheet("""
+        self.search_cover_button.setStyleSheet(
+            """
             QPushButton {
                 background-color: #2d2d2d;
                 color: #cccccc;
@@ -435,7 +444,8 @@ class NowPlayingWidget(QWidget):
                 background-color: #1e1e1e;
                 color: #555555;
             }
-        """)
+        """
+        )
         self.search_cover_button.setEnabled(False)  # Disabled until song loaded
         art_layout.addWidget(self.search_cover_button)
 
@@ -445,16 +455,16 @@ class NowPlayingWidget(QWidget):
         info_layout = QVBoxLayout()
 
         self.title_label = QLabel("No song playing")
-        self.title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.title_label.setStyleSheet(Styles.SECTION_TITLE)
         info_layout.addWidget(self.title_label)
 
         self.artist_label = QLabel("Artist")
-        self.artist_label.setStyleSheet("font-size: 12px;")
+        self.artist_label.setStyleSheet(Styles.LABEL_SMALL)
         self.artist_label.setProperty("class", "secondary")  # Use theme color
         info_layout.addWidget(self.artist_label)
 
         self.album_label = QLabel("Album")
-        self.album_label.setStyleSheet("font-size: 12px;")
+        self.album_label.setStyleSheet(Styles.LABEL_SMALL)
         self.album_label.setProperty("class", "secondary")  # Use theme color
         info_layout.addWidget(self.album_label)
 
@@ -475,7 +485,8 @@ class NowPlayingWidget(QWidget):
         self.progress_slider.setEnabled(False)  # Disabled until song loaded
 
         # Apply neon cyan style to progress slider (works in both themes)
-        self.progress_slider.setStyleSheet("""
+        self.progress_slider.setStyleSheet(
+            """
             QSlider::groove:horizontal {
                 border: 1px solid #888888;
                 height: 6px;
@@ -509,19 +520,20 @@ class NowPlayingWidget(QWidget):
                 background: #999999;
                 border: 2px solid #888888;
             }
-        """)
+        """
+        )
         progress_layout.addWidget(self.progress_slider)
 
         # Time labels
         time_layout = QHBoxLayout()
         self.current_time_label = QLabel("0:00")
-        self.current_time_label.setStyleSheet("font-size: 10px;")
+        self.current_time_label.setStyleSheet(Styles.LABEL_TINY)
         time_layout.addWidget(self.current_time_label)
 
         time_layout.addStretch()
 
         self.total_time_label = QLabel("0:00")
-        self.total_time_label.setStyleSheet("font-size: 10px;")
+        self.total_time_label.setStyleSheet(Styles.LABEL_TINY)
         time_layout.addWidget(self.total_time_label)
 
         progress_layout.addLayout(time_layout)
@@ -534,39 +546,39 @@ class NowPlayingWidget(QWidget):
         # === NEON ICON BUTTONS (Custom drawn geometric shapes with glow) ===
 
         # Repeat One button (toggle) - repeat same song
-        self.repeat_one_button = NeonIconButton('repeat_one', size=32)
+        self.repeat_one_button = NeonIconButton("repeat_one", size=32)
         self.repeat_one_button.setCheckable(True)
         self.repeat_one_button.setToolTip("Repeat One (loop same song)")
         controls_layout.addWidget(self.repeat_one_button)
 
         # Previous button
-        self.prev_button = NeonIconButton('prev', size=38)
+        self.prev_button = NeonIconButton("prev", size=38)
         self.prev_button.setToolTip("Previous")
         controls_layout.addWidget(self.prev_button)
 
         # Play/Pause button (larger, primary)
-        self.play_button = NeonIconButton('play', size=55)
+        self.play_button = NeonIconButton("play", size=55)
         self.play_button.setToolTip("Play/Pause")
         controls_layout.addWidget(self.play_button)
 
         # Stop button
-        self.stop_button = NeonIconButton('stop', size=38)
+        self.stop_button = NeonIconButton("stop", size=38)
         self.stop_button.setToolTip("Stop")
         controls_layout.addWidget(self.stop_button)
 
         # Next button
-        self.next_button = NeonIconButton('next', size=38)
+        self.next_button = NeonIconButton("next", size=38)
         self.next_button.setToolTip("Next")
         controls_layout.addWidget(self.next_button)
 
         # Continue button (toggle) - auto-play next song
-        self.continue_button = NeonIconButton('continue', size=32)
+        self.continue_button = NeonIconButton("continue", size=32)
         self.continue_button.setCheckable(True)
         self.continue_button.setToolTip("Continue (auto-play next)")
         controls_layout.addWidget(self.continue_button)
 
         # Shuffle button (toggle) - random order (only with Continue)
-        self.shuffle_button = NeonIconButton('shuffle', size=32)
+        self.shuffle_button = NeonIconButton("shuffle", size=32)
         self.shuffle_button.setCheckable(True)
         self.shuffle_button.setToolTip("Shuffle (random order)")
         self.shuffle_button.setEnabled(False)  # Disabled until Continue is on
@@ -585,7 +597,8 @@ class NowPlayingWidget(QWidget):
         self.volume_slider.setFixedWidth(100)
 
         # Apply neon cyan style to volume slider (works in both themes)
-        self.volume_slider.setStyleSheet("""
+        self.volume_slider.setStyleSheet(
+            """
             QSlider::groove:horizontal {
                 border: 1px solid #888888;
                 height: 6px;
@@ -609,7 +622,8 @@ class NowPlayingWidget(QWidget):
                 background: #00c8ff;
                 border: 2px solid #00a0cc;
             }
-        """)
+        """
+        )
         controls_layout.addWidget(self.volume_slider)
 
         self.volume_label_value = QLabel("75%")
@@ -619,13 +633,13 @@ class NowPlayingWidget(QWidget):
         layout.addLayout(controls_layout)
         self.setLayout(layout)
 
-    def _init_timer(self):
+    def _init_timer(self) -> None:
         """Initialize position update timer"""
         self.position_timer = QTimer(self)
         self.position_timer.setInterval(VISUALIZER_FRAME_INTERVAL_MS)  # 33ms updates (30 FPS for smooth visualizer)
         self.position_timer.timeout.connect(self._update_position)
 
-    def _connect_signals(self):
+    def _connect_signals(self) -> None:
         """Connect widget signals to slots"""
         # Playback controls
         self.play_button.clicked.connect(self._on_play_clicked)
@@ -648,7 +662,7 @@ class NowPlayingWidget(QWidget):
         # Volume slider
         self.volume_slider.valueChanged.connect(self._on_volume_changed)
 
-    def load_song(self, song_info: Dict):
+    def load_song(self, song_info: Dict[str, Any]) -> None:
         """
         Load song information into widget
 
@@ -663,12 +677,12 @@ class NowPlayingWidget(QWidget):
         self.current_song = song_info
 
         # Update labels
-        self.title_label.setText(song_info.get('title', 'Unknown'))
-        self.artist_label.setText(song_info.get('artist', 'Unknown Artist'))
-        self.album_label.setText(song_info.get('album', 'Unknown Album'))
+        self.title_label.setText(song_info.get("title", "Unknown"))
+        self.artist_label.setText(song_info.get("artist", "Unknown Artist"))
+        self.album_label.setText(song_info.get("album", "Unknown Album"))
 
         # Update duration
-        duration = song_info.get('duration', 0)
+        duration = song_info.get("duration", 0)
         self.total_time_label.setText(self._format_time(duration))
 
         # Enable progress slider
@@ -676,22 +690,23 @@ class NowPlayingWidget(QWidget):
         self.progress_slider.setValue(0)
 
         # Enable cover search button if artist and album are present
-        artist = song_info.get('artist')
-        album = song_info.get('album')
-        if artist and album and artist != 'Unknown Artist' and album != 'Unknown Album':
+        artist = song_info.get("artist")
+        album = song_info.get("album")
+        if artist and album and artist != "Unknown Artist" and album != "Unknown Album":
             self.search_cover_button.setEnabled(True)
         else:
             self.search_cover_button.setEnabled(False)
 
         # Load album art if provided
-        album_art_path = song_info.get('album_art')
+        album_art_path = song_info.get("album_art")
         if album_art_path:
             pixmap = QPixmap(album_art_path)
             if not pixmap.isNull():
                 scaled = pixmap.scaled(
-                    ALBUM_ART_THUMBNAIL_SIZE, ALBUM_ART_THUMBNAIL_SIZE,
+                    ALBUM_ART_THUMBNAIL_SIZE,
+                    ALBUM_ART_THUMBNAIL_SIZE,
                     Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
+                    Qt.TransformationMode.SmoothTransformation,
                 )
                 self.album_art_label.setPixmap(scaled)
             else:
@@ -702,14 +717,14 @@ class NowPlayingWidget(QWidget):
         logger.info(f"Loaded song: {song_info.get('title', 'Unknown')}")
 
         # Emit signal for waveform extraction
-        file_path = song_info.get('file_path')
+        file_path = song_info.get("file_path")
         if file_path:
             self.song_loaded.emit(file_path)
 
         # Emit signal for lyrics, statistics, and other metadata-based features
         self.song_metadata_changed.emit(song_info)
 
-    def _on_play_clicked(self):
+    def _on_play_clicked(self) -> None:
         """Handle play/pause button click"""
         self._is_playing = not self._is_playing
 
@@ -739,7 +754,7 @@ class NowPlayingWidget(QWidget):
 
         self.play_clicked.emit()
 
-    def _on_stop_clicked(self):
+    def _on_stop_clicked(self) -> None:
         """Handle stop button click"""
         self._is_playing = False
         self._is_paused = False  # Clear paused state on stop
@@ -755,19 +770,17 @@ class NowPlayingWidget(QWidget):
 
         self.stop_clicked.emit()
 
-    def _on_search_cover_clicked(self):
+    def _on_search_cover_clicked(self) -> None:
         """Handle cover art search button click (on-demand)"""
         if not self.current_song:
             return
 
-        artist = self.current_song.get('artist')
-        album = self.current_song.get('album')
+        artist = self.current_song.get("artist")
+        album = self.current_song.get("album")
 
         if not artist or not album:
             QMessageBox.warning(
-                self,
-                "Missing Metadata",
-                "Cannot search for cover: Artist or Album information is missing."
+                self, "Missing Metadata", "Cannot search for cover: Artist or Album information is missing."
             )
             return
 
@@ -786,30 +799,21 @@ class NowPlayingWidget(QWidget):
                     pixmap = QPixmap(str(cover_path))
                     if not pixmap.isNull():
                         scaled = pixmap.scaled(
-                            ALBUM_ART_THUMBNAIL_SIZE, ALBUM_ART_THUMBNAIL_SIZE,
+                            ALBUM_ART_THUMBNAIL_SIZE,
+                            ALBUM_ART_THUMBNAIL_SIZE,
                             Qt.AspectRatioMode.KeepAspectRatio,
-                            Qt.TransformationMode.SmoothTransformation
+                            Qt.TransformationMode.SmoothTransformation,
                         )
                         self.album_art_label.setPixmap(scaled)
 
                         QMessageBox.information(
-                            self,
-                            "Cover Found",
-                            f"Cover art already exists for:\n{artist} - {album}"
+                            self, "Cover Found", f"Cover art already exists for:\n{artist} - {album}"
                         )
                     else:
                         self.album_art_label.setText("♪")
-                        QMessageBox.warning(
-                            self,
-                            "Invalid Image",
-                            "Cover file exists but is invalid."
-                        )
+                        QMessageBox.warning(self, "Invalid Image", "Cover file exists but is invalid.")
                 else:
-                    QMessageBox.warning(
-                        self,
-                        "Cover Not Found",
-                        "Cover path exists but file is missing."
-                    )
+                    QMessageBox.warning(self, "Cover Not Found", "Cover path exists but file is missing.")
             else:
                 # Download new cover
                 logger.info(f"Searching cover for {artist} - {album}")
@@ -823,58 +827,49 @@ class NowPlayingWidget(QWidget):
 
                     if not pixmap.isNull():
                         scaled = pixmap.scaled(
-                            ALBUM_ART_THUMBNAIL_SIZE, ALBUM_ART_THUMBNAIL_SIZE,
+                            ALBUM_ART_THUMBNAIL_SIZE,
+                            ALBUM_ART_THUMBNAIL_SIZE,
                             Qt.AspectRatioMode.KeepAspectRatio,
-                            Qt.TransformationMode.SmoothTransformation
+                            Qt.TransformationMode.SmoothTransformation,
                         )
                         self.album_art_label.setPixmap(scaled)
 
                         QMessageBox.information(
-                            self,
-                            "Cover Downloaded",
-                            f"Successfully downloaded cover art for:\n{artist} - {album}"
+                            self, "Cover Downloaded", f"Successfully downloaded cover art for:\n{artist} - {album}"
                         )
                         logger.info(f"Cover downloaded and displayed: {cover_path}")
                     else:
                         self.album_art_label.setText("♪")
-                        QMessageBox.warning(
-                            self,
-                            "Display Error",
-                            "Cover downloaded but failed to display."
-                        )
+                        QMessageBox.warning(self, "Display Error", "Cover downloaded but failed to display.")
                 else:
                     QMessageBox.warning(
                         self,
                         "Cover Not Found",
                         f"No cover art found for:\n{artist} - {album}\n\n"
-                        f"The album may not be in the Cover Art Archive database."
+                        f"The album may not be in the Cover Art Archive database.",
                     )
                     logger.warning(f"No cover found for {artist} - {album}")
 
-        except Exception as e:
+        except Exception as e:  # network/API/image errors - must report to user via dialog
             logger.error(f"Error searching cover: {e}")
-            QMessageBox.critical(
-                self,
-                "Search Error",
-                f"Failed to search for cover art:\n{str(e)}"
-            )
+            QMessageBox.critical(self, "Search Error", f"Failed to search for cover art:\n{str(e)}")
 
         finally:
             # Re-enable button
             self.search_cover_button.setEnabled(True)
             self.search_cover_button.setText("🔍 Cover")
 
-    def _on_slider_pressed(self):
+    def _on_slider_pressed(self) -> None:
         """Handle progress slider press (start seeking)"""
         self._is_seeking = True
         self.position_timer.stop()
 
-    def _on_slider_released(self):
+    def _on_slider_released(self) -> None:
         """Handle progress slider release (seek to position)"""
         self._is_seeking = False
 
         if self.current_song:
-            duration = self.current_song.get('duration', 0)
+            duration = self.current_song.get("duration", 0)
             if duration > 0:
                 # Convert slider value (0-1000) to seconds
                 position = (self.progress_slider.value() / 1000.0) * duration
@@ -889,7 +884,7 @@ class NowPlayingWidget(QWidget):
         if self._is_playing:
             self.position_timer.start()
 
-    def _on_volume_changed(self, value: int):
+    def _on_volume_changed(self, value: int) -> None:
         """
         Handle volume slider change
 
@@ -907,7 +902,7 @@ class NowPlayingWidget(QWidget):
         if self.audio_player:
             self.audio_player.set_volume(volume_float)
 
-    def _update_position(self):
+    def _update_position(self) -> None:
         """Update position display (called by timer).
 
         Note: Track-end detection is handled by mpv's end-file callback
@@ -920,7 +915,7 @@ class NowPlayingWidget(QWidget):
         try:
             # Get current position from audio player
             position = self.audio_player.get_position()
-            duration = self.current_song.get('duration', 0)
+            duration = self.current_song.get("duration", 0)
 
             # Update time label
             self.current_time_label.setText(self._format_time(position))
@@ -950,7 +945,7 @@ class NowPlayingWidget(QWidget):
         secs = int(seconds % 60)
         return f"{minutes}:{secs:02d}"
 
-    def set_playing(self, is_playing: bool):
+    def set_playing(self, is_playing: bool) -> None:
         """
         Set playing state externally
 
@@ -966,7 +961,7 @@ class NowPlayingWidget(QWidget):
             self.play_button.set_playing(False)  # Show play icon
             self.position_timer.stop()
 
-    def _on_repeat_one_clicked(self):
+    def _on_repeat_one_clicked(self) -> None:
         """Handle repeat one button click"""
         self._repeat_one_enabled = self.repeat_one_button.isChecked()
 
@@ -985,7 +980,7 @@ class NowPlayingWidget(QWidget):
         self.repeat_one_changed.emit(self._repeat_one_enabled)
         logger.info(f"Repeat One {'enabled' if self._repeat_one_enabled else 'disabled'}")
 
-    def _on_continue_clicked(self):
+    def _on_continue_clicked(self) -> None:
         """Handle continue button click"""
         self._continue_enabled = self.continue_button.isChecked()
 
@@ -1006,7 +1001,7 @@ class NowPlayingWidget(QWidget):
         self.continue_changed.emit(self._continue_enabled)
         logger.info(f"Continue (auto-play) {'enabled' if self._continue_enabled else 'disabled'}")
 
-    def _on_shuffle_clicked(self):
+    def _on_shuffle_clicked(self) -> None:
         """Handle shuffle button click"""
         self._shuffle_enabled = self.shuffle_button.isChecked()
         self.shuffle_changed.emit(self._shuffle_enabled)
@@ -1024,12 +1019,12 @@ class NowPlayingWidget(QWidget):
         """Check if repeat one song mode is enabled"""
         return self._repeat_one_enabled
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup resources"""
         self.position_timer.stop()
         logger.info("NowPlayingWidget cleaned up")
 
-    def clear(self):
+    def clear(self) -> None:
         """
         Clear widget state and reset to initial display.
 

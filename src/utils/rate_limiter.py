@@ -22,11 +22,13 @@ Usage:
     limiter.wait('spotify')
     # make API call
 """
+
+import logging
 import threading
 import time
-import logging
 from functools import wraps
-from typing import Dict, Optional, Callable, Any
+from typing import Any, Callable, Dict, Optional
+
 from utils.constants import API_MAX_RETRIES
 
 logger = logging.getLogger(__name__)
@@ -44,39 +46,39 @@ class RateLimiter:
     - AcoustID: 3 req/s (free tier limit)
     """
 
-    _instance: Optional['RateLimiter'] = None
+    _instance: Optional["RateLimiter"] = None
     _lock = threading.Lock()
 
     # Default rate limits (requests per second)
     DEFAULT_LIMITS: Dict[str, float] = {
-        'youtube': 10.0,      # 10 requests/second
-        'spotify': 30.0,      # 30 requests/second
-        'musicbrainz': 1.0,   # 1 request/second (strict!)
-        'genius': 5.0,        # 5 requests/second
-        'acoustid': 3.0,      # 3 requests/second
-        'default': 5.0,       # fallback
+        "youtube": 10.0,  # 10 requests/second
+        "spotify": 30.0,  # 30 requests/second
+        "musicbrainz": 1.0,  # 1 request/second (strict!)
+        "genius": 5.0,  # 5 requests/second
+        "acoustid": 3.0,  # 3 requests/second
+        "default": 5.0,  # fallback
     }
 
     # Burst allowance (max tokens in bucket)
     DEFAULT_BURST: Dict[str, int] = {
-        'youtube': 20,
-        'spotify': 50,
-        'musicbrainz': 2,
-        'genius': 10,
-        'acoustid': 5,
-        'default': 10,
+        "youtube": 20,
+        "spotify": 50,
+        "musicbrainz": 2,
+        "genius": 10,
+        "acoustid": 5,
+        "default": 10,
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize rate limiter (use get_instance() for singleton)"""
         self._buckets: Dict[str, float] = {}  # Current tokens per service
         self._last_update: Dict[str, float] = {}  # Last update time per service
-        self._limits = self.DEFAULT_LIMITS.copy()
-        self._burst = self.DEFAULT_BURST.copy()
+        self._limits: Dict[str, float] = self.DEFAULT_LIMITS.copy()
+        self._burst: Dict[str, int] = self.DEFAULT_BURST.copy()
         self._service_locks: Dict[str, threading.Lock] = {}
 
     @classmethod
-    def get_instance(cls) -> 'RateLimiter':
+    def get_instance(cls) -> "RateLimiter":
         """Get singleton instance (thread-safe)"""
         if cls._instance is None:
             with cls._lock:
@@ -98,12 +100,12 @@ class RateLimiter:
 
         if service not in self._last_update:
             self._last_update[service] = now
-            self._buckets[service] = float(self._burst.get(service, self.DEFAULT_BURST['default']))
+            self._buckets[service] = float(self._burst.get(service, self.DEFAULT_BURST["default"]))
             return
 
         elapsed = now - self._last_update[service]
-        rate = self._limits.get(service, self.DEFAULT_LIMITS['default'])
-        max_tokens = float(self._burst.get(service, self.DEFAULT_BURST['default']))
+        rate = self._limits.get(service, self.DEFAULT_LIMITS["default"])
+        max_tokens = float(self._burst.get(service, self.DEFAULT_BURST["default"]))
 
         # Add tokens based on time elapsed
         new_tokens = self._buckets.get(service, max_tokens) + (elapsed * rate)
@@ -130,7 +132,7 @@ class RateLimiter:
 
             while self._buckets.get(service, 0) < tokens:
                 # Calculate wait time
-                rate = self._limits.get(service, self.DEFAULT_LIMITS['default'])
+                rate = self._limits.get(service, self.DEFAULT_LIMITS["default"])
                 needed = tokens - self._buckets.get(service, 0)
                 sleep_time = needed / rate
 
@@ -171,7 +173,7 @@ class RateLimiter:
 
         return False
 
-    def set_limit(self, service: str, requests_per_second: float, burst: int = None) -> None:
+    def set_limit(self, service: str, requests_per_second: float, burst: Optional[int] = None) -> None:
         """
         Set custom rate limit for service
 
@@ -191,24 +193,24 @@ class RateLimiter:
         self._refill_tokens(service)
 
         return {
-            'service': service,
-            'tokens_available': self._buckets.get(service, 0),
-            'max_tokens': self._burst.get(service, self.DEFAULT_BURST['default']),
-            'rate_limit': self._limits.get(service, self.DEFAULT_LIMITS['default']),
+            "service": service,
+            "tokens_available": self._buckets.get(service, 0),
+            "max_tokens": self._burst.get(service, self.DEFAULT_BURST["default"]),
+            "rate_limit": self._limits.get(service, self.DEFAULT_LIMITS["default"]),
         }
 
-    def reset(self, service: str = None) -> None:
+    def reset(self, service: Optional[str] = None) -> None:
         """Reset rate limiter (for testing or error recovery)"""
         if service:
             service = service.lower()
-            self._buckets[service] = float(self._burst.get(service, self.DEFAULT_BURST['default']))
+            self._buckets[service] = float(self._burst.get(service, self.DEFAULT_BURST["default"]))
             self._last_update[service] = time.time()
         else:
             self._buckets.clear()
             self._last_update.clear()
 
 
-def rate_limited(service: str, tokens: int = 1):
+def rate_limited(service: str, tokens: int = 1) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator to rate limit function calls
 
@@ -225,17 +227,22 @@ def rate_limited(service: str, tokens: int = 1):
         def fetch_full_metadata(mbid):
             ...
     """
-    def decorator(func: Callable) -> Callable:
+
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             limiter = RateLimiter.get_instance()
             limiter.wait(service, tokens)
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
-def with_retry_on_rate_limit(service: str, max_retries: int = API_MAX_RETRIES, base_delay: float = 1.0):
+def with_retry_on_rate_limit(
+    service: str, max_retries: int = API_MAX_RETRIES, base_delay: float = 1.0
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator to retry on rate limit errors (429)
 
@@ -249,28 +256,28 @@ def with_retry_on_rate_limit(service: str, max_retries: int = API_MAX_RETRIES, b
         def search_youtube(query):
             ...
     """
-    def decorator(func: Callable) -> Callable:
+
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
-        def wrapper(*args, **kwargs):
-            last_exception = None
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            last_exception: Optional[Exception] = None
 
             for attempt in range(max_retries + 1):
                 try:
                     return func(*args, **kwargs)
-                except Exception as e:
+                except Exception as e:  # retry decorator - must catch all to evaluate retry logic
                     error_str = str(e).lower()
 
                     # Check if it's a rate limit error
-                    is_rate_limit = any(x in error_str for x in [
-                        '429', 'rate limit', 'quota', 'too many requests',
-                        'ratelimit', 'throttl'
-                    ])
+                    is_rate_limit = any(
+                        x in error_str
+                        for x in ["429", "rate limit", "quota", "too many requests", "ratelimit", "throttl"]
+                    )
 
                     if is_rate_limit and attempt < max_retries:
-                        delay = base_delay * (2 ** attempt)  # Exponential backoff
+                        delay = base_delay * (2**attempt)  # Exponential backoff
                         logger.warning(
-                            f"{service} rate limit hit, retry {attempt + 1}/{max_retries} "
-                            f"after {delay:.1f}s"
+                            f"{service} rate limit hit, retry {attempt + 1}/{max_retries} " f"after {delay:.1f}s"
                         )
                         time.sleep(delay)
                         last_exception = e
@@ -282,30 +289,31 @@ def with_retry_on_rate_limit(service: str, max_retries: int = API_MAX_RETRIES, b
                 raise last_exception
 
         return wrapper
+
     return decorator
 
 
 # Convenience functions for common services
-def youtube_rate_limit():
+def youtube_rate_limit() -> None:
     """Wait for YouTube rate limit"""
-    RateLimiter.get_instance().wait('youtube')
+    RateLimiter.get_instance().wait("youtube")
 
 
-def spotify_rate_limit():
+def spotify_rate_limit() -> None:
     """Wait for Spotify rate limit"""
-    RateLimiter.get_instance().wait('spotify')
+    RateLimiter.get_instance().wait("spotify")
 
 
-def musicbrainz_rate_limit():
+def musicbrainz_rate_limit() -> None:
     """Wait for MusicBrainz rate limit"""
-    RateLimiter.get_instance().wait('musicbrainz')
+    RateLimiter.get_instance().wait("musicbrainz")
 
 
-def genius_rate_limit():
+def genius_rate_limit() -> None:
     """Wait for Genius rate limit"""
-    RateLimiter.get_instance().wait('genius')
+    RateLimiter.get_instance().wait("genius")
 
 
-def acoustid_rate_limit():
+def acoustid_rate_limit() -> None:
     """Wait for AcoustID rate limit"""
-    RateLimiter.get_instance().wait('acoustid')
+    RateLimiter.get_instance().wait("acoustid")

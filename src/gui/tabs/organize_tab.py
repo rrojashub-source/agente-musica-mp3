@@ -10,63 +10,72 @@ Purpose: Auto-organize music library into structured folders
 
 Created: November 13, 2025
 """
-from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QPushButton,
-    QComboBox, QLabel, QTreeWidget, QTreeWidgetItem,
-    QMessageBox, QGroupBox, QLineEdit,
-    QFileDialog, QRadioButton, QButtonGroup
-)
-from PySide6.QtCore import Qt, Signal, QThread
+
+from __future__ import annotations
+
 import logging
 import os
+from typing import Any, Dict, List, Optional
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QComboBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from core.library_organizer import LibraryOrganizer
 from gui.base import BaseTab
+from gui.base.base_worker import BaseWorker
 
 logger = logging.getLogger(__name__)
 
 
-class OrganizeWorker(QThread):
+class OrganizeWorker(BaseWorker):
     """Background worker for library organization"""
 
-    # Signals
-    progress = Signal(int, str)  # (percentage, status_message)
-    finished = Signal(dict)  # Result dictionary
-    error = Signal(str)  # Error message
-
-    def __init__(self, organizer, base_path, template, songs, move=True, dry_run=False):
+    def __init__(
+        self,
+        organizer: LibraryOrganizer,
+        base_path: str,
+        template: str,
+        songs: List[Dict[str, Any]],
+        move: bool = True,
+        dry_run: bool = False,
+    ) -> None:
         super().__init__()
-        self.organizer = organizer
-        self.base_path = base_path
-        self.template = template
-        self.songs = songs
-        self.move = move
-        self.dry_run = dry_run
+        self.organizer: LibraryOrganizer = organizer
+        self.base_path: str = base_path
+        self.template: str = template
+        self.songs: List[Dict[str, Any]] = songs
+        self.move: bool = move
+        self.dry_run: bool = dry_run
 
-    def run(self):
+    def do_work(self) -> Any:
         """Run organization in background"""
-        try:
-            self.progress.emit(10, "Initializing organization...")
+        self.report_progress(10, "Initializing organization...")
 
-            self.progress.emit(30, f"Organizing {len(self.songs)} files...")
+        self.report_progress(30, f"Organizing {len(self.songs)} files...")
 
-            # Perform organization
-            result = self.organizer.organize(
-                base_path=self.base_path,
-                template=self.template,
-                songs=self.songs,
-                move=self.move,
-                dry_run=self.dry_run
-            )
+        # Perform organization
+        result = self.organizer.organize(
+            base_path=self.base_path, template=self.template, songs=self.songs, move=self.move, dry_run=self.dry_run
+        )
 
-            self.progress.emit(90, "Processing results...")
+        self.report_progress(90, "Processing results...")
 
-            # Emit results
-            self.finished.emit(result)
-
-        except Exception as e:
-            logger.error(f"Organization error: {e}")
-            self.error.emit(str(e))
+        return result
 
 
 class OrganizeTab(BaseTab):
@@ -82,13 +91,13 @@ class OrganizeTab(BaseTab):
     - Rollback capability
     """
 
-    def __init__(self, db_manager, parent=None):
-        self.organizer = LibraryOrganizer(db_manager)
-        self.organize_worker = None
-        self.last_result = None
+    def __init__(self, db_manager: Any, parent: Optional[QWidget] = None) -> None:
+        self.organizer: LibraryOrganizer = LibraryOrganizer(db_manager)
+        self.organize_worker: Optional[OrganizeWorker] = None
+        self.last_result: Optional[Dict[str, Any]] = None
         super().__init__(db_manager=db_manager, parent=parent)
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
         """Initialize user interface"""
         layout = QVBoxLayout()
 
@@ -149,11 +158,7 @@ class OrganizeTab(BaseTab):
         results_layout = QVBoxLayout()
 
         self.results_tree = QTreeWidget()
-        self.results_tree.setHeaderLabels([
-            "Current Path",
-            "→",
-            "New Path"
-        ])
+        self.results_tree.setHeaderLabels(["Current Path", "→", "New Path"])
         self.results_tree.setColumnWidth(0, 400)
         self.results_tree.setColumnWidth(1, 30)
         self.results_tree.setColumnWidth(2, 400)
@@ -181,7 +186,7 @@ class OrganizeTab(BaseTab):
 
         self.setLayout(layout)
 
-    def _populate_templates(self):
+    def _populate_templates(self) -> None:
         """Populate template combo box with common patterns"""
         templates = [
             ("Artist/Album/Track - Title", "{artist}/{album}/{track:02d} - {title}.mp3"),
@@ -194,18 +199,16 @@ class OrganizeTab(BaseTab):
         for display_name, template_pattern in templates:
             self.template_combo.addItem(display_name, template_pattern)
 
-    def _on_browse_clicked(self):
+    def _on_browse_clicked(self) -> None:
         """Handle browse button click"""
         directory = QFileDialog.getExistingDirectory(
-            self,
-            "Select Base Directory for Organized Library",
-            self.path_input.text() or os.path.expanduser("~")
+            self, "Select Base Directory for Organized Library", self.path_input.text() or os.path.expanduser("~")
         )
 
         if directory:
             self.path_input.setText(directory)
 
-    def _on_preview_clicked(self):
+    def _on_preview_clicked(self) -> None:
         """Handle preview button click"""
         if not self.path_input.text():
             self.show_warning("Please select a base directory first.", "Missing Path")
@@ -214,10 +217,7 @@ class OrganizeTab(BaseTab):
         songs = self.db.get_all_songs()
 
         if len(songs) == 0:
-            QMessageBox.information(
-                self, "Empty Library",
-                "No songs in library to organize."
-            )
+            QMessageBox.information(self, "Empty Library", "No songs in library to organize.")
             return
 
         logger.info(f"Previewing organization for {len(songs)} songs")
@@ -226,19 +226,16 @@ class OrganizeTab(BaseTab):
         template = self.template_combo.currentData()
         move = self.move_radio.isChecked()
 
-        self.organize_worker = OrganizeWorker(
-            self.organizer, base_path, template, songs,
-            move=move, dry_run=True
-        )
+        self.organize_worker = OrganizeWorker(self.organizer, base_path, template, songs, move=move, dry_run=True)
         self.connect_worker(
             self.organize_worker,
             on_finished=self._on_preview_finished,
             on_error=self._on_worker_error,
-            action_button=self.preview_button
+            action_button=self.preview_button,
         )
         self.organize_worker.start()
 
-    def _on_execute_clicked(self):
+    def _on_execute_clicked(self) -> None:
         """Handle execute button click"""
         if not self.show_confirm(
             f"Organize library with current settings?\n\n"
@@ -246,7 +243,7 @@ class OrganizeTab(BaseTab):
             f"Base Path: {self.path_input.text()}\n"
             f"Mode: {'Move' if self.move_radio.isChecked() else 'Copy'}\n\n"
             f"This will {'move' if self.move_radio.isChecked() else 'copy'} files to new locations.",
-            "Confirm Organization"
+            "Confirm Organization",
         ):
             return
 
@@ -259,27 +256,23 @@ class OrganizeTab(BaseTab):
         template = self.template_combo.currentData()
         move = self.move_radio.isChecked()
 
-        self.organize_worker = OrganizeWorker(
-            self.organizer, base_path, template, songs,
-            move=move, dry_run=False
-        )
+        self.organize_worker = OrganizeWorker(self.organizer, base_path, template, songs, move=move, dry_run=False)
         self.connect_worker(
             self.organize_worker,
             on_finished=self._on_execute_finished,
             on_error=self._on_worker_error,
-            action_button=self.preview_button
+            action_button=self.preview_button,
         )
         self.organize_worker.start()
 
-    def _on_rollback_clicked(self):
+    def _on_rollback_clicked(self) -> None:
         """Handle rollback button click"""
         reply = QMessageBox.question(
             self,
             "Confirm Rollback",
-            "Rollback last organization?\n\n"
-            "Files will be moved back to their original locations.",
+            "Rollback last organization?\n\n" "Files will be moved back to their original locations.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
@@ -287,80 +280,64 @@ class OrganizeTab(BaseTab):
             self._show_results(result)
             self.rollback_button.setEnabled(False)
 
-    def _on_preview_finished(self, result):
+    def _on_preview_finished(self, result: Dict[str, Any]) -> None:
         """Handle preview completion"""
         self.last_result = result
 
-        total_songs = result['success']
-        self.status_label.setText(
-            f"Preview: {total_songs} files will be organized"
-        )
+        total_songs = result["success"]
+        self.status_label.setText(f"Preview: {total_songs} files will be organized")
 
-        self._populate_preview(result['preview'])
+        self._populate_preview(result["preview"])
 
-        if result['success'] > 0:
+        if result["success"] > 0:
             self.execute_button.setEnabled(True)
 
         logger.info(f"Preview complete: {result['success']} files")
 
-    def _on_execute_finished(self, result):
+    def _on_execute_finished(self, result: Dict[str, Any]) -> None:
         """Handle execution completion"""
         self.last_result = result
         self._show_results(result)
         self.data_changed.emit()
 
-        if result['success'] > 0:
+        if result["success"] > 0:
             self.rollback_button.setEnabled(True)
 
         logger.info(f"Organization complete: {result['success']} success, {result['failed']} failed")
 
-    def _on_worker_error(self, error_message):
+    def _on_worker_error(self, error_message: str) -> None:
         """Handle worker error — ensure execute button is disabled"""
         self.execute_button.setEnabled(False)
         self.show_error(error_message)
 
-    def _populate_preview(self, preview_list):
+    def _populate_preview(self, preview_list: List[Dict[str, str]]) -> None:
         """Populate results tree with preview data"""
         self.results_tree.clear()
 
         for item in preview_list[:100]:  # Limit to first 100 for performance
-            old_path = item['old']
-            new_path = item['new']
+            old_path = item["old"]
+            new_path = item["new"]
 
-            tree_item = QTreeWidgetItem([
-                old_path,
-                "→",
-                new_path
-            ])
+            tree_item = QTreeWidgetItem([old_path, "→", new_path])
 
             self.results_tree.addTopLevelItem(tree_item)
 
         if len(preview_list) > 100:
-            info_item = QTreeWidgetItem([
-                f"... and {len(preview_list) - 100} more files",
-                "",
-                ""
-            ])
+            info_item = QTreeWidgetItem([f"... and {len(preview_list) - 100} more files", "", ""])
             self.results_tree.addTopLevelItem(info_item)
 
-    def _show_results(self, result):
+    def _show_results(self, result: Dict[str, Any]) -> None:
         """Show results summary"""
-        success = result['success']
-        failed = result['failed']
-        errors = result.get('errors', [])
+        success = result["success"]
+        failed = result["failed"]
+        errors = result.get("errors", [])
 
         # Update status
-        self.status_label.setText(
-            f"Organized: {success} success, {failed} failed"
-        )
+        self.status_label.setText(f"Organized: {success} success, {failed} failed")
 
         # Show message box
         if failed == 0:
-            QMessageBox.information(
-                self,
-                "Organization Complete",
-                f"Successfully organized {success} files."
-            )
+            QMessageBox.information(self, "Organization Complete", f"Successfully organized {success} files.")
         else:
             error_text = "\n".join(errors[:5])
             if len(errors) > 5:
@@ -369,7 +346,5 @@ class OrganizeTab(BaseTab):
             QMessageBox.warning(
                 self,
                 "Organization Partially Complete",
-                f"Organized {success} files.\n"
-                f"Failed to organize {failed} files.\n\n"
-                f"Errors:\n{error_text}"
+                f"Organized {success} files.\n" f"Failed to organize {failed} files.\n\n" f"Errors:\n{error_text}",
             )

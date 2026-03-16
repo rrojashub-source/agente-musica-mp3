@@ -9,27 +9,28 @@ Project: AGENTE_MUSICA_MP3_001
 Version: 2.1 (Post-refactoring Phase 2.1)
 """
 
+from __future__ import annotations
+
+import logging
+import sqlite3
+import sys
+import types
+from pathlib import Path
+from typing import Any, Dict, Optional
+
 # CRITICAL: Patch subprocess FIRST to hide console windows on Windows
 import utils.subprocess_patch  # noqa: F401
 
-import sqlite3
-import sys
-import logging
-from pathlib import Path
-
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Multi-language translation system
-from translations import tr, set_language
+from translations import set_language, tr
 
 try:
-    from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
     from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
 except ImportError as e:
     print("PySide6 not installed. Install with: pip install PySide6")
     sys.exit(1)
@@ -38,31 +39,32 @@ except ImportError as e:
 src_path = Path(__file__).parent
 sys.path.insert(0, str(src_path))
 
-# Import core services
-from database.manager import DatabaseManager
-from core.audio_player import AudioPlayer
-from core.playlist_manager import PlaylistManager
-from core.waveform_extractor import WaveformExtractor
-from core.download_queue import DownloadQueue
-from core.theme_manager import ThemeManager
-from core.keyboard_shortcuts import KeyboardShortcutManager
-from config_manager import ConfigManager
+import keyring
+
 from api.genius_client import GeniusClient
-from utils.constants import MAX_CONCURRENT_DOWNLOADS, MAX_DOWNLOAD_RETRIES, MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT
+from config_manager import ConfigManager
+from controllers.library_controller import LibraryController
 
 # Import controllers
 from controllers.playback_controller import PlaybackController
 from controllers.remote_controller import RemoteController
 from controllers.ui_composer import UIComposer
-from controllers.library_controller import LibraryController
+from core.audio_player import AudioPlayer
+from core.download_queue import DownloadQueue
+from core.keyboard_shortcuts import KeyboardShortcutManager
+from core.playlist_manager import PlaylistManager
+from core.theme_manager import ThemeManager
+from core.waveform_extractor import WaveformExtractor
 
-import keyring
+# Import core services
+from database.manager import DatabaseManager
+from utils.constants import MAIN_WINDOW_HEIGHT, MAIN_WINDOW_WIDTH, MAX_CONCURRENT_DOWNLOADS, MAX_DOWNLOAD_RETRIES
 
 
 class MusicPlayerApp(QMainWindow):
     """Main application window — thin facade delegating to controllers"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle(tr("app_title"))
         self.setGeometry(100, 100, MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT)
@@ -95,16 +97,16 @@ class MusicPlayerApp(QMainWindow):
         self.theme_manager.apply_theme(self.theme_manager.current_theme)
         self.shortcuts_manager.setup_shortcuts(self)
 
-        if hasattr(self, 'lyrics_tab') and self.lyrics_tab:
+        if hasattr(self, "lyrics_tab") and self.lyrics_tab:
             self.now_playing.song_metadata_changed.connect(self.lyrics_tab.on_song_changed)
 
-        if hasattr(self, 'chords_tab') and self.chords_tab:
+        if hasattr(self, "chords_tab") and self.chords_tab:
             self.now_playing.song_metadata_changed.connect(self.chords_tab.on_song_changed)
 
         logger.info("Application started successfully")
         self._library_ctrl.check_empty_library(self)
 
-    def _init_services(self):
+    def _init_services(self) -> None:
         """Initialize all core services"""
         # Database
         try:
@@ -112,9 +114,9 @@ class MusicPlayerApp(QMainWindow):
             logger.info("Database initialized successfully")
         except (sqlite3.Error, OSError) as e:
             QMessageBox.critical(
-                self, "Database Error",
-                f"Failed to initialize database:\n{str(e)}\n\n"
-                f"Please check database connection and migrations."
+                self,
+                "Database Error",
+                f"Failed to initialize database:\n{str(e)}\n\n" f"Please check database connection and migrations.",
             )
             logger.error(f"Database initialization failed: {e}")
             sys.exit(1)
@@ -138,7 +140,7 @@ class MusicPlayerApp(QMainWindow):
             max_concurrent=MAX_CONCURRENT_DOWNLOADS,
             max_retries=MAX_DOWNLOAD_RETRIES,
             db_manager=self.db_manager,
-            config_manager=self.config_manager
+            config_manager=self.config_manager,
         )
         self.download_queue.start()
         logger.info("Download queue initialized")
@@ -152,19 +154,21 @@ class MusicPlayerApp(QMainWindow):
         logger.info("Keyboard shortcuts manager initialized")
 
         # Genius API client (optional)
-        try:
-            genius_token = keyring.get_password("nexus_music", "genius_token")
-            if genius_token:
+        from utils.credentials import load_credential
+
+        genius_token = load_credential("genius_token")
+        if genius_token:
+            try:
                 self.genius_client = GeniusClient(genius_token)
                 logger.info("Genius client initialized")
-            else:
+            except (RuntimeError, ValueError) as e:
+                logger.error(f"Failed to initialize Genius client: {e}")
                 self.genius_client = None
-                logger.info("Genius API token not found (lyrics disabled)")
-        except (keyring.errors.KeyringError, RuntimeError, ValueError) as e:
-            logger.error(f"Failed to initialize Genius client: {e}")
+        else:
             self.genius_client = None
+            logger.info("Genius API token not found (lyrics disabled)")
 
-    def _init_controllers(self):
+    def _init_controllers(self) -> None:
         """Create and configure controllers"""
         # Playback controller
         self._playback = PlaybackController(
@@ -175,8 +179,8 @@ class MusicPlayerApp(QMainWindow):
             parent=self,
         )
         self._playback.set_widgets(
-            library_tab=getattr(self, 'library_tab', None),
-            playlist_widget=getattr(self, 'playlist_widget', None),
+            library_tab=getattr(self, "library_tab", None),
+            playlist_widget=getattr(self, "playlist_widget", None),
             status_bar=self.statusBar,
         )
 
@@ -198,12 +202,12 @@ class MusicPlayerApp(QMainWindow):
         )
         self._library_ctrl.set_widgets(
             tabs=self.tabs,
-            library_tab=getattr(self, 'library_tab', None),
-            search_tab=getattr(self, 'search_tab', None),
-            recommendations_widget=getattr(self, 'recommendations_widget', None),
+            library_tab=getattr(self, "library_tab", None),
+            search_tab=getattr(self, "search_tab", None),
+            recommendations_widget=getattr(self, "recommendations_widget", None),
         )
 
-    def _connect_signals(self):
+    def _connect_signals(self) -> None:
         """Wire up all signal connections between components"""
         # Now Playing → Playback Controller
         self.now_playing.prev_clicked.connect(self._playback.on_global_prev_clicked)
@@ -217,25 +221,21 @@ class MusicPlayerApp(QMainWindow):
         self.now_playing.song_metadata_changed.connect(self._on_song_play_started)
 
         # Recommendations → Playback Controller
-        if hasattr(self, 'recommendations_widget'):
+        if hasattr(self, "recommendations_widget"):
             self.recommendations_widget.song_selected.connect(self._playback.play_recommended_song)
 
         # Library Tab → Playback Controller
-        if hasattr(self, 'library_tab'):
+        if hasattr(self, "library_tab"):
             self.library_tab.playback_started.connect(self._playback.on_library_playback_started)
-            self.library_tab.find_similar_requested.connect(
-                self._library_ctrl.on_find_similar_requested
-            )
+            self.library_tab.find_similar_requested.connect(self._library_ctrl.on_find_similar_requested)
 
         # Albums → Library Controller
-        if hasattr(self, 'albums_widget'):
+        if hasattr(self, "albums_widget"):
             self.albums_widget.album_selected.connect(self._library_ctrl.on_album_selected)
 
         # Playlist → Playback Controller
-        if hasattr(self, 'playlist_widget'):
-            self.playlist_widget.play_song_requested.connect(
-                self._playback.play_song_from_playlist
-            )
+        if hasattr(self, "playlist_widget"):
+            self.playlist_widget.play_song_requested.connect(self._playback.play_song_from_playlist)
 
         # Keyboard shortcuts → Controllers
         sm = self.shortcuts_manager
@@ -249,6 +249,7 @@ class MusicPlayerApp(QMainWindow):
 
         # F11 → Fullscreen visualizer
         from PySide6.QtGui import QAction, QKeySequence
+
         fullscreen_action = QAction("Fullscreen Visualizer", self)
         fullscreen_action.setShortcut(QKeySequence(Qt.Key.Key_F11))
         fullscreen_action.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
@@ -257,9 +258,9 @@ class MusicPlayerApp(QMainWindow):
 
         logger.info("All signals connected")
 
-    def _on_song_play_started(self, song_info: dict):
+    def _on_song_play_started(self, song_info: Dict[str, Any]) -> None:
         """Increment play count when a song starts playing"""
-        song_id = song_info.get('id')
+        song_id = song_info.get("id")
         if song_id:
             try:
                 self.db_manager.execute_query(
@@ -267,16 +268,16 @@ class MusicPlayerApp(QMainWindow):
                        SET play_count = COALESCE(play_count, 0) + 1,
                            last_played = CURRENT_TIMESTAMP
                        WHERE id = ?""",
-                    (song_id,)
+                    (song_id,),
                 )
                 logger.debug(f"Play count incremented for song {song_id}")
                 # Refresh statistics if tab exists
-                if hasattr(self, 'statistics_tab') and self.statistics_tab:
+                if hasattr(self, "statistics_tab") and self.statistics_tab:
                     self.statistics_tab.refresh_stats()
             except sqlite3.Error as e:
                 logger.error(f"Failed to increment play count: {e}")
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: Any) -> None:
         """Handle application close event"""
         try:
             self.audio_player.cleanup()
@@ -300,13 +301,13 @@ class MusicPlayerApp(QMainWindow):
         logger.info("Application closed")
 
 
-def main():
+def main() -> None:
     """Main entry point"""
-    def exception_hook(exc_type, exc_value, exc_traceback):
-        logger.error(
-            "Uncaught exception",
-            exc_info=(exc_type, exc_value, exc_traceback)
-        )
+
+    def exception_hook(
+        exc_type: type[BaseException], exc_value: BaseException, exc_traceback: Optional[types.TracebackType]
+    ) -> None:
+        logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
 
     sys.excepthook = exception_hook
@@ -317,6 +318,7 @@ def main():
 
     # Load saved language preference
     from PySide6.QtCore import QSettings
+
     settings = QSettings("NEXUS", "MusicManager")
     saved_language = settings.value("language", "es")
     set_language(saved_language)
@@ -326,6 +328,7 @@ def main():
 
     # Set font with emoji fallback for Windows PySide6
     from PySide6.QtGui import QFont, QFontDatabase
+
     font = QFont("Segoe UI", 10)
     font.setFamilies(["Segoe UI", "Segoe UI Emoji", "Noto Color Emoji", "Arial"])
     app.setFont(font)
