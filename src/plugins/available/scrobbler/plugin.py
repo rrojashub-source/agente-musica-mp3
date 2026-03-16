@@ -16,6 +16,7 @@ from typing import Any, Dict
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from plugins.plugin_base import Plugin, PluginHook, PluginMetadata
+from utils.constants import DEFAULT_ARTIST
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +132,7 @@ class ScrobblerPlugin(Plugin):
         import time
 
         scrobble = {
-            "artist": song_data.get("artist", "Unknown Artist"),
+            "artist": song_data.get("artist", DEFAULT_ARTIST),
             "track": song_data.get("title", "Unknown Track"),
             "album": song_data.get("album", ""),
             "timestamp": int(time.time()),

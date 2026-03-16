@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
 
 from core.cover_art_manager import CoverArtManager
 from gui.themes.style_constants import Styles
-from utils.constants import ALBUM_ART_THUMBNAIL_SIZE, VISUALIZER_FRAME_INTERVAL_MS
+from utils.constants import ALBUM_ART_THUMBNAIL_SIZE, DEFAULT_ALBUM, DEFAULT_ARTIST, VISUALIZER_FRAME_INTERVAL_MS
 
 logger = logging.getLogger(__name__)
 
@@ -676,8 +676,8 @@ class NowPlayingWidget(QWidget):
 
         # Update labels
         self.title_label.setText(song_info.get("title", "Unknown"))
-        self.artist_label.setText(song_info.get("artist", "Unknown Artist"))
-        self.album_label.setText(song_info.get("album", "Unknown Album"))
+        self.artist_label.setText(song_info.get("artist", DEFAULT_ARTIST))
+        self.album_label.setText(song_info.get("album", DEFAULT_ALBUM))
 
         # Update duration
         duration = song_info.get("duration", 0)
@@ -690,7 +690,7 @@ class NowPlayingWidget(QWidget):
         # Enable cover search button if artist and album are present
         artist = song_info.get("artist")
         album = song_info.get("album")
-        if artist and album and artist != "Unknown Artist" and album != "Unknown Album":
+        if artist and album and artist != DEFAULT_ARTIST and album != DEFAULT_ALBUM:
             self.search_cover_button.setEnabled(True)
         else:
             self.search_cover_button.setEnabled(False)

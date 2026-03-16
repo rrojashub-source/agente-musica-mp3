@@ -43,7 +43,7 @@ from PySide6.QtWidgets import (
 from core.cover_art_manager import CoverArtManager
 from gui.base import BaseTab
 from gui.themes.style_constants import Styles
-from utils.constants import TRACK_END_CHECK_INTERVAL_MS
+from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST, TRACK_END_CHECK_INTERVAL_MS
 
 logger = logging.getLogger(__name__)
 
@@ -292,11 +292,11 @@ class LibraryTab(BaseTab):
                 self.library_table.setItem(row, 0, title_item)
 
                 # Artist
-                artist_item = QTableWidgetItem(song.get("artist", "Unknown Artist"))
+                artist_item = QTableWidgetItem(song.get("artist", DEFAULT_ARTIST))
                 self.library_table.setItem(row, 1, artist_item)
 
                 # Album
-                album_item = QTableWidgetItem(song.get("album", "Unknown Album"))
+                album_item = QTableWidgetItem(song.get("album", DEFAULT_ALBUM))
                 self.library_table.setItem(row, 2, album_item)
 
                 # Genre
@@ -1081,8 +1081,8 @@ class LibraryTab(BaseTab):
                 song_data = {
                     "file_path": file_path,
                     "title": metadata.get("title") or Path(file_path).stem,
-                    "artist": metadata.get("artist") or "Unknown Artist",
-                    "album": metadata.get("album") or "Unknown Album",
+                    "artist": metadata.get("artist") or DEFAULT_ARTIST,
+                    "album": metadata.get("album") or DEFAULT_ALBUM,
                     "genre": metadata.get("genre") or "",
                     "year": metadata.get("year"),
                     "duration": metadata.get("duration") or 0,

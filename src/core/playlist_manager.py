@@ -22,6 +22,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from utils.constants import DEFAULT_ARTIST
+
 logger = logging.getLogger(__name__)
 
 
@@ -305,7 +307,7 @@ class PlaylistManager:
 
                 for song in songs:
                     duration = int(song.get("duration", 0))
-                    artist = song.get("artist", "Unknown Artist")
+                    artist = song.get("artist", DEFAULT_ARTIST)
                     title = song.get("title", "Unknown")
                     file_path_song = song.get("file_path", "")
 

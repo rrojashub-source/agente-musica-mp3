@@ -21,6 +21,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List
 
+from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST
+
 logger = logging.getLogger(__name__)
 
 
@@ -165,8 +167,8 @@ class LibraryOrganizer:
         """
         # Get metadata with fallbacks
         metadata = {
-            "artist": self._sanitize_path(song.get("artist", "Unknown Artist")),
-            "album": self._sanitize_path(song.get("album", "Unknown Album")),
+            "artist": self._sanitize_path(song.get("artist", DEFAULT_ARTIST)),
+            "album": self._sanitize_path(song.get("album", DEFAULT_ALBUM)),
             "title": self._sanitize_path(song.get("title", "Unknown")),
             "year": song.get("year", "Unknown"),
             "genre": self._sanitize_path(song.get("genre", "Unknown")),

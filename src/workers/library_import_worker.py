@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional
 from PySide6.QtCore import Signal
 
 from gui.base.base_worker import BaseWorker
+from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +71,8 @@ def extract_metadata(file_path: str) -> Optional[Dict[str, Any]]:
         # Extract metadata with defaults (IMPORTANT: Use normalized_path for storage)
         song_data = {
             "title": str(tags.get("TIT2", "Unknown")),
-            "artist": str(tags.get("TPE1", "Unknown Artist")),
-            "album": str(tags.get("TALB", "Unknown Album")),
+            "artist": str(tags.get("TPE1", DEFAULT_ARTIST)),
+            "album": str(tags.get("TALB", DEFAULT_ALBUM)),
             "year": None,
             "genre": str(tags.get("TCON", "")) if tags.get("TCON") else None,
             "duration": int(audio.info.length),  # type: ignore[attr-defined]

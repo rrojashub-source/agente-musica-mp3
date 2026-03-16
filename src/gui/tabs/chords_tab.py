@@ -27,6 +27,7 @@ from gui.base import BaseTab
 from gui.base.base_worker import BaseWorker
 from gui.themes.style_constants import Styles
 from gui.widgets.chord_diagram_widget import ChordDiagramWidget
+from utils.constants import DEFAULT_ARTIST
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +240,7 @@ class ChordsTab(BaseTab):
         self.chord_diagram.clear()
 
         title = song_info.get("title", "Unknown")
-        artist = song_info.get("artist", "Unknown Artist")
+        artist = song_info.get("artist", DEFAULT_ARTIST)
         clean_title = self._clean_display_title(title, artist)
         self.header_label.setText(f"🎸 {clean_title} — {artist}")
 

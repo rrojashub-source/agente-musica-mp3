@@ -24,6 +24,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QTextEdi
 from gui.base import BaseTab
 from gui.base.base_worker import BaseWorker
 from gui.themes.style_constants import Styles
+from utils.constants import DEFAULT_ARTIST
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +171,7 @@ class LyricsTab(BaseTab):
 
         # Update header
         title = song_info.get("title", "Unknown")
-        artist = song_info.get("artist", "Unknown Artist")
+        artist = song_info.get("artist", DEFAULT_ARTIST)
         self.header_label.setText(f"🎵 {title} - {artist}")
 
         # Auto-search lyrics

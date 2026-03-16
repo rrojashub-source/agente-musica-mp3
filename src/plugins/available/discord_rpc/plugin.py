@@ -21,6 +21,7 @@ import time
 from typing import Any, Dict, Optional
 
 from plugins.plugin_base import Plugin, PluginHook, PluginMetadata
+from utils.constants import DEFAULT_ARTIST
 
 logger = logging.getLogger(__name__)
 
@@ -207,7 +208,7 @@ class DiscordRPCPlugin(Plugin):
                 # Playing song
                 song = self._current_song
                 title = song.get("title", "Unknown Title")
-                artist = song.get("artist", "Unknown Artist")
+                artist = song.get("artist", DEFAULT_ARTIST)
 
                 details = f"{title}"
                 state = f"by {artist}"

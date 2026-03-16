@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional
 
 import requests  # type: ignore[import-untyped]
 
+from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST
 from utils.input_sanitizer import sanitize_query
 
 logger = logging.getLogger(__name__)
@@ -332,20 +333,24 @@ class MetadataFetcher:
         try:
             artist_credit = mb_recording.get("artist-credit", [])
             if artist_credit:
-                return artist_credit[0].get("name", "Unknown Artist")  # type: ignore[no-any-return]
+                name: str = artist_credit[0].get("name", DEFAULT_ARTIST)
+                return name
         except (KeyError, IndexError, TypeError) as e:
             logger.debug(f"Could not extract artist name: {e}")
-        return "Unknown Artist"
+        result: str = DEFAULT_ARTIST
+        return result
 
     def _extract_album_name(self, mb_recording: Dict[str, Any]) -> str:
         """Extract album name from MusicBrainz recording"""
         try:
             releases = mb_recording.get("releases", [])
             if releases:
-                return releases[0].get("title", "Unknown Album")  # type: ignore[no-any-return]
+                title: str = releases[0].get("title", DEFAULT_ALBUM)
+                return title
         except (KeyError, IndexError, TypeError) as e:
             logger.debug(f"Could not extract album name: {e}")
-        return "Unknown Album"
+        result: str = DEFAULT_ALBUM
+        return result
 
     def _extract_year(self, mb_recording: Dict[str, Any]) -> Optional[int]:
         """Extract release year from MusicBrainz recording"""

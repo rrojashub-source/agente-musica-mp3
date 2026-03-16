@@ -20,6 +20,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List
 
+from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST
+
 logger = logging.getLogger(__name__)
 
 
@@ -170,8 +172,8 @@ class BatchRenamer:
         """
         # Get metadata with fallbacks
         metadata = {
-            "artist": song.get("artist", "Unknown Artist"),
-            "album": song.get("album", "Unknown Album"),
+            "artist": song.get("artist", DEFAULT_ARTIST),
+            "album": song.get("album", DEFAULT_ALBUM),
             "title": song.get("title", "Unknown"),
             "year": song.get("year", "Unknown"),
             "genre": song.get("genre", "Unknown"),

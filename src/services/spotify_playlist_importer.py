@@ -19,6 +19,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
+from utils.constants import DEFAULT_ARTIST
+
 logger = logging.getLogger(__name__)
 
 
@@ -239,7 +241,7 @@ class SpotifyPlaylistImporter:
 
             # Get artist name
             artists = track_data.get("artists", [])
-            artist = artists[0]["name"] if artists else "Unknown Artist"
+            artist = artists[0]["name"] if artists else DEFAULT_ARTIST
 
             return SpotifyTrack(
                 track_id=track_data.get("id", ""),

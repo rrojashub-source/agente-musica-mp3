@@ -24,6 +24,7 @@ from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QLabel, QPushBut
 
 from core.cover_art_manager import CoverArtManager
 from gui.themes.style_constants import Styles
+from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST
 
 logger = logging.getLogger(__name__)
 
@@ -76,23 +77,23 @@ class AlbumCard(QFrame):
         self._load_cover()
 
         # Album name
-        album_name = self.album_data.get("album", "Unknown Album")
+        album_name = self.album_data.get("album", DEFAULT_ALBUM)
         if len(album_name) > 18:
             album_name = album_name[:16] + "..."
         self.album_label = QLabel(album_name)
         self.album_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.album_label.setStyleSheet(Styles.LABEL_BOLD)
-        self.album_label.setToolTip(self.album_data.get("album", "Unknown Album"))
+        self.album_label.setToolTip(self.album_data.get("album", DEFAULT_ALBUM))
         layout.addWidget(self.album_label)
 
         # Artist name
-        artist_name = self.album_data.get("artist", "Unknown Artist")
+        artist_name = self.album_data.get("artist", DEFAULT_ARTIST)
         if len(artist_name) > 20:
             artist_name = artist_name[:18] + "..."
         self.artist_label = QLabel(artist_name)
         self.artist_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.artist_label.setStyleSheet(Styles.LABEL_TINY_FADED)
-        self.artist_label.setToolTip(self.album_data.get("artist", "Unknown Artist"))
+        self.artist_label.setToolTip(self.album_data.get("artist", DEFAULT_ARTIST))
         layout.addWidget(self.artist_label)
 
         # Song count
@@ -107,8 +108,8 @@ class AlbumCard(QFrame):
         pixmap = None
 
         # Try to get cover from cover manager
-        artist = self.album_data.get("artist", "Unknown Artist")
-        album = self.album_data.get("album", "Unknown Album")
+        artist = self.album_data.get("artist", DEFAULT_ARTIST)
+        album = self.album_data.get("album", DEFAULT_ALBUM)
 
         # Check if cover exists in cache
         if self.cover_manager.has_cover(artist, album):

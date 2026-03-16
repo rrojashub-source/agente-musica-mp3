@@ -8,6 +8,8 @@ Created: November 18, 2025
 import logging
 from typing import Any, Dict, List
 
+from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,13 +69,13 @@ class MusicBrainzAdapter:
                 "title": result.get("title", ""),
                 "artist-credit": [
                     {
-                        "name": result.get("artist", "Unknown Artist"),
-                        "artist": {"name": result.get("artist", "Unknown Artist")},
+                        "name": result.get("artist", DEFAULT_ARTIST),
+                        "artist": {"name": result.get("artist", DEFAULT_ARTIST)},
                     }
                 ],
                 "releases": [
                     {
-                        "title": result.get("album", "Unknown Album"),
+                        "title": result.get("album", DEFAULT_ALBUM),
                         "date": f"{result.get('year', '')}-01-01" if result.get("year") else "",
                     }
                 ],
@@ -144,8 +146,8 @@ class SpotifyAdapter:
             for track in results:
                 adapted = {
                     "name": track.get("title", ""),
-                    "artists": [{"name": track.get("artist", "Unknown Artist")}],
-                    "album": {"name": track.get("album", "Unknown Album"), "release_date": track.get("year", "")},
+                    "artists": [{"name": track.get("artist", DEFAULT_ARTIST)}],
+                    "album": {"name": track.get("album", DEFAULT_ALBUM), "release_date": track.get("year", "")},
                     "duration_ms": track.get("duration", 0) * 1000,  # Convert seconds to ms
                 }
 

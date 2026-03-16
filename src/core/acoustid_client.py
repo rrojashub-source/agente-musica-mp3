@@ -25,6 +25,7 @@ try:
 except ImportError:
     acoustid = None  # type: ignore[assignment]
 
+from utils.constants import DEFAULT_ALBUM
 from utils.fpcalc_checker import FpcalcChecker
 
 logger = logging.getLogger(__name__)
@@ -184,7 +185,7 @@ class AcoustIDClient:
             # Parse results for album, year, etc.
             # This is a simplified version - full implementation would parse MusicBrainz data
             if results:
-                match["album"] = results.get("album", "Unknown Album")
+                match["album"] = results.get("album", DEFAULT_ALBUM)
                 match["year"] = results.get("year")
                 match["duration"] = results.get("duration")
 

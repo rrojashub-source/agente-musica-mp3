@@ -15,6 +15,8 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST
+
 logger = logging.getLogger(__name__)
 
 
@@ -136,7 +138,7 @@ class MetadataCleaner:
             Tuple of (cleaned_artist, list_of_issues_found)
         """
         if not artist or artist.lower() in ["unknown", "unknown artist"]:
-            return "Unknown Artist", ["missing_artist"]
+            return DEFAULT_ARTIST, ["missing_artist"]
 
         original = artist
         issues = []
@@ -171,7 +173,7 @@ class MetadataCleaner:
             Tuple of (cleaned_album, list_of_issues_found)
         """
         if not album or album.lower() in ["unknown", "unknown album"]:
-            return "Unknown Album", ["missing_album"]
+            return DEFAULT_ALBUM, ["missing_album"]
 
         original = album
         issues = []

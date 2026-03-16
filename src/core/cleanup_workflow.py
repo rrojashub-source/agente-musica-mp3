@@ -22,6 +22,7 @@ import requests  # type: ignore[import-untyped]
 from PySide6.QtCore import Signal
 
 from gui.base.base_worker import BaseWorker
+from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +255,7 @@ class CleanupWorkflowWorker(BaseWorker):
                                     "fetched": {
                                         "title": acoustid_match.get("title"),
                                         "artist": acoustid_match.get("artist"),
-                                        "album": acoustid_match.get("album", "Unknown Album"),
+                                        "album": acoustid_match.get("album", DEFAULT_ALBUM),
                                         "year": acoustid_match.get("year"),
                                     },
                                     "confidence": acoustid_match.get("score", 0) * 100,  # Convert to percentage
@@ -290,10 +291,10 @@ class CleanupWorkflowWorker(BaseWorker):
                 )
             else:
                 # Use cleaned metadata only
-                # Skip if cleaned metadata has "Unknown Artist" or "Unknown Album"
+                # Skip if cleaned metadata has DEFAULT_ARTIST or DEFAULT_ALBUM
                 # (no point updating to unknown values)
                 cleaned = song["cleaned"]
-                if cleaned.get("artist") == "Unknown Artist" or cleaned.get("album") == "Unknown Album":
+                if cleaned.get("artist") == DEFAULT_ARTIST or cleaned.get("album") == DEFAULT_ALBUM:
                     logger.debug(f"Skipping song {song_id}: cleaned metadata has unknown artist/album")
                     continue
 

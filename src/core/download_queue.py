@@ -22,7 +22,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QObject, Signal
 
-from utils.constants import MAX_CONCURRENT_DOWNLOADS, MAX_DOWNLOAD_RETRIES
+from utils.constants import DEFAULT_ARTIST, MAX_CONCURRENT_DOWNLOADS, MAX_DOWNLOAD_RETRIES
 from utils.input_sanitizer import sanitize_filename, sanitize_metadata, sanitize_url
 from workers.download_worker import DownloadWorker
 
@@ -447,7 +447,7 @@ class DownloadQueue(QObject):
 
             # Extract metadata
             title = metadata.get("title", file_path_obj.stem)
-            artist = metadata.get("artist", "Unknown Artist")
+            artist = metadata.get("artist", DEFAULT_ARTIST)
             album = metadata.get("album", "")
             year = metadata.get("year", "")
             genre = metadata.get("genre", "")

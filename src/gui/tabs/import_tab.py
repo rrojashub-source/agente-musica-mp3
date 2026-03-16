@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 
 from gui.base import BaseTab
 from gui.themes.style_constants import Styles
+from utils.constants import DEFAULT_ARTIST
 from workers.library_import_worker import LibraryImportWorker
 
 logger = logging.getLogger(__name__)
@@ -206,7 +207,7 @@ class ImportTab(BaseTab):
     def _on_song_imported(self, song_data: Dict[str, Any]) -> None:
         """Handle song imported signal"""
         title = song_data.get("title", "Unknown")
-        artist = song_data.get("artist", "Unknown Artist")
+        artist = song_data.get("artist", DEFAULT_ARTIST)
         self._log(f"✅ {title} - {artist}")
 
     def _on_import_finished(self, result: Dict[str, Any]) -> None:

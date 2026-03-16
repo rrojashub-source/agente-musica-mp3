@@ -46,7 +46,7 @@ class LibraryScanWorker(BaseWorker):
         self.report_progress(0, "Iniciando escaneo...")
         self.report_progress(10, "Contando archivos...")
 
-        audio_files = []
+        audio_files: list[Path] = []
 
         for i, file_path in enumerate(self.library_path.rglob("*")):
             if self.is_cancelled:
