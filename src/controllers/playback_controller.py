@@ -14,6 +14,7 @@ from typing import Any, Optional
 from PySide6.QtCore import QObject
 from PySide6.QtWidgets import QMessageBox, QStatusBar, QWidget
 
+from controllers._helpers import sync_volume_ui
 from core.audio_player import AudioPlayer
 from core.playlist_manager import PlaylistManager
 from database.manager import DatabaseManager
@@ -247,12 +248,7 @@ class PlaybackController(QObject):
 
     def _sync_volume_ui(self, percentage: int) -> None:
         """Update volume slider and label in NowPlayingWidget without triggering signals."""
-        if hasattr(self.now_playing, "volume_slider"):
-            self.now_playing.volume_slider.blockSignals(True)
-            self.now_playing.volume_slider.setValue(percentage)
-            self.now_playing.volume_slider.blockSignals(False)
-            if hasattr(self.now_playing, "volume_label_value"):
-                self.now_playing.volume_label_value.setText(f"{percentage}%")
+        sync_volume_ui(self.now_playing, percentage)
 
     # ==========================================
     # Keyboard Shortcut Handlers

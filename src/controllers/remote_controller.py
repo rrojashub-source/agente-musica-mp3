@@ -13,6 +13,7 @@ from typing import Any, Callable, Optional
 from PySide6.QtCore import QObject, QTimer
 from PySide6.QtWidgets import QWidget
 
+from controllers._helpers import sync_volume_ui
 from core.audio_player import AudioPlayer
 from utils.constants import REMOTE_UPDATE_INTERVAL_MS
 
@@ -40,12 +41,7 @@ class RemoteController(QObject):
 
     def _sync_volume_ui(self, percentage: int) -> None:
         """Update volume slider and label in NowPlayingWidget without triggering signals."""
-        if hasattr(self.now_playing, "volume_slider"):
-            self.now_playing.volume_slider.blockSignals(True)
-            self.now_playing.volume_slider.setValue(percentage)
-            self.now_playing.volume_slider.blockSignals(False)
-            if hasattr(self.now_playing, "volume_label_value"):
-                self.now_playing.volume_label_value.setText(f"{percentage}%")
+        sync_volume_ui(self.now_playing, percentage)
 
     def connect_server(self) -> None:
         """Connect RemoteServer callbacks to audio player and controls"""

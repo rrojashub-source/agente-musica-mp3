@@ -252,6 +252,20 @@ class LibraryTab(BaseTab):
         self.status_label.setText("⏳ Cargando biblioteca... / Loading library...")
         QApplication.processEvents()
 
+    _MOOD_COLORS = {
+        "Energetic": QColor(255, 100, 50),  # Orange
+        "Happy": QColor(50, 200, 50),  # Green
+        "Calm": QColor(100, 150, 255),  # Blue
+        "Sad": QColor(150, 100, 200),  # Purple
+        "Intense": QColor(255, 50, 50),  # Red
+    }
+
+    def _apply_mood_color(self, item: QTableWidgetItem, mood: str) -> None:
+        """Apply color-coding to a mood table item."""
+        color = self._MOOD_COLORS.get(mood)
+        if color:
+            item.setForeground(color)
+
     def _load_library(self) -> None:
         """Load songs from database into table with skeleton loading"""
         try:
@@ -308,17 +322,7 @@ class LibraryTab(BaseTab):
                 # Mood (AI-classified)
                 mood = song.get("mood", "")
                 mood_item = QTableWidgetItem(mood if mood else "")
-                # Color-code moods for visual feedback
-                if mood == "Energetic":
-                    mood_item.setForeground(QColor(255, 100, 50))  # Orange
-                elif mood == "Happy":
-                    mood_item.setForeground(QColor(50, 200, 50))  # Green
-                elif mood == "Calm":
-                    mood_item.setForeground(QColor(100, 150, 255))  # Blue
-                elif mood == "Sad":
-                    mood_item.setForeground(QColor(150, 100, 200))  # Purple
-                elif mood == "Intense":
-                    mood_item.setForeground(QColor(255, 50, 50))  # Red
+                self._apply_mood_color(mood_item, mood)
                 self.library_table.setItem(row, 7, mood_item)
 
             # Re-enable sorting
@@ -800,17 +804,7 @@ class LibraryTab(BaseTab):
 
                     if mood:
                         mood_item = QTableWidgetItem(mood)
-                        # Color-code moods
-                        if mood == "Energetic":
-                            mood_item.setForeground(QColor(255, 100, 50))
-                        elif mood == "Happy":
-                            mood_item.setForeground(QColor(50, 200, 50))
-                        elif mood == "Calm":
-                            mood_item.setForeground(QColor(100, 150, 255))
-                        elif mood == "Sad":
-                            mood_item.setForeground(QColor(150, 100, 200))
-                        elif mood == "Intense":
-                            mood_item.setForeground(QColor(255, 50, 50))
+                        self._apply_mood_color(mood_item, mood)
                         self.library_table.setItem(row, 7, mood_item)
 
                     self.status_label.setText(f"✅ {song_title}: BPM={bpm or '?'}, Mood={mood or '?'}")
