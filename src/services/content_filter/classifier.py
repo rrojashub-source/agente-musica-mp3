@@ -19,7 +19,6 @@ Created: December 8, 2025
 
 import json
 import logging
-import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -27,15 +26,7 @@ from typing import Any, Dict, List, Optional
 
 from mutagen import File as MutagenFile
 
-
-def get_resource_path(relative_path: str) -> Path:
-    """Get absolute path to resource, works for dev and PyInstaller bundle."""
-    if hasattr(sys, "_MEIPASS") or "__compiled__" in globals():
-        base_path = Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else Path(__file__).parent.parent
-    else:
-        base_path = Path(__file__).parent.parent.parent  # content_filter -> services -> src
-    return base_path / relative_path
-
+from utils.resource_path import get_resource_path
 
 logger = logging.getLogger(__name__)
 

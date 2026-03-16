@@ -27,31 +27,17 @@ from __future__ import annotations
 
 import ctypes
 import logging
-import sys
 import time
-from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
 import numpy as np
-
-
-def get_resource_path(relative_path: str) -> Path:
-    """Get absolute path to resource, works for dev and PyInstaller bundle."""
-    if hasattr(sys, "_MEIPASS") or "__compiled__" in globals():
-        # Running from PyInstaller bundle
-        base_path = Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else Path(__file__).parent.parent
-    else:
-        # Running from source
-        base_path = Path(__file__).parent.parent.parent  # src/gui/visualizers -> src
-    return base_path / relative_path
-
-
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QSurfaceFormat
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from gui.themes.style_constants import Styles
 from utils.constants import ANIMATION_FRAME_INTERVAL_MS
+from utils.resource_path import get_resource_path
 
 # Try to import OpenGL - graceful fallback if not available
 try:
