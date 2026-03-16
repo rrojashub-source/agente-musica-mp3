@@ -14,19 +14,16 @@ Created: November 24, 2025
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QFont
+from PySide6.QtCore import Slot
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFileDialog,
-    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -34,21 +31,14 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
-    QSpinBox,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
 from gui.base import BaseTab
-from gui.themes.style_constants import Colors, Styles
-from services.cloud_sync_service import (
-    CloudSyncService,
-    ConflictStrategy,
-    GoogleDriveProvider,
-    LocalFolderProvider,
-    SyncStatus,
-)
+from gui.themes.style_constants import Styles
+from services.cloud_sync_service import CloudSyncService, ConflictStrategy, GoogleDriveProvider, LocalFolderProvider
 from translations import tr
 
 logger = logging.getLogger(__name__)

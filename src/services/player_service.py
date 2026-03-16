@@ -13,11 +13,10 @@ Features:
 import logging
 import random
 import threading
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
@@ -443,7 +442,7 @@ class PlayerService(QObject):
     def _shuffle_queue(self) -> None:
         """Shuffle the queue while keeping current track"""
         if self._queue_index >= 0 and self._queue_index < len(self._play_queue):
-            current = self._play_queue[self._queue_index]
+            _current = self._play_queue[self._queue_index]  # noqa: F841
             remaining = self._play_queue[self._queue_index + 1 :]
             random.shuffle(remaining)
             self._play_queue = self._play_queue[: self._queue_index + 1] + remaining

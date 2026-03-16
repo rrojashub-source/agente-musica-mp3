@@ -15,7 +15,7 @@ Usage:
 """
 
 import logging
-from typing import Any, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from PySide6.QtCore import QEvent, QObject, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence

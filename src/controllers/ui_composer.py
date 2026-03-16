@@ -227,7 +227,7 @@ class UIComposer:
 
         # Each tab is loaded with _load_tab() inside a try/except so that
         # a single broken tab cannot prevent the rest of the UI from loading.
-        tab_specs: list[tuple[str, str, Any]] = [
+        _tab_specs: list[tuple[str, str, Any]] = [  # noqa: F841
             # (attr_name, tab_key, factory_callable_returning_widget)
         ]
 

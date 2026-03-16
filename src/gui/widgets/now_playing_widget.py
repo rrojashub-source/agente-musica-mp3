@@ -19,7 +19,6 @@ Created: November 13, 2025
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QPointF, Qt, QTimer, Signal
@@ -36,7 +35,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core.audio_player import PlaybackState
 from core.cover_art_manager import CoverArtManager
 from gui.themes.style_constants import Styles
 from utils.constants import ALBUM_ART_THUMBNAIL_SIZE, VISUALIZER_FRAME_INTERVAL_MS

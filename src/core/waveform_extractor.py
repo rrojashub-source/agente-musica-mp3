@@ -17,7 +17,7 @@ Updated: November 20, 2025 - Added spectrum analysis
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -167,7 +167,7 @@ class WaveformExtractor:
                 logger.warning("Could not get audio duration")
                 return None
 
-            duration = audio_file.info.length
+            _duration = audio_file.info.length  # noqa: F841
 
             # Generate simulated waveform with some randomness
             # (better than nothing for visualization)

@@ -11,12 +11,10 @@ Features:
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -404,7 +402,7 @@ class SearchTab(BaseTab):
 
         # Count successful additions
         added_count = 0
-        total_selected = len(self.selected_songs)
+        _total_selected = len(self.selected_songs)  # noqa: F841
 
         # Track conversion stats
         spotify_converted = 0

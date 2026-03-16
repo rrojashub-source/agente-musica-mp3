@@ -18,7 +18,7 @@ import sqlite3
 import threading
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QObject, Signal
 
@@ -439,11 +439,11 @@ class DownloadQueue(QObject):
             # Read MP3 metadata
             try:
                 audio = MP3(str(file_path_obj))
-                id3 = audio.tags if audio.tags else ID3()
+                _id3 = audio.tags if audio.tags else ID3()  # noqa: F841
             except (OSError, ValueError) as e:
                 logger.warning(f"Could not read ID3 tags: {e}")
                 audio = None
-                id3 = None
+                _id3 = None  # noqa: F841
 
             # Extract metadata
             title = metadata.get("title", file_path_obj.stem)

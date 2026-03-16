@@ -130,7 +130,7 @@ class AudioPlayer:
         """Handle mpv end-file event for track transitions"""
         try:
             # event['reason'] can be 'eof', 'stop', 'quit', 'error', etc.
-            reason = event.get("event", {}).get("reason", None) if isinstance(event, dict) else None
+            _reason = event.get("event", {}).get("reason", None) if isinstance(event, dict) else None  # noqa: F841
 
             with self._lock:
                 if self._state != PlaybackState.PLAYING:

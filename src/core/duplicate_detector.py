@@ -15,7 +15,7 @@ import os
 import re
 from collections import defaultdict
 from difflib import SequenceMatcher
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from utils.fpcalc_checker import FpcalcChecker
 

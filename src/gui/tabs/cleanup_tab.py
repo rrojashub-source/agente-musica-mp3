@@ -192,8 +192,6 @@ class CleanupTab(BaseTab):
         if self.fetch_metadata_check.isChecked():
             try:
                 # Import API clients and adapters
-                import keyring
-
                 from api.musicbrainz_client import MusicBrainzClient
                 from api.spotify_search import SpotifySearcher
                 from core.api_adapters import MusicBrainzAdapter, SpotifyAdapter

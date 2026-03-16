@@ -24,9 +24,7 @@ Usage:
     server.start(port=8080)
 """
 
-import json
 import logging
-import os
 import secrets
 import socket
 import threading
@@ -34,11 +32,10 @@ import time
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from functools import wraps
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional
 
 try:
-    from flask import Flask, jsonify, render_template_string, request, send_from_directory
+    from flask import Flask, jsonify, render_template_string, request
     from flask_cors import CORS
 
     HAS_FLASK = True

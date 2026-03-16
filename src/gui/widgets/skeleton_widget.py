@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 
-from PySide6.QtCore import Property, QEasingCurve, QPropertyAnimation, Qt, QTimer
+from PySide6.QtCore import Property, QEasingCurve, QPropertyAnimation, Qt
 from PySide6.QtGui import QColor, QHideEvent, QLinearGradient, QPainter, QPaintEvent, QShowEvent
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout, QWidget
 

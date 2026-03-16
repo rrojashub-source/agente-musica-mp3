@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from PySide6.QtCore import Qt, QTimer, Slot
 from PySide6.QtWidgets import (

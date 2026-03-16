@@ -7,7 +7,6 @@ Project: AGENTE_MUSICA_MP3_001
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any, Optional, Set
 
@@ -15,7 +14,6 @@ try:
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QFont
     from PySide6.QtWidgets import (
-        QComboBox,
         QDialog,
         QFileDialog,
         QHBoxLayout,
@@ -33,7 +31,6 @@ except ImportError:
 
 from gui.base.base_worker import BaseWorker
 from gui.themes.style_constants import Styles
-from translations import t
 
 
 class LibraryScanWorker(BaseWorker):

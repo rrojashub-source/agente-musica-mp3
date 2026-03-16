@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from pathlib import Path
 from typing import Any, List, Optional
 
 from PySide6.QtCore import Qt, Signal
@@ -32,17 +31,13 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFileDialog,
-    QFrame,
     QHBoxLayout,
     QHeaderView,
     QInputDialog,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
     QMenu,
     QMessageBox,
     QPushButton,
-    QScrollArea,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,

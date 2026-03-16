@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.11', '3.12', '3.13']
+        python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
     - uses: actions/checkout@v4
@@ -99,7 +99,7 @@ jobs:
       run: pip install flake8
 
     - name: Run flake8
-      run: flake8 src/ --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293,E266,E265,W292,E261,E262,E741,W504,F401,F403,F405,F541,F811,F841,E203,E226,E402
+      run: flake8 src/ --max-line-length=120 --ignore=E501,W503,E302,E303,W291,W293,E266,E265,W292,E261,E262,E741,W504,F403,F405,F541,E203,E226,E402
 
   build:
     name: Build Test

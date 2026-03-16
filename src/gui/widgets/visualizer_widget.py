@@ -25,7 +25,7 @@ import logging
 import math
 from typing import Any, List, Optional
 
-from PySide6.QtCore import QPoint, QRect, QSettings, Qt, QTimer
+from PySide6.QtCore import QRect, QSettings, Qt
 from PySide6.QtGui import (
     QCloseEvent,
     QColor,
@@ -39,7 +39,7 @@ from PySide6.QtGui import (
     QRadialGradient,
     QResizeEvent,
 )
-from PySide6.QtWidgets import QComboBox, QStackedWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QVBoxLayout, QWidget
 
 from gui.themes.style_constants import Styles
 
@@ -1184,10 +1184,6 @@ class VisualizerWidget(QWidget):
         """Open organic visualizer in fullscreen"""
         if not ORGANIC_AVAILABLE:
             return
-
-        from PySide6.QtWidgets import QApplication
-
-        from gui.visualizers import OrganicVisualizerWidget
 
         self._fullscreen_window = _FullscreenVisualizer(self)  # type: ignore[assignment]
         self._fullscreen_window.showFullScreen()  # type: ignore[attr-defined]

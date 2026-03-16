@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from functools import lru_cache
 from time import sleep
 from typing import Any, Dict, List, Optional
 
@@ -83,7 +82,6 @@ class YouTubeSearcher:
             return []
 
         # Sanitize query (remove injection attempts, control chars, truncate)
-        original_query = query
         query = sanitize_query(query, max_length=API_QUERY_MAX_LENGTH)
 
         if not query:

@@ -7,7 +7,6 @@ import importlib
 import importlib.util
 import json
 import logging
-import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -31,7 +30,7 @@ except ImportError:
     HAS_QT = False
     QObject = object
 
-from .plugin_base import Plugin, PluginHook, PluginMetadata
+from .plugin_base import Plugin, PluginHook
 
 logger = logging.getLogger(__name__)
 

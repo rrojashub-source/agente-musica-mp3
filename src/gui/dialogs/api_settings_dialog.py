@@ -19,7 +19,7 @@ Date: November 13, 2025
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 
 import keyring
 from PySide6.QtCore import Qt, Signal

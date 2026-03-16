@@ -11,8 +11,8 @@ import base64
 import logging
 from typing import Any, Dict, Optional
 
-from PySide6.QtCore import Qt, QTimer, QUrl, Slot
-from PySide6.QtGui import QDesktopServices, QFont, QImage, QPixmap
+from PySide6.QtCore import Qt, QUrl, Slot
+from PySide6.QtGui import QDesktopServices, QImage, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QGroupBox,

@@ -14,7 +14,7 @@ Migrated to BaseWorker pattern (Phase 4 polish).
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import yt_dlp
 from PySide6.QtCore import Signal

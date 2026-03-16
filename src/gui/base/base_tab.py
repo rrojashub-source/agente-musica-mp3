@@ -18,9 +18,9 @@ Phase 2.2 — Structural Refactoring
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Tuple, Union
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QGroupBox,

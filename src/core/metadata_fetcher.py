@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from difflib import SequenceMatcher
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import requests  # type: ignore[import-untyped]
 

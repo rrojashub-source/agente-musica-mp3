@@ -18,7 +18,7 @@ import logging
 import shutil
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtGui import QAction, QColor
@@ -35,7 +35,6 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
-    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -45,7 +44,7 @@ from PySide6.QtWidgets import (
 from gui.base import BaseTab
 from gui.base.base_worker import BaseWorker
 from gui.themes.style_constants import Styles
-from services.content_filter import ClassificationResult, ContentClassifier, ContentRating, get_classifier
+from services.content_filter import ClassificationResult, ContentRating, get_classifier
 from translations import tr
 
 logger = logging.getLogger(__name__)

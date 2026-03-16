@@ -55,7 +55,7 @@ from utils.constants import ANIMATION_FRAME_INTERVAL_MS
 
 # Try to import OpenGL - graceful fallback if not available
 try:
-    from OpenGL.GL import *
+    from OpenGL.GL import *  # noqa: F403
     from OpenGL.GL import shaders
     from PySide6.QtOpenGLWidgets import QOpenGLWidget
 

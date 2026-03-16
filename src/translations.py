@@ -18,7 +18,7 @@ Usage:
     current = get_language()  # "es" or "en"
 """
 import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

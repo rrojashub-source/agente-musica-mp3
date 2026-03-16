@@ -21,17 +21,7 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QFont, QTextCursor
-from PySide6.QtWidgets import (
-    QComboBox,
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QSplitter,
-    QTextBrowser,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QLabel, QPushButton, QSplitter, QTextBrowser, QVBoxLayout
 
 from gui.base import BaseTab
 from gui.base.base_worker import BaseWorker

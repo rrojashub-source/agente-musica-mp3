@@ -2,6 +2,7 @@
 # NEXUS Music Manager - Complete Dependencies
 # Project: AGENTE_MUSICA_MP3_001
 # Phases: 3+4+5+6 Complete
+# Installs ALL features (equivalent to: pip install nexus-music-manager[all])
 # ============================================
 
 # ========================================
@@ -90,6 +91,9 @@ python-dotenv>=1.0.0
 
 # Secure credential storage (OS keyring integration)
 keyring>=24.0.0
+
+# Content filter (profanity detection)
+better-profanity>=0.7.0
 
 # ========================================
 # Optional Dependencies

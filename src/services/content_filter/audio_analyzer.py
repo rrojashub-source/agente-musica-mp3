@@ -14,8 +14,7 @@ Created: December 8, 2025
 """
 
 import logging
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 from .classifier import ContentScore
 

@@ -9,11 +9,9 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 import requests  # type: ignore[import-untyped]
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,

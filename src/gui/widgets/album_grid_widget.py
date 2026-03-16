@@ -18,19 +18,9 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QImage, QMouseEvent, QPainter, QPixmap, QResizeEvent
-from PySide6.QtWidgets import (
-    QFrame,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QScrollArea,
-    QSizePolicy,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor, QImage, QMouseEvent, QPainter, QPixmap, QResizeEvent
+from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget
 
 from core.cover_art_manager import CoverArtManager
 from gui.themes.style_constants import Styles
@@ -149,8 +139,7 @@ class AlbumCard(QFrame):
         """Extract cover art from audio file using mutagen"""
         try:
             from mutagen import File
-            from mutagen.id3 import APIC, ID3
-            from mutagen.mp4 import MP4Cover
+            from mutagen.id3 import APIC
 
             audio = File(file_path)
             if audio is None:

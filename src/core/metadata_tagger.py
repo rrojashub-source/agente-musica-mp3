@@ -12,8 +12,7 @@ Features:
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from mutagen import MutagenError
 from mutagen.id3 import APIC, ID3, TALB, TCON, TDRC, TIT2, TPE1

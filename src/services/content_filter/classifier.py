@@ -19,7 +19,6 @@ Created: December 8, 2025
 
 import json
 import logging
-import re
 import sys
 from dataclasses import dataclass, field
 from enum import Enum
@@ -27,8 +26,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from mutagen import File as MutagenFile
-from mutagen.easyid3 import EasyID3
-from mutagen.id3 import ID3
 
 
 def get_resource_path(relative_path: str) -> Path:

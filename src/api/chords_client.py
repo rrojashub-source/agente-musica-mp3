@@ -22,8 +22,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
-    import numpy as np
-    import numpy.typing as npt
+    import numpy as np  # noqa: F401
+    import numpy.typing as npt  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class ChordsClient:
         """Lazy-load heavy libraries (librosa, numpy)."""
         if self._librosa is None:
             import librosa
-            import numpy as np
+            import numpy as np  # noqa: F811
 
             self._librosa = librosa
             self._np = np
@@ -120,7 +120,7 @@ class ChordsClient:
         try:
             self._ensure_libs()
             librosa = self._librosa
-            np = self._np
+            np = self._np  # noqa: F811
 
             path = Path(file_path)
             if not path.exists():
@@ -179,7 +179,7 @@ class ChordsClient:
         Uses normalized template matching against major, minor, and 7th chords.
         Cosine similarity ensures fair comparison between templates of different sizes.
         """
-        np = self._np
+        np = self._np  # noqa: F811
         best_score = -1
         best_chord = "N"  # No chord
 

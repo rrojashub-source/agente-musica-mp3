@@ -17,7 +17,7 @@ Created: December 11, 2025
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
