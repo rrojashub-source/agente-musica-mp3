@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional
 import musicbrainzngs
 import requests  # type: ignore[import-untyped]
 
-from utils.constants import API_DEFAULT_TIMEOUT
+from utils.constants import API_DEFAULT_TIMEOUT, DEFAULT_ALBUM, DEFAULT_ARTIST, DEFAULT_GENRE
 from utils.rate_limiter import RateLimiter
 
 # Setup logger
@@ -153,16 +153,16 @@ class MusicBrainzClient:
         for item in result["recording-list"]:
             try:
                 # Extract artist
-                artist = "Unknown"
+                artist = DEFAULT_ARTIST
                 if "artist-credit" in item and item["artist-credit"]:
                     artist = item["artist-credit"][0]["artist"]["name"]
 
                 # Extract album and year
-                album = "Unknown"
+                album = DEFAULT_ALBUM
                 year = "Unknown"
                 if "release-list" in item and item["release-list"]:
                     release = item["release-list"][0]
-                    album = release.get("title", "Unknown")
+                    album = release.get("title", DEFAULT_ALBUM)
                     year = release.get("date", "Unknown")[:4]  # Extract year only
 
                 # Extract genre from tags
@@ -190,16 +190,19 @@ class MusicBrainzClient:
             str: Genre name or "Unknown"
         """
         if not tag_list:
-            return "Unknown"
+            result: str = DEFAULT_GENRE
+            return result
 
         # Sort by count (most popular first)
         sorted_tags = sorted(tag_list, key=lambda x: x.get("count", 0), reverse=True)
 
         # Return most popular genre
         if sorted_tags:
-            return sorted_tags[0]["name"]  # type: ignore[no-any-return]
+            genre: str = sorted_tags[0]["name"]
+            return genre
 
-        return "Unknown"
+        fallback: str = DEFAULT_GENRE
+        return fallback
 
     def _enforce_rate_limit(self) -> None:
         """

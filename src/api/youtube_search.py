@@ -14,7 +14,6 @@ Security (Pre-Phase 5 Hardening):
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from time import sleep
 from typing import Any, Dict, List, Optional
@@ -25,6 +24,7 @@ from googleapiclient.errors import HttpError
 from requests.exceptions import ConnectionError as RequestsConnectionError  # type: ignore[import-untyped]
 from requests.exceptions import Timeout
 
+from api._cache import APICache
 from utils.constants import API_CACHE_SIZE, API_DEFAULT_RESULTS, API_MAX_RESULTS, API_QUERY_MAX_LENGTH
 from utils.input_sanitizer import sanitize_query
 from utils.rate_limiter import RateLimiter
@@ -52,8 +52,7 @@ class YouTubeSearcher:
         """
         self.api_key: str = api_key
         self.youtube: Any = build("youtube", "v3", developerKey=api_key)
-        self._cache: Dict[str, List[Dict[str, str]]] = {}
-        self._cache_size: int = cache_size
+        self._cache = APICache(max_size=cache_size)
         self._retry_attempts: int = 3
         self._retry_delay: int = 1  # seconds
 
@@ -93,10 +92,9 @@ class YouTubeSearcher:
 
         # Check cache first
         if use_cache:
-            cache_key = self._get_cache_key(query, max_results)
-            if cache_key in self._cache:
-                logger.info(f"Cache hit for query: '{query}'")
-                return self._cache[cache_key]
+            cached: Optional[List[Dict[str, str]]] = self._cache.get(query, max_results)
+            if cached is not None:
+                return cached
 
         # Make API request with retry logic
         for attempt in range(self._retry_attempts):
@@ -112,7 +110,7 @@ class YouTubeSearcher:
 
                 # Store in cache
                 if use_cache:
-                    self._add_to_cache(query, max_results, results)
+                    self._cache.put(query, max_results, results)
 
                 logger.info(f"Search '{query}' returned {len(results)} results")
                 return results
@@ -226,45 +224,9 @@ class YouTubeSearcher:
 
         return results
 
-    def _get_cache_key(self, query: str, max_results: int) -> str:
-        """
-        Generate cache key for query
-
-        Args:
-            query (str): Search query
-            max_results (int): Max results
-
-        Returns:
-            str: Cache key (hash)
-        """
-        key_str = f"{query.lower()}:{max_results}"
-        return hashlib.md5(key_str.encode()).hexdigest()
-
-    def _add_to_cache(self, query: str, max_results: int, results: List[Dict[str, str]]) -> None:
-        """
-        Add results to cache with LRU eviction
-
-        Args:
-            query (str): Search query
-            max_results (int): Max results
-            results (list): Search results to cache
-        """
-        cache_key = self._get_cache_key(query, max_results)
-
-        # Implement simple LRU: remove oldest if cache full
-        if len(self._cache) >= self._cache_size:
-            # Remove first item (oldest)
-            oldest_key = next(iter(self._cache))
-            del self._cache[oldest_key]
-            logger.debug(f"Cache full, evicted key: {oldest_key}")
-
-        self._cache[cache_key] = results
-        logger.debug(f"Cached results for query: '{query}' (cache size: {len(self._cache)})")
-
     def clear_cache(self) -> None:
         """Clear the search cache"""
         self._cache.clear()
-        logger.info("Search cache cleared")
 
     def get_video_metadata(self, video_id: str) -> Optional[Dict[str, Any]]:
         """

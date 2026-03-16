@@ -17,7 +17,6 @@ Security (Pre-Phase 5 Hardening):
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from time import sleep
 from typing import Any, Dict, List, Optional
@@ -27,7 +26,8 @@ import spotipy
 from spotipy.exceptions import SpotifyException
 from spotipy.oauth2 import SpotifyClientCredentials
 
-from utils.constants import API_CACHE_SIZE, API_DEFAULT_RESULTS, API_MAX_RESULTS, API_QUERY_MAX_LENGTH
+from api._cache import APICache
+from utils.constants import API_CACHE_SIZE, API_DEFAULT_RESULTS, API_MAX_RESULTS, API_QUERY_MAX_LENGTH, DEFAULT_ARTIST
 from utils.input_sanitizer import sanitize_query
 from utils.rate_limiter import RateLimiter
 
@@ -67,8 +67,7 @@ class SpotifySearcher:
         self.sp: spotipy.Spotify = spotipy.Spotify(auth_manager=self.auth_manager)
 
         # Cache configuration
-        self._cache: Dict[str, List[Dict[str, Any]]] = {}
-        self._cache_size: int = cache_size
+        self._cache = APICache(max_size=cache_size)
 
         # Retry configuration
         self._retry_attempts: int = 3
@@ -113,10 +112,9 @@ class SpotifySearcher:
 
         # Check cache first
         if use_cache:
-            cache_key = self._get_cache_key(f"track:{query}", limit)
-            if cache_key in self._cache:
-                logger.info(f"Cache hit for track search: '{query}'")
-                return self._cache[cache_key]
+            cached: Optional[List[Dict[str, Any]]] = self._cache.get(f"track:{query}", limit)
+            if cached is not None:
+                return cached
 
         # Retry logic
         for attempt in range(self._retry_attempts):
@@ -132,7 +130,7 @@ class SpotifySearcher:
 
                 # Store in cache
                 if use_cache:
-                    self._add_to_cache(f"track:{query}", limit, tracks)
+                    self._cache.put(f"track:{query}", limit, tracks)
 
                 logger.info(f"Search tracks '{query}' returned {len(tracks)} results")
                 return tracks
@@ -181,10 +179,9 @@ class SpotifySearcher:
 
         # Check cache first
         if use_cache:
-            cache_key = self._get_cache_key(f"album:{query}", limit)
-            if cache_key in self._cache:
-                logger.info(f"Cache hit for album search: '{query}'")
-                return self._cache[cache_key]
+            cached: Optional[List[Dict[str, Any]]] = self._cache.get(f"album:{query}", limit)
+            if cached is not None:
+                return cached
 
         # Retry logic
         for attempt in range(self._retry_attempts):
@@ -200,7 +197,7 @@ class SpotifySearcher:
 
                 # Store in cache
                 if use_cache:
-                    self._add_to_cache(f"album:{query}", limit, albums)
+                    self._cache.put(f"album:{query}", limit, albums)
 
                 logger.info(f"Search albums '{query}' returned {len(albums)} results")
                 return albums
@@ -249,10 +246,9 @@ class SpotifySearcher:
 
         # Check cache first
         if use_cache:
-            cache_key = self._get_cache_key(f"artist:{query}", limit)
-            if cache_key in self._cache:
-                logger.info(f"Cache hit for artist search: '{query}'")
-                return self._cache[cache_key]
+            cached: Optional[List[Dict[str, Any]]] = self._cache.get(f"artist:{query}", limit)
+            if cached is not None:
+                return cached
 
         # Retry logic
         for attempt in range(self._retry_attempts):
@@ -268,7 +264,7 @@ class SpotifySearcher:
 
                 # Store in cache
                 if use_cache:
-                    self._add_to_cache(f"artist:{query}", limit, artists)
+                    self._cache.put(f"artist:{query}", limit, artists)
 
                 logger.info(f"Search artists '{query}' returned {len(artists)} results")
                 return artists
@@ -302,7 +298,7 @@ class SpotifySearcher:
         for item in results["tracks"]["items"]:
             try:
                 # Extract artist name (first artist if multiple)
-                artist_name = item["artists"][0]["name"] if item["artists"] else "Unknown"
+                artist_name = item["artists"][0]["name"] if item["artists"] else DEFAULT_ARTIST
 
                 tracks.append(
                     {
@@ -340,7 +336,7 @@ class SpotifySearcher:
         for item in results["albums"]["items"]:
             try:
                 # Extract artist name (first artist if multiple)
-                artist_name = item["artists"][0]["name"] if item["artists"] else "Unknown"
+                artist_name = item["artists"][0]["name"] if item["artists"] else DEFAULT_ARTIST
 
                 albums.append(
                     {
@@ -435,45 +431,9 @@ class SpotifySearcher:
             logger.error(f"Spotify API error in {method_name} ({error.http_status}): {error.msg}")
             return []
 
-    def _get_cache_key(self, query: str, limit: int) -> str:
-        """
-        Generate cache key for query
-
-        Args:
-            query (str): Search query (with type prefix)
-            limit (int): Max results
-
-        Returns:
-            str: Cache key (hash)
-        """
-        key_str = f"{query.lower()}:{limit}"
-        return hashlib.md5(key_str.encode()).hexdigest()
-
-    def _add_to_cache(self, query: str, limit: int, results: List[Dict[str, Any]]) -> None:
-        """
-        Add results to cache with LRU eviction
-
-        Args:
-            query (str): Search query
-            limit (int): Max results
-            results (list): Search results to cache
-        """
-        cache_key = self._get_cache_key(query, limit)
-
-        # Implement simple LRU: remove oldest if cache full
-        if len(self._cache) >= self._cache_size:
-            # Remove first item (oldest)
-            oldest_key = next(iter(self._cache))
-            del self._cache[oldest_key]
-            logger.debug(f"Cache full, evicted key: {oldest_key}")
-
-        self._cache[cache_key] = results
-        logger.debug(f"Cached results for query: '{query}' (cache size: {len(self._cache)})")
-
     def clear_cache(self) -> None:
         """Clear the search cache"""
         self._cache.clear()
-        logger.info("Spotify search cache cleared")
 
     def get_track_details(self, track_id: str) -> Optional[Dict[str, Any]]:
         """

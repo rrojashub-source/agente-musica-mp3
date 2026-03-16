@@ -210,12 +210,12 @@ class AudioPlayer:
 
     def play(self) -> None:
         """Start playback from beginning"""
-        if not self._player or not self._current_file:
-            logger.warning("No file loaded")
-            return
-
         try:
             with self._lock:
+                if not self._player or not self._current_file:
+                    logger.warning("No file loaded")
+                    return
+
                 self._player.play(self._current_file)
                 self._player.pause = False
                 self._state = PlaybackState.PLAYING

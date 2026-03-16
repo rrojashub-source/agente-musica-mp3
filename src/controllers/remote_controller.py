@@ -151,5 +151,5 @@ class RemoteController(QObject):
             )
             self._remote_server.update_now_playing(info)
 
-        except Exception:  # noqa: BLE001 — intentional: called every 500ms, any error is transient
-            pass  # Silently ignore to avoid log spam on frequent timer tick
+        except Exception:  # noqa: BLE001 — called every 500ms, errors are transient
+            logger.debug("Failed to update now-playing info for remote", exc_info=True)

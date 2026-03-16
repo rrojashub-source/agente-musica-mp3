@@ -107,6 +107,7 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
     """
 
     _instance: Optional["RemoteServer"] = None
+    _lock: threading.Lock = threading.Lock()
 
     # Signals
     if HAS_QT:
@@ -146,9 +147,11 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
 
     @classmethod
     def get_instance(cls) -> "RemoteServer":
-        """Get singleton instance"""
+        """Get singleton instance (thread-safe)"""
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     @classmethod

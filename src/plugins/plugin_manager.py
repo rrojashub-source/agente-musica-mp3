@@ -8,6 +8,7 @@ import importlib.util
 import json
 import logging
 import sys
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
@@ -57,6 +58,7 @@ class PluginManager(QObject if HAS_QT else object):  # type: ignore[misc]
 
     # Singleton instance
     _instance: Optional["PluginManager"] = None
+    _lock: threading.Lock = threading.Lock()
 
     # PySide6 signals (if available)
     if HAS_QT:
@@ -111,9 +113,11 @@ class PluginManager(QObject if HAS_QT else object):  # type: ignore[misc]
 
     @classmethod
     def get_instance(cls, plugins_dir: Optional[str] = None, data_dir: Optional[str] = None) -> "PluginManager":
-        """Get singleton instance"""
+        """Get singleton instance (thread-safe)"""
         if cls._instance is None:
-            cls._instance = cls(plugins_dir, data_dir)
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls(plugins_dir, data_dir)
         return cls._instance
 
     @classmethod

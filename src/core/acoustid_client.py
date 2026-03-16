@@ -25,7 +25,7 @@ try:
 except ImportError:
     acoustid = None  # type: ignore[assignment]
 
-from utils.constants import DEFAULT_ALBUM
+from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST, DEFAULT_TITLE
 from utils.fpcalc_checker import FpcalcChecker
 
 logger = logging.getLogger(__name__)
@@ -274,8 +274,8 @@ class AcoustIDClient:
             # Simplified implementation
             if results:
                 return {
-                    "title": results.get("title", "Unknown"),
-                    "artist": results.get("artist", "Unknown"),
+                    "title": results.get("title", DEFAULT_TITLE),
+                    "artist": results.get("artist", DEFAULT_ARTIST),
                     "score": results.get("score", 0.0),
                 }
 
