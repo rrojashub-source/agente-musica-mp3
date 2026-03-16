@@ -187,19 +187,13 @@ class TestAddDownload:
         assert result is None
         service.download_added.emit.assert_not_called()
 
-    def test_add_download_none_metadata_bug(self, service, mock_queue):
-        """Documents bug: metadata=None causes AttributeError on logger line.
-
-        In download_service.py:229, metadata.get('title', url) is called
-        on the original None parameter instead of the defaulted empty dict.
-        """
+    def test_add_download_none_metadata_defaults(self, service, mock_queue):
+        """metadata=None should default to empty dict and succeed."""
         mock_queue.add.return_value = "item_003"
 
         result = service.add_download("https://youtube.com/watch?v=test")
 
-        # Bug: returns None because AttributeError is caught
-        assert result is None
-        service.error_occurred.emit.assert_called_once()
+        assert result == "item_003"
 
     def test_add_download_exception(self, service, mock_queue):
         """Should handle exception and emit error"""

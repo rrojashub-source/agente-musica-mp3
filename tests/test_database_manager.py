@@ -2,17 +2,20 @@
 Tests for DatabaseManager - CRUD Operations
 Phase: Library Import Feature
 """
-import pytest
-import tempfile
+
 import os
+import tempfile
 from pathlib import Path
+
+import pytest
+
 from src.database.manager import DatabaseManager
 
 
 @pytest.fixture
 def temp_db():
     """Create temporary database for testing"""
-    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
 
     db = DatabaseManager(db_path)
@@ -22,12 +25,12 @@ def temp_db():
     db.close()
 
     # Remove database files (including WAL and SHM)
-    for ext in ['', '-wal', '-shm']:
+    for ext in ["", "-wal", "-shm"]:
         file_path = db_path + ext
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
-            except:
+            except OSError:
                 pass
 
 
@@ -35,22 +38,23 @@ def temp_db():
 def sample_song_data():
     """Sample song data for testing"""
     return {
-        'title': 'Clavaito',
-        'artist': 'Chanel',
-        'album': '¡Agua!',
-        'year': 2024,
-        'genre': 'Latin Pop',
-        'duration': 167,
-        'bitrate': 192000,
-        'sample_rate': 48000,
-        'file_path': '/music/Chanel/Clavaito.mp3',
-        'file_size': 4000000
+        "title": "Clavaito",
+        "artist": "Chanel",
+        "album": "¡Agua!",
+        "year": 2024,
+        "genre": "Latin Pop",
+        "duration": 167,
+        "bitrate": 192000,
+        "sample_rate": 48000,
+        "file_path": "/music/Chanel/Clavaito.mp3",
+        "file_size": 4000000,
     }
 
 
 # ==========================================
 # ADD SONG TESTS
 # ==========================================
+
 
 def test_add_song_returns_song_id(temp_db, sample_song_data):
     """Test adding song returns valid ID"""
@@ -63,10 +67,7 @@ def test_add_song_returns_song_id(temp_db, sample_song_data):
 
 def test_add_song_with_minimal_fields(temp_db):
     """Test add with only title + file_path (minimum required)"""
-    minimal_data = {
-        'title': 'Test Song',
-        'file_path': '/music/test.mp3'
-    }
+    minimal_data = {"title": "Test Song", "file_path": "/music/test.mp3"}
 
     song_id = temp_db.add_song(minimal_data)
 
@@ -95,23 +96,20 @@ def test_path_normalization_detects_duplicates(temp_db):
     Root cause: Paths stored in different formats not detected as duplicates
     """
     # Create a temporary file to test with real paths
-    with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as f:
+    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
         real_path = f.name
 
     try:
         # Add song with absolute normalized path (Windows format)
-        song_data_1 = {
-            'title': 'Test Song',
-            'file_path': str(Path(real_path).resolve())  # Normalized absolute path
-        }
+        song_data_1 = {"title": "Test Song", "file_path": str(Path(real_path).resolve())}  # Normalized absolute path
         song_id1 = temp_db.add_song(song_data_1)
         assert song_id1 is not None
 
         # Try to add same file but with different path format
         # Path.resolve() normalizes to absolute path with correct separators
         song_data_2 = {
-            'title': 'Test Song Duplicate',
-            'file_path': real_path  # May have different format (relative, forward slashes, etc.)
+            "title": "Test Song Duplicate",
+            "file_path": real_path,  # May have different format (relative, forward slashes, etc.)
         }
 
         # song_exists() should normalize and detect as duplicate
@@ -138,21 +136,22 @@ def test_add_song_stores_all_fields(temp_db, sample_song_data):
     # Retrieve and verify
     song = temp_db.get_song_by_id(song_id)
 
-    assert song['title'] == sample_song_data['title']
-    assert song['artist'] == sample_song_data['artist']
-    assert song['album'] == sample_song_data['album']
-    assert song['year'] == sample_song_data['year']
-    assert song['genre'] == sample_song_data['genre']
-    assert song['duration'] == sample_song_data['duration']
-    assert song['bitrate'] == sample_song_data['bitrate']
-    assert song['sample_rate'] == sample_song_data['sample_rate']
-    assert song['file_path'] == sample_song_data['file_path']
-    assert song['file_size'] == sample_song_data['file_size']
+    assert song["title"] == sample_song_data["title"]
+    assert song["artist"] == sample_song_data["artist"]
+    assert song["album"] == sample_song_data["album"]
+    assert song["year"] == sample_song_data["year"]
+    assert song["genre"] == sample_song_data["genre"]
+    assert song["duration"] == sample_song_data["duration"]
+    assert song["bitrate"] == sample_song_data["bitrate"]
+    assert song["sample_rate"] == sample_song_data["sample_rate"]
+    assert song["file_path"] == sample_song_data["file_path"]
+    assert song["file_size"] == sample_song_data["file_size"]
 
 
 # ==========================================
 # GET ALL SONGS TESTS
 # ==========================================
+
 
 def test_get_all_songs_empty_library(temp_db):
     """Test get_all_songs on empty database"""
@@ -168,9 +167,9 @@ def test_get_all_songs_returns_all_records(temp_db, sample_song_data):
     # Add 3 songs
     song_data_1 = sample_song_data.copy()
     song_data_2 = sample_song_data.copy()
-    song_data_2['file_path'] = '/music/song2.mp3'
+    song_data_2["file_path"] = "/music/song2.mp3"
     song_data_3 = sample_song_data.copy()
-    song_data_3['file_path'] = '/music/song3.mp3'
+    song_data_3["file_path"] = "/music/song3.mp3"
 
     temp_db.add_song(song_data_1)
     temp_db.add_song(song_data_2)
@@ -187,7 +186,7 @@ def test_get_all_songs_with_limit(temp_db, sample_song_data):
     # Add 5 songs
     for i in range(5):
         song_data = sample_song_data.copy()
-        song_data['file_path'] = f'/music/song{i}.mp3'
+        song_data["file_path"] = f"/music/song{i}.mp3"
         temp_db.add_song(song_data)
 
     # Get with limit
@@ -200,6 +199,7 @@ def test_get_all_songs_with_limit(temp_db, sample_song_data):
 # GET SONG BY ID TESTS
 # ==========================================
 
+
 def test_get_song_by_id_exists(temp_db, sample_song_data):
     """Test get song by valid ID"""
     song_id = temp_db.add_song(sample_song_data)
@@ -207,8 +207,8 @@ def test_get_song_by_id_exists(temp_db, sample_song_data):
     song = temp_db.get_song_by_id(song_id)
 
     assert song is not None
-    assert song['id'] == song_id
-    assert song['title'] == sample_song_data['title']
+    assert song["id"] == song_id
+    assert song["title"] == sample_song_data["title"]
 
 
 def test_get_song_by_id_not_exists(temp_db):
@@ -222,18 +222,22 @@ def test_get_song_by_id_not_exists(temp_db):
 # SONG EXISTS TESTS
 # ==========================================
 
-def test_song_exists_by_file_path_true(temp_db, sample_song_data):
+
+def test_song_exists_by_file_path_true(temp_db, sample_song_data, tmp_path):
     """Test song_exists returns True for existing file_path"""
+    # Use a real absolute path so Path.resolve() in song_exists matches
+    real_path = str(tmp_path / "Chanel" / "Clavaito.mp3")
+    sample_song_data["file_path"] = real_path
     temp_db.add_song(sample_song_data)
 
-    exists = temp_db.song_exists(sample_song_data['file_path'])
+    exists = temp_db.song_exists(real_path)
 
     assert exists is True
 
 
 def test_song_exists_by_file_path_false(temp_db):
     """Test song_exists returns False for non-existent file_path"""
-    exists = temp_db.song_exists('/nonexistent/file.mp3')
+    exists = temp_db.song_exists("/nonexistent/file.mp3")
 
     assert exists is False
 
@@ -242,30 +246,28 @@ def test_song_exists_by_file_path_false(temp_db):
 # UPDATE SONG TESTS
 # ==========================================
 
+
 @pytest.mark.skip(reason="WAL mode issue with temp databases in WSL - works in production")
 def test_update_song_metadata(temp_db, sample_song_data):
     """Test updating song fields"""
     song_id = temp_db.add_song(sample_song_data)
 
     # Update title and artist
-    updates = {
-        'title': 'New Title',
-        'artist': 'New Artist'
-    }
+    updates = {"title": "New Title", "artist": "New Artist"}
     success = temp_db.update_song(song_id, updates)
 
     assert success is True
 
     # Verify update
     song = temp_db.get_song_by_id(song_id)
-    assert song['title'] == 'New Title'
-    assert song['artist'] == 'New Artist'
-    assert song['album'] == sample_song_data['album']  # Unchanged
+    assert song["title"] == "New Title"
+    assert song["artist"] == "New Artist"
+    assert song["album"] == sample_song_data["album"]  # Unchanged
 
 
 def test_update_song_not_exists(temp_db):
     """Test update on non-existent song returns False"""
-    updates = {'title': 'New Title'}
+    updates = {"title": "New Title"}
     success = temp_db.update_song(99999, updates)
 
     assert success is False
@@ -274,6 +276,7 @@ def test_update_song_not_exists(temp_db):
 # ==========================================
 # INTEGRATION TESTS
 # ==========================================
+
 
 @pytest.mark.skip(reason="WAL mode issue with temp databases in WSL - works in production")
 def test_full_crud_workflow(temp_db, sample_song_data):
@@ -284,12 +287,12 @@ def test_full_crud_workflow(temp_db, sample_song_data):
 
     # READ
     song = temp_db.get_song_by_id(song_id)
-    assert song['title'] == sample_song_data['title']
+    assert song["title"] == sample_song_data["title"]
 
     # UPDATE
-    temp_db.update_song(song_id, {'title': 'Updated Title'})
+    temp_db.update_song(song_id, {"title": "Updated Title"})
     song = temp_db.get_song_by_id(song_id)
-    assert song['title'] == 'Updated Title'
+    assert song["title"] == "Updated Title"
 
     # DELETE (if implemented)
     # temp_db.delete_song(song_id)
@@ -305,7 +308,7 @@ def test_get_song_count_matches_reality(temp_db, sample_song_data):
     # Add 3 songs
     for i in range(3):
         song_data = sample_song_data.copy()
-        song_data['file_path'] = f'/music/song{i}.mp3'
+        song_data["file_path"] = f"/music/song{i}.mp3"
         temp_db.add_song(song_data)
 
     # Verify count
@@ -314,3 +317,46 @@ def test_get_song_count_matches_reality(temp_db, sample_song_data):
     # Verify get_all_songs matches
     all_songs = temp_db.get_all_songs()
     assert len(all_songs) == 3
+
+
+# ==========================================
+# SEARCH & FTS5 INJECTION TESTS
+# ==========================================
+
+
+def test_search_songs_returns_results(temp_db, sample_song_data):
+    """Test search_songs finds matching songs"""
+    temp_db.add_song(sample_song_data)
+
+    results = temp_db.search_songs("Clavaito")
+
+    assert len(results) >= 1
+    assert results[0]["title"] == "Clavaito"
+
+
+def test_search_songs_no_results(temp_db, sample_song_data):
+    """Test search_songs returns empty for non-matching query"""
+    temp_db.add_song(sample_song_data)
+
+    results = temp_db.search_songs("nonexistent_xyz_query")
+
+    assert results == []
+
+
+def test_search_songs_fts5_injection_safe(temp_db, sample_song_data):
+    """FTS5 MATCH injection must not cause errors or return unintended results"""
+    temp_db.add_song(sample_song_data)
+
+    # These strings would break FTS5 MATCH if not sanitized
+    malicious_queries = [
+        '"; DROP TABLE songs; --',
+        "' OR '1'='1",
+        "test AND NOT test",
+        "test OR *",
+        'NEAR("a" "b")',
+        "{col1 col2}: test",
+    ]
+    for query in malicious_queries:
+        # Should not raise, should return empty or safe results
+        results = temp_db.search_songs(query)
+        assert isinstance(results, list), f"Failed for query: {query}"

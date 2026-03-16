@@ -95,7 +95,7 @@ class TestLibraryOrganizer:
         assert "Song_" in relative_path  # '?' was replaced
 
         # Verify directory separators still exist (not sanitized)
-        assert "/" in relative_path  # Path should have directory separators
+        assert os.sep in relative_path  # Path should have directory separators
 
     def test_04_organizer_handles_missing_metadata(self):
         """Test fallback when metadata missing"""

@@ -248,6 +248,13 @@ class TestPluginManager:
         assert result is True
         assert manager.get_plugin("test_plugin") is not None
 
+    def test_load_plugin_class_denied_by_whitelist(self, manager):
+        """Test that non-whitelisted plugin is refused when whitelist is enforced"""
+        result = manager.load_plugin_class(TestPlugin)  # No _skip_whitelist
+
+        assert result is False
+        assert manager.get_plugin("test_plugin") is None
+
     def test_enable_plugin(self, manager):
         """Test enabling a plugin"""
         manager.load_plugin_class(TestPlugin, _skip_whitelist=True)

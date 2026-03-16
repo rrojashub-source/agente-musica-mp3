@@ -11,6 +11,7 @@ Expected Result: All tests FAIL initially (no implementation yet)
 """
 
 import os
+import shutil
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
@@ -163,6 +164,7 @@ class TestDuplicateDetector:
 
     # ========== METHOD 2: AUDIO FINGERPRINTING ==========
 
+    @pytest.mark.skipif(not shutil.which("fpcalc"), reason="fpcalc binary not found")
     def test_07_detect_by_fingerprint_generates_signature(self):
         """Test audio fingerprint generation"""
         if self.detector_class is None:

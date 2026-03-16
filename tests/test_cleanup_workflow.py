@@ -231,8 +231,7 @@ class TestWorkflowRun:
 
     def test_run_without_fetch(self, mock_db_manager, mock_cleaner, mock_fetcher, sample_songs):
         """Run with fetch_metadata=False skips step 3"""
-        with patch.object(cw_module, "keyring") as mock_keyring:
-            mock_keyring.get_password.return_value = None
+        with patch("utils.credentials.load_credential", return_value=None):
             worker = CleanupWorkflowWorker(
                 db_manager=mock_db_manager,
                 cleaner=mock_cleaner,
