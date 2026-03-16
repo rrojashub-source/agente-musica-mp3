@@ -66,7 +66,7 @@ requests>=2.31.0
 # Chord detection from audio
 librosa>=0.10.0
 pychord>=1.0
-scipy>=1.11.0
+# scipy>=1.11.0  # Transitive dep of librosa; not directly imported
 
 # ========================================
 # Plugin Dependencies

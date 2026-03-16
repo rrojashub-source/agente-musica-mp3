@@ -704,6 +704,10 @@ MOBILE_HTML = """
     <script>
         // Auth token injected by server
         const AUTH_TOKEN = '{{ auth_token }}';
+        // Remove token from URL to prevent exposure in browser history
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
         const AUTH_HEADERS = {
             'Authorization': 'Bearer ' + AUTH_TOKEN,
             'Content-Type': 'application/json'

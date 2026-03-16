@@ -20,7 +20,10 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import acoustid
+try:
+    import acoustid
+except ImportError:
+    acoustid = None  # type: ignore[assignment]
 
 from utils.fpcalc_checker import FpcalcChecker
 
@@ -42,6 +45,8 @@ class AcoustIDClient:
         Args:
             api_key: AcoustID API key (get from https://acoustid.org/new-application)
         """
+        if acoustid is None:
+            logger.warning("pyacoustid not installed. AcoustID fingerprinting unavailable.")
         self.api_key: Optional[str] = api_key
 
         # Check fpcalc availability

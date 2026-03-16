@@ -6,6 +6,9 @@ Provides a real QObject base class and Signal descriptor so that
 service classes inherit properly and class methods work.
 Any unknown attribute on mock submodules returns a MagicMock, so that
 `from PySide6.QtWidgets import QApplication` etc. succeed at import time.
+
+The mock Signal supports real connect/emit behavior so tests can verify
+signal emissions without real PySide6.
 """
 
 import sys
@@ -36,8 +39,33 @@ def install():
     except ImportError:
         pass
 
+    class _MockSignalInstance:
+        """Instance-level signal that supports connect/emit/disconnect."""
+
+        def __init__(self):
+            self._callbacks = []
+
+        def connect(self, callback):
+            self._callbacks.append(callback)
+
+        def disconnect(self, callback=None):
+            if callback is None:
+                self._callbacks.clear()
+            else:
+                self._callbacks = [cb for cb in self._callbacks if cb is not callback]
+
+        def emit(self, *args):
+            for cb in self._callbacks:
+                try:
+                    cb(*args)
+                except Exception:
+                    pass
+
     class _Signal:
-        """Mock Signal descriptor that works as a class variable."""
+        """Mock Signal descriptor that works as a class variable.
+
+        Supports real connect/emit behavior for testing signal emissions.
+        """
 
         def __init__(self, *args, **kwargs):
             pass
@@ -48,10 +76,10 @@ def install():
         def __get__(self, obj, objtype=None):
             if obj is None:
                 return self
-            # Return a per-instance MagicMock so .emit() etc. can be asserted
+            # Return a per-instance _MockSignalInstance so connect/emit work
             attr = f"_signal_{self._name}"
             if not hasattr(obj, attr):
-                setattr(obj, attr, MagicMock())
+                setattr(obj, attr, _MockSignalInstance())
             return getattr(obj, attr)
 
     class _QObject:
@@ -77,7 +105,7 @@ def install():
 
         def __init__(self, *args, **kwargs):
             self._interval = 0
-            self.timeout = MagicMock()
+            self.timeout = _MockSignalInstance()
 
         def start(self, *args):
             pass

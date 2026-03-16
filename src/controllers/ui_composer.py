@@ -2,7 +2,7 @@
 UI Composer — Phase 2.1
 
 Builds the complete UI: menu bar, top section (now playing + visualizer),
-tab widget with 15 tabs, status bar. Also handles dialog methods and
+tab widget with 14 tabs, status bar. Also handles dialog methods and
 visualizer signal callbacks.
 """
 
@@ -183,8 +183,24 @@ class UIComposer:
         return top_widget
 
     # ==========================================
-    # Tab Widget (15 tabs)
+    # Tab Widget (14 tabs)
     # ==========================================
+
+    def _load_tab(self, widget: QWidget, attr_name: str, tab_key: str) -> Optional[QWidget]:
+        """Load a tab widget with standard error handling.
+
+        Args:
+            widget: The constructed tab/widget instance.
+            attr_name: Attribute name to set on self.window (e.g. "import_tab").
+            tab_key: Translation key for the tab title (e.g. "tab_import").
+
+        Returns:
+            The widget on success, None on failure.
+        """
+        setattr(self.window, attr_name, widget)
+        self.window.tabs.addTab(widget, tr(tab_key))
+        logger.info(f"{attr_name} loaded")
+        return widget
 
     def _create_tab_widget(self) -> QTabWidget:
         """Create tab widget with all features"""
@@ -207,137 +223,50 @@ class UIComposer:
         self.window.tabs.setTabPosition(QTabWidget.TabPosition.North)
         self.window.tabs.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
-        tabs = self.window.tabs
         w = self.window
 
-        # Tab 1: Import Library
-        try:
-            w.import_tab = ImportTab(self.db_manager)
-            tabs.addTab(w.import_tab, tr("tab_import"))
-            logger.info("Import tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Import tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_import") + " (Error)")
+        # Each tab is loaded with _load_tab() inside a try/except so that
+        # a single broken tab cannot prevent the rest of the UI from loading.
+        tab_specs: list[tuple[str, str, Any]] = [
+            # (attr_name, tab_key, factory_callable_returning_widget)
+        ]
 
-        # Tab 2: Library
-        try:
-            w.library_tab = LibraryTab(self.db_manager, self.audio_player, w.now_playing)
-            tabs.addTab(w.library_tab, tr("tab_library"))
-            logger.info("Library tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Library tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_library") + " (Error)")
+        def _try_load(attr_name: str, tab_key: str, factory: Any) -> None:
+            try:
+                widget = factory()
+                self._load_tab(widget, attr_name, tab_key)
+            except Exception as e:  # Tab widgets can raise any Qt/import error during construction
+                logger.error(f"Failed to load {attr_name}: {e}")
+                self.window.tabs.addTab(QWidget(), tr(tab_key) + " (Error)")
 
-        # Tab 3: Albums
-        try:
-            w.albums_widget = AlbumGridWidget(self.db_manager)
-            tabs.addTab(w.albums_widget, tr("tab_albums"))
-            logger.info("Albums tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Albums tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_albums") + " (Error)")
+        _try_load("import_tab", "tab_import", lambda: ImportTab(self.db_manager))
+        _try_load("library_tab", "tab_library", lambda: LibraryTab(self.db_manager, self.audio_player, w.now_playing))
+        _try_load("albums_widget", "tab_albums", lambda: AlbumGridWidget(self.db_manager))
+        _try_load("lyrics_tab", "tab_lyrics", lambda: LyricsTab(self.genius_client))
 
-        # Tab 4: Lyrics
-        try:
-            w.lyrics_tab = LyricsTab(self.genius_client)
-            tabs.addTab(w.lyrics_tab, tr("tab_lyrics"))
-            logger.info("Lyrics tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Lyrics tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_lyrics") + " (Error)")
-
-        # Tab 5: Chords
-        try:
+        # Chords tab needs client creation
+        def _make_chords() -> ChordsTab:
             from api.chords_client import ChordsClient
 
-            chords_client = ChordsClient(db_manager=self.db_manager)
-            w.chords_tab = ChordsTab(chords_client=chords_client, audio_player=self.audio_player)
-            tabs.addTab(w.chords_tab, tr("tab_chords"))
-            logger.info("Chords tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Chords tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_chords") + " (Error)")
+            client = ChordsClient(db_manager=self.db_manager)
+            return ChordsTab(chords_client=client, audio_player=self.audio_player)
 
-        # Tab 6: Search & Download
-        try:
-            w.search_tab = SearchTab(self.download_queue)
-            tabs.addTab(w.search_tab, tr("tab_search"))
-            logger.info("Search tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Search tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_search") + " (Error)")
+        _try_load("chords_tab", "tab_chords", _make_chords)
+        _try_load("search_tab", "tab_search", lambda: SearchTab(self.download_queue))
+        _try_load("queue_widget", "tab_queue", lambda: QueueWidget(self.download_queue))
+        _try_load("duplicates_tab", "tab_duplicates", lambda: DuplicatesTab(self.db_manager))
+        _try_load("rename_tab", "tab_rename", lambda: RenameTab(self.db_manager))
+        _try_load("organize_tab", "tab_organize", lambda: OrganizeTab(self.db_manager))
 
-        # Tab 6: Queue
-        try:
-            w.queue_widget = QueueWidget(self.download_queue)
-            tabs.addTab(w.queue_widget, tr("tab_queue"))
-            logger.info("Queue tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Queue tab: {e}")
-
-        # Tab 7: Duplicates
-        try:
-            w.duplicates_tab = DuplicatesTab(self.db_manager)
-            tabs.addTab(w.duplicates_tab, tr("tab_duplicates"))
-            logger.info("Duplicates tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Duplicates tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_duplicates") + " (Error)")
-
-        # Tab 8: Rename
-        try:
-            w.rename_tab = RenameTab(self.db_manager)
-            tabs.addTab(w.rename_tab, tr("tab_rename"))
-            logger.info("Rename tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Rename tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_rename") + " (Error)")
-
-        # Tab 9: Organize
-        try:
-            w.organize_tab = OrganizeTab(self.db_manager)
-            tabs.addTab(w.organize_tab, tr("tab_organize"))
-            logger.info("Organize tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Organize tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_organize") + " (Error)")
-
-        # Tab 10: Cleanup Wizard
-        try:
+        # Cleanup tab uses db_path
+        def _make_cleanup() -> CleanupTab:
             db_path = self.db_manager.db_path if hasattr(self.db_manager, "db_path") else "music_library.db"
-            w.cleanup_tab = CleanupTab(db_path)
-            tabs.addTab(w.cleanup_tab, tr("tab_cleanup"))
-            logger.info("Cleanup Wizard tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Cleanup Wizard tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_cleanup") + " (Error)")
+            return CleanupTab(db_path)
 
-        # Tab 11: Playlist
-        try:
-            w.playlist_widget = PlaylistWidget(self.playlist_manager, self.db_manager)
-            tabs.addTab(w.playlist_widget, tr("tab_playlist"))
-            logger.info("Playlist tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Playlist tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_playlist") + " (Error)")
-
-        # Tab 12: Cloud Sync
-        try:
-            w.cloud_sync_tab = CloudSyncTab(db_manager=self.db_manager)
-            tabs.addTab(w.cloud_sync_tab, tr("tab_cloud_sync"))
-            logger.info("Cloud Sync tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Cloud Sync tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_cloud_sync") + " (Error)")
-
-        # Tab 13: Statistics Dashboard
-        try:
-            w.statistics_tab = StatisticsTab(self.db_manager)
-            tabs.addTab(w.statistics_tab, tr("tab_statistics"))
-            logger.info("Statistics tab loaded")
-        except Exception as e:  # Tab widgets can raise any Qt/import error during construction
-            logger.error(f"Failed to load Statistics tab: {e}")
-            tabs.addTab(QWidget(), tr("tab_statistics") + " (Error)")
+        _try_load("cleanup_tab", "tab_cleanup", _make_cleanup)
+        _try_load("playlist_widget", "tab_playlist", lambda: PlaylistWidget(self.playlist_manager, self.db_manager))
+        _try_load("cloud_sync_tab", "tab_cloud_sync", lambda: CloudSyncTab(db_manager=self.db_manager))
+        _try_load("statistics_tab", "tab_statistics", lambda: StatisticsTab(self.db_manager))
 
         # Connect download queue signals to library refresh
         try:

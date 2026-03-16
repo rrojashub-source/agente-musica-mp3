@@ -43,7 +43,7 @@ src/gui/
 │   ├── base_tab.py          # BaseTab template (shared by all tabs)
 │   └── base_worker.py       # BaseWorker (shared by all background workers)
 │
-├── tabs/                    # 15 application tabs
+├── tabs/                    # 14 application tabs
 │   ├── library_tab.py       # Music library browser
 │   ├── search_tab.py        # YouTube + Spotify search
 │   ├── lyrics_tab.py        # Lyrics display (Genius API)
@@ -57,8 +57,7 @@ src/gui/
 │   ├── content_filter_tab.py # Content classification
 │   ├── plugins_tab.py       # Plugin management
 │   ├── remote_tab.py        # Mobile remote control
-│   ├── cloud_sync_tab.py    # Cloud synchronization
-│   └── settings_tab.py      # Application settings
+│   └── cloud_sync_tab.py    # Cloud synchronization
 │
 ├── widgets/                 # Reusable UI components
 │   ├── now_playing_widget.py    # Current song + controls

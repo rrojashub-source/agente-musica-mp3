@@ -30,12 +30,14 @@ _mock_pyside6.install()
 
 import pytest
 
-# Check if real PySide6 is available (not our mock)
+# Check if real PySide6 is available (not our mock).
+# The mock module's __getattr__ returns MagicMock for any attribute including
+# __version__, so we must verify __version__ is a real string.
 _HAS_REAL_PYSIDE6 = False
 try:
     import PySide6 as _pyside6_check
 
-    if hasattr(_pyside6_check, "__version__"):
+    if isinstance(getattr(_pyside6_check, "__version__", None), str):
         _HAS_REAL_PYSIDE6 = True
 except ImportError:
     pass
@@ -66,12 +68,44 @@ def qapp():
     return app
 
 
+_GUI_TEST_PREFIXES = (
+    "test_api_settings_dialog",
+    "test_base_tab",
+    "test_download_integration",
+    "test_duplicates_tab",
+    "test_e2e_complete_flow",
+    "test_e2e_gui",
+    "test_keyboard_shortcuts",
+    "test_now_playing_widget",
+    "test_organize_tab",
+    "test_playback_integration",
+    "test_playlist_widget",
+    "test_production_polish",
+    "test_queue_widget",
+    "test_rename_tab",
+    "test_search_tab",
+    "test_search_tab_ui",
+    "test_visualizer_widget",
+)
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip GUI-heavy tests when real PySide6 is not available."""
+    if _HAS_REAL_PYSIDE6:
+        return
+    skip_marker = pytest.mark.skip(reason="Requires real PySide6")
+    for item in items:
+        module_name = item.module.__name__.rsplit(".", 1)[-1]
+        if module_name.startswith(_GUI_TEST_PREFIXES):
+            item.add_marker(skip_marker)
+
+
 @pytest.fixture(autouse=True)
 def _skip_gui_tests_without_pyside6(request):
     """Auto-skip GUI tests that need real PySide6 when only mock is available."""
     if _HAS_REAL_PYSIDE6:
         return
-    # Skip tests that use qapp fixture or are in GUI-heavy test files
+    # Skip tests that use qapp fixture
     if "qapp" in request.fixturenames:
         pytest.skip("Requires real PySide6")
 
