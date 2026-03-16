@@ -943,6 +943,11 @@ class NowPlayingWidget(QWidget):
         secs = int(seconds % 60)
         return f"{minutes}:{secs:02d}"
 
+    @property
+    def is_playing(self) -> bool:
+        """Whether playback is currently active."""
+        return self._is_playing
+
     def set_playing(self, is_playing: bool) -> None:
         """
         Set playing state externally

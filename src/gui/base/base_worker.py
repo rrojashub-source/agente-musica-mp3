@@ -68,7 +68,8 @@ class BaseWorker(QThread):
                 self.process(item)
     """
 
-    # Standard signals -- subclasses may redeclare with different signatures
+    # Standard signals -- subclasses may override with different signatures.
+    # Example: progress = Signal(str)  # single string instead of (int, str)
     progress = Signal(int, str)
     finished = Signal(object)
     error = Signal(str)

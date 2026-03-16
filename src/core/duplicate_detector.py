@@ -23,6 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 class DuplicateDetector:
+
+    # Confidence scores by detection method
+    CONFIDENCE_FINGERPRINT = 0.99
+    CONFIDENCE_FILESIZE = 0.70
     """
     Detect duplicate songs using multiple detection methods
 
@@ -185,7 +189,7 @@ class DuplicateDetector:
                 duplicate_groups.append(
                     {
                         "songs": sorted_songs,
-                        "confidence": 0.99,  # Fingerprint is highly accurate
+                        "confidence": self.CONFIDENCE_FINGERPRINT,
                         "method": "fingerprint",
                     }
                 )
@@ -227,7 +231,7 @@ class DuplicateDetector:
             if len(songs_list) > 1:
                 sorted_songs = self._sort_by_quality(songs_list)
                 duplicate_groups.append(
-                    {"songs": sorted_songs, "confidence": 0.70, "method": "filesize"}  # File size is less reliable
+                    {"songs": sorted_songs, "confidence": self.CONFIDENCE_FILESIZE, "method": "filesize"}
                 )
 
         logger.info(f"File size detection: Found {len(duplicate_groups)} duplicate groups")

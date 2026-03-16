@@ -72,7 +72,7 @@ class PlaybackController(QObject):
         """Handle track end event from mpv (runs on Qt main thread via QTimer)"""
         logger.info(f"Track ended (mpv callback): {file_path}")
         # Delegate to now_playing's song-ended logic
-        if self.now_playing and self.now_playing._is_playing:
+        if self.now_playing and self.now_playing.is_playing:
             if self.now_playing.is_repeat_one_enabled():
                 logger.info("Repeat One: replaying same song")
                 self.audio_player.seek(0)
@@ -80,9 +80,7 @@ class PlaybackController(QObject):
                 self.now_playing.repeat_song.emit()
             elif self.now_playing.is_continue_enabled():
                 logger.info("Continue mode: playing next song")
-                self.now_playing._is_playing = False
-                self.now_playing.play_button.set_playing(False)
-                self.now_playing.position_timer.stop()
+                self.now_playing.set_playing(False)
                 self.on_global_song_ended()
             else:
                 self.now_playing._on_stop_clicked()
