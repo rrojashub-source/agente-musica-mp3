@@ -138,14 +138,9 @@ class SpotifySearcher:
                 return tracks
 
             except SpotifyException as e:
-                # Handle rate limit with retry
-                if e.http_status == 429 and attempt < self._retry_attempts - 1:
-                    retry_after = int(e.headers.get("Retry-After", self._retry_delay))
-                    logger.warning(f"Rate limit exceeded, retrying in {retry_after}s...")
-                    sleep(retry_after)
+                if self._should_retry_rate_limit(e, attempt):
                     continue
-                else:
-                    return self._handle_spotify_error(e, "search_tracks")
+                return self._handle_spotify_error(e, "search_tracks")
 
             except (requests.RequestException, ConnectionError) as e:
                 logger.error(f"Unexpected error during Spotify track search: {e}")
@@ -211,14 +206,9 @@ class SpotifySearcher:
                 return albums
 
             except SpotifyException as e:
-                # Handle rate limit with retry
-                if e.http_status == 429 and attempt < self._retry_attempts - 1:
-                    retry_after = int(e.headers.get("Retry-After", self._retry_delay))
-                    logger.warning(f"Rate limit exceeded, retrying in {retry_after}s...")
-                    sleep(retry_after)
+                if self._should_retry_rate_limit(e, attempt):
                     continue
-                else:
-                    return self._handle_spotify_error(e, "search_albums")
+                return self._handle_spotify_error(e, "search_albums")
 
             except (requests.RequestException, ConnectionError) as e:
                 logger.error(f"Unexpected error during Spotify album search: {e}")
@@ -284,14 +274,9 @@ class SpotifySearcher:
                 return artists
 
             except SpotifyException as e:
-                # Handle rate limit with retry
-                if e.http_status == 429 and attempt < self._retry_attempts - 1:
-                    retry_after = int(e.headers.get("Retry-After", self._retry_delay))
-                    logger.warning(f"Rate limit exceeded, retrying in {retry_after}s...")
-                    sleep(retry_after)
+                if self._should_retry_rate_limit(e, attempt):
                     continue
-                else:
-                    return self._handle_spotify_error(e, "search_artists")
+                return self._handle_spotify_error(e, "search_artists")
 
             except (requests.RequestException, ConnectionError) as e:
                 logger.error(f"Unexpected error during Spotify artist search: {e}")
@@ -406,6 +391,15 @@ class SpotifySearcher:
                 continue
 
         return artists
+
+    def _should_retry_rate_limit(self, error: SpotifyException, attempt: int) -> bool:
+        """Check if rate-limited and sleep before retry. Returns True if should retry."""
+        if error.http_status == 429 and attempt < self._retry_attempts - 1:
+            retry_after = int(error.headers.get("Retry-After", self._retry_delay))
+            logger.warning(f"Rate limit exceeded, retrying in {retry_after}s...")
+            sleep(retry_after)
+            return True
+        return False
 
     def _handle_spotify_error(self, error: SpotifyException, method_name: str) -> List[Dict[str, Any]]:
         """
