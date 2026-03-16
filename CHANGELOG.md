@@ -179,7 +179,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.9.3] - 2024-11-24
+## [0.9.3] - 2025-11-24
 
 ### Added
 - **Rate Limiting:** Sistema centralizado de rate limiting para todas las APIs (YouTube 10/s, Spotify 30/s, MusicBrainz 1/s, Genius 5/s)
@@ -218,7 +218,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.9.2] - 2024-11-24
+## [0.9.2] - 2025-11-24
 
 ### Added
 - **Skeleton Loading:** Placeholders visuales mientras carga la biblioteca
@@ -233,7 +233,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.9.1] - 2024-11-23
+## [0.9.1] - 2025-11-23
 
 ### Added
 - **Sistema Multi-idioma:** Soporte completo ES/EN con selector en Settings
@@ -248,7 +248,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.9.0] - 2024-11-22
+## [0.9.0] - 2025-11-22
 
 ### Added
 - **Documentación Profesional:** ARCHITECTURE.md, API_REFERENCE.md
@@ -262,7 +262,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.8.0] - 2024-11-20
+## [0.8.0] - 2025-11-20
 
 ### Added
 - **Visualizador Espectro:** Múltiples estilos (Classic Bars, Neon Wave, Circular, Brain AI)
@@ -280,7 +280,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.7.0] - 2024-11-18
+## [0.7.0] - 2025-11-18
 
 ### Added
 - **Now Playing Widget:** Diseño profesional con carátula de álbum
@@ -292,7 +292,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.6.0] - 2024-11-17
+## [0.6.0] - 2025-11-17
 
 ### Added
 - **Detector de Duplicados Premium:** UX mejorada con claridad visual
@@ -305,7 +305,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.5.0] - 2024-11-15
+## [0.5.0] - 2025-11-15
 
 ### Added
 - **AcoustID Integration:** Fingerprinting de audio para identificación
@@ -317,7 +317,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.4.0] - 2024-11-12
+## [0.4.0] - 2025-11-12
 
 ### Added
 - **Search & Download System:** Sistema completo de búsqueda y descarga
@@ -332,7 +332,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.3.0] - 2024-11-01
+## [0.3.0] - 2025-11-01
 
 ### Added
 - **PyQt6 GUI:** Interfaz gráfica moderna
@@ -343,7 +343,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.2.0] - 2024-10-15
+## [0.2.0] - 2025-10-15
 
 ### Added
 - **SQLite Database:** Base de datos con FTS5 para búsqueda rápida
@@ -352,7 +352,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.1.0] - 2024-09-01
+## [0.1.0] - 2025-09-01
 
 ### Added
 - **CLI Downloader:** Descargador básico via yt-dlp

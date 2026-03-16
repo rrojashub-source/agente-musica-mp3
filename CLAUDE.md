@@ -72,7 +72,7 @@ tasks/                      # Planes de fase + plan 10/10
 | Herramienta | Estado | Configuracion |
 |-------------|--------|---------------|
 | mypy | **0 errores** (111 archivos) | `mypy.ini` strict mode |
-| pytest | **560+ tests pass** | `pytest.ini` con coverage |
+| pytest | **980+ tests pass** (1,289 collected) | `pytest.ini` con coverage >= 20% |
 | flake8 | Limpio | max-line-length=120 |
 | bandit | Limpio | -ll (low+medium) |
 | pre-commit | Activo | black, isort, flake8 |
@@ -86,7 +86,7 @@ tasks/                      # Planes de fase + plan 10/10
 5. **Thread-safety** → RLock en audio_player y download_queue
 6. **SQL injection** → Column allowlist en manager.py y library_service.py
 7. **FTS5 injection** → Query sanitization en search_songs()
-7. **Credentials** → Centralizadas en `utils/credentials.py` (keyring > env > .env > JSON)
+8. **Credentials** → Centralizadas en `utils/credentials.py` (keyring > env > .env > JSON)
 
 ## Patrones de Diseno
 
@@ -130,7 +130,7 @@ bandit -r src/ -ll
 
 ## Dependencias
 
-Ver `requirements.txt` (20 deps) y `requirements-dev.txt` (14 deps).
+Ver `requirements.txt` (26 deps) y `requirements-dev.txt` (14 deps).
 `setup.py` sincronizado con extras_require: fingerprint, chords, audio-analysis, remote, visualizer, discord, dotenv, all.
 
 ## Git

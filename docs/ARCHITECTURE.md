@@ -66,7 +66,9 @@ src/gui/
 │   ├── queue_widget.py          # Download queue
 │   ├── album_grid_widget.py     # Album cover grid
 │   ├── equalizer_widget.py      # EQ sliders
-│   └── recommendations_widget.py # Similar songs
+│   ├── recommendations_widget.py # Similar songs
+│   ├── skeleton_widget.py       # Loading skeleton placeholder
+│   └── chord_diagram_widget.py  # Guitar chord diagrams
 │
 ├── visualizers/             # OpenGL visualizers
 │   └── organic_visualizer.py    # Organic SDF visualizer (GLSL)
@@ -97,9 +99,11 @@ All background workers inherit from `BaseWorker`, which provides:
 - Cancellation support via `cancel()` / `is_cancelled`
 - Subclasses can override signal signatures (e.g. ChordsAnalyzeWorker uses `progress(str)`)
 
-Workers using BaseWorker:
+Workers using BaseWorker (13 total):
+- DownloadWorker, LibraryImportWorker, LibraryScanWorker
 - ScanWorker (duplicates), OrganizeWorker, RenameWorker
 - ChordsAnalyzeWorker, LyricsSearchWorker, ClassificationWorker
+- CleanupWorkflowWorker, SpectrumWorker, _SimilarityWorker
 
 ### 2. Controllers Layer (`src/controllers/`)
 
@@ -271,7 +275,7 @@ Signals flow upward via PySide6 Signal/Slot:
 
 | Tool | Config | Target |
 |------|--------|--------|
-| pytest | `pytest.ini` (coverage >= 80%) | 325+ tests |
+| pytest | `pytest.ini` (coverage >= 20%) | 1,289 tests |
 | mypy | `mypy.ini` (strict mode) | 0 errors, 111 files |
 | flake8 | CI + pre-commit | max-line-length=120 |
 | bandit | CI security scan | 0 high/critical |

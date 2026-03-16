@@ -109,12 +109,15 @@ python-mpv based audio playback engine with gapless support.
 
 #### Methods
 
-##### `play(file_path: str)`
-Start playing an audio file.
+##### `load(file_path: str) -> bool`
+Load an audio file for playback. Returns True on success.
 
 ```python
-player.play("/path/to/song.mp3")
+success = player.load("/path/to/song.mp3")
 ```
+
+##### `play()`
+Start or resume playback of the loaded file.
 
 ##### `pause()`
 Pause playback (can be resumed).
@@ -125,20 +128,39 @@ Resume paused playback.
 ##### `stop()`
 Stop playback completely.
 
-##### `set_position(position_ms: int)`
-Seek to position in milliseconds.
+##### `seek(position: float)`
+Seek to position in seconds.
 
-##### `set_volume(volume: int)`
-Set volume (0-100).
+##### `set_volume(volume: float)`
+Set volume (0.0 to 1.0).
 
-##### `get_position() -> int`
-Get current position in milliseconds.
+##### `get_volume() -> float`
+Get current volume (0.0 to 1.0).
 
-##### `get_duration() -> int`
-Get total duration in milliseconds.
+##### `get_position() -> float`
+Get current position in seconds.
+
+##### `get_duration() -> float`
+Get total duration in seconds.
 
 ##### `is_playing() -> bool`
 Check if currently playing.
+
+##### `get_state() -> PlaybackState`
+Get current playback state (STOPPED, PLAYING, PAUSED).
+
+##### Gapless Playback
+
+##### `queue_next(file_path: str)`
+Queue next track for gapless transition.
+
+##### `set_gapless_enabled(enabled: bool)` / `set_crossfade(seconds: float)`
+Configure gapless/crossfade behavior.
+
+##### Callbacks
+
+##### `on_track_end(callback)` / `remove_track_end_callback(callback)`
+Register/remove callback for track end events.
 
 ---
 
@@ -301,6 +323,26 @@ lyrics = genius.get_lyrics("https://genius.com/Queen-bohemian-rhapsody-lyrics")
 
 ---
 
+### ChordsClient (`src/api/chords_client.py`)
+
+Audio chord detection via librosa.
+
+#### Methods
+
+##### `get_chords(file_path: str) -> List[dict]`
+Detect chords in an audio file. Returns list of `{"time": float, "chord": str}`.
+
+##### `analyze_file(file_path: str) -> dict`
+Full chord analysis including key detection.
+
+##### `transpose_chords(chords: List[str], semitones: int) -> List[str]` *(static)*
+Transpose chord names by semitones.
+
+##### `clear_cache()`
+Clear the chord analysis cache.
+
+---
+
 ### MusicBrainzClient (`src/api/musicbrainz_client.py`)
 
 MusicBrainz metadata API.
@@ -361,6 +403,8 @@ Set visualization style.
 - `"bars"` - Classic frequency bars
 - `"circular"` - Radial visualization
 - `"brain_ai"` - Neural network particles
+- `"organic"` - Organic SDF visualizer (OpenGL 3.3 + GLSL)
+- `"waveform"` - Real-time waveform display
 
 ##### `update_data(audio_data: np.ndarray)`
 Feed audio data for visualization.

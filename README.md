@@ -10,7 +10,7 @@ Version: 2.1.0 | Python 3.13 | PySide6 | License: MIT
 
 Desktop music library manager with YouTube downloading, Spotify search, automatic metadata tagging (MusicBrainz), real-time audio visualization (OpenGL), AI-powered song similarity, chord detection, lyrics, plugin system, mobile remote control, and cloud sync. Supports Spanish and English.
 
-**Metrics:** 111 source files, 38K LOC, 560+ tests, audit score 7.6/10.
+**Metrics:** 111 source files, 38K LOC, 1,289 tests, audit score 7.6/10.
 
 ---
 
@@ -65,6 +65,10 @@ pytest tests/ -v
 - **Plugin System** -- 17 hooks, 3 included plugins (PlayCounter, Scrobbler, Discord RPC)
 - **Multi-language** -- Spanish/English (274 translation keys)
 
+## Screenshots
+
+*Screenshots coming soon.*
+
 ## Technology Stack
 
 | Component | Technology |
@@ -102,7 +106,7 @@ src/
 ├── workers/                # Download, import, scan workers (BaseWorker)
 ├── utils/                  # Sanitizer, rate limiter, credentials, constants
 └── translations.py         # ES/EN (274 keys)
-tests/                      # 52 files, 560+ tests
+tests/                      # 68 files, 1,289 tests
 docs/                       # Architecture, API reference, audit report
 ```
 
@@ -125,6 +129,14 @@ Keys are stored in OS keyring (never in code).
 - 4 GB RAM minimum (8 GB recommended)
 - 200 MB storage
 
+### Prerequisites
+
+- **libmpv** (required for audio playback):
+  - Windows: `libmpv-2.dll` must be in PATH or application directory
+  - Linux: `sudo apt install libmpv-dev`
+  - macOS: `brew install mpv`
+- **FFmpeg** (required for audio conversion): included with yt-dlp on Windows
+
 ## Security
 
 - JWT Bearer authentication on remote API (24h expiration)
@@ -140,6 +152,17 @@ Keys are stored in OS keyring (never in code).
 - `docs/ARCHITECTURE.md` -- System architecture and design patterns
 - `docs/API_REFERENCE.md` -- Internal API and REST endpoint reference
 - `CHANGELOG.md` -- Version history
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Follow code style: `black` (120 chars), `isort` (black profile), type hints required
+4. Run tests: `pytest tests/ -v`
+5. Run checks: `mypy src/ --ignore-missing-imports && flake8 src/`
+6. Submit a PR to `main`
+
+Pre-commit hooks (black, isort, flake8) run automatically on commit.
 
 ## Credits
 
