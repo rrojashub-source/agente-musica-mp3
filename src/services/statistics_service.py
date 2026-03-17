@@ -413,11 +413,14 @@ class StatisticsService:
             if total_count == 0:
                 return {"total": 0, "fields": {}}
 
-            # Check each field
+            # Check each field (allowlist validated to prevent SQL injection)
             fields = {}
+            _ALLOWED_FIELDS = frozenset({"artist", "album", "year", "genre", "duration", "bitrate"})
             field_names = ["artist", "album", "year", "genre", "duration", "bitrate"]
 
             for field in field_names:
+                if field not in _ALLOWED_FIELDS:
+                    continue  # skip unknown fields (defensive)
                 result = self.db.fetch_one(
                     f"""
                     SELECT COUNT(*) as count
@@ -495,7 +498,7 @@ class StatisticsService:
                     day_num = int(r["day_num"])
                     day_data[str(day_num)]["play_count"] = r["play_count"]
 
-            return [d for d in day_data.values()]
+            return list(day_data.values())
 
         except sqlite3.Error as e:
             logger.error(f"Failed to get listening by day: {e}")
@@ -507,7 +510,11 @@ class StatisticsService:
 
     def record_play(self, song_id: int, duration_played: int = 0, completed: bool = False) -> None:
         """
-        Record a play event for a song
+        Record a play event in play_history.
+
+        Note: play_count increment is handled by LibraryService.increment_play_count()
+        which is called from main.py on song play start. This method only records
+        the play event details (duration, completion) in the history table.
 
         Args:
             song_id: ID of the song played
@@ -515,32 +522,18 @@ class StatisticsService:
             completed: Whether the song was played to completion
         """
         try:
-            # Update song play_count and last_played
             self.db.execute_query(
                 """
-                UPDATE songs
-                SET play_count = COALESCE(play_count, 0) + 1,
-                    last_played = CURRENT_TIMESTAMP
-                WHERE id = ?
+                INSERT INTO play_history (song_id, duration_played, completed)
+                VALUES (?, ?, ?)
             """,
-                (song_id,),
+                (song_id, duration_played, completed),
             )
-
-            # Try to record in play_history (if table exists)
-            try:
-                self.db.execute_query(
-                    """
-                    INSERT INTO play_history (song_id, duration_played, completed)
-                    VALUES (?, ?, ?)
-                """,
-                    (song_id, duration_played, completed),
-                )
-            except sqlite3.OperationalError:
-                # play_history table might not exist yet — safe to ignore
-                pass
-
             logger.debug(f"Recorded play for song {song_id}")
 
+        except sqlite3.OperationalError:
+            # play_history table might not exist yet — safe to ignore
+            pass
         except sqlite3.Error as e:
             logger.error(f"Failed to record play for song {song_id}: {e}")
 

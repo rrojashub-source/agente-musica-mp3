@@ -13,7 +13,7 @@ Tests cover:
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -49,7 +49,7 @@ class TestCoverArtInit:
         with patch("core.cover_art_manager.musicbrainzngs"):
             from core.cover_art_manager import CoverArtManager
 
-            manager = CoverArtManager(cover_art_dir=str(cover_dir))
+            CoverArtManager(cover_art_dir=str(cover_dir))
         assert cover_dir.exists()
 
     def test_init_default_directory(self):
@@ -189,18 +189,22 @@ class TestDownloadFromMBID:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.content = b"IMAGE_DATA"
+        mock_response.headers = {"Content-Type": "image/jpeg"}
         mock_get.return_value = mock_response
 
         from core.cover_art_manager import CoverArtManager
 
         manager = CoverArtManager(cover_art_dir=str(tmp_path))
 
+        valid_mbid = "12345678-1234-1234-1234-123456789abc"
         save_path = str(tmp_path / "mbid_cover.jpg")
-        result = manager.download_cover_from_mbid("abc-123-def", save_path)
+        result = manager.download_cover_from_mbid(valid_mbid, save_path)
 
         assert result is True
         assert Path(save_path).read_bytes() == b"IMAGE_DATA"
-        mock_get.assert_called_once_with("https://coverartarchive.org/release/abc-123-def/front", timeout=10)
+        mock_get.assert_called_once_with(
+            f"https://coverartarchive.org/release/{valid_mbid}/front", timeout=10, stream=True
+        )
 
     @patch("core.cover_art_manager.requests.get")
     @patch("core.cover_art_manager.musicbrainzngs")

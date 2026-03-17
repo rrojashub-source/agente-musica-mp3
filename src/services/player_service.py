@@ -20,18 +20,10 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
+from core.audio_player import PlaybackState
 from utils.constants import POSITION_UPDATE_INTERVAL_MS
 
 logger = logging.getLogger(__name__)
-
-
-class PlaybackState(Enum):
-    """Playback state enum"""
-
-    STOPPED = "stopped"
-    PLAYING = "playing"
-    PAUSED = "paused"
-    LOADING = "loading"
 
 
 class RepeatMode(Enum):
@@ -159,7 +151,6 @@ class PlayerService(QObject):
     def _on_track_end(self, file_path: Optional[str] = None) -> None:
         """Handle track end event"""
         self.track_ended.emit()
-        self._track_play_count()
 
         # Handle repeat/queue
         if self._repeat == RepeatMode.ONE:
@@ -171,17 +162,6 @@ class PlayerService(QObject):
             self.next()  # Restart queue
         else:
             self.stop()
-
-    def _track_play_count(self) -> None:
-        """Increment play count for current track"""
-        if self._now_playing.song_id:
-            try:
-                from services.library_service import LibraryService
-
-                library = LibraryService.get_instance()
-                library.increment_play_count(self._now_playing.song_id)
-            except (ImportError, RuntimeError) as e:
-                logger.debug(f"Could not track play count: {e}")
 
     # ==========================================
     # Playback Control
@@ -442,7 +422,6 @@ class PlayerService(QObject):
     def _shuffle_queue(self) -> None:
         """Shuffle the queue while keeping current track"""
         if self._queue_index >= 0 and self._queue_index < len(self._play_queue):
-            _current = self._play_queue[self._queue_index]  # noqa: F841
             remaining = self._play_queue[self._queue_index + 1 :]
             random.shuffle(remaining)
             self._play_queue = self._play_queue[: self._queue_index + 1] + remaining
@@ -484,11 +463,13 @@ class PlayerService(QObject):
 
     def is_playing(self) -> bool:
         """Check if currently playing"""
-        return self._now_playing.state == PlaybackState.PLAYING
+        result: bool = self._now_playing.state == PlaybackState.PLAYING
+        return result
 
     def is_paused(self) -> bool:
         """Check if paused"""
-        return self._now_playing.state == PlaybackState.PAUSED
+        result: bool = self._now_playing.state == PlaybackState.PAUSED
+        return result
 
     # ==========================================
     # Gapless Playback

@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMessageBox,
     QPushButton,
     QSplitter,
     QVBoxLayout,
@@ -386,15 +387,11 @@ class SearchTab(BaseTab):
         """
         if not self.selected_songs:
             logger.warning("No songs selected")
-            from PySide6.QtWidgets import QMessageBox
-
             QMessageBox.warning(self, "No Songs Selected", "Please select songs first by double-clicking on them.")
             return
 
         if not self.download_queue:
             logger.warning("No download queue available")
-            from PySide6.QtWidgets import QMessageBox
-
             QMessageBox.critical(
                 self, "Download Queue Error", "Download queue is not available. Please restart the application."
             )
@@ -402,7 +399,6 @@ class SearchTab(BaseTab):
 
         # Count successful additions
         added_count = 0
-        _total_selected = len(self.selected_songs)  # noqa: F841
 
         # Track conversion stats
         spotify_converted = 0
@@ -458,8 +454,6 @@ class SearchTab(BaseTab):
 
         # Show confirmation
         if added_count > 0:
-            from PySide6.QtWidgets import QMessageBox
-
             message = f"Added {added_count} song(s) to download queue!\n\n"
 
             # Show conversion stats
@@ -478,8 +472,6 @@ class SearchTab(BaseTab):
                 f"Added {added_count} songs to download queue (Spotify converted: {spotify_converted}, failed: {spotify_failed})"
             )
         else:
-            from PySide6.QtWidgets import QMessageBox
-
             message = "No songs were added to the queue.\n\n"
 
             if spotify_failed > 0:
@@ -499,8 +491,6 @@ class SearchTab(BaseTab):
 
         Uses QTimer to delay dialog until UI is fully initialized
         """
-        from PySide6.QtCore import QTimer
-        from PySide6.QtWidgets import QMessageBox
 
         def show_dialog() -> None:
             # Show informative message first
@@ -545,15 +535,11 @@ class SearchTab(BaseTab):
                 self._credentials_missing = False
                 logger.info("API searchers re-initialized successfully")
 
-                from PySide6.QtWidgets import QMessageBox
-
                 QMessageBox.information(
                     self, "Success", "API credentials configured successfully!\n\nYou can now search for music."
                 )
             except (RuntimeError, OSError) as e:
                 logger.error(f"Error reloading credentials: {e}")
-                from PySide6.QtWidgets import QMessageBox
-
-                QMessageBox.warning(self, "Error", f"Failed to reload credentials:\n{str(e)}")
+                QMessageBox.warning(self, "Error", f"Failed to reload credentials:\n{e}")
         else:
             logger.warning("Some credentials still missing after save")

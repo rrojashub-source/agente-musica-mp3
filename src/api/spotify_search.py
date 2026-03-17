@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import logging
 from time import sleep
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import requests  # type: ignore[import-untyped]
 import spotipy
@@ -27,8 +27,8 @@ from spotipy.exceptions import SpotifyException
 from spotipy.oauth2 import SpotifyClientCredentials
 
 from api._cache import APICache
-from utils.constants import API_CACHE_SIZE, API_DEFAULT_RESULTS, API_MAX_RESULTS, API_QUERY_MAX_LENGTH, DEFAULT_ARTIST
-from utils.input_sanitizer import sanitize_query
+from api._validation import validate_search_query
+from utils.constants import API_CACHE_SIZE, API_DEFAULT_RESULTS, DEFAULT_ARTIST
 from utils.rate_limiter import RateLimiter
 
 # Setup logger
@@ -55,8 +55,8 @@ class SpotifySearcher:
             client_secret (str): Spotify app client secret
             cache_size (int): Size of LRU cache for search results (default: 128)
         """
-        self.client_id: str = client_id
-        self.client_secret: str = client_secret
+        self._client_id: str = client_id
+        self._client_secret: str = client_secret
 
         # Setup OAuth2 authentication (automatically refreshes tokens)
         self.auth_manager: SpotifyClientCredentials = SpotifyClientCredentials(
@@ -79,203 +79,100 @@ class SpotifySearcher:
         self, query: str, limit: int = API_DEFAULT_RESULTS, use_cache: bool = True
     ) -> List[Dict[str, Any]]:
         """
-        Search for tracks on Spotify with caching and retry logic
+        Search for tracks on Spotify
 
         Args:
-            query (str): Search query (song name, artist, etc.)
-            limit (int): Maximum results (default: 20, max: 50)
-            use_cache (bool): Use cached results if available (default: True)
+            query: Search query (song name, artist, etc.)
+            limit: Maximum results (default: 20, max: 50)
+            use_cache: Use cached results if available
 
         Returns:
-            list: List of dicts with format:
-                  [{'track_id': str, 'title': str, 'artist': str,
-                    'album': str, 'duration_ms': int}]
-
-        Examples:
-            >>> searcher.search_tracks("Bohemian Rhapsody")
-            [{'track_id': '3z8h0TU7RN...', 'title': 'Bohemian Rhapsody', ...}]
+            List of track dicts with keys: track_id, title, artist, album, duration_ms
         """
-        # Input validation
-        if not query:
-            logger.warning("Empty query received")
-            return []
-
-        # Sanitize query (remove injection attempts, control chars)
-        query = sanitize_query(query, max_length=API_QUERY_MAX_LENGTH)
-
-        if not query:
-            logger.warning("Query became empty after sanitization")
-            return []
-
-        # Limit to Spotify maximum
-        limit = min(limit, API_MAX_RESULTS)
-
-        # Check cache first
-        if use_cache:
-            cached: Optional[List[Dict[str, Any]]] = self._cache.get(f"track:{query}", limit)
-            if cached is not None:
-                return cached
-
-        # Retry logic
-        for attempt in range(self._retry_attempts):
-            try:
-                # Apply rate limiting before API call
-                RateLimiter.get_instance().wait("spotify")
-
-                # Make API request
-                results = self.sp.search(q=query, type="track", limit=limit)
-
-                # Parse results
-                tracks = self._parse_tracks(results)
-
-                # Store in cache
-                if use_cache:
-                    self._cache.put(f"track:{query}", limit, tracks)
-
-                logger.info(f"Search tracks '{query}' returned {len(tracks)} results")
-                return tracks
-
-            except SpotifyException as e:
-                if self._should_retry_rate_limit(e, attempt):
-                    continue
-                return self._handle_spotify_error(e, "search_tracks")
-
-            except (requests.RequestException, ConnectionError) as e:
-                logger.error(f"Unexpected error during Spotify track search: {e}")
-                return []
-
-        return []
+        return self._search("track", query, limit, use_cache, self._parse_tracks)
 
     def search_albums(
         self, query: str, limit: int = API_DEFAULT_RESULTS, use_cache: bool = True
     ) -> List[Dict[str, Any]]:
         """
-        Search for albums on Spotify with caching and retry logic
+        Search for albums on Spotify
 
         Args:
-            query (str): Search query (album name, artist, etc.)
-            limit (int): Maximum results (default: 20, max: 50)
-            use_cache (bool): Use cached results if available (default: True)
+            query: Search query (album name, artist, etc.)
+            limit: Maximum results (default: 20, max: 50)
+            use_cache: Use cached results if available
 
         Returns:
-            list: List of dicts with format:
-                  [{'album_id': str, 'name': str, 'artist': str,
-                    'release_date': str, 'total_tracks': int}]
+            List of album dicts with keys: album_id, name, artist, release_date, total_tracks
         """
-        # Input validation
-        if not query:
-            logger.warning("Empty query received")
-            return []
-
-        # Sanitize query (remove injection attempts, control chars)
-        query = sanitize_query(query, max_length=API_QUERY_MAX_LENGTH)
-
-        if not query:
-            logger.warning("Query became empty after sanitization")
-            return []
-
-        # Limit to Spotify maximum
-        limit = min(limit, API_MAX_RESULTS)
-
-        # Check cache first
-        if use_cache:
-            cached: Optional[List[Dict[str, Any]]] = self._cache.get(f"album:{query}", limit)
-            if cached is not None:
-                return cached
-
-        # Retry logic
-        for attempt in range(self._retry_attempts):
-            try:
-                # Apply rate limiting before API call
-                RateLimiter.get_instance().wait("spotify")
-
-                # Make API request
-                results = self.sp.search(q=query, type="album", limit=limit)
-
-                # Parse results
-                albums = self._parse_albums(results)
-
-                # Store in cache
-                if use_cache:
-                    self._cache.put(f"album:{query}", limit, albums)
-
-                logger.info(f"Search albums '{query}' returned {len(albums)} results")
-                return albums
-
-            except SpotifyException as e:
-                if self._should_retry_rate_limit(e, attempt):
-                    continue
-                return self._handle_spotify_error(e, "search_albums")
-
-            except (requests.RequestException, ConnectionError) as e:
-                logger.error(f"Unexpected error during Spotify album search: {e}")
-                return []
-
-        return []
+        return self._search("album", query, limit, use_cache, self._parse_albums)
 
     def search_artists(
         self, query: str, limit: int = API_DEFAULT_RESULTS, use_cache: bool = True
     ) -> List[Dict[str, Any]]:
         """
-        Search for artists on Spotify with caching and retry logic
+        Search for artists on Spotify
 
         Args:
-            query (str): Search query (artist name)
-            limit (int): Maximum results (default: 20, max: 50)
-            use_cache (bool): Use cached results if available (default: True)
+            query: Search query (artist name)
+            limit: Maximum results (default: 20, max: 50)
+            use_cache: Use cached results if available
 
         Returns:
-            list: List of dicts with format:
-                  [{'artist_id': str, 'name': str, 'genres': list,
-                    'popularity': int}]
+            List of artist dicts with keys: artist_id, name, genres, popularity
         """
-        # Input validation
-        if not query:
-            logger.warning("Empty query received")
+        return self._search("artist", query, limit, use_cache, self._parse_artists)
+
+    def _search(
+        self,
+        entity_type: str,
+        query: str,
+        limit: int,
+        use_cache: bool,
+        parse_fn: Callable[[Dict[str, Any]], List[Dict[str, Any]]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Generic Spotify search with validation, caching, rate limiting, and retry.
+
+        Args:
+            entity_type: Spotify search type ("track", "album", "artist")
+            query: Search query
+            limit: Maximum results
+            use_cache: Use cached results if available
+            parse_fn: Function to parse raw Spotify API response
+        """
+        validated, limit = validate_search_query(query, limit)
+        if validated is None:
             return []
+        query = validated
 
-        # Sanitize query (remove injection attempts, control chars)
-        query = sanitize_query(query, max_length=API_QUERY_MAX_LENGTH)
+        cache_key = f"{entity_type}:{query}"
+        method_name = f"search_{entity_type}s"
 
-        if not query:
-            logger.warning("Query became empty after sanitization")
-            return []
-
-        # Limit to Spotify maximum
-        limit = min(limit, API_MAX_RESULTS)
-
-        # Check cache first
         if use_cache:
-            cached: Optional[List[Dict[str, Any]]] = self._cache.get(f"artist:{query}", limit)
+            cached: Optional[List[Dict[str, Any]]] = self._cache.get(cache_key, limit)
             if cached is not None:
                 return cached
 
-        # Retry logic
         for attempt in range(self._retry_attempts):
             try:
-                # Apply rate limiting before API call
                 RateLimiter.get_instance().wait("spotify")
+                results = self.sp.search(q=query, type=entity_type, limit=limit)
+                parsed = parse_fn(results)
 
-                # Make API request
-                results = self.sp.search(q=query, type="artist", limit=limit)
-
-                # Parse results
-                artists = self._parse_artists(results)
-
-                # Store in cache
                 if use_cache:
-                    self._cache.put(f"artist:{query}", limit, artists)
+                    self._cache.put(cache_key, limit, parsed)
 
-                logger.info(f"Search artists '{query}' returned {len(artists)} results")
-                return artists
+                logger.info(f"Search {entity_type}s '{query}' returned {len(parsed)} results")
+                return parsed
 
             except SpotifyException as e:
                 if self._should_retry_rate_limit(e, attempt):
                     continue
-                return self._handle_spotify_error(e, "search_artists")
+                return self._handle_spotify_error(e, method_name)
 
             except (requests.RequestException, ConnectionError) as e:
-                logger.error(f"Unexpected error during Spotify artist search: {e}")
+                logger.error(f"Unexpected error during Spotify {entity_type} search: {e}")
                 return []
 
         return []
@@ -388,10 +285,12 @@ class SpotifySearcher:
 
         return artists
 
+    _MAX_RETRY_AFTER: int = 60  # Cap server-supplied Retry-After to prevent DoS
+
     def _should_retry_rate_limit(self, error: SpotifyException, attempt: int) -> bool:
         """Check if rate-limited and sleep before retry. Returns True if should retry."""
         if error.http_status == 429 and attempt < self._retry_attempts - 1:
-            retry_after = int(error.headers.get("Retry-After", self._retry_delay))
+            retry_after = min(int(error.headers.get("Retry-After", self._retry_delay)), self._MAX_RETRY_AFTER)
             logger.warning(f"Rate limit exceeded, retrying in {retry_after}s...")
             sleep(retry_after)
             return True
@@ -410,7 +309,7 @@ class SpotifySearcher:
         """
         if error.http_status == 429:
             # Rate limit exceeded
-            retry_after = int(error.headers.get("Retry-After", 1))
+            retry_after = min(int(error.headers.get("Retry-After", 1)), self._MAX_RETRY_AFTER)
             logger.warning(f"Spotify rate limit exceeded, retry after {retry_after}s")
 
             # For now, return empty (could implement retry in future)

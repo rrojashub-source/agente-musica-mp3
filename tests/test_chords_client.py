@@ -11,7 +11,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -166,7 +166,7 @@ class TestGetChords:
         """get_chords loads from DB when not in memory cache"""
         mock_db = MagicMock()
         db_chords = [{"t": 0.0, "chord": "G"}, {"t": 4.0, "chord": "D"}]
-        mock_db.execute_query.return_value = [(json.dumps(db_chords),)]
+        mock_db.fetch_one.return_value = {"chords": json.dumps(db_chords)}
 
         self.client.db_manager = mock_db
         result = self.client.get_chords("/fake/path.mp3", song_id=99)
@@ -247,8 +247,6 @@ class TestTransposeChords:
         chords = [{"t": 0.0, "chord": "C"}]
         with patch.dict("sys.modules", {"pychord": None}):
             # Force fresh import to fail
-            import importlib
-
             # The method catches ImportError and returns chords as-is
             # We simulate by removing pychord from available modules
             with patch("builtins.__import__", side_effect=ImportError):

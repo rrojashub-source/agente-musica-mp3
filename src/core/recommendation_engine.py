@@ -55,10 +55,10 @@ class RecommendationEngine:
         if not current_song:
             return []
 
-        exclude_ids = exclude_ids or []
+        exclude_set = set(exclude_ids or [])
         current_id = current_song.get("id")
         if current_id:
-            exclude_ids.append(current_id)
+            exclude_set.add(current_id)
 
         # Get all songs from database
         all_songs = self.db_manager.get_all_songs()
@@ -78,7 +78,7 @@ class RecommendationEngine:
             song_id = song.get("id")
 
             # Skip excluded songs
-            if song_id in exclude_ids:
+            if song_id in exclude_set:
                 continue
 
             score = 0

@@ -530,7 +530,10 @@ class ContentFilterTab(BaseTab):
         for result in selected:
             try:
                 src = Path(result.file_path)
-                dst = Path(folder) / src.name
+                dst = (Path(folder) / src.name).resolve()
+                if not str(dst).startswith(str(Path(folder).resolve())):
+                    logger.warning("Skipping move: destination escapes target directory")
+                    continue
                 shutil.move(str(src), str(dst))
                 moved += 1
             except OSError as e:
@@ -554,7 +557,10 @@ class ContentFilterTab(BaseTab):
         for result in selected:
             try:
                 src = Path(result.file_path)
-                dst = Path(folder) / src.name
+                dst = (Path(folder) / src.name).resolve()
+                if not str(dst).startswith(str(Path(folder).resolve())):
+                    logger.warning("Skipping copy: destination escapes target directory")
+                    continue
                 shutil.copy2(str(src), str(dst))
                 copied += 1
             except OSError as e:

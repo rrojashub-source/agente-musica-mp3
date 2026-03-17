@@ -20,6 +20,8 @@ class APICache:
         """Get cached results for query, or None if not cached."""
         key = self._make_key(query, limit)
         if key in self._cache:
+            # Move to end for true LRU behavior
+            self._cache[key] = self._cache.pop(key)
             logger.debug(f"Cache hit for: '{query}'")
             return self._cache[key]
         return None
@@ -45,4 +47,4 @@ class APICache:
     def _make_key(query: str, limit: int) -> str:
         """Generate cache key from query and limit."""
         key_str = f"{query.lower()}:{limit}"
-        return hashlib.md5(key_str.encode()).hexdigest()
+        return hashlib.sha256(key_str.encode(), usedforsecurity=False).hexdigest()[:32]

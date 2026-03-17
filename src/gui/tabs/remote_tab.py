@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import logging
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 from PySide6.QtCore import Qt, QUrl, Slot
@@ -274,7 +275,5 @@ class RemoteTab(BaseTab):
 
     def _log(self, message: str) -> None:
         """Add message to log"""
-        from datetime import datetime
-
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.log_text.append(f"[{timestamp}] {message}")

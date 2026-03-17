@@ -21,11 +21,12 @@ Updated: December 8, 2025 (Added AI similarity search - Phase 9)
 from __future__ import annotations
 
 import logging
+import random
 import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QPoint, Qt, QTimer, Signal
+from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent, QKeyEvent
 from PySide6.QtWidgets import (
     QApplication,
@@ -43,7 +44,7 @@ from PySide6.QtWidgets import (
 from core.cover_art_manager import CoverArtManager
 from gui.base import BaseTab
 from gui.themes.style_constants import Styles
-from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST, TRACK_END_CHECK_INTERVAL_MS
+from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST
 
 logger = logging.getLogger(__name__)
 
@@ -275,16 +276,15 @@ class LibraryTab(BaseTab):
             # Get all songs from database
             songs = self.db_manager.get_all_songs()
 
-            # Disable sorting while populating
+            # Disable sorting and signals while populating for performance
             self.library_table.setSortingEnabled(False)
+            self.library_table.blockSignals(True)
 
-            # Clear skeleton and load real data
-            self.library_table.setRowCount(0)
+            # Pre-allocate rows instead of inserting one-by-one
+            self.library_table.setRowCount(len(songs))
 
             # Populate table
-            for song in songs:
-                row = self.library_table.rowCount()
-                self.library_table.insertRow(row)
+            for row, song in enumerate(songs):
 
                 # Title
                 title_item = QTableWidgetItem(song.get("title", "Unknown"))
@@ -325,7 +325,8 @@ class LibraryTab(BaseTab):
                 self._apply_mood_color(mood_item, mood)
                 self.library_table.setItem(row, 7, mood_item)
 
-            # Re-enable sorting
+            # Re-enable signals and sorting
+            self.library_table.blockSignals(False)
             self.library_table.setSortingEnabled(True)
 
             # Update count
@@ -366,21 +367,33 @@ class LibraryTab(BaseTab):
                 title = title_item.text()
                 self.status_label.setText(f"Selected: {title}")
 
-    def _on_prev_clicked(self) -> None:
-        """Handle previous button click from Now Playing widget"""
+    def reload_library(self) -> None:
+        """Public API: reload library from database (called by UIComposer signals)."""
+        self._load_library()
+
+    def play_previous(self) -> None:
+        """Public API: play previous song in library (called by PlaybackController)."""
         logger.info("Previous button clicked")
         self._play_previous_song()
 
-    def _on_next_clicked(self) -> None:
-        """Handle next button click from Now Playing widget"""
+    def play_next(self) -> None:
+        """Public API: play next song in library (called by PlaybackController)."""
         logger.info("Next button clicked")
         self._play_next_song()
 
-    def _on_stop_clicked(self) -> None:
-        """Handle stop button click from Now Playing widget"""
+    def notify_stop(self) -> None:
+        """Public API: notify that playback was stopped (called by PlaybackController)."""
         logger.info("Stop button clicked - setting user_stopped flag")
         self._user_stopped = True  # Prevent auto-play after stop
         # No need to stop audio_player here - NowPlayingWidget already does it
+
+    def notify_song_ended(self) -> None:
+        """Public API: notify that current song ended (called by PlaybackController)."""
+        self._on_song_ended()
+
+    def _on_stop_clicked(self) -> None:
+        """Handle stop button click from Now Playing widget"""
+        self.notify_stop()
 
     def _play_song_at_row(self, row: int) -> None:
         """
@@ -466,8 +479,7 @@ class LibraryTab(BaseTab):
                 # Emit signal so main.py can track playback source
                 self.playback_started.emit()
 
-                # Start monitoring for song end
-                self._start_end_of_song_monitor()
+                # Song end monitoring handled by NowPlayingWidget.song_ended signal
             else:
                 logger.error(f"Failed to load song: {file_path}")
                 self.status_label.setText("Error: Failed to load song")
@@ -502,8 +514,6 @@ class LibraryTab(BaseTab):
 
     def _play_random_song(self) -> None:
         """Play a random song from the library (shuffle mode)"""
-        import random
-
         row_count = self.library_table.rowCount()
         if row_count <= 1:
             logger.info("Not enough songs for shuffle")
@@ -531,22 +541,6 @@ class LibraryTab(BaseTab):
         else:
             logger.info("Beginning of library reached")
             self.status_label.setText("Beginning of library")
-
-    def _start_end_of_song_monitor(self) -> None:
-        """Start monitoring for end of song to auto-play next"""
-        if not hasattr(self, "_end_monitor_timer"):
-            self._end_monitor_timer = QTimer(self)
-            self._end_monitor_timer.setInterval(TRACK_END_CHECK_INTERVAL_MS)  # Check every second
-            self._end_monitor_timer.timeout.connect(self._check_song_ended)
-
-        self._end_monitor_timer.start()
-
-    def _check_song_ended(self) -> None:
-        """Check if current song has ended (legacy monitor - now handled by NowPlayingWidget)"""
-        # This method is kept for backward compatibility but the main
-        # song ended logic is now handled by NowPlayingWidget.song_ended signal
-        # which triggers _on_song_ended in this class
-        pass
 
     def _highlight_playing_song(self, row: int) -> None:
         """
@@ -870,13 +864,11 @@ class LibraryTab(BaseTab):
 
         # Delete from database (batch delete)
         try:
-            cursor = self.db_manager.conn.cursor()
             song_ids = [song["id"] for song in songs]
 
             # Batch delete using IN clause
             placeholders = ",".join("?" * len(song_ids))
-            cursor.execute(f"DELETE FROM songs WHERE id IN ({placeholders})", song_ids)
-            self.db_manager.conn.commit()
+            self.db_manager.execute_query(f"DELETE FROM songs WHERE id IN ({placeholders})", tuple(song_ids))
 
             logger.info(f"Deleted {len(songs)} songs from database")
 
@@ -1069,7 +1061,7 @@ class LibraryTab(BaseTab):
         for file_path in file_paths:
             try:
                 # Check if already in database
-                if self.db_manager.song_exists_by_file_path(file_path):
+                if self.db_manager.song_exists(file_path):
                     duplicates += 1
                     logger.debug(f"Skipping duplicate: {file_path}")
                     continue

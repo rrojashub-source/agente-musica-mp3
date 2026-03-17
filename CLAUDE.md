@@ -1,24 +1,38 @@
 # NEXUS Music Manager
 
-**Version:** 2.1.0 | **Status:** Post-audit fixes in progress | **Audit Score:** 7.6/10 (5-agent audit, 2nd round) | **Target:** 8.5+/10
+**Version:** 2.1.0 | **Status:** MAPS audit in progress | **Methodology:** Per-module, phase-locked
 
 ---
 
-## Estado Actual (2026-03-15)
+## Audit Rules — READ BEFORE ANY AUDIT SESSION
 
-Proyecto completado en dic-2025 (score comercial 99/100). Restaurado desde backup Z: el 2026-03-10. Cuatro auditorias: 2026-03-10 (6.8/10), 2026-03-15 (8.5/10), 2026-03-15 post-plan (6.3/10), 2026-03-15 post-fixes (7.6/10 — Security 8.5, Code 8.0, Imports 7.5, Tests 7.0, Docs 7.0).
+**Methodology: MAPS** (Memory, Alcance, Progresion, Scoring)
 
-**Ronda actual de fixes (post 5-agent audit):**
-1. **Security** — Plugin whitelist bypass fixed, FTS5 MATCH sanitization
-2. **Build/Deps** — setup.py entry point fixed, deps synced, dead deps removed
-3. **Code Quality** — 71 except Exception justified, 11/12 workers→BaseWorker
-4. **Cleanup** — Coverage threshold realistic (20%), flake8 E722 enabled, mypy stubs cleaned
-5. **Docs** — README.md rewritten, API_REFERENCE.md fixed
+Before ANY audit or fix session:
+1. Read `docs/audit/progress-tracker.md` → understand current state
+2. Read `docs/audit/known-issues-resolved.md` → NEVER re-report these
+3. Read `docs/audit/approved-modules.md` → SKIP approved modules unless explicitly asked
+
+Rules:
+- ONE module per session, ONE phase per session
+- Max 8 findings per session — prioritize by severity
+- Score each module 1-10 for the current phase
+- Phase progression: Code Quality → Tests → Security → Performance
+- A module must score >= 8/10 in Phase N before starting Phase N+1
+- Linter-catchable issues are NOT audit findings (run linters first)
+- After fixing, update tracking files with new scores
+- Score NEVER goes down — if it does, methodology is wrong
+
+## Estado Actual (2026-03-16)
+
+Proyecto completado en dic-2025 (score comercial 99/100). Restaurado desde backup Z: el 2026-03-10.
+3 rounds de auditorias cross-module completados. Migrando a metodologia MAPS (per-module).
 
 **Documentos clave:**
-- `PROJECT_STATE.json` — estado dinamico completo (fases, decisiones, plan)
-- `docs/AUDIT_REPORT_2026-03-10.md` — hallazgos de auditoria (9 criticos, 8 altos)
-- `tasks/plan_10_de_10.md` — plan detallado 5 bloques ejecutado
+- `docs/audit/progress-tracker.md` — estado de auditoria por modulo
+- `docs/audit/known-issues-resolved.md` — issues ya corregidos (NO re-reportar)
+- `docs/audit/approved-modules.md` — modulos aprobados por fase
+- `docs/audit/scoring-history.md` — historial de puntajes
 
 ---
 

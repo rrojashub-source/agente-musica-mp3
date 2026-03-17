@@ -156,7 +156,7 @@ class PluginManager(QObject if HAS_QT else object):  # type: ignore[misc]
                 self._whitelist = []  # Deny all on error
 
     def set_whitelist(self, plugin_names: Optional[List[str]]) -> None:
-        """Set plugin whitelist. None = allow all, list = only allow listed."""
+        """Set plugin whitelist. None or empty = bundled plugins only, list = only allow listed."""
         self._whitelist = plugin_names
         try:
             with open(self._whitelist_file, "w") as f:
@@ -554,9 +554,21 @@ class PluginManager(QObject if HAS_QT else object):  # type: ignore[misc]
             if saved.get("enabled", False) and name in self._plugins:
                 self.enable_plugin(name)
 
+    _MAX_SETTINGS_SIZE: int = 10_000  # Max serialized settings size in bytes
+
     def save_plugin_settings(self, plugin_name: str, settings: Dict[str, Any]) -> bool:
-        """Save settings for a specific plugin"""
+        """Save settings for a specific plugin (with size validation)"""
         if plugin_name not in self._plugins:
+            return False
+
+        # Validate settings size to prevent abuse
+        try:
+            serialized = json.dumps(settings)
+            if len(serialized) > self._MAX_SETTINGS_SIZE:
+                logger.warning(f"Plugin settings for '{plugin_name}' exceed max size")
+                return False
+        except (TypeError, ValueError):
+            logger.warning(f"Plugin settings for '{plugin_name}' are not serializable")
             return False
 
         self._plugins[plugin_name].plugin.load_settings(settings)

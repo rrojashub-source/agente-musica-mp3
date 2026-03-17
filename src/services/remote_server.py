@@ -24,6 +24,7 @@ Usage:
     server.start(port=8080)
 """
 
+import hmac
 import logging
 import secrets
 import socket
@@ -135,6 +136,9 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
         self._rate_limit_max: int = 60  # requests per minute
         self._rate_limit_window: int = 60  # seconds
 
+        # Lock for shared state accessed by Flask request threads
+        self._data_lock: threading.RLock = threading.RLock()
+
         # Callbacks for player control
         self._callbacks: Dict[str, Callable[..., Any]] = {}
 
@@ -186,14 +190,17 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
             now = time.time()
             window_start = now - self._rate_limit_window
 
-            # Clean old entries
-            self._rate_limit_requests[client_ip] = [t for t in self._rate_limit_requests[client_ip] if t > window_start]
+            with self._data_lock:
+                # Clean old entries
+                self._rate_limit_requests[client_ip] = [
+                    t for t in self._rate_limit_requests[client_ip] if t > window_start
+                ]
 
-            if len(self._rate_limit_requests[client_ip]) >= self._rate_limit_max:
-                logger.warning(f"Rate limit exceeded for {client_ip}")
-                return jsonify({"error": "Rate limit exceeded"}), 429
+                if len(self._rate_limit_requests[client_ip]) >= self._rate_limit_max:
+                    logger.warning(f"Rate limit exceeded for {client_ip}")
+                    return jsonify({"error": "Rate limit exceeded"}), 429
 
-            self._rate_limit_requests[client_ip].append(now)
+                self._rate_limit_requests[client_ip].append(now)
 
         self._register_routes()
 
@@ -221,7 +228,7 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
 
     def _validate_token(self, token: str) -> bool:
         """Validate token matches and has not expired"""
-        if token != self._auth_token:
+        if not hmac.compare_digest(token, self._auth_token):
             return False
         try:
             timestamp = int(token.rsplit(".", 1)[1])
@@ -272,7 +279,8 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
         @self._require_auth
         def get_status() -> Any:
             """Get current playback status"""
-            return jsonify({"now_playing": asdict(self._now_playing), "queue_length": len(self._queue)})
+            with self._data_lock:
+                return jsonify({"now_playing": asdict(self._now_playing), "queue_length": len(self._queue)})
 
         @app.route("/api/play", methods=["POST"])  # type: ignore[union-attr]
         @self._require_auth
@@ -328,7 +336,8 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
             volume = max(0, min(100, int(volume)))
 
             self._execute_callback("volume", volume)
-            self._now_playing.volume = volume
+            with self._data_lock:
+                self._now_playing.volume = volume
 
             if HAS_QT:
                 self.command_received.emit("volume", {"volume": volume})
@@ -339,7 +348,10 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
         def seek() -> Any:
             """Seek to position (seconds)"""
             data = request.get_json() or {}
-            position = data.get("position", 0)
+            try:
+                position = max(0, int(data.get("position", 0)))
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid position value"}), 400
 
             self._execute_callback("seek", position)
             if HAS_QT:
@@ -354,8 +366,10 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
         @self._require_auth
         def get_queue() -> Any:
             """Get current queue"""
+            with self._data_lock:
+                queue_copy = list(self._queue)
             return jsonify(
-                {"queue": [asdict(item) if hasattr(item, "__dataclass_fields__") else item for item in self._queue]}
+                {"queue": [asdict(item) if hasattr(item, "__dataclass_fields__") else item for item in queue_copy]}
             )
 
         @app.route("/api/queue/add", methods=["POST"])  # type: ignore[union-attr]
@@ -390,7 +404,7 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
         def search() -> Any:
             """Search library"""
             query = request.args.get("q", "")
-            limit = request.args.get("limit", 20, type=int)
+            limit = min(request.args.get("limit", 20, type=int), 200)
 
             results = self._execute_callback("search", query, limit) or []
             return jsonify({"results": results, "query": query})
@@ -399,7 +413,7 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
         @self._require_auth
         def recent() -> Any:
             """Get recently played"""
-            limit = request.args.get("limit", 10, type=int)
+            limit = min(request.args.get("limit", 10, type=int), 200)
             results = self._execute_callback("recent", limit) or []
             return jsonify({"results": results})
 
@@ -417,7 +431,7 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
         )
         if name in self._callbacks:
             try:
-                logger.info(f"Calling callback '{name}' with args: {args}")
+                logger.debug(f"Calling callback '{name}' with args: {args}")
                 result = self._callbacks[name](*args)
                 logger.info(f"Callback '{name}' executed successfully")
                 return result
@@ -439,12 +453,14 @@ class RemoteServer(QObject if HAS_QT else object):  # type: ignore[misc]
         logger.info(f"Registered callback '{name}', total callbacks: {list(self._callbacks.keys())}")
 
     def update_now_playing(self, info: NowPlayingInfo) -> None:
-        """Update current playback info"""
-        self._now_playing = info
+        """Update current playback info (thread-safe)"""
+        with self._data_lock:
+            self._now_playing = info
 
     def update_queue(self, queue: List[Any]) -> None:
-        """Update queue"""
-        self._queue = queue
+        """Update queue (thread-safe)"""
+        with self._data_lock:
+            self._queue = list(queue)
 
     @property
     def auth_token(self) -> str:

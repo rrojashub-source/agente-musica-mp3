@@ -16,7 +16,7 @@ import os
 import sqlite3
 import sys
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -286,40 +286,37 @@ class TestAddSong:
 class TestUpdateSong:
     """Test update_song method"""
 
-    @patch("services.library_service.ALLOWED_SONG_FIELDS", frozenset({"title", "artist", "rating"}))
     def test_update_success(self, service, mock_db):
-        """Should update valid fields and emit signal"""
+        """Should delegate to db.update_song and emit signal"""
+        mock_db.update_song.return_value = True
         result = service.update_song(1, {"title": "New Title", "artist": "New Artist"})
 
         assert result is True
-        mock_db.execute_query.assert_called_once()
+        mock_db.update_song.assert_called_once_with(1, {"title": "New Title", "artist": "New Artist"})
         service.song_updated.emit.assert_called_once_with(1)
 
-    @patch("services.library_service.ALLOWED_SONG_FIELDS", frozenset({"title", "artist"}))
     def test_update_skips_invalid_fields(self, service, mock_db):
-        """Should skip fields not in ALLOWED_SONG_FIELDS"""
+        """Should delegate to db.update_song which handles field validation"""
+        mock_db.update_song.return_value = False
         result = service.update_song(1, {"hacker_field": "evil"})
 
         assert result is False
-        mock_db.execute_query.assert_not_called()
 
-    @patch("services.library_service.ALLOWED_SONG_FIELDS", frozenset({"title", "artist"}))
     def test_update_skips_id_field(self, service, mock_db):
-        """Should not allow updating the id field"""
+        """Should filter out id field — empty after filter returns False"""
         result = service.update_song(1, {"id": 999})
 
         assert result is False
+        mock_db.update_song.assert_not_called()
 
-    @patch("services.library_service.ALLOWED_SONG_FIELDS", frozenset({"title"}))
     def test_update_db_error(self, service, mock_db):
         """Should return False on DB error"""
-        mock_db.execute_query.side_effect = sqlite3.Error("update fail")
+        mock_db.update_song.side_effect = sqlite3.Error("update fail")
         result = service.update_song(1, {"title": "X"})
 
         assert result is False
         service.error_occurred.emit.assert_called_once()
 
-    @patch("services.library_service.ALLOWED_SONG_FIELDS", frozenset({"title"}))
     def test_update_empty_updates(self, service, mock_db):
         """Should return False for empty updates dict"""
         result = service.update_song(1, {})
@@ -542,9 +539,9 @@ class TestPlaybackTracking:
 
     def test_set_rating_valid(self, service, mock_db):
         """Should accept valid rating 0-5"""
-        with patch("services.library_service.ALLOWED_SONG_FIELDS", frozenset({"rating"})):
-            result = service.set_rating(1, 4)
-            assert result is True
+        mock_db.update_song.return_value = True
+        result = service.set_rating(1, 4)
+        assert result is True
 
     def test_set_rating_too_high(self, service, mock_db):
         """Should reject rating > 5"""
@@ -558,9 +555,9 @@ class TestPlaybackTracking:
 
     def test_set_rating_zero(self, service, mock_db):
         """Should accept rating of 0"""
-        with patch("services.library_service.ALLOWED_SONG_FIELDS", frozenset({"rating"})):
-            result = service.set_rating(1, 0)
-            assert result is True
+        mock_db.update_song.return_value = True
+        result = service.set_rating(1, 0)
+        assert result is True
 
 
 class TestUniqueValues:

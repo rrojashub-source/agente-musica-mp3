@@ -46,6 +46,7 @@ class WaveformExtractor:
     def __init__(self) -> None:
         """Initialize Waveform Extractor"""
         self.cache: Dict[str, Any] = {}  # Cache extracted waveforms
+        self._MAX_CACHE_SIZE: int = 50
         logger.info("WaveformExtractor initialized")
 
     def extract(self, file_path: str, num_points: int = 1000) -> Optional[List[float]]:
@@ -78,8 +79,11 @@ class WaveformExtractor:
                 logger.warning("pydub not available - using fallback method")
                 waveform = self._extract_fallback(file_path, num_points)
 
-            # Cache result
+            # Cache result with bounded eviction
             if waveform:
+                if len(self.cache) >= self._MAX_CACHE_SIZE:
+                    oldest_key = next(iter(self.cache))
+                    del self.cache[oldest_key]
                 self.cache[cache_key] = waveform
                 logger.info(f"Waveform extracted: {Path(file_path).name} ({len(waveform)} points)")
 
@@ -166,8 +170,6 @@ class WaveformExtractor:
             if not audio_file or not hasattr(audio_file.info, "length"):
                 logger.warning("Could not get audio duration")
                 return None
-
-            _duration = audio_file.info.length  # noqa: F841
 
             # Generate simulated waveform with some randomness
             # (better than nothing for visualization)

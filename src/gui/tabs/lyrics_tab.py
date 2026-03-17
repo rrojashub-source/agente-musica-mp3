@@ -19,7 +19,7 @@ from typing import Any, Dict, Optional
 
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout
+from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout
 
 from gui.base import BaseTab
 from gui.base.base_worker import BaseWorker
@@ -279,8 +279,6 @@ class LyricsTab(BaseTab):
 
     def _on_copy_lyrics(self) -> None:
         """Copy lyrics to clipboard"""
-        from PySide6.QtWidgets import QApplication
-
         lyrics = self.lyrics_text.toPlainText()
         if lyrics and not lyrics.startswith("❌") and not lyrics.startswith("⏳"):
             clipboard = QApplication.clipboard()

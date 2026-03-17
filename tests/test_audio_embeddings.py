@@ -5,14 +5,16 @@ Tests the audio feature extraction and similarity search functionality.
 
 Created: December 8, 2025
 """
-import pytest
-import numpy as np
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+
 import sys
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import numpy as np
+import pytest
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from core.audio_embeddings import AudioEmbeddings
 
@@ -93,7 +95,7 @@ class TestBandEnergies:
 
         # Simulate FFT magnitude output
         magnitude = np.random.rand(1025).astype(np.float32)
-        freqs = np.fft.rfftfreq(2048, 1/22050)
+        freqs = np.fft.rfftfreq(2048, 1 / 22050)
 
         band_energies = embeddings._compute_band_energies(magnitude, freqs)
 
@@ -104,7 +106,7 @@ class TestBandEnergies:
         embeddings = AudioEmbeddings()
 
         magnitude = np.random.rand(1025).astype(np.float32) + 0.1
-        freqs = np.fft.rfftfreq(2048, 1/22050)
+        freqs = np.fft.rfftfreq(2048, 1 / 22050)
 
         band_energies = embeddings._compute_band_energies(magnitude, freqs)
 
@@ -211,12 +213,12 @@ class TestFileHash:
 
         assert hash_result == ""
 
-    @patch('builtins.open', create=True)
-    @patch('pathlib.Path.stat')
-    @patch('pathlib.Path.exists')
+    @patch("builtins.open", create=True)
+    @patch("pathlib.Path.stat")
+    @patch("pathlib.Path.exists")
     def test_compute_file_hash_valid(self, mock_exists, mock_stat, mock_open):
         """Test hash computation for valid file"""
-        embeddings = AudioEmbeddings()
+        AudioEmbeddings()
 
         # Mock file existence and stats
         mock_exists.return_value = True
@@ -267,8 +269,8 @@ class TestFindSimilar:
 
         stats = embeddings.get_embedding_stats()
 
-        assert stats['total'] == 0
-        assert stats['coverage'] == 0
+        assert stats["total"] == 0
+        assert stats["coverage"] == 0
 
 
 class TestIntegration:
@@ -278,25 +280,25 @@ class TestIntegration:
         """Test complete workflow with mocked components"""
         # Create mock database manager
         mock_db = Mock()
-        mock_db.conn = Mock()
-        mock_cursor = Mock()
-        mock_db.conn.cursor.return_value = mock_cursor
 
         # Mock get_all_songs
         mock_db.get_all_songs.return_value = [
-            {'id': 1, 'title': 'Song 1', 'artist': 'Artist 1', 'file_path': '/path/1.mp3'},
-            {'id': 2, 'title': 'Song 2', 'artist': 'Artist 2', 'file_path': '/path/2.mp3'},
+            {"id": 1, "title": "Song 1", "artist": "Artist 1", "file_path": "/path/1.mp3"},
+            {"id": 2, "title": "Song 2", "artist": "Artist 2", "file_path": "/path/2.mp3"},
         ]
 
         # Mock get_song_by_id
         mock_db.get_song_by_id.return_value = {
-            'id': 1, 'title': 'Song 1', 'artist': 'Artist 1', 'file_path': '/path/1.mp3'
+            "id": 1,
+            "title": "Song 1",
+            "artist": "Artist 1",
+            "file_path": "/path/1.mp3",
         }
 
-        embeddings = AudioEmbeddings(mock_db)
+        AudioEmbeddings(mock_db)
 
-        # Verify initialization created table
-        assert mock_cursor.execute.called
+        # Verify initialization created table via execute_query
+        assert mock_db.execute_query.called
 
 
 class TestEdgeCases:
@@ -329,7 +331,7 @@ class TestEdgeCases:
 
         result = embeddings.batch_generate_embeddings()
 
-        assert result == {'processed': 0, 'cached': 0, 'failed': 0}
+        assert result == {"processed": 0, "cached": 0, "failed": 0}
 
 
 # Performance test (optional, run with -v flag)
@@ -402,7 +404,7 @@ class TestBPMDetection:
         samples = np.random.randn(1000).astype(np.float32)
 
         # Should handle gracefully
-        bpm = embeddings._estimate_bpm(samples)
+        embeddings._estimate_bpm(samples)
         # May return None for very short audio
 
 
@@ -419,11 +421,11 @@ class TestMoodClassification:
         features = embeddings._extract_mood_features(samples)
 
         assert features is not None
-        assert 'brightness' in features
-        assert 'energy' in features
-        assert 'tempo' in features
-        assert 'flatness' in features
-        assert 'zcr' in features
+        assert "brightness" in features
+        assert "energy" in features
+        assert "tempo" in features
+        assert "flatness" in features
+        assert "zcr" in features
 
     def test_extract_mood_features_too_short(self):
         """Test that short audio returns None"""
@@ -442,26 +444,26 @@ class TestMoodClassification:
 
         # High energy features (should classify as Energetic or Intense)
         high_energy_features = {
-            'brightness': 3000,  # High brightness
-            'brightness_std': 500,
-            'flatness': 0.1,
-            'energy': 0.15,  # High energy
-            'energy_std': 0.05,
-            'zcr': 0.08,
-            'low_energy_ratio': 0.3,
-            'tempo': 140,  # Fast tempo
-            'dynamic_range': 0.1
+            "brightness": 3000,  # High brightness
+            "brightness_std": 500,
+            "flatness": 0.1,
+            "energy": 0.15,  # High energy
+            "energy_std": 0.05,
+            "zcr": 0.08,
+            "low_energy_ratio": 0.3,
+            "tempo": 140,  # Fast tempo
+            "dynamic_range": 0.1,
         }
 
         result = embeddings._classify_mood_from_features(high_energy_features)
 
         assert result is not None
-        assert 'mood' in result
-        assert result['mood'] in ['Energetic', 'Happy', 'Calm', 'Sad', 'Intense']
-        assert 'energy' in result
-        assert 'valence' in result
-        assert 0 <= result['energy'] <= 100
-        assert 0 <= result['valence'] <= 100
+        assert "mood" in result
+        assert result["mood"] in ["Energetic", "Happy", "Calm", "Sad", "Intense"]
+        assert "energy" in result
+        assert "valence" in result
+        assert 0 <= result["energy"] <= 100
+        assert 0 <= result["valence"] <= 100
 
     def test_classify_mood_calm_features(self):
         """Test that calm features classify as Calm"""
@@ -469,33 +471,33 @@ class TestMoodClassification:
 
         # Low energy, slow tempo features
         calm_features = {
-            'brightness': 1000,  # Low brightness
-            'brightness_std': 200,
-            'flatness': 0.3,
-            'energy': 0.02,  # Low energy
-            'energy_std': 0.01,
-            'zcr': 0.02,
-            'low_energy_ratio': 0.7,
-            'tempo': 70,  # Slow tempo
-            'dynamic_range': 0.02
+            "brightness": 1000,  # Low brightness
+            "brightness_std": 200,
+            "flatness": 0.3,
+            "energy": 0.02,  # Low energy
+            "energy_std": 0.01,
+            "zcr": 0.02,
+            "low_energy_ratio": 0.7,
+            "tempo": 70,  # Slow tempo
+            "dynamic_range": 0.02,
         }
 
         result = embeddings._classify_mood_from_features(calm_features)
 
         assert result is not None
         # Low energy should result in lower energy score
-        assert result['energy'] < 50
+        assert result["energy"] < 50
 
     def test_mood_categories_constant(self):
         """Test that MOODS constant exists and has expected values"""
         embeddings = AudioEmbeddings()
 
-        assert hasattr(embeddings, 'MOODS')
-        assert 'Energetic' in embeddings.MOODS
-        assert 'Happy' in embeddings.MOODS
-        assert 'Calm' in embeddings.MOODS
-        assert 'Sad' in embeddings.MOODS
-        assert 'Intense' in embeddings.MOODS
+        assert hasattr(embeddings, "MOODS")
+        assert "Energetic" in embeddings.MOODS
+        assert "Happy" in embeddings.MOODS
+        assert "Calm" in embeddings.MOODS
+        assert "Sad" in embeddings.MOODS
+        assert "Intense" in embeddings.MOODS
 
 
 class TestAnalyzeSong:

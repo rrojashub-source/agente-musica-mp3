@@ -16,6 +16,7 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST
+from utils.text_normalizer import _ARTIST_SUFFIX, _YOUTUBE_ARTIFACTS
 
 logger = logging.getLogger(__name__)
 
@@ -37,22 +38,9 @@ class MetadataCleaner:
         # Patterns to detect and remove
         self.timestamp_pattern: re.Pattern[str] = re.compile(r"_\d{8}_\d{6}")
         self.repeated_track_pattern: re.Pattern[str] = re.compile(r"^(\d+\s*-\s*)+")
-        self.youtube_artifacts_pattern: re.Pattern[str] = re.compile(
-            r"\s*[\(\[](Official\s*)?(Music\s*)?Video[\)\]]|"
-            r"\s*[\(\[]Official\s*Audio[\)\]]|"
-            r"\s*[\(\[]Audio[\)\]]|"
-            r"\s*[\(\[]Lyric[s]?\s*Video[\)\]]|"
-            r"\s*[\(\[]Visuali[zs]er[\)\]]|"
-            r"\s*[\(\[]Live[\)\]]|"
-            r"\s*[\(\[]Remaster(ed)?[\)\]]|"
-            r"\s*[\(\[](HD|HQ|4K|1080p)[\)\]]",
-            re.IGNORECASE,
-        )
-
-        # Artist suffix patterns to clean (YouTube channel names)
-        self.artist_suffix_pattern: re.Pattern[str] = re.compile(
-            r"\s*(Official|VEVO)$|" r"\s*-\s*Topic$", re.IGNORECASE
-        )
+        # YouTube artifact and artist suffix patterns from shared utility
+        self.youtube_artifacts_pattern: re.Pattern[str] = _YOUTUBE_ARTIFACTS
+        self.artist_suffix_pattern: re.Pattern[str] = _ARTIST_SUFFIX
 
         # Known garbage prefixes/suffixes
         self.garbage_phrases: List[str] = [

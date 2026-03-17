@@ -255,10 +255,7 @@ class DownloadService(QObject):
     def pause(self, item_id: str) -> bool:
         """Pause a download"""
         try:
-            if hasattr(self.queue, "pause"):
-                self.queue.pause(item_id)
-            else:
-                self.queue._items[item_id]["status"] = "paused"
+            self.queue.pause(item_id)
             self.queue_changed.emit()
             return True
         except (KeyError, AttributeError, RuntimeError) as e:
@@ -268,10 +265,7 @@ class DownloadService(QObject):
     def resume(self, item_id: str) -> bool:
         """Resume a paused download"""
         try:
-            if hasattr(self.queue, "resume"):
-                self.queue.resume(item_id)
-            else:
-                self.queue._items[item_id]["status"] = "pending"
+            self.queue.resume(item_id)
             self.queue_changed.emit()
             return True
         except (KeyError, AttributeError, RuntimeError) as e:
@@ -281,10 +275,7 @@ class DownloadService(QObject):
     def cancel(self, item_id: str) -> bool:
         """Cancel a download"""
         try:
-            if hasattr(self.queue, "cancel"):
-                self.queue.cancel(item_id)
-            else:
-                self.queue._items[item_id]["status"] = "canceled"
+            self.queue.cancel(item_id)
             self.download_canceled.emit(item_id)
             self.queue_changed.emit()
             return True
@@ -295,11 +286,7 @@ class DownloadService(QObject):
     def retry(self, item_id: str) -> bool:
         """Retry a failed download"""
         try:
-            if hasattr(self.queue, "retry"):
-                self.queue.retry(item_id)
-            else:
-                self.queue._items[item_id]["status"] = "pending"
-                self.queue._items[item_id]["progress"] = 0
+            self.queue.retry(item_id)
             self.queue_changed.emit()
             return True
         except (KeyError, AttributeError, RuntimeError) as e:
@@ -307,37 +294,23 @@ class DownloadService(QObject):
             return False
 
     def clear_completed(self) -> int:
-        """
-        Clear completed downloads from queue
+        """Clear completed downloads from queue.
 
         Returns:
-            Number of items cleared
+            Number of items cleared.
         """
         try:
-            if hasattr(self.queue, "clear_completed"):
-                count = self.queue.clear_completed()
-            else:
-                items = self.queue.get_all_items()
-                count = 0
-                for item_id, item in list(items.items()):
-                    if item.get("status") == "completed":
-                        del self.queue._items[item_id]
-                        count += 1
+            count: int = self.queue.clear_completed()
             self.queue_changed.emit()
-            return count  # type: ignore[no-any-return]
+            return count
         except (KeyError, AttributeError, RuntimeError) as e:
             logger.error(f"Error clearing completed: {e}")
             return 0
 
     def clear_all(self) -> int:
-        """Clear all downloads from queue"""
+        """Clear all downloads from queue."""
         try:
-            items = self.queue.get_all_items()
-            count = len(items)
-            if hasattr(self.queue, "clear_all"):
-                self.queue.clear_all()
-            else:
-                self.queue._items.clear()
+            count: int = self.queue.clear_all()
             self.queue_changed.emit()
             return count
         except (KeyError, AttributeError, RuntimeError) as e:

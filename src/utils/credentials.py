@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -65,6 +66,7 @@ _CREDENTIAL_MAP: Dict[str, Dict[str, Any]] = {
 # Cached credentials.json content (loaded once)
 _json_cache: Optional[Dict[str, Any]] = None
 _dotenv_loaded: bool = False
+_creds_lock: threading.Lock = threading.Lock()
 
 
 def _load_from_keyring(key: str) -> Optional[str]:
@@ -75,7 +77,7 @@ def _load_from_keyring(key: str) -> Optional[str]:
         value = kr.get_password(KEYRING_SERVICE, key)
         if value:
             return value
-    except (ImportError, RuntimeError, Exception):  # keyring may not be available
+    except Exception:  # keyring may not be available  # noqa: BLE001
         pass
     return None
 
@@ -86,11 +88,14 @@ def _load_from_env(env_var: str) -> Optional[str]:
 
 
 def _ensure_dotenv() -> None:
-    """Load .env file once if python-dotenv is available."""
+    """Load .env file once if python-dotenv is available (thread-safe)."""
     global _dotenv_loaded
     if _dotenv_loaded:
         return
-    _dotenv_loaded = True
+    with _creds_lock:
+        if _dotenv_loaded:
+            return
+        _dotenv_loaded = True
     try:
         from dotenv import load_dotenv
 
@@ -106,13 +111,23 @@ def _load_from_json(json_path: tuple[str, ...]) -> Optional[str]:
     """Try to load a credential from credentials.json."""
     global _json_cache
     if _json_cache is None:
-        creds_file = os.getenv("CREDENTIALS_PATH") or str(Path.home() / ".claude" / "secrets" / "credentials.json")
-        try:
-            with open(creds_file) as f:
-                _json_cache = json.load(f)
-            logger.debug(f"Loaded credentials from {creds_file}")
-        except (FileNotFoundError, OSError, json.JSONDecodeError):
-            _json_cache = {}
+        with _creds_lock:
+            if _json_cache is None:
+                creds_file = os.getenv("CREDENTIALS_PATH") or str(
+                    Path.home() / ".claude" / "secrets" / "credentials.json"
+                )
+                # Validate credentials path (must be .json)
+                creds_path = Path(creds_file).resolve()
+                if creds_path.suffix.lower() != ".json":
+                    logger.warning("CREDENTIALS_PATH rejected: not a .json file")
+                    _json_cache = {}
+                    return None
+                try:
+                    with open(creds_path) as f:
+                        _json_cache = json.load(f)
+                    logger.debug("Credentials loaded successfully")
+                except (FileNotFoundError, OSError, json.JSONDecodeError):
+                    _json_cache = {}
 
     # Navigate nested dict
     node: Any = _json_cache

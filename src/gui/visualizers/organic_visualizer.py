@@ -28,7 +28,7 @@ from __future__ import annotations
 import ctypes
 import logging
 import time
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from PySide6.QtCore import Qt, QTimer
@@ -245,6 +245,21 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
 
         glBindVertexArray(0)
 
+        # Cache uniform locations to avoid per-frame lookups
+        self._uniform_locs: Dict[str, int] = {}
+        for name in [
+            "u_time",
+            "u_resolution",
+            "u_bass",
+            "u_mids",
+            "u_highs",
+            "u_amplitude",
+            "u_beat",
+            "u_baseColor",
+            "u_accentColor",
+        ]:
+            self._uniform_locs[name] = glGetUniformLocation(self.shader_program, name)
+
     def resizeGL(self, width: int, height: int) -> None:
         """Handle widget resize."""
         if not OPENGL_AVAILABLE:
@@ -260,46 +275,43 @@ class OrganicVisualizerWidget(QOpenGLWidget if OPENGL_AVAILABLE else QWidget):
 
         glUseProgram(self.shader_program)
 
-        # Set uniforms
+        # Set uniforms using cached locations
         current_time = time.time() - self.start_time
+        locs = self._uniform_locs
 
-        # Time
-        loc = glGetUniformLocation(self.shader_program, "u_time")
+        loc = locs.get("u_time", -1)
         if loc >= 0:
             glUniform1f(loc, current_time)
 
-        # Resolution
-        loc = glGetUniformLocation(self.shader_program, "u_resolution")
+        loc = locs.get("u_resolution", -1)
         if loc >= 0:
             glUniform2f(loc, float(self.width()), float(self.height()))
 
-        # Audio uniforms
-        loc = glGetUniformLocation(self.shader_program, "u_bass")
+        loc = locs.get("u_bass", -1)
         if loc >= 0:
             glUniform1f(loc, self.bass)
 
-        loc = glGetUniformLocation(self.shader_program, "u_mids")
+        loc = locs.get("u_mids", -1)
         if loc >= 0:
             glUniform1f(loc, self.mids)
 
-        loc = glGetUniformLocation(self.shader_program, "u_highs")
+        loc = locs.get("u_highs", -1)
         if loc >= 0:
             glUniform1f(loc, self.highs)
 
-        loc = glGetUniformLocation(self.shader_program, "u_amplitude")
+        loc = locs.get("u_amplitude", -1)
         if loc >= 0:
             glUniform1f(loc, self.amplitude)
 
-        loc = glGetUniformLocation(self.shader_program, "u_beat")
+        loc = locs.get("u_beat", -1)
         if loc >= 0:
             glUniform1f(loc, self.beat)
 
-        # Colors
-        loc = glGetUniformLocation(self.shader_program, "u_baseColor")
+        loc = locs.get("u_baseColor", -1)
         if loc >= 0:
             glUniform3f(loc, *self.base_color)
 
-        loc = glGetUniformLocation(self.shader_program, "u_accentColor")
+        loc = locs.get("u_accentColor", -1)
         if loc >= 0:
             glUniform3f(loc, *self.accent_color)
 

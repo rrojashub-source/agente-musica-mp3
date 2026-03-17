@@ -83,7 +83,7 @@ class PlaybackController(QObject):
                 self.now_playing.set_playing(False)
                 self.on_global_song_ended()
             else:
-                self.now_playing._on_stop_clicked()
+                self.now_playing.stop_playback()
 
     # ==========================================
     # Playback Source Routing
@@ -109,7 +109,7 @@ class PlaybackController(QObject):
         else:
             logger.info("Next clicked (library mode)")
             if self.library_tab:
-                self.library_tab._on_next_clicked()
+                self.library_tab.play_next()
 
     def on_global_prev_clicked(self) -> None:
         """Handle prev button — route to correct source"""
@@ -119,7 +119,7 @@ class PlaybackController(QObject):
         else:
             logger.info("Prev clicked (library mode)")
             if self.library_tab:
-                self.library_tab._on_prev_clicked()
+                self.library_tab.play_previous()
 
     def on_global_song_ended(self) -> None:
         """Handle song ended — route to correct source for auto-play"""
@@ -129,7 +129,7 @@ class PlaybackController(QObject):
         else:
             logger.info("Song ended (library mode)")
             if self.library_tab:
-                self.library_tab._on_song_ended()
+                self.library_tab.notify_song_ended()
 
     # ==========================================
     # Playlist Playback
@@ -254,7 +254,7 @@ class PlaybackController(QObject):
 
     def handle_play_pause(self) -> None:
         """Handle Space key — Play/Pause"""
-        self.now_playing._on_play_clicked()
+        self.now_playing.toggle_play_pause()
         logger.debug("Shortcut: Play/Pause toggled")
 
     def handle_seek_backward(self, seconds: float) -> None:

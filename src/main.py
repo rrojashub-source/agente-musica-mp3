@@ -114,7 +114,7 @@ class MusicPlayerApp(QMainWindow):
             QMessageBox.critical(
                 self,
                 "Database Error",
-                f"Failed to initialize database:\n{str(e)}\n\n" f"Please check database connection and migrations.",
+                f"Failed to initialize database:\n{e}\n\nPlease check database connection and migrations.",
             )
             logger.error(f"Database initialization failed: {e}")
             sys.exit(1)
@@ -261,18 +261,15 @@ class MusicPlayerApp(QMainWindow):
         song_id = song_info.get("id")
         if song_id:
             try:
-                self.db_manager.execute_query(
-                    """UPDATE songs
-                       SET play_count = COALESCE(play_count, 0) + 1,
-                           last_played = CURRENT_TIMESTAMP
-                       WHERE id = ?""",
-                    (song_id,),
-                )
+                from services.library_service import LibraryService
+
+                library = LibraryService.get_instance()
+                library.increment_play_count(song_id)
                 logger.debug(f"Play count incremented for song {song_id}")
                 # Refresh statistics if tab exists
                 if hasattr(self, "statistics_tab") and self.statistics_tab:
                     self.statistics_tab.refresh_stats()
-            except sqlite3.Error as e:
+            except Exception as e:  # noqa: BLE001 — GUI boundary, play count is non-critical
                 logger.error(f"Failed to increment play count: {e}")
 
     def closeEvent(self, event: Any) -> None:

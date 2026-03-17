@@ -75,10 +75,14 @@ class DatabaseManager:
 
     def __init__(self, db_path: str = "music_library.db") -> None:
         """Initialize database manager with thread-safe connections"""
-        self.db_path: Path = Path(db_path)
+        self.db_path: Path = Path(db_path).resolve()
         self._local: threading.local = threading.local()  # Thread-local storage for connections
         self._connections: List[sqlite3.Connection] = []  # Track all connections for cleanup
         self._lock: threading.Lock = threading.Lock()  # Lock for connection tracking
+
+        # Validate db_path has a safe extension
+        if self.db_path.suffix.lower() not in (".db", ".sqlite", ".sqlite3"):
+            raise ValueError(f"Invalid database extension: {self.db_path.suffix}")
 
         # Create database directory if needed
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -169,6 +173,9 @@ class DatabaseManager:
                 continue
 
             # Read and execute migration
+            # NOTE: executescript() issues implicit COMMIT before executing, which
+            # means conn.rollback() below cannot undo partial migrations. This is
+            # acceptable because migration scripts are static, bundled files.
             try:
                 sql = migration_file.read_text(encoding="utf-8")
                 cursor.executescript(sql)
@@ -267,11 +274,6 @@ class DatabaseManager:
         except sqlite3.OperationalError:
             # Fallback to LIKE search
             logger.warning("FTS5 not available, using LIKE search")
-            sql = """
-                SELECT * FROM songs
-                WHERE title LIKE ? OR artist LIKE ? OR album LIKE ?
-                LIMIT ?
-            """
             # Escape LIKE wildcards to prevent unintended pattern matching
             escaped = query.replace("%", "\\%").replace("_", "\\_")
             pattern = f"%{escaped}%"
@@ -457,7 +459,7 @@ class DatabaseManager:
             if key not in ALLOWED_SONG_FIELDS:
                 logger.warning(f"Skipping invalid update field: {key}")
                 continue
-            fields.append(f"{key} = ?")
+            fields.append(f'"{key}" = ?')
             values.append(value)
 
         if not fields:
@@ -473,7 +475,7 @@ class DatabaseManager:
 
         try:
             self.execute_query(sql, tuple(values))
-            logger.info(f"Updated song {song_id}: {updates}")
+            logger.info(f"Updated song {song_id}: fields={list(updates.keys())}")
             return True
         except sqlite3.Error as e:
             logger.error(f"Failed to update song {song_id}: {e}")

@@ -34,6 +34,7 @@ class PlaybackState(Enum):
     STOPPED = "stopped"
     PLAYING = "playing"
     PAUSED = "paused"
+    LOADING = "loading"
 
 
 class AudioPlayer:
@@ -129,9 +130,6 @@ class AudioPlayer:
     def _handle_track_end(self, event: Any) -> None:
         """Handle mpv end-file event for track transitions"""
         try:
-            # event['reason'] can be 'eof', 'stop', 'quit', 'error', etc.
-            _reason = event.get("event", {}).get("reason", None) if isinstance(event, dict) else None  # noqa: F841
-
             with self._lock:
                 if self._state != PlaybackState.PLAYING:
                     return
@@ -211,6 +209,7 @@ class AudioPlayer:
     def play(self) -> None:
         """Start playback from beginning"""
         try:
+            needs_duration = False
             with self._lock:
                 if not self._player or not self._current_file:
                     logger.warning("No file loaded")
@@ -219,23 +218,25 @@ class AudioPlayer:
                 self._player.play(self._current_file)
                 self._player.pause = False
                 self._state = PlaybackState.PLAYING
+                needs_duration = self._duration <= 0
 
-                # Update duration from mpv if mutagen didn't get it
-                if self._duration <= 0:
-                    self._update_duration_from_mpv()
+            # Poll for duration OUTSIDE the lock to avoid blocking other threads
+            if needs_duration:
+                self._update_duration_from_mpv()
 
             logger.debug("Playback started")
         except Exception as e:  # mpv raises RuntimeError for various playback failures
             logger.error(f"Failed to play: {e}")
 
     def _update_duration_from_mpv(self) -> None:
-        """Try to get duration from mpv (call within lock)"""
+        """Try to get duration from mpv (polls outside the lock)."""
         try:
             # mpv needs a moment to parse the file
             for _ in range(10):
                 dur = self._player.duration  # type: ignore[union-attr]
                 if dur is not None and dur > 0:
-                    self._duration = dur
+                    with self._lock:
+                        self._duration = dur
                     break
                 time.sleep(0.05)
         except (RuntimeError, OSError):
@@ -294,6 +295,7 @@ class AudioPlayer:
             return
 
         try:
+            needs_wait = False
             with self._lock:
                 was_paused = self._state == PlaybackState.PAUSED
 
@@ -301,9 +303,13 @@ class AudioPlayer:
                 if self._state == PlaybackState.STOPPED:
                     self._player.play(self._current_file)
                     self._state = PlaybackState.PLAYING
-                    # Wait for mpv to be ready
-                    time.sleep(0.05)
+                    needs_wait = True
 
+            # Wait for mpv to be ready OUTSIDE the lock
+            if needs_wait:
+                time.sleep(0.05)
+
+            with self._lock:
                 self._player.seek(position, reference="absolute")
 
                 if was_paused:

@@ -147,7 +147,7 @@ class LibraryOrganizer:
 
             except (OSError, sqlite3.Error, ValueError) as e:
                 result["failed"] += 1  # type: ignore[operator]
-                result["errors"].append(f"Error: {song.get('file_path', 'unknown')}: {str(e)}")  # type: ignore[union-attr]
+                result["errors"].append(f"Error: {song.get('file_path', 'unknown')}: {e}")  # type: ignore[union-attr]
                 logger.error(f"Organization error: {e}")
 
         logger.info(f"Organization complete: {result['success']} success, {result['failed']} failed")
@@ -183,8 +183,12 @@ class LibraryOrganizer:
             # Fallback to simple template
             relative_path = f"{metadata['artist']}/{metadata['title']}.mp3"
 
-        # Combine with base path
-        full_path = Path(base_path) / relative_path
+        # Combine with base path and verify confinement (path traversal prevention)
+        base = Path(base_path).resolve()
+        full_path = (base / relative_path).resolve()
+
+        if not str(full_path).startswith(str(base)):
+            raise ValueError("Constructed path escapes base directory")
 
         return full_path
 
@@ -353,7 +357,7 @@ class LibraryOrganizer:
 
             except (OSError, sqlite3.Error) as e:
                 result["failed"] += 1  # type: ignore[operator]
-                result["errors"].append(f"Rollback error: {str(e)}")  # type: ignore[union-attr]
+                result["errors"].append(f"Rollback error: {e}")  # type: ignore[union-attr]
                 logger.error(f"Rollback error: {e}")
 
         logger.info(f"Rollback complete: {result['success']} restored, {result['failed']} failed")

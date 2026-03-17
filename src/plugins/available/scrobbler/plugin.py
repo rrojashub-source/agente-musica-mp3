@@ -9,11 +9,7 @@ This plugin shows how to:
 """
 
 import logging
-import sys
-from pathlib import Path
 from typing import Any, Dict
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from plugins.plugin_base import Plugin, PluginHook, PluginMetadata
 from utils.constants import DEFAULT_ARTIST
@@ -30,6 +26,7 @@ class ScrobblerPlugin(Plugin):
     def __init__(self) -> None:
         super().__init__()
         self._scrobble_queue: list[dict[str, Any]] = []
+        self._MAX_QUEUE_SIZE: int = 100
         self._current_song: dict[str, Any] | None = None
         self._play_start_time: float | None = None
 
@@ -139,6 +136,12 @@ class ScrobblerPlugin(Plugin):
         }
         self._scrobble_queue.append(scrobble)
         logger.debug(f"Queued scrobble: {scrobble['track']}")
+
+        # Drop oldest if queue exceeds max size (prevent unbounded growth)
+        if len(self._scrobble_queue) > self._MAX_QUEUE_SIZE:
+            dropped = len(self._scrobble_queue) - self._MAX_QUEUE_SIZE
+            self._scrobble_queue = self._scrobble_queue[dropped:]
+            logger.warning(f"Scrobble queue overflow: dropped {dropped} oldest entries")
 
         # Auto-flush if queue is getting large
         if len(self._scrobble_queue) >= 10:

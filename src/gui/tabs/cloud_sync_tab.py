@@ -14,6 +14,7 @@ Created: November 24, 2025
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -398,7 +399,8 @@ class CloudSyncTab(BaseTab):
                 self.gdrive_connect_btn.hide()
                 self.gdrive_logout_btn.show()
                 self._update_connection_status(True)
-                self._log(f"Connected to Google Drive as {user_email}")
+                safe_email = str(user_email).replace("\n", "").replace("\r", "")
+                self._log(f"Connected to Google Drive as {safe_email}")
 
                 QMessageBox.information(self, tr("cloud_sync_success"), tr("cloud_sync_gdrive_success_msg"))
             else:
@@ -528,8 +530,6 @@ class CloudSyncTab(BaseTab):
                 if self.sync_service:
                     export_data = self.sync_service.export_library(self.db_manager)
                     with open(file_path, "w", encoding="utf-8") as f:
-                        import json
-
                         json.dump(export_data.__dict__, f, indent=2)
                     self._log(f"Library exported to: {file_path}")
                     QMessageBox.information(
@@ -552,8 +552,6 @@ class CloudSyncTab(BaseTab):
             try:
                 if self.sync_service:
                     with open(file_path, "r", encoding="utf-8") as f:
-                        import json
-
                         data = json.load(f)
 
                     # Confirm import

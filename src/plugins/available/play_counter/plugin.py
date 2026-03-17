@@ -12,13 +12,10 @@ import json
 import logging
 
 # Import from parent plugins package
-import sys
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from plugins.plugin_base import Plugin, PluginHook, PluginMetadata
 

@@ -8,6 +8,11 @@ Created: March 11, 2026
 """
 
 # ==========================================
+# Application Identity
+# ==========================================
+APP_VERSION = "2.1.0"
+
+# ==========================================
 # Audio Engine (python-mpv)
 # ==========================================
 # Note: mpv handles sample rate/channels/buffer internally

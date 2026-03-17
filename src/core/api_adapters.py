@@ -6,6 +6,7 @@ Created: November 18, 2025
 """
 
 import logging
+import re
 from typing import Any, Dict, List
 
 from utils.constants import DEFAULT_ALBUM, DEFAULT_ARTIST
@@ -43,8 +44,6 @@ class MusicBrainzAdapter:
         """
         # Extract title and artist from query
         # Query format: 'recording:"title" AND artist:"artist"'
-        import re
-
         title_match = re.search(r'recording:"([^"]+)"', query)
         artist_match = re.search(r'artist:"([^"]+)"', query)
 
@@ -118,8 +117,6 @@ class SpotifyAdapter:
         """
         # Extract title and artist from query
         # Query format: "track:title artist:artist"
-        import re
-
         track_match = re.search(r"track:([^\s]+(?:\s+[^\s]+)*?)(?:\s+artist:|$)", query)
         artist_match = re.search(r"artist:(.+)", query)
 

@@ -25,8 +25,8 @@ from requests.exceptions import ConnectionError as RequestsConnectionError  # ty
 from requests.exceptions import Timeout
 
 from api._cache import APICache
-from utils.constants import API_CACHE_SIZE, API_DEFAULT_RESULTS, API_MAX_RESULTS, API_QUERY_MAX_LENGTH
-from utils.input_sanitizer import sanitize_query
+from api._validation import validate_search_query
+from utils.constants import API_CACHE_SIZE, API_DEFAULT_RESULTS
 from utils.rate_limiter import RateLimiter
 
 # Setup logger
@@ -50,7 +50,7 @@ class YouTubeSearcher:
             api_key (str): YouTube Data API v3 key
             cache_size (int): Size of LRU cache for search results (default: 128)
         """
-        self.api_key: str = api_key
+        self._api_key: str = api_key
         self.youtube: Any = build("youtube", "v3", developerKey=api_key)
         self._cache = APICache(max_size=cache_size)
         self._retry_attempts: int = 3
@@ -75,20 +75,11 @@ class YouTubeSearcher:
             >>> searcher.search("Bohemian Rhapsody Queen")
             [{'video_id': 'fJ9rUzIMcZQ', 'title': 'Queen - Bohemian Rhapsody', ...}]
         """
-        # Input validation
-        if not query or query is None:
-            logger.warning("Empty or None query received")
+        # Validate and sanitize
+        validated, max_results = validate_search_query(query, max_results)
+        if validated is None:
             return []
-
-        # Sanitize query (remove injection attempts, control chars, truncate)
-        query = sanitize_query(query, max_length=API_QUERY_MAX_LENGTH)
-
-        if not query:
-            logger.warning("Query became empty after sanitization")
-            return []
-
-        # Limit max_results to YouTube API maximum
-        max_results = min(max_results, API_MAX_RESULTS)
+        query = validated
 
         # Check cache first
         if use_cache:
@@ -116,14 +107,14 @@ class YouTubeSearcher:
                 return results
 
             except HttpError as e:
-                # Handle YouTube API errors
+                # Handle YouTube API errors (sanitized: str(e) may contain API key)
                 if e.resp.status == 403:
-                    error_msg = str(e)
-                    if "quota" in error_msg.lower():
+                    error_reason = getattr(e.resp, "reason", "unknown")
+                    if "quota" in error_reason.lower() or "quota" in str(getattr(e, "reason", "")).lower():
                         logger.error("YouTube API quota exceeded - cannot retry")
                         return []
                     else:
-                        logger.error(f"YouTube API 403 error: {error_msg}")
+                        logger.error(f"YouTube API 403 error: status={e.resp.status}, reason={error_reason}")
                         # Retry with exponential backoff
                         if attempt < self._retry_attempts - 1:
                             delay = self._retry_delay * (2**attempt)
@@ -133,10 +124,10 @@ class YouTubeSearcher:
                         else:
                             return []
                 elif e.resp.status == 400:
-                    logger.error(f"YouTube API bad request: {e}")
+                    logger.error(f"YouTube API bad request: status={e.resp.status}")
                     return []  # Don't retry on bad requests
                 else:
-                    logger.error(f"YouTube API error ({e.resp.status}): {e}")
+                    logger.error(f"YouTube API error: status={e.resp.status}")
                     # Retry for other errors
                     if attempt < self._retry_attempts - 1:
                         delay = self._retry_delay * (2**attempt)

@@ -91,10 +91,7 @@ class AudioEmbeddings:
             return
 
         try:
-            conn = self.db_manager.conn
-            cursor = conn.cursor()
-
-            cursor.execute(
+            self.db_manager.execute_query(
                 """
                 CREATE TABLE IF NOT EXISTS audio_embeddings (
                     song_id INTEGER PRIMARY KEY,
@@ -106,14 +103,13 @@ class AudioEmbeddings:
             """
             )
 
-            cursor.execute(
+            self.db_manager.execute_query(
                 """
                 CREATE INDEX IF NOT EXISTS idx_embeddings_hash
                 ON audio_embeddings(file_hash)
             """
             )
 
-            conn.commit()
             logger.debug("Embeddings table ready")
 
         except sqlite3.Error as e:
@@ -205,7 +201,7 @@ class AudioEmbeddings:
                 first_chunk = f.read(FILE_HASH_CHUNK_SIZE)
 
             content = f"{size}:".encode() + first_chunk
-            return hashlib.md5(content).hexdigest()
+            return hashlib.sha256(content).hexdigest()
 
         except OSError:
             return ""
@@ -216,8 +212,7 @@ class AudioEmbeddings:
             return None
 
         try:
-            cursor = self.db_manager.conn.cursor()
-            cursor.execute(
+            row = self.db_manager.fetch_one(
                 """
                 SELECT embedding FROM audio_embeddings
                 WHERE song_id = ? AND file_hash = ?
@@ -225,9 +220,8 @@ class AudioEmbeddings:
                 (song_id, file_hash),
             )
 
-            row = cursor.fetchone()
             if row:
-                return np.frombuffer(row[0], dtype=np.float32)
+                return np.frombuffer(row["embedding"], dtype=np.float32)
 
         except sqlite3.Error as e:
             logger.debug(f"Cache lookup failed: {e}")
@@ -240,9 +234,7 @@ class AudioEmbeddings:
             return
 
         try:
-            cursor = self.db_manager.conn.cursor()
-
-            cursor.execute(
+            self.db_manager.execute_query(
                 """
                 INSERT OR REPLACE INTO audio_embeddings (song_id, embedding, file_hash)
                 VALUES (?, ?, ?)
@@ -250,7 +242,6 @@ class AudioEmbeddings:
                 (song_id, embedding.tobytes(), file_hash),
             )
 
-            self.db_manager.conn.commit()
             logger.debug(f"Cached embedding for song {song_id}")
 
         except sqlite3.Error as e:
@@ -291,11 +282,23 @@ class AudioEmbeddings:
         all_songs = self.db_manager.get_all_songs()
         similar_songs = []
 
+        # Batch-load all cached embeddings in one query to avoid N+1
+        cached_embeddings: Dict[int, Any] = {}
+        try:
+            rows = self.db_manager.fetch_all("SELECT song_id, embedding, file_hash FROM audio_embeddings")
+            for row in rows:
+                cached_embeddings[row["song_id"]] = np.frombuffer(row["embedding"], dtype=np.float32)
+        except sqlite3.Error:
+            pass  # Fall back to per-song loading
+
         for song in all_songs:
             if song["id"] == song_id:
                 continue
 
-            embedding = self.get_or_create_embedding(song["id"], song["file_path"])
+            # Use batch-loaded embedding if available, else compute
+            embedding = cached_embeddings.get(song["id"])
+            if embedding is None:
+                embedding = self.get_or_create_embedding(song["id"], song["file_path"])
 
             if embedding is None:
                 continue
@@ -390,13 +393,11 @@ class AudioEmbeddings:
             return {"total": 0, "coverage": 0}
 
         try:
-            cursor = self.db_manager.conn.cursor()
+            cached_row = self.db_manager.fetch_one("SELECT COUNT(*) as cnt FROM audio_embeddings")
+            cached = cached_row["cnt"] if cached_row else 0
 
-            cursor.execute("SELECT COUNT(*) FROM audio_embeddings")
-            cached = cursor.fetchone()[0]
-
-            cursor.execute("SELECT COUNT(*) FROM songs")
-            total = cursor.fetchone()[0]
+            total_row = self.db_manager.fetch_one("SELECT COUNT(*) as cnt FROM songs")
+            total = total_row["cnt"] if total_row else 0
 
             coverage = (cached / total * 100) if total > 0 else 0
 

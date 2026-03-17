@@ -21,7 +21,17 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QFont, QTextCursor
-from PySide6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QLabel, QPushButton, QSplitter, QTextBrowser, QVBoxLayout
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSplitter,
+    QTextBrowser,
+    QVBoxLayout,
+)
 
 from gui.base import BaseTab
 from gui.base.base_worker import BaseWorker
@@ -481,8 +491,6 @@ class ChordsTab(BaseTab):
 
     def _on_copy_chords(self) -> None:
         """Copy chords to clipboard as plain text."""
-        from PySide6.QtWidgets import QApplication
-
         if not self._chords:
             self.status_label.setText("⚠️ No hay acordes para copiar")
             return

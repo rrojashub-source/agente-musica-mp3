@@ -19,8 +19,6 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QObject, Signal
 
-from database.manager import ALLOWED_SONG_FIELDS
-
 logger = logging.getLogger(__name__)
 
 
@@ -223,6 +221,10 @@ class LibraryService(QObject):
         """
         Update song metadata
 
+        Delegates field validation, modified_date update, and SQL execution
+        to DatabaseManager.update_song(). Adds signal emission and cache
+        invalidation on top.
+
         Args:
             song_id: Song ID to update
             updates: Dictionary of fields to update
@@ -231,31 +233,17 @@ class LibraryService(QObject):
             True if successful
         """
         try:
-            # Build UPDATE query dynamically
-            fields = []
-            values = []
-            for key, value in updates.items():
-                if key == "id":
-                    continue
-                if key not in ALLOWED_SONG_FIELDS:
-                    logger.warning(f"Skipping invalid update field: {key}")
-                    continue
-                fields.append(f"{key} = ?")
-                values.append(value)
-
-            if not fields:
+            # Filter out 'id' before delegating
+            filtered = {k: v for k, v in updates.items() if k != "id"}
+            if not filtered:
                 return False
 
-            values.append(song_id)
-            query = f"UPDATE songs SET {', '.join(fields)} WHERE id = ?"
-
-            self.db.execute_query(query, tuple(values))
-            self.song_updated.emit(song_id)
-            self._invalidate_stats_cache()
-
-            logger.info(f"Updated song {song_id}: {list(updates.keys())}")
-            return True
-        except sqlite3.Error as e:
+            result: bool = self.db.update_song(song_id, filtered)
+            if result:
+                self.song_updated.emit(song_id)
+                self._invalidate_stats_cache()
+            return result
+        except (sqlite3.Error, AttributeError) as e:
             logger.error(f"Error updating song {song_id}: {e}")
             self.error_occurred.emit(f"Failed to update song: {e}")
             return False

@@ -56,6 +56,7 @@ class ChordsClient:
         """
         self.db_manager: Any = db_manager
         self._cache: Dict[int, List[Dict[str, Any]]] = {}  # {song_id: list[dict]}
+        self._MAX_CACHE_SIZE: int = 200
         self._librosa: Any = None
         self._np: Any = None
 
@@ -99,8 +100,11 @@ class ChordsClient:
         if chords is None:
             return None
 
-        # Cache results
+        # Cache results with bounded eviction
         if song_id:
+            if len(self._cache) >= self._MAX_CACHE_SIZE:
+                oldest_key = next(iter(self._cache))
+                del self._cache[oldest_key]
             self._cache[song_id] = chords
             if self.db_manager:
                 self._save_to_db(song_id, chords)
@@ -281,9 +285,9 @@ class ChordsClient:
     def _load_from_db(self, song_id: int) -> Optional[List[Dict[str, Any]]]:
         """Load cached chords from database."""
         try:
-            row = self.db_manager.execute_query("SELECT chords FROM songs WHERE id = ?", (song_id,))
-            if row and row[0] and row[0][0]:
-                return json.loads(row[0][0])  # type: ignore[no-any-return]
+            row = self.db_manager.fetch_one("SELECT chords FROM songs WHERE id = ?", (song_id,))
+            if row and row.get("chords"):
+                return json.loads(row["chords"])  # type: ignore[no-any-return]
         except (ValueError, KeyError, TypeError) as e:
             logger.debug(f"No cached chords for song {song_id}: {e}")
         return None

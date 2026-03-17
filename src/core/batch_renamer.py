@@ -152,7 +152,7 @@ class BatchRenamer:
 
             except (OSError, KeyError, ValueError) as e:
                 result["failed"] += 1  # type: ignore[operator]
-                result["errors"].append(f"Error: {song.get('file_path', 'unknown')}: {str(e)}")  # type: ignore[union-attr]
+                result["errors"].append(f"Error: {song.get('file_path', 'unknown')}: {e}")  # type: ignore[union-attr]
                 logger.error(f"Rename error: {e}")
 
         logger.info(f"Rename complete: {result['success']} success, {result['failed']} failed")

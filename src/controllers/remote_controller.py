@@ -71,50 +71,41 @@ class RemoteController(QObject):
 
     def handle_command(self, command: str, params: dict[str, Any]) -> None:
         """Handle remote commands in main Qt thread (thread-safe via signal)"""
-        logger.info(f"Handling remote command: {command} with params: {params}")
+        logger.debug(f"Handling remote command: {command} with params: {params}")
+
+        handlers: dict[str, Callable[[dict[str, Any]], None]] = {
+            "play": lambda p: self._set_playback_state(playing=True),
+            "pause": lambda p: self._set_playback_state(playing=False),
+            "toggle": lambda p: self._set_playback_state(playing=not self.audio_player.is_playing()),
+            "next": lambda p: self._global_next_callback() if self._global_next_callback else None,
+            "previous": lambda p: self._global_prev_callback() if self._global_prev_callback else None,
+            "volume": lambda p: self._handle_volume(p),
+            "seek": lambda p: self.audio_player.seek(max(0, int(p.get("position", 0)))),
+        }
 
         try:
-            if command == "play":
-                self.audio_player.play()
-                if hasattr(self.now_playing, "set_playing"):
-                    self.now_playing.set_playing(True)
-
-            elif command == "pause":
-                self.audio_player.pause()
-                if hasattr(self.now_playing, "set_playing"):
-                    self.now_playing.set_playing(False)
-
-            elif command == "toggle":
-                if self.audio_player.is_playing():
-                    self.audio_player.pause()
-                    if hasattr(self.now_playing, "set_playing"):
-                        self.now_playing.set_playing(False)
-                else:
-                    self.audio_player.play()
-                    if hasattr(self.now_playing, "set_playing"):
-                        self.now_playing.set_playing(True)
-
-            elif command == "next":
-                if self._global_next_callback:
-                    self._global_next_callback()
-
-            elif command == "previous":
-                if self._global_prev_callback:
-                    self._global_prev_callback()
-
-            elif command == "volume":
-                volume = params.get("volume", 100)
-                self.audio_player.set_volume(volume / 100.0)
-                self._sync_volume_ui(volume)
-
-            elif command == "seek":
-                position = params.get("position", 0)
-                self.audio_player.seek(position)
-
+            handler = handlers.get(command)
+            if handler:
+                handler(params)
             logger.info(f"Remote command '{command}' executed in main thread")
 
         except (RuntimeError, AttributeError, ValueError) as e:
             logger.error(f"Error handling remote command '{command}': {e}")
+
+    def _set_playback_state(self, *, playing: bool) -> None:
+        """Set play/pause state on audio player and UI."""
+        if playing:
+            self.audio_player.play()
+        else:
+            self.audio_player.pause()
+        if hasattr(self.now_playing, "set_playing"):
+            self.now_playing.set_playing(playing)
+
+    def _handle_volume(self, params: dict[str, Any]) -> None:
+        """Set volume from remote params (with defensive clamping)."""
+        volume = max(0, min(100, int(params.get("volume", 100))))
+        self.audio_player.set_volume(volume / 100.0)
+        self._sync_volume_ui(volume)
 
     def update_now_playing(self) -> None:
         """Update RemoteServer with current playback info"""

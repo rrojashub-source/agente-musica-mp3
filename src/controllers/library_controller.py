@@ -58,9 +58,9 @@ class LibraryController:
         if self.library_tab and self.tabs:
             self.tabs.setCurrentWidget(self.library_tab)
 
-            if hasattr(self.library_tab, "search_input"):
-                self.library_tab.search_input.setText(album_name)
-                self.library_tab.search_input.returnPressed.emit()
+            if hasattr(self.library_tab, "search_box"):
+                self.library_tab.search_box.setText(album_name)
+                self.library_tab.search_box.returnPressed.emit()
 
             if self.status_bar:
                 self.status_bar.showMessage(f"Showing album: {album_name}", 3000)
@@ -82,8 +82,8 @@ class LibraryController:
         """Handle Ctrl+F — Focus search tab and input"""
         if self.search_tab and self.tabs:
             self.tabs.setCurrentWidget(self.search_tab)
-            if hasattr(self.search_tab, "search_input"):
-                self.search_tab.search_input.setFocus()
+            if hasattr(self.search_tab, "search_box"):
+                self.search_tab.search_box.setFocus()
                 logger.debug("Shortcut: Focused search")
 
     def handle_switch_tab(self, tab_name: str) -> None:

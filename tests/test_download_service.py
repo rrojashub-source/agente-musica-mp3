@@ -17,7 +17,7 @@ Tests cover:
 import os
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -262,20 +262,9 @@ class TestPauseResumeCancel:
         mock_queue.pause.assert_called_once_with("item1")
         service.queue_changed.emit.assert_called_once()
 
-    def test_pause_without_method(self, service, mock_queue):
-        """Should fall back to setting status directly"""
-        del mock_queue.pause  # Remove pause method
-        mock_queue._items = {"item1": {"status": "downloading"}}
-
-        result = service.pause("item1")
-
-        assert result is True
-        assert mock_queue._items["item1"]["status"] == "paused"
-
     def test_pause_error(self, service, mock_queue):
         """Should return False on error"""
-        del mock_queue.pause
-        mock_queue._items = {}
+        mock_queue.pause.side_effect = KeyError("not found")
 
         result = service.pause("nonexistent")
 
@@ -308,16 +297,13 @@ class TestPauseResumeCancel:
         assert result is True
         service.queue_changed.emit.assert_called_once()
 
-    def test_retry_without_method(self, service, mock_queue):
-        """Should fall back to resetting status"""
-        del mock_queue.retry
-        mock_queue._items = {"item1": {"status": "failed", "progress": 50}}
+    def test_retry_error(self, service, mock_queue):
+        """Should return False on error"""
+        mock_queue.retry.side_effect = KeyError("not found")
 
         result = service.retry("item1")
 
-        assert result is True
-        assert mock_queue._items["item1"]["status"] == "pending"
-        assert mock_queue._items["item1"]["progress"] == 0
+        assert result is False
 
 
 class TestClearOperations:
@@ -332,28 +318,9 @@ class TestClearOperations:
         assert result == 3
         service.queue_changed.emit.assert_called_once()
 
-    def test_clear_completed_fallback(self, service, mock_queue):
-        """Should manually clear completed items"""
-        del mock_queue.clear_completed
-        mock_queue.get_all_items.return_value = {
-            "a": {"status": "completed"},
-            "b": {"status": "downloading"},
-            "c": {"status": "completed"},
-        }
-        mock_queue._items = {
-            "a": {"status": "completed"},
-            "b": {"status": "downloading"},
-            "c": {"status": "completed"},
-        }
-
-        result = service.clear_completed()
-
-        assert result == 2
-
     def test_clear_all(self, service, mock_queue):
         """Should clear all items"""
-        mock_queue.get_all_items.return_value = {"a": {}, "b": {}, "c": {}}
-        mock_queue.clear_all = MagicMock()
+        mock_queue.clear_all.return_value = 3
 
         result = service.clear_all()
 
@@ -362,7 +329,7 @@ class TestClearOperations:
 
     def test_clear_all_error(self, service, mock_queue):
         """Should return 0 on error"""
-        mock_queue.get_all_items.side_effect = AttributeError("fail")
+        mock_queue.clear_all.side_effect = AttributeError("fail")
 
         result = service.clear_all()
 

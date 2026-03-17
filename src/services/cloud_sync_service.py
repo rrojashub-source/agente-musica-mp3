@@ -305,8 +305,6 @@ class GoogleDriveProvider(CloudProvider):
     @classmethod
     def _load_client_config(cls) -> Dict[str, Any]:
         """Load OAuth credentials from config file"""
-        import json
-
         config_path = Path.home() / ".nexus_music" / "cloud" / "gdrive_credentials.json"
 
         if config_path.exists():
@@ -536,10 +534,12 @@ class GoogleDriveProvider(CloudProvider):
         if not self._service or not self._folder_id:
             return None
 
+        # Escape single quotes to prevent Drive query injection
+        safe_filename = filename.replace("\\", "\\\\").replace("'", "\\'")
         results = (
             self._service.files()
             .list(
-                q=f"name='{filename}' and '{self._folder_id}' in parents and trashed=false",
+                q=f"name='{safe_filename}' and '{self._folder_id}' in parents and trashed=false",
                 spaces="drive",
                 fields="files(id, name, modifiedTime)",
             )
@@ -854,49 +854,58 @@ class CloudSyncService(QObject):
             # Step 2: Check for remote library
             self.sync_progress.emit("checking", "Checking remote library...", 30)
 
-            if self._provider.exists(self.SYNC_FILENAME):  # type: ignore[union-attr]
-                # Download remote
-                self.sync_progress.emit("downloading", "Downloading remote library...", 40)
-                self._state.status = SyncStatus.DOWNLOADING.value
+            temp_remote = self._data_dir / "temp_remote.json"
+            temp_upload = self._data_dir / "temp_upload.json"
 
-                temp_file = self._data_dir / "temp_remote.json"
-                if self._provider.download(self.SYNC_FILENAME, str(temp_file)):  # type: ignore[union-attr]
-                    remote_data = json.loads(temp_file.read_text())
-                    remote_export = LibraryExport.from_dict(remote_data)
-                    remote_hash = remote_export.compute_hash()
+            try:
+                if self._provider.exists(self.SYNC_FILENAME):  # type: ignore[union-attr]
+                    # Download remote
+                    self.sync_progress.emit("downloading", "Downloading remote library...", 40)
+                    self._state.status = SyncStatus.DOWNLOADING.value
 
-                    # Check for changes
-                    if local_hash == remote_hash:
-                        self.sync_progress.emit("complete", "Already in sync", 100)
-                        self._update_sync_state(local_hash)
-                        self.sync_completed.emit(True, "Library already in sync")
-                        return True
+                    if self._provider.download(self.SYNC_FILENAME, str(temp_remote)):  # type: ignore[union-attr]
+                        remote_data = json.loads(temp_remote.read_text())
+                        remote_export = LibraryExport.from_dict(remote_data)
+                        remote_hash = remote_export.compute_hash()
 
-                    # Merge libraries
-                    self.sync_progress.emit("merging", "Merging changes...", 60)
-                    merged = self._merge_exports(local_export, remote_export)
+                        # Check for changes
+                        if local_hash == remote_hash:
+                            self.sync_progress.emit("complete", "Already in sync", 100)
+                            self._update_sync_state(local_hash)
+                            self.sync_completed.emit(True, "Library already in sync")
+                            return True
+
+                        # Merge libraries
+                        self.sync_progress.emit("merging", "Merging changes...", 60)
+                        merged = self._merge_exports(local_export, remote_export)
+                    else:
+                        merged = local_export
                 else:
+                    # No remote - use local
                     merged = local_export
-            else:
-                # No remote - use local
-                merged = local_export
 
-            # Step 3: Upload merged library
-            self.sync_progress.emit("uploading", "Uploading to cloud...", 80)
-            self._state.status = SyncStatus.UPLOADING.value
+                # Step 3: Upload merged library
+                self.sync_progress.emit("uploading", "Uploading to cloud...", 80)
+                self._state.status = SyncStatus.UPLOADING.value
 
-            temp_file = self._data_dir / "temp_upload.json"
-            temp_file.write_text(json.dumps(merged.to_dict(), indent=2))
+                temp_upload.write_text(json.dumps(merged.to_dict(), indent=2))
 
-            if self._provider.upload(str(temp_file), self.SYNC_FILENAME):  # type: ignore[union-attr]
-                self._update_sync_state(merged.compute_hash())
-                self.sync_progress.emit("complete", "Sync completed", 100)
-                self._state.status = SyncStatus.COMPLETED.value
-                self.status_changed.emit(SyncStatus.COMPLETED)
-                self.sync_completed.emit(True, f"Synced {len(merged.songs)} songs")
-                return True
-            else:
-                raise Exception("Failed to upload to cloud")
+                if self._provider.upload(str(temp_upload), self.SYNC_FILENAME):  # type: ignore[union-attr]
+                    self._update_sync_state(merged.compute_hash())
+                    self.sync_progress.emit("complete", "Sync completed", 100)
+                    self._state.status = SyncStatus.COMPLETED.value
+                    self.status_changed.emit(SyncStatus.COMPLETED)
+                    self.sync_completed.emit(True, f"Synced {len(merged.songs)} songs")
+                    return True
+                else:
+                    raise Exception("Failed to upload to cloud")
+            finally:
+                # Clean up temp files to prevent data leakage
+                for tf in (temp_remote, temp_upload):
+                    try:
+                        tf.unlink(missing_ok=True)
+                    except OSError:
+                        pass
 
         except Exception as e:  # sync orchestrates network/disk/DB - all failures must reach UI
             # Broad catch intentional: sync() orchestrates network, disk, JSON and DB

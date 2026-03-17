@@ -8,11 +8,17 @@ Created: November 18, 2025
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import musicbrainzngs
 import requests  # type: ignore[import-untyped]
+
+# Max download size for cover art (10 MB)
+_MAX_COVER_SIZE = 10 * 1024 * 1024
+# UUID regex for MusicBrainz Release IDs
+_MBID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
 
 logger = logging.getLogger(__name__)
 
@@ -110,15 +116,25 @@ class CoverArtManager:
                 save_path = album_dir / "cover.jpg"
 
             assert save_path is not None  # Set above if not provided
-            # Download cover
-            response = requests.get(cover_url, timeout=10)
+            # Download cover with size limit and content-type validation
+            response = requests.get(cover_url, timeout=10, stream=True)
 
             if response.status_code == 200:
+                content_type = response.headers.get("Content-Type", "")
+                if not content_type.startswith("image/"):
+                    logger.warning(f"Cover rejected: unexpected Content-Type ({content_type})")
+                    return False
+
+                content = response.content
+                if len(content) > _MAX_COVER_SIZE:
+                    logger.warning("Cover rejected: exceeds maximum size")
+                    return False
+
                 # Save image
                 with open(save_path, "wb") as f:
-                    f.write(response.content)
+                    f.write(content)
 
-                logger.info(f"Cover downloaded: {save_path}")
+                logger.info("Cover downloaded successfully")
                 return True
             else:
                 logger.warning(f"Failed to download cover: HTTP {response.status_code}")
@@ -133,33 +149,54 @@ class CoverArtManager:
         Download cover art using MusicBrainz Release ID
 
         Args:
-            release_mbid: MusicBrainz Release ID
-            save_path: Path to save cover
+            release_mbid: MusicBrainz Release ID (UUID format)
+            save_path: Path to save cover (must be within cover_dir)
 
         Returns:
             bool: True if successful
         """
+        # Validate MBID format (prevent URL injection)
+        if not _MBID_PATTERN.match(release_mbid):
+            logger.warning("Invalid MBID format")
+            return False
+
+        # Validate save_path stays within cover_dir
+        resolved = Path(save_path).resolve()
+        if not str(resolved).startswith(str(self.cover_dir.resolve())):
+            logger.warning("Cover save path rejected: outside cover directory")
+            return False
+
         try:
             cover_url = f"https://coverartarchive.org/release/{release_mbid}/front"
 
-            response = requests.get(cover_url, timeout=10)
+            response = requests.get(cover_url, timeout=10, stream=True)
 
             if response.status_code == 200:
+                content_type = response.headers.get("Content-Type", "")
+                if not content_type.startswith("image/"):
+                    logger.warning(f"Cover rejected: unexpected Content-Type ({content_type})")
+                    return False
+
+                content = response.content
+                if len(content) > _MAX_COVER_SIZE:
+                    logger.warning("Cover rejected: exceeds maximum size")
+                    return False
+
                 # Create directory if needed
-                Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+                resolved.parent.mkdir(parents=True, exist_ok=True)
 
                 # Save image
-                with open(save_path, "wb") as f:
-                    f.write(response.content)
+                with open(resolved, "wb") as f:
+                    f.write(content)
 
-                logger.info(f"Cover downloaded from MBID: {save_path}")
+                logger.info("Cover downloaded from MBID successfully")
                 return True
             else:
                 logger.warning(f"No cover found for MBID {release_mbid}")
                 return False
 
         except (requests.RequestException, OSError) as e:
-            logger.error(f"Error downloading cover for MBID {release_mbid}: {e}")
+            logger.error(f"Error downloading cover from MBID: {e}")
             return False
 
     def get_cover_path(self, artist: str, album: str) -> Path:

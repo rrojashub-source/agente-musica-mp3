@@ -19,10 +19,22 @@ Created: November 13, 2025
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any, Dict, Optional
 
-from PySide6.QtCore import QPointF, Qt, QTimer, Signal
-from PySide6.QtGui import QBrush, QColor, QEnterEvent, QPainter, QPainterPath, QPaintEvent, QPen, QPixmap, QPolygonF
+from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QEnterEvent,
+    QFont,
+    QPainter,
+    QPainterPath,
+    QPaintEvent,
+    QPen,
+    QPixmap,
+    QPolygonF,
+)
 from PySide6.QtWidgets import (
     QFrame,
     QGraphicsDropShadowEffect,
@@ -263,8 +275,6 @@ class NeonIconButton(QPushButton):
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
         # Draw arc
-        from PySide6.QtCore import QRectF
-
         rect = QRectF(cx - scale, cy - scale * 0.7, scale * 2, scale * 1.4)
         painter.drawArc(rect, 30 * 16, 280 * 16)  # Almost full circle
 
@@ -274,7 +284,6 @@ class NeonIconButton(QPushButton):
 
     def _draw_small_arrow(self, painter: QPainter, x: float, y: float, angle: float) -> None:
         """Draw a small arrow head"""
-        import math
 
         size = 5
         rad = math.radians(angle)
@@ -292,8 +301,6 @@ class NeonIconButton(QPushButton):
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
         # Draw arc (same as repeat)
-        from PySide6.QtCore import QRectF
-
         rect = QRectF(cx - scale, cy - scale * 0.7, scale * 2, scale * 1.4)
         painter.drawArc(rect, 30 * 16, 280 * 16)
 
@@ -302,7 +309,6 @@ class NeonIconButton(QPushButton):
         self._draw_small_arrow(painter, cx + scale * 0.5, cy - scale * 0.7, -60)
 
         # Draw "1" in center
-        from PySide6.QtGui import QFont
 
         painter.setFont(QFont("Arial", int(scale * 0.9), QFont.Weight.Bold))
         painter.setPen(QPen(color))
@@ -722,6 +728,14 @@ class NowPlayingWidget(QWidget):
         # Emit signal for lyrics, statistics, and other metadata-based features
         self.song_metadata_changed.emit(song_info)
 
+    def toggle_play_pause(self) -> None:
+        """Public API: toggle play/pause (called by PlaybackController)."""
+        self._on_play_clicked()
+
+    def stop_playback(self) -> None:
+        """Public API: stop playback (called by PlaybackController)."""
+        self._on_stop_clicked()
+
     def _on_play_clicked(self) -> None:
         """Handle play/pause button click"""
         self._is_playing = not self._is_playing
@@ -850,7 +864,7 @@ class NowPlayingWidget(QWidget):
 
         except Exception as e:  # network/API/image errors - must report to user via dialog
             logger.error(f"Error searching cover: {e}")
-            QMessageBox.critical(self, "Search Error", f"Failed to search for cover art:\n{str(e)}")
+            QMessageBox.critical(self, "Search Error", f"Failed to search for cover art:\n{e}")
 
         finally:
             # Re-enable button

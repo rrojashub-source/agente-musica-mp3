@@ -11,6 +11,7 @@ Features:
 
 import json
 import logging
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -36,6 +37,7 @@ class ThemeManager:
     """
 
     _instance: Optional["ThemeManager"] = None
+    _lock: threading.Lock = threading.Lock()
 
     # Config path (can be overridden in tests)
     config_path = Path.home() / ".nexus_music" / "config.json"
@@ -44,9 +46,11 @@ class ThemeManager:
     THEMES = ["dark", "light"]
 
     def __new__(cls) -> "ThemeManager":
-        """Implement singleton pattern"""
+        """Implement singleton pattern (thread-safe double-checked locking)"""
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self) -> None:

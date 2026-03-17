@@ -130,13 +130,14 @@ class DownloadQueue(QObject):
 
         with self._lock:
             self._items[item_id] = item
+            running = self._running
         logger.info(f"Added to queue: {metadata.get('title', video_url)} (id={item_id})")
 
         # Emit signal for UI updates
         self.item_added.emit(item_id, metadata)
 
         # Auto-start if already running
-        if self._running:
+        if running:
             self._process_next()
 
         return item_id
@@ -178,7 +179,8 @@ class DownloadQueue(QObject):
         """
         Start processing queue
         """
-        self._running = True
+        with self._lock:
+            self._running = True
         logger.info("Queue started")
 
         # Start processing pending items
@@ -188,7 +190,8 @@ class DownloadQueue(QObject):
         """
         Stop processing queue (pauses all active downloads)
         """
-        self._running = False
+        with self._lock:
+            self._running = False
         logger.info("Queue stopped")
 
     def is_running(self) -> bool:
@@ -198,7 +201,8 @@ class DownloadQueue(QObject):
         Returns:
             bool: True if running
         """
-        return self._running
+        with self._lock:
+            return self._running
 
     def get_active_downloads(self) -> List[Dict[str, Any]]:
         """
@@ -255,11 +259,12 @@ class DownloadQueue(QObject):
 
             # Reset to pending
             item["status"] = "pending"
+            running = self._running
 
         logger.info(f"Resumed: {item_id}")
 
         # Process if queue running
-        if self._running:
+        if running:
             self._process_next()
 
         return True
@@ -288,11 +293,12 @@ class DownloadQueue(QObject):
 
             # Update status
             item["status"] = "canceled"
+            running = self._running
 
         logger.info(f"Canceled: {item_id}")
 
         # Process next
-        if self._running:
+        if running:
             self._process_next()
 
         return True
@@ -312,6 +318,45 @@ class DownloadQueue(QObject):
 
         count = len(completed_ids)
         logger.info(f"Cleared {count} completed items")
+        return count
+
+    def retry(self, item_id: str) -> bool:
+        """Reset a failed download to pending for retry.
+
+        Returns:
+            True if the item was reset, False if not found or not failed.
+        """
+        with self._lock:
+            item = self._items.get(item_id)
+            if not item or item["status"] != "failed":
+                return False
+            item["status"] = "pending"
+            item["progress"] = 0
+            item["error"] = None
+            running = self._running
+
+        logger.info(f"Retrying: {item_id}")
+        if running:
+            self._process_next()
+        return True
+
+    def clear_all(self) -> int:
+        """Remove all items from queue (cancels active downloads).
+
+        Returns:
+            Number of items removed.
+        """
+        with self._lock:
+            # Cancel active workers
+            for item_id, worker in list(self._workers.items()):
+                worker.terminate()
+                worker.wait()
+            self._workers.clear()
+
+            count = len(self._items)
+            self._items.clear()
+
+        logger.info(f"Cleared all {count} items from queue")
         return count
 
     def update_progress(self, item_id: str, percentage: int) -> None:
@@ -350,6 +395,8 @@ class DownloadQueue(QObject):
             if item_id in self._workers:
                 del self._workers[item_id]
 
+            running = self._running
+
         logger.info(f"Completed: {title}")
 
         # Auto-import to database if available
@@ -364,7 +411,7 @@ class DownloadQueue(QObject):
         self.item_completed.emit(item_id, metadata)
 
         # Process next
-        if self._running:
+        if running:
             self._process_next()
 
     def _find_downloaded_file(self, reported_path: str) -> Optional[Path]:
@@ -381,8 +428,6 @@ class DownloadQueue(QObject):
         Returns:
             Path: Actual file path if found, None otherwise
         """
-        from pathlib import Path
-
         # Convert to Path object
         file_path = Path(reported_path)
 
@@ -427,7 +472,6 @@ class DownloadQueue(QObject):
             metadata (dict): Song metadata
         """
         try:
-            from mutagen.id3 import ID3
             from mutagen.mp3 import MP3
 
             # Find actual file (handles yt-dlp quirks)
@@ -439,11 +483,9 @@ class DownloadQueue(QObject):
             # Read MP3 metadata
             try:
                 audio = MP3(str(file_path_obj))
-                _id3 = audio.tags if audio.tags else ID3()  # noqa: F841
             except (OSError, ValueError) as e:
                 logger.warning(f"Could not read ID3 tags: {e}")
                 audio = None
-                _id3 = None  # noqa: F841
 
             # Extract metadata
             title = metadata.get("title", file_path_obj.stem)
@@ -519,7 +561,9 @@ class DownloadQueue(QObject):
             self.item_failed.emit(item_id, error)
 
         # Process next
-        if self._running:
+        with self._lock:
+            running = self._running
+        if running:
             self._process_next()
 
     def _process_next(self) -> None:

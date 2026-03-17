@@ -13,13 +13,18 @@ Features:
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 import musicbrainzngs
 import requests  # type: ignore[import-untyped]
 
 from utils.constants import API_DEFAULT_TIMEOUT, DEFAULT_ALBUM, DEFAULT_ARTIST, DEFAULT_GENRE
 from utils.rate_limiter import RateLimiter
+
+# Allowed domains for album art downloads (SSRF prevention)
+_ALLOWED_ART_DOMAINS = {"coverartarchive.org", "archive.org", "musicbrainz.org", "i.scdn.co", "is1-ssl.mzstatic.com"}
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -52,12 +57,11 @@ class MusicBrainzClient:
         musicbrainzngs.set_useragent(app_name, app_version, contact)
 
         # Rate limiting (MusicBrainz allows 1 request/second)
-        self._last_request_time: float = 0
         self._rate_limiter: bool = True
 
         logger.info(f"MusicBrainzClient initialized: {app_name} v{app_version}")
 
-    def search_recording(self, title: str, artist: Optional[str] = None, limit: int = 5) -> List[Dict]:
+    def search_recording(self, title: str, artist: Optional[str] = None, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Search for recordings on MusicBrainz
 
@@ -110,22 +114,46 @@ class MusicBrainzClient:
         Download album art from URL
 
         Args:
-            url (str): Image URL
-            output_path (str): Local path to save image
+            url (str): Image URL (must be from allowed domains)
+            output_path (str): Local path to save image (must have image extension)
 
         Returns:
             bool: True if successful, False otherwise
         """
         try:
+            # Validate URL domain (SSRF prevention)
+            parsed = urlparse(url)
+            if parsed.scheme not in ("http", "https"):
+                logger.warning("Album art URL rejected: invalid scheme")
+                return False
+
+            domain = parsed.hostname or ""
+            if not any(domain == d or domain.endswith("." + d) for d in _ALLOWED_ART_DOMAINS):
+                logger.warning(f"Album art URL rejected: domain not allowed ({domain})")
+                return False
+
+            # Validate output path (path traversal prevention)
+            out = Path(output_path).resolve()
+            if out.suffix.lower() not in (".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"):
+                logger.warning("Album art output rejected: invalid file extension")
+                return False
+
             # Download image
             response = requests.get(url, timeout=API_DEFAULT_TIMEOUT)
 
             if response.status_code == 200:
+                # Validate content-type
+                content_type = response.headers.get("Content-Type", "")
+                if not content_type.startswith("image/"):
+                    logger.warning(f"Album art rejected: unexpected Content-Type ({content_type})")
+                    return False
+
                 # Save to file
-                with open(output_path, "wb") as f:
+                out.parent.mkdir(parents=True, exist_ok=True)
+                with open(out, "wb") as f:
                     f.write(response.content)
 
-                logger.info(f"Album art downloaded: {output_path}")
+                logger.info("Album art downloaded successfully")
                 return True
             else:
                 logger.warning(f"Failed to download album art: HTTP {response.status_code}")
@@ -135,7 +163,7 @@ class MusicBrainzClient:
             logger.error(f"Error downloading album art: {e}")
             return False
 
-    def _parse_recordings(self, result: dict) -> List[Dict]:
+    def _parse_recordings(self, result: dict) -> List[Dict[str, Any]]:
         """
         Parse MusicBrainz recording search results
 
@@ -179,7 +207,7 @@ class MusicBrainzClient:
 
         return recordings
 
-    def _extract_genre(self, tag_list: List[Dict]) -> str:
+    def _extract_genre(self, tag_list: List[Dict[str, Any]]) -> str:
         """
         Extract most popular genre from tag list
 
@@ -193,16 +221,10 @@ class MusicBrainzClient:
             result: str = DEFAULT_GENRE
             return result
 
-        # Sort by count (most popular first)
+        # Sort by count (most popular first), return top genre
         sorted_tags = sorted(tag_list, key=lambda x: x.get("count", 0), reverse=True)
-
-        # Return most popular genre
-        if sorted_tags:
-            genre: str = sorted_tags[0]["name"]
-            return genre
-
-        fallback: str = DEFAULT_GENRE
-        return fallback
+        genre: str = sorted_tags[0]["name"]
+        return genre
 
     def _enforce_rate_limit(self) -> None:
         """

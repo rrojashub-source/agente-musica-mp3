@@ -35,6 +35,7 @@ from core.theme_manager import ThemeManager
 from core.waveform_extractor import WaveformExtractor
 from database.manager import DatabaseManager
 from translations import LANGUAGES, get_language, set_language, tr
+from utils.constants import APP_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -227,10 +228,6 @@ class UIComposer:
 
         # Each tab is loaded with _load_tab() inside a try/except so that
         # a single broken tab cannot prevent the rest of the UI from loading.
-        _tab_specs: list[tuple[str, str, Any]] = [  # noqa: F841
-            # (attr_name, tab_key, factory_callable_returning_widget)
-        ]
-
         def _try_load(attr_name: str, tab_key: str, factory: Any) -> None:
             try:
                 widget = factory()
@@ -268,30 +265,31 @@ class UIComposer:
         _try_load("cloud_sync_tab", "tab_cloud_sync", lambda: CloudSyncTab(db_manager=self.db_manager))
         _try_load("statistics_tab", "tab_statistics", lambda: StatisticsTab(self.db_manager))
 
-        # Connect download queue signals to library refresh
-        try:
-            if hasattr(w, "library_tab") and self.download_queue:
-                self.download_queue.item_completed.connect(lambda item_id, meta: w.library_tab._load_library())
-                logger.info("Connected download queue → library refresh")
-        except Exception as e:  # Signal connection can fail if widgets were replaced with error stubs
-            logger.warning(f"Could not connect queue→library signal: {e}")
-
-        # Connect data_changed signals → library refresh + statistics refresh
+        # Connect all cross-tab signals (data_changed + download queue → refresh)
         self._connect_data_changed_signals(w)
 
         return self.window.tabs
 
     def _connect_data_changed_signals(self, w: QMainWindow) -> None:
         """Connect data_changed from all tabs that modify DB → library + statistics refresh"""
-        data_tabs = ["import_tab", "cleanup_tab", "organize_tab", "cloud_sync_tab"]
         library = getattr(w, "library_tab", None)
         stats = getattr(w, "statistics_tab", None)
 
+        # Connect download queue → library refresh
+        try:
+            if library and self.download_queue:
+                self.download_queue.item_completed.connect(lambda item_id, meta: library.reload_library())
+                logger.info("Connected download queue → library refresh")
+        except Exception as e:  # Signal connection can fail if widgets were replaced with error stubs
+            logger.warning(f"Could not connect queue→library signal: {e}")
+
+        # Connect data_changed from tabs that modify DB
+        data_tabs = ["import_tab", "cleanup_tab", "organize_tab", "cloud_sync_tab"]
         for tab_name in data_tabs:
             tab = getattr(w, tab_name, None)
             if tab and hasattr(tab, "data_changed"):
                 if library:
-                    tab.data_changed.connect(library._load_library)
+                    tab.data_changed.connect(library.reload_library)
                 if stats:
                     tab.data_changed.connect(stats.refresh_stats)
                 logger.info(f"Connected {tab_name}.data_changed → library/statistics refresh")
@@ -351,9 +349,9 @@ class UIComposer:
 
     def _show_about(self) -> None:
         """Show about dialog"""
-        about_text = """
+        about_text = f"""
 <h2>NEXUS Music Manager</h2>
-<p><b>Version:</b> 2.0 (Production)</p>
+<p><b>Version:</b> {APP_VERSION}</p>
 <p><b>Phases:</b> 1-7 Complete</p>
 <br>
 <p>Modern music player with library management, search & download,

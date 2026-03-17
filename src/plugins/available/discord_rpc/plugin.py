@@ -126,6 +126,12 @@ class DiscordRPCPlugin(Plugin):
         """Disable plugin and disconnect from Discord"""
         self._running = False
 
+        # Unregister hooks to prevent duplicate handler accumulation on re-enable
+        self.unregister_hook(PluginHook.ON_SONG_PLAY, self._on_song_play)
+        self.unregister_hook(PluginHook.ON_SONG_PAUSE, self._on_song_pause)
+        self.unregister_hook(PluginHook.ON_SONG_END, self._on_song_end)
+        self.unregister_hook(PluginHook.ON_APP_CLOSE, self._on_app_close)
+
         if self._update_thread:
             self._update_thread.join(timeout=2)
 
@@ -136,7 +142,11 @@ class DiscordRPCPlugin(Plugin):
     def _connect_discord(self) -> bool:
         """Connect to Discord RPC"""
         try:
-            app_id = self.get_setting("app_id", self.DISCORD_APP_ID)
+            app_id = str(self.get_setting("app_id", self.DISCORD_APP_ID))
+            # Validate app_id format (Discord IDs are 17-19 digit numbers)
+            if not app_id or not app_id.isdigit() or not (17 <= len(app_id) <= 19):
+                logger.error("Invalid Discord App ID format (expected 17-19 digits)")
+                return False
             self._rpc = Presence(app_id)
             self._rpc.connect()
             self._connected = True

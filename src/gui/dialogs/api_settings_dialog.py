@@ -232,7 +232,7 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
             elif self.api_name == "AcoustID":
                 self._validate_acoustid(api_key)
         except Exception as e:  # GUI error boundary - must not crash
-            self.status_label.setText(f"❌ Inválida / Invalid: {str(e)}")
+            self.status_label.setText(f"❌ Inválida / Invalid: {e}")
             logger.error(f"{self.api_name} validation failed: {e}")
         finally:
             self.validate_button.setEnabled(True)
@@ -522,7 +522,7 @@ class SpotifyTabWidget(QWidget):
             else:
                 self.status_label.setText("❌ Formato de Client ID inválido / Invalid Client ID format")
         except Exception as e:  # GUI error boundary - must not crash
-            self.status_label.setText(f"❌ Inválidas / Invalid: {str(e)}")
+            self.status_label.setText(f"❌ Inválidas / Invalid: {e}")
             logger.error(f"Spotify validation failed: {e}")
         finally:
             self.validate_button.setEnabled(True)
@@ -727,7 +727,7 @@ class APISettingsDialog(QDialog):
             QMessageBox.critical(
                 self,
                 "Error al Guardar / Error Saving Keys",
-                f"No se pudo guardar las claves API:\n{str(e)}\n\n"
+                f"No se pudo guardar las claves API:\n{e}\n\n"
                 f"Verifica el acceso al keyring del sistema.\n\n"
                 f"Failed to save API keys. Please check system keyring access.",
             )

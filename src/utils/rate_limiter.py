@@ -182,7 +182,11 @@ class RateLimiter:
             requests_per_second: Maximum requests per second
             burst: Maximum burst size (default: 2x rate)
         """
+        if requests_per_second <= 0:
+            raise ValueError("requests_per_second must be positive")
         service = service.lower()
+        # Clamp to safe range to prevent bypass or DoS
+        requests_per_second = max(0.01, min(requests_per_second, 100.0))
         self._limits[service] = requests_per_second
         self._burst[service] = burst or int(requests_per_second * 2)
         logger.info(f"Rate limit set: {service} = {requests_per_second} req/s, burst={self._burst[service]}")

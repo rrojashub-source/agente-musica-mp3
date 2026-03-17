@@ -217,7 +217,6 @@ class QueueWidget(QWidget):
         self.table.setCellWidget(row_index, 2, progress_bar)
 
         # Status
-        status = item.get("status", "unknown")
         self.table.setItem(row_index, 3, QTableWidgetItem(status.capitalize()))
 
         # Action buttons

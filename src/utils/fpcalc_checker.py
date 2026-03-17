@@ -9,6 +9,7 @@ import logging
 import os
 import subprocess
 import sys
+import threading
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -56,11 +57,11 @@ class FpcalcChecker:
             self._get_version()
             return
 
-        # Check 2: Environment variable
+        # Check 2: Environment variable (validate it is a file, not directory)
         env_fpcalc = os.environ.get("FPCALC")
-        if env_fpcalc and Path(env_fpcalc).exists():
+        if env_fpcalc and Path(env_fpcalc).is_file():
             self.fpcalc_path = env_fpcalc
-            logger.info(f"Found fpcalc from FPCALC env: {self.fpcalc_path}")
+            logger.info("Found fpcalc from FPCALC environment variable")
             self._get_version()
             return
 
@@ -85,7 +86,7 @@ class FpcalcChecker:
         ]
 
         for path in common_paths:
-            if Path(str(path)).exists():  # type: ignore[arg-type]
+            if Path(path).exists():
                 self.fpcalc_path = str(path)
                 logger.info(f"Found fpcalc in common path: {self.fpcalc_path}")
                 self._get_version()
@@ -199,20 +200,23 @@ Benefits of AcoustID:
             return False, self.get_install_instructions()
 
 
-# Global instance
+# Global instance (double-checked locking for thread safety)
 _checker: Optional[FpcalcChecker] = None
+_checker_lock: threading.Lock = threading.Lock()
 
 
 def get_checker() -> FpcalcChecker:
     """
-    Get global fpcalc checker instance
+    Get global fpcalc checker instance (thread-safe)
 
     Returns:
         FpcalcChecker: Global checker instance
     """
     global _checker
     if _checker is None:
-        _checker = FpcalcChecker()
+        with _checker_lock:
+            if _checker is None:
+                _checker = FpcalcChecker()
     return _checker
 
 

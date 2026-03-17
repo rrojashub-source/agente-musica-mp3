@@ -19,6 +19,7 @@ Created: December 8, 2025
 
 import json
 import logging
+import threading
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -46,6 +47,16 @@ class ContentRating(Enum):
 class ContentScore:
     """Multi-dimensional content score"""
 
+    # Rating decision thresholds (used by the .rating property)
+    THRESHOLD_CHILDREN: float = 0.8
+    THRESHOLD_CHRISTIAN: float = 0.8
+    THRESHOLD_EXPLICIT: float = 0.7
+    THRESHOLD_SUGGESTIVE: float = 0.4
+    THRESHOLD_CLEAN: float = 0.7
+
+    # Confidence threshold — below this, deeper analysis tiers activate
+    CONFIDENCE_SUFFICIENT: float = 0.85
+
     # Primary scores (0.0 to 1.0)
     explicit_score: float = 0.0
     children_score: float = 0.0
@@ -67,16 +78,15 @@ class ContentScore:
     @property
     def rating(self) -> ContentRating:
         """Determine final rating based on scores"""
-        # If high confidence in any category
-        if self.children_score >= 0.8:
+        if self.children_score >= self.THRESHOLD_CHILDREN:
             return ContentRating.CHILDREN
-        if self.christian_score >= 0.8:
+        if self.christian_score >= self.THRESHOLD_CHRISTIAN:
             return ContentRating.CHRISTIAN
-        if self.explicit_score >= 0.7:
+        if self.explicit_score >= self.THRESHOLD_EXPLICIT:
             return ContentRating.EXPLICIT
-        if self.explicit_score >= 0.4:
+        if self.explicit_score >= self.THRESHOLD_SUGGESTIVE:
             return ContentRating.SUGGESTIVE
-        if self.clean_score >= 0.7:
+        if self.clean_score >= self.THRESHOLD_CLEAN:
             return ContentRating.CLEAN
         return ContentRating.UNKNOWN
 
@@ -130,6 +140,11 @@ class ContentClassifier:
     """
     Main content classifier orchestrating all tiers
     """
+
+    # Tier combination weights (sum to 1.0 when all tiers are present)
+    WEIGHT_METADATA: float = 0.4
+    WEIGHT_LYRICS: float = 0.45
+    WEIGHT_AUDIO: float = 0.15
 
     def __init__(self) -> None:
         self._load_artist_database()
@@ -191,12 +206,15 @@ class ContentClassifier:
 
         # Tier 2: Lyrics analysis (optional)
         lyrics_score = None
-        if use_lyrics and metadata_score.confidence < 0.85:
+        if use_lyrics and metadata_score.confidence < ContentScore.CONFIDENCE_SUFFICIENT:
             lyrics_score = self._analyze_lyrics(artist, title)
 
         # Tier 3: Audio analysis (optional)
         audio_score = None
-        if use_audio and (metadata_score.confidence < 0.85 or (lyrics_score and lyrics_score.confidence < 0.85)):
+        if use_audio and (
+            metadata_score.confidence < ContentScore.CONFIDENCE_SUFFICIENT
+            or (lyrics_score and lyrics_score.confidence < ContentScore.CONFIDENCE_SUFFICIENT)
+        ):
             audio_score = self._analyze_audio(file_path)
 
         # Combine scores
@@ -248,7 +266,7 @@ class ContentClassifier:
                         artist="Unknown",
                         title=Path(path).stem,
                         rating=ContentRating.UNKNOWN,
-                        score=ContentScore(confidence=0, source="error", reasons=[f"Error: {str(e)}"]),
+                        score=ContentScore(confidence=0, source="error", reasons=[f"Error: {e}"]),
                     )
                 )
 
@@ -425,9 +443,9 @@ class ContentClassifier:
 
         # Weights based on typical accuracy
         weights = {
-            "metadata": 0.4,
-            "lyrics": 0.45,
-            "audio": 0.15,
+            "metadata": self.WEIGHT_METADATA,
+            "lyrics": self.WEIGHT_LYRICS,
+            "audio": self.WEIGHT_AUDIO,
         }
 
         scores = [("metadata", metadata, weights["metadata"])]
@@ -471,13 +489,16 @@ class ContentClassifier:
         }
 
 
-# Singleton instance
+# Singleton instance (double-checked locking for thread safety)
 _classifier_instance: Optional[ContentClassifier] = None
+_classifier_lock: threading.Lock = threading.Lock()
 
 
 def get_classifier() -> ContentClassifier:
-    """Get or create classifier singleton"""
+    """Get or create classifier singleton (thread-safe)"""
     global _classifier_instance
     if _classifier_instance is None:
-        _classifier_instance = ContentClassifier()
+        with _classifier_lock:
+            if _classifier_instance is None:
+                _classifier_instance = ContentClassifier()
     return _classifier_instance

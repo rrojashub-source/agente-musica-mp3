@@ -12,12 +12,12 @@ Updated: November 19, 2025 (Fixed fpcalc path passing)
 
 import logging
 import os
-import re
 from collections import defaultdict
 from difflib import SequenceMatcher
 from typing import Any, Dict, List, Optional
 
 from utils.fpcalc_checker import FpcalcChecker
+from utils.text_normalizer import strip_youtube_artifacts
 
 logger = logging.getLogger(__name__)
 
@@ -241,19 +241,7 @@ class DuplicateDetector:
     def _normalize_for_comparison(text: str) -> str:
         """Strip YouTube noise and normalize text for comparison."""
         text = text.lower().strip()
-        # Strip YouTube artifacts
-        text = re.sub(
-            r"\s*[\(\[](official\s*)?(music\s*)?video[\)\]]"
-            r"|\s*[\(\[]official\s*audio[\)\]]"
-            r"|\s*[\(\[]audio[\)\]]"
-            r"|\s*[\(\[]lyric[s]?\s*video[\)\]]"
-            r"|\s*[\(\[]visuali[zs]er[\)\]]"
-            r"|\s*[\(\[]live[\)\]]"
-            r"|\s*[\(\[](hd|hq|4k|1080p)[\)\]]"
-            r"|\s*[\(\[]remaster(ed)?[\)\]]",
-            "",
-            text,
-        )
+        text = strip_youtube_artifacts(text)
         return text.strip()
 
     def _calculate_metadata_similarity(self, song1: Dict[str, Any], song2: Dict[str, Any]) -> float:
@@ -316,24 +304,13 @@ class DuplicateDetector:
         try:
             import acoustid
 
-            # CRITICAL: acoustid.fingerprint_file() doesn't accept fpcalc parameter
-            # Instead, it reads from FPCALC environment variable
-            # Set it temporarily for this call
-            old_fpcalc = os.environ.get("FPCALC")
-            os.environ["FPCALC"] = self.fpcalc_checker.fpcalc_path
-
+            # Use fpcalc parameter directly (thread-safe, no global env mutation)
             try:
-                duration, fingerprint = acoustid.fingerprint_file(file_path)
+                duration, fingerprint = acoustid.fingerprint_file(file_path, fpcalc=self.fpcalc_checker.fpcalc_path)
                 return fingerprint  # type: ignore[no-any-return]
             except (acoustid.FingerprintGenerationError, acoustid.NoBackendError, OSError) as e:
                 logger.warning(f"Failed to generate fingerprint: {e}")
                 return None
-            finally:
-                # Restore original environment variable
-                if old_fpcalc is not None:
-                    os.environ["FPCALC"] = old_fpcalc
-                else:
-                    os.environ.pop("FPCALC", None)
 
         except ImportError:
             logger.warning("acoustid not installed - fingerprint detection unavailable")

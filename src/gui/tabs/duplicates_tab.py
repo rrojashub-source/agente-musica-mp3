@@ -178,8 +178,6 @@ class DuplicatesTab(BaseTab):
 
         # Warn if fingerprint method selected but fpcalc not available
         if method == "fingerprint" and not self.detector.fpcalc_checker.is_available():
-            from PySide6.QtWidgets import QMessageBox
-
             QMessageBox.warning(
                 self,
                 "fpcalc no disponible",
@@ -426,7 +424,7 @@ class DuplicatesTab(BaseTab):
 
             except Exception as e:  # file/DB deletion - must continue with remaining files
                 error_count += 1
-                errors.append(f"{file_path}: {str(e)}")
+                errors.append(f"{file_path}: {e}")
                 logger.error(f"Failed to delete {file_path}: {e}")
 
         # Show result

@@ -24,7 +24,7 @@ import sqlite3
 from typing import Any, List, Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QBrush, QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -189,6 +189,7 @@ class PlaylistWidget(QWidget):
         self.db_manager: Any = db_manager
         self.current_playlist_id: Optional[int] = None
         self._current_playing_song_id: Optional[int] = None  # Track currently playing song for highlight
+        self._highlighted_row: Optional[int] = None  # Track highlighted row for O(1) clear
 
         # No size restrictions - this is now a full tab
 
@@ -635,6 +636,7 @@ class PlaylistWidget(QWidget):
                 # Apply highlight if this is the currently playing song
                 if song_id == self._current_playing_song_id:
                     self._highlight_row(row, True)
+                    self._highlighted_row = row
 
             logger.info(f"Loaded {len(songs)} songs for playlist {playlist_id}")
 
@@ -813,9 +815,10 @@ class PlaylistWidget(QWidget):
         """
         self._current_playing_song_id = None
 
-        # Remove highlight from all rows
-        for row in range(self.songs_table.rowCount()):
-            self._highlight_row(row, False)
+        # Only un-highlight the previously highlighted row (O(1) instead of O(n))
+        if self._highlighted_row is not None:
+            self._highlight_row(self._highlighted_row, False)
+            self._highlighted_row = None
 
     def _highlight_row(self, row: int, highlight: bool) -> None:
         """
@@ -825,8 +828,6 @@ class PlaylistWidget(QWidget):
             row: Row index
             highlight: True to highlight, False to remove
         """
-        from PySide6.QtGui import QBrush, QColor
-
         if highlight:
             # Neon cyan highlight (matches app theme)
             bg_color = QColor(0, 180, 220, 60)  # Semi-transparent cyan

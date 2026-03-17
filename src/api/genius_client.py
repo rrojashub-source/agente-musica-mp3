@@ -23,6 +23,7 @@ import requests  # type: ignore[import-untyped]
 
 from utils.constants import API_DEFAULT_TIMEOUT
 from utils.rate_limiter import RateLimiter
+from utils.text_normalizer import strip_artist_suffix, strip_youtube_artifacts
 
 logger = logging.getLogger(__name__)
 
@@ -51,14 +52,14 @@ class GeniusClient:
         if not access_token or not access_token.strip():
             raise ValueError("Genius API access token is required")
 
-        self.access_token: str = access_token.strip()
+        self._access_token: str = access_token.strip()
         self._cache: Dict[tuple[str, str], Optional[str]] = {}  # {(title_lower, artist_lower): lyrics}
 
         # Initialize lyricsgenius
         try:
             import lyricsgenius
 
-            self.genius: Any = lyricsgenius.Genius(self.access_token)
+            self.genius: Any = lyricsgenius.Genius(self._access_token)
             self.genius.verbose = False  # Disable console output
             self.genius.remove_section_headers = True  # Clean lyrics
             self.genius.timeout = API_DEFAULT_TIMEOUT
@@ -103,28 +104,7 @@ class GeniusClient:
                     break
 
         # Remove common YouTube suffixes in parentheses/brackets
-        noise_patterns = [
-            r"\s*\(Official\s*(Music\s*)?Video\)",
-            r"\s*\(Official\s*Audio\)",
-            r"\s*\(Audio\)",
-            r"\s*\(Lyric[s]?\s*Video\)",
-            r"\s*\(Visuali[zs]er\)",
-            r"\s*\(Live\)",
-            r"\s*\(HD\)",
-            r"\s*\(HQ\)",
-            r"\s*\(Remaster(ed)?\)",
-            r"\s*\[Official\s*(Music\s*)?Video\]",
-            r"\s*\[Official\s*Audio\]",
-            r"\s*\[Audio\]",
-            r"\s*\[Lyric[s]?\s*Video\]",
-            r"\s*\[HD\]",
-            r"\s*\[HQ\]",
-            r"\s*\[Remaster(ed)?\]",
-        ]
-        for pattern in noise_patterns:
-            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
-
-        cleaned = cleaned.strip()
+        cleaned = strip_youtube_artifacts(cleaned)
 
         if cleaned != title:
             logger.info(f"Cleaned title for Genius search: '{title}' -> '{cleaned}'")
@@ -160,10 +140,8 @@ class GeniusClient:
         # Clean YouTube-style title noise before searching
         clean_title = self._clean_title_for_search(title, artist)
 
-        # Also clean artist (remove " - Topic" YouTube suffix)
-        clean_artist = re.sub(r"\s*-\s*Topic$", "", artist.strip(), flags=re.IGNORECASE)
-        # Remove "Official" suffix from artist name
-        clean_artist = re.sub(r"\s+Official$", "", clean_artist, flags=re.IGNORECASE)
+        # Also clean artist (remove YouTube channel suffixes)
+        clean_artist = strip_artist_suffix(artist)
 
         # Normalize for cache lookup (case-insensitive)
         title_normalized = clean_title.strip().lower()
@@ -195,7 +173,9 @@ class GeniusClient:
                 return None
 
         except (requests.RequestException, AttributeError, ValueError) as e:
-            logger.error(f"Genius API error for '{title} - {artist}': {e}")
+            safe_title = clean_title.replace("\n", " ").replace("\r", " ")
+            safe_artist = clean_artist.replace("\n", " ").replace("\r", " ")
+            logger.error(f"Genius API error for '{safe_title} - {safe_artist}': {e}")
             return None
 
     def clear_cache(self) -> None:

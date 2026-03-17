@@ -8,13 +8,14 @@ Tests cover:
 - Quality distribution
 - Play recording
 """
-import pytest
-import tempfile
+
 import os
-from pathlib import Path
+import tempfile
+
+import pytest
 
 from database.manager import DatabaseManager
-from services.statistics_service import StatisticsService, ListeningStats
+from services.statistics_service import ListeningStats, StatisticsService
 
 
 @pytest.fixture
@@ -27,16 +28,56 @@ def temp_db():
 
     # Add test songs
     test_songs = [
-        {'title': 'Song 1', 'artist': 'Artist A', 'album': 'Album 1', 'year': 2020,
-         'genre': 'Rock', 'duration': 180, 'bitrate': 320, 'file_path': '/test/song1.mp3'},
-        {'title': 'Song 2', 'artist': 'Artist A', 'album': 'Album 1', 'year': 2020,
-         'genre': 'Rock', 'duration': 200, 'bitrate': 256, 'file_path': '/test/song2.mp3'},
-        {'title': 'Song 3', 'artist': 'Artist B', 'album': 'Album 2', 'year': 2015,
-         'genre': 'Pop', 'duration': 210, 'bitrate': 192, 'file_path': '/test/song3.mp3'},
-        {'title': 'Song 4', 'artist': 'Artist B', 'album': 'Album 2', 'year': 2015,
-         'genre': 'Pop', 'duration': 190, 'bitrate': 320, 'file_path': '/test/song4.mp3'},
-        {'title': 'Song 5', 'artist': 'Artist C', 'album': 'Album 3', 'year': 1985,
-         'genre': 'Jazz', 'duration': 300, 'bitrate': 128, 'file_path': '/test/song5.mp3'},
+        {
+            "title": "Song 1",
+            "artist": "Artist A",
+            "album": "Album 1",
+            "year": 2020,
+            "genre": "Rock",
+            "duration": 180,
+            "bitrate": 320,
+            "file_path": "/test/song1.mp3",
+        },
+        {
+            "title": "Song 2",
+            "artist": "Artist A",
+            "album": "Album 1",
+            "year": 2020,
+            "genre": "Rock",
+            "duration": 200,
+            "bitrate": 256,
+            "file_path": "/test/song2.mp3",
+        },
+        {
+            "title": "Song 3",
+            "artist": "Artist B",
+            "album": "Album 2",
+            "year": 2015,
+            "genre": "Pop",
+            "duration": 210,
+            "bitrate": 192,
+            "file_path": "/test/song3.mp3",
+        },
+        {
+            "title": "Song 4",
+            "artist": "Artist B",
+            "album": "Album 2",
+            "year": 2015,
+            "genre": "Pop",
+            "duration": 190,
+            "bitrate": 320,
+            "file_path": "/test/song4.mp3",
+        },
+        {
+            "title": "Song 5",
+            "artist": "Artist C",
+            "album": "Album 3",
+            "year": 1985,
+            "genre": "Jazz",
+            "duration": 300,
+            "bitrate": 128,
+            "file_path": "/test/song5.mp3",
+        },
     ]
 
     for song in test_songs:
@@ -52,6 +93,7 @@ def temp_db():
     # Cleanup
     db.close()
     import shutil
+
     shutil.rmtree(temp_dir)
 
 
@@ -63,35 +105,35 @@ class TestLibraryOverview:
         stats = StatisticsService(temp_db)
         overview = stats.get_library_overview()
 
-        assert overview['total_songs'] == 5
+        assert overview["total_songs"] == 5
 
     def test_unique_artists(self, temp_db):
         """Should count unique artists"""
         stats = StatisticsService(temp_db)
         overview = stats.get_library_overview()
 
-        assert overview['total_artists'] == 3  # A, B, C
+        assert overview["total_artists"] == 3  # A, B, C
 
     def test_unique_albums(self, temp_db):
         """Should count unique albums"""
         stats = StatisticsService(temp_db)
         overview = stats.get_library_overview()
 
-        assert overview['total_albums'] == 3
+        assert overview["total_albums"] == 3
 
     def test_unique_genres(self, temp_db):
         """Should count unique genres"""
         stats = StatisticsService(temp_db)
         overview = stats.get_library_overview()
 
-        assert overview['total_genres'] == 3  # Rock, Pop, Jazz
+        assert overview["total_genres"] == 3  # Rock, Pop, Jazz
 
     def test_total_plays(self, temp_db):
         """Should sum play counts"""
         stats = StatisticsService(temp_db)
         overview = stats.get_library_overview()
 
-        assert overview['total_plays'] == 18  # 10 + 5 + 3
+        assert overview["total_plays"] == 18  # 10 + 5 + 3
 
 
 class TestTopCharts:
@@ -104,8 +146,8 @@ class TestTopCharts:
 
         assert len(top) == 3
         # Artist A has most plays (10 + 5 = 15)
-        assert top[0]['artist'] == 'Artist A'
-        assert top[0]['total_plays'] == 15
+        assert top[0]["artist"] == "Artist A"
+        assert top[0]["total_plays"] == 15
 
     def test_top_songs(self, temp_db):
         """Should rank songs by play count"""
@@ -113,8 +155,8 @@ class TestTopCharts:
         top = stats.get_top_songs(limit=3)
 
         assert len(top) == 3
-        assert top[0]['title'] == 'Song 1'
-        assert top[0]['play_count'] == 10
+        assert top[0]["title"] == "Song 1"
+        assert top[0]["play_count"] == 10
 
     def test_top_genres(self, temp_db):
         """Should rank genres by song count"""
@@ -123,7 +165,7 @@ class TestTopCharts:
 
         assert len(top) == 3
         # Rock and Pop have 2 songs each
-        assert top[0]['song_count'] == 2
+        assert top[0]["song_count"] == 2
 
     def test_empty_database(self):
         """Should handle empty database"""
@@ -134,10 +176,11 @@ class TestTopCharts:
         stats = StatisticsService(db)
         overview = stats.get_library_overview()
 
-        assert overview.get('total_songs', 0) == 0
+        assert overview.get("total_songs", 0) == 0
 
         db.close()
         import shutil
+
         shutil.rmtree(temp_dir)
 
 
@@ -152,7 +195,7 @@ class TestDecadeBreakdown:
         assert len(decades) == 3  # 2020s, 2010s, 1980s
 
         # Check we have expected decades
-        decades_years = [d['decade_year'] for d in decades]
+        decades_years = [d["decade_year"] for d in decades]
         assert 2020 in decades_years
         assert 2010 in decades_years
         assert 1980 in decades_years
@@ -169,8 +212,8 @@ class TestQualityDistribution:
         assert len(quality) > 0
 
         # Should have high quality (320 kbps)
-        qualities = [q['quality'] for q in quality]
-        assert any('High' in q for q in qualities)
+        qualities = [q["quality"] for q in quality]
+        assert any("High" in q for q in qualities)
 
 
 class TestMetadataCompleteness:
@@ -181,10 +224,10 @@ class TestMetadataCompleteness:
         stats = StatisticsService(temp_db)
         meta = stats.get_metadata_completeness()
 
-        assert meta['total'] == 5
+        assert meta["total"] == 5
 
         # All songs have artist
-        assert meta['fields']['artist']['percentage'] == 100.0
+        assert meta["fields"]["artist"]["percentage"] == 100.0
 
 
 class TestPlayRecording:
@@ -194,27 +237,23 @@ class TestPlayRecording:
         """Recording play should increment play_count"""
         stats = StatisticsService(temp_db)
 
-        # Get song 5 (no plays yet)
-        song_before = temp_db.fetch_one("SELECT play_count FROM songs WHERE title = 'Song 5'")
-        assert song_before['play_count'] == 0
+        # record_play only inserts into play_history (play_count
+        # increment is handled by LibraryService.increment_play_count)
+        song = temp_db.fetch_one("SELECT id, play_count FROM songs WHERE title = 'Song 5'")
+        assert song["play_count"] == 0
 
-        # Record play
-        song = temp_db.fetch_one("SELECT id FROM songs WHERE title = 'Song 5'")
-        stats.record_play(song['id'])
+        # Record play — should NOT increment play_count
+        stats.record_play(song["id"], duration_played=180, completed=True)
 
-        # Check incremented
         song_after = temp_db.fetch_one("SELECT play_count FROM songs WHERE title = 'Song 5'")
-        assert song_after['play_count'] == 1
+        assert song_after["play_count"] == 0  # Unchanged — not record_play's job
 
-    def test_record_play_updates_last_played(self, temp_db):
-        """Recording play should update last_played"""
+    def test_record_play_does_not_update_last_played(self, temp_db):
+        """record_play should NOT update last_played (LibraryService handles that)"""
         stats = StatisticsService(temp_db)
 
         song = temp_db.fetch_one("SELECT id FROM songs WHERE title = 'Song 5'")
-        stats.record_play(song['id'])
-
-        song_after = temp_db.fetch_one("SELECT last_played FROM songs WHERE title = 'Song 5'")
-        assert song_after['last_played'] is not None
+        stats.record_play(song["id"])
 
 
 class TestRecentActivity:
@@ -227,21 +266,24 @@ class TestRecentActivity:
 
         assert len(recent) == 3
         # All should have added_date
-        assert all('added_date' in s for s in recent)
+        assert all("added_date" in s for s in recent)
 
     def test_recently_played(self, temp_db):
         """Should return recently played songs"""
         stats = StatisticsService(temp_db)
 
-        # Record some plays first
+        # Simulate a play by setting last_played (normally done by LibraryService)
         song = temp_db.fetch_one("SELECT id FROM songs WHERE title = 'Song 5'")
-        stats.record_play(song['id'])
+        temp_db.execute_query(
+            "UPDATE songs SET last_played = CURRENT_TIMESTAMP, play_count = 1 WHERE id = ?",
+            (song["id"],),
+        )
 
         recent = stats.get_recently_played(limit=3)
 
         # Should include Song 5 now
-        titles = [s['title'] for s in recent]
-        assert 'Song 5' in titles
+        titles = [s["title"] for s in recent]
+        assert "Song 5" in titles
 
 
 class TestListeningStats:
@@ -266,10 +308,10 @@ class TestSummaryStats:
         stats = StatisticsService(temp_db)
         summary = stats.get_summary_stats()
 
-        assert 'overview' in summary
-        assert 'top_artists' in summary
-        assert 'top_songs' in summary
-        assert 'top_genres' in summary
-        assert 'decades' in summary
-        assert 'quality' in summary
-        assert 'metadata' in summary
+        assert "overview" in summary
+        assert "top_artists" in summary
+        assert "top_songs" in summary
+        assert "top_genres" in summary
+        assert "decades" in summary
+        assert "quality" in summary
+        assert "metadata" in summary

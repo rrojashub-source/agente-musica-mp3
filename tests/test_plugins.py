@@ -2,12 +2,9 @@
 Tests for Plugin System
 """
 
-import json
 import os
 import sys
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -507,9 +504,11 @@ class TestPlayCounterPlugin:
         from plugins.available.play_counter.plugin import PlayCounterPlugin
 
         plugin = PlayCounterPlugin()
-        plugin._data_file = tmp_path / "data.json"
-
         plugin.on_enable()
+        # Override _data_file AFTER on_enable (which sets it to real path)
+        plugin._data_file = tmp_path / "data.json"
+        plugin._play_counts.clear()
+        plugin._last_played.clear()
 
         # Simulate plays
         song1 = {"id": "1", "title": "Song 1"}
@@ -529,8 +528,10 @@ class TestPlayCounterPlugin:
         from plugins.available.play_counter.plugin import PlayCounterPlugin
 
         plugin = PlayCounterPlugin()
-        plugin._data_file = tmp_path / "data.json"
         plugin.on_enable()
+        plugin._data_file = tmp_path / "data.json"
+        plugin._play_counts.clear()
+        plugin._last_played.clear()
 
         # Play songs different amounts
         for _ in range(5):
