@@ -324,6 +324,16 @@ from gui.widgets.skeleton_widget import (  # noqa: E402
 )
 
 
+# --- Restore originals after all tests in this module ---
+@pytest.fixture(autouse=True, scope="module")
+def _restore_pyside6_widgets():
+    """Restore PySide6 mock classes replaced at module level."""
+    yield
+    from conftest import restore_pyside6_mocks
+
+    restore_pyside6_mocks()
+
+
 # --- Helpers ---
 def _get(cls, name):
     """Extract raw method from class __dict__."""

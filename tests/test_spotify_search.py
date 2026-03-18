@@ -5,7 +5,7 @@ TDD: Write tests FIRST, then implement src/api/spotify_search.py
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -40,7 +40,7 @@ class TestSpotifySearch:
         # Test that the searcher was initialized correctly
         assert self.searcher is not None
         assert self.searcher.sp is not None  # Spotipy client
-        assert self.searcher.client_id == self.client_id
+        assert self.searcher._client_id == self.client_id
 
     def test_search_tracks(self):
         """Test search for tracks"""

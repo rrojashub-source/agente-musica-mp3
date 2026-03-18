@@ -5,7 +5,7 @@ TDD: Write tests FIRST, then implement src/api/youtube_search.py
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -41,7 +41,7 @@ class TestYouTubeSearch:
 
         # Test that the searcher was initialized correctly
         assert self.searcher is not None
-        assert self.searcher.api_key == self.test_api_key
+        assert self.searcher._api_key == self.test_api_key
 
     def test_search_by_artist(self):
         """Test search by artist name"""

@@ -3,10 +3,7 @@ Tests for MusicBrainz Client (Phase 4.3)
 TDD: Write tests FIRST, then implement src/api/musicbrainz_client.py
 """
 
-import shutil
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import musicbrainzngs
 import pytest
@@ -212,10 +209,13 @@ class TestMusicBrainzClient:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.content = b"fake_image_data"
+            mock_response.headers = {"Content-Type": "image/jpeg"}
             mock_get.return_value = mock_response
 
-            # Download
-            success = client.download_album_art("https://example.com/cover.jpg", str(self.test_output))
+            # Download (use allowed domain from SSRF allowlist)
+            success = client.download_album_art(
+                "https://coverartarchive.org/release/test/front.jpg", str(self.test_output)
+            )
 
             # Verify
             assert success, "Should return True on success"

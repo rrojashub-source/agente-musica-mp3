@@ -12,7 +12,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 
 # Add project root and src/ to Python path BEFORE any project imports
 project_root = Path(__file__).parent.parent
@@ -28,7 +28,154 @@ import _mock_pyside6
 
 _mock_pyside6.install()
 
+# ---------------------------------------------------------------------------
+# Snapshot PySide6 mock module dicts IMMEDIATELY after install, before any
+# test file can modify them.  Phase-2 GUI test files replace QWidget etc. at
+# module-import time; the snapshot lets us restore the originals after each
+# such module finishes.
+# ---------------------------------------------------------------------------
+_PYSIDE6_SNAPSHOT = {}
+for _mod_key in ("PySide6.QtWidgets", "PySide6.QtCore", "PySide6.QtGui", "PySide6.QtOpenGLWidgets"):
+    _mod = sys.modules.get(_mod_key)
+    if _mod is not None:
+        _PYSIDE6_SNAPSHOT[_mod_key] = dict(vars(_mod))
+
 import pytest
+
+
+def restore_pyside6_mocks():
+    """Restore PySide6 mock modules to their state right after install().
+
+    Call this in module-scoped fixture teardown of any test file that
+    replaces PySide6 classes at module level.
+    """
+    for mod_key, orig_dict in _PYSIDE6_SNAPSHOT.items():
+        mod = sys.modules.get(mod_key)
+        if mod is None:
+            continue
+        # Remove keys that were added after the snapshot
+        current_keys = set(vars(mod).keys())
+        orig_keys = set(orig_dict.keys())
+        for k in current_keys - orig_keys:
+            try:
+                delattr(mod, k)
+            except (AttributeError, TypeError):
+                pass
+        # Restore original values for keys that existed in the snapshot
+        for k, v in orig_dict.items():
+            try:
+                setattr(mod, k, v)
+            except (AttributeError, TypeError):
+                pass
+
+    # Restore BaseWorker.is_cancelled property if it was deleted by
+    # test_gui_tabs_phase2 at module scope.
+    bw_mod = sys.modules.get("gui.base.base_worker")
+    if bw_mod is not None:
+        bw_cls = getattr(bw_mod, "BaseWorker", None)
+        if bw_cls is not None and "is_cancelled" not in bw_cls.__dict__:
+            bw_cls.is_cancelled = property(lambda self: self._cancelled)
+
+
+# ---------------------------------------------------------------------------
+# Restore PySide6 mocks before each test MODULE is collected.
+# Phase-2 GUI test files modify PySide6.QtWidgets/QtCore/QtGui at module-level
+# import time.  Without this hook, a phase-2 file imported earlier during
+# collection would contaminate modules imported by later test files.
+# ---------------------------------------------------------------------------
+_PHASE2_GUI_FILES = {
+    "test_gui_base_phase2",
+    "test_gui_dialogs_phase2",
+    "test_gui_tabs_phase2",
+    "test_gui_visualizers_phase2",
+    "test_gui_widgets_phase2",
+}
+
+
+_phase2_seen_during_collection = False
+_PYSIDE6_CONTAMINATED_SNAPSHOT = {}  # Saved after all phase2 files imported
+
+
+def _save_contaminated_state():
+    """Save current (contaminated) PySide6 state for later re-application."""
+    for mod_key in ("PySide6.QtWidgets", "PySide6.QtCore", "PySide6.QtGui", "PySide6.QtOpenGLWidgets"):
+        mod = sys.modules.get(mod_key)
+        if mod is not None:
+            _PYSIDE6_CONTAMINATED_SNAPSHOT[mod_key] = dict(vars(mod))
+
+
+def _apply_contaminated_state():
+    """Re-apply the contaminated PySide6 state (for phase2 test execution)."""
+    for mod_key, cont_dict in _PYSIDE6_CONTAMINATED_SNAPSHOT.items():
+        mod = sys.modules.get(mod_key)
+        if mod is None:
+            continue
+        current_keys = set(vars(mod).keys())
+        cont_keys = set(cont_dict.keys())
+        for k in current_keys - cont_keys:
+            try:
+                delattr(mod, k)
+            except (AttributeError, TypeError):
+                pass
+        for k, v in cont_dict.items():
+            try:
+                setattr(mod, k, v)
+            except (AttributeError, TypeError):
+                pass
+
+
+def pytest_collectstart(collector):
+    """Restore PySide6 state before importing non-phase2 test modules.
+
+    Phase-2 GUI test files modify PySide6.QtWidgets/QtCore/QtGui at module-level
+    import time.  This hook:
+    1. Lets phase2 files accumulate their contamination
+    2. After the last phase2 file, saves the contaminated state
+    3. Restores clean PySide6 before each non-phase2 module import
+
+    The saved contaminated state is re-applied before phase2 tests run.
+    """
+    global _phase2_seen_during_collection
+    # Only act on Module collectors (test files)
+    if type(collector).__name__ != "Module":
+        return
+    fspath = getattr(collector, "fspath", None)
+    if fspath is None:
+        return
+    name = os.path.splitext(os.path.basename(str(fspath)))[0]
+    if name in _PHASE2_GUI_FILES:
+        _phase2_seen_during_collection = True
+        return
+    # Save contaminated state once (after all phase2 files imported)
+    if _phase2_seen_during_collection and not _PYSIDE6_CONTAMINATED_SNAPSHOT:
+        _save_contaminated_state()
+    # Restore before non-phase2 modules (only after phase2 files seen)
+    if _phase2_seen_during_collection:
+        restore_pyside6_mocks()
+
+
+_in_phase2_module = False
+
+
+def pytest_runtest_setup(item):
+    """Toggle PySide6 state between contaminated (for phase2) and clean (for others).
+
+    Before phase2 tests: re-apply contaminated state so lazy re-imports work.
+    Before non-phase2 tests: restore clean state.
+    """
+    global _in_phase2_module
+    mod_base = item.module.__name__.rsplit(".", 1)[-1]
+
+    if mod_base in _PHASE2_GUI_FILES:
+        if not _in_phase2_module:
+            _in_phase2_module = True
+            if _PYSIDE6_CONTAMINATED_SNAPSHOT:
+                _apply_contaminated_state()
+    else:
+        if _in_phase2_module:
+            _in_phase2_module = False
+            restore_pyside6_mocks()
+
 
 # Check if real PySide6 is available (not our mock).
 # The mock module's __getattr__ returns MagicMock for any attribute including

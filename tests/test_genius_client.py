@@ -6,7 +6,7 @@ Created: November 17, 2025
 """
 
 import sys
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock
 
 import pytest
 import requests
@@ -66,7 +66,7 @@ class TestGeniusClient:
         client = GeniusClient(self.test_token)
 
         assert client is not None
-        assert client.access_token == self.test_token
+        assert client._access_token == self.test_token
         assert client._cache is not None
         assert len(client._cache) == 0
 

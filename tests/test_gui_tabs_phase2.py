@@ -16,12 +16,20 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+import pytest as _pytest_for_fixture
+
 # ---------------------------------------------------------------------------
 # Force re-import of gui.base and gui.tabs with mocked Qt classes
 # ---------------------------------------------------------------------------
 _qt_widgets = sys.modules.get("PySide6.QtWidgets")
 _qt_core = sys.modules.get("PySide6.QtCore")
 _qt_gui = sys.modules.get("PySide6.QtGui")
+
+# Placeholders for saved BaseTab/BaseWorker properties (set below if applicable)
+_saved_basetab_props = {}
+_saved_baseworker_props = {}
+_BaseTab = None
+_BaseWorker = None
 
 # Clear cached gui modules so they re-import with our mocked QWidget
 if _qt_widgets is not None:
@@ -473,18 +481,41 @@ if _qt_widgets is not None:
     # Fix BaseTab read-only properties (status_label, progress_bar).
     # Shiboken bypasses Python descriptors; our mock does not.
     # Remove them so subclasses can assign freely.
+    # Save originals so the restore fixture can put them back.
     # -----------------------------------------------------------------------
     from gui.base.base_tab import BaseTab as _BaseTab
 
+    _saved_basetab_props = {}
     for _pn in ("status_label", "progress_bar"):
         if isinstance(_BaseTab.__dict__.get(_pn), property):
+            _saved_basetab_props[_pn] = _BaseTab.__dict__[_pn]
             delattr(_BaseTab, _pn)
 
     # Also fix BaseWorker.is_cancelled read-only property
     from gui.base.base_worker import BaseWorker as _BaseWorker
 
+    _saved_baseworker_props = {}
     if isinstance(_BaseWorker.__dict__.get("is_cancelled"), property):
+        _saved_baseworker_props["is_cancelled"] = _BaseWorker.__dict__["is_cancelled"]
         delattr(_BaseWorker, "is_cancelled")
+
+
+# ---------------------------------------------------------------------------
+# Restore BaseTab/BaseWorker properties after all tests in this module.
+# The PySide6 mock attributes are restored by conftest.pytest_collectstart.
+# But BaseTab/BaseWorker properties were deleted from the CLASS objects
+# directly, so they must be restored here.
+# ---------------------------------------------------------------------------
+@_pytest_for_fixture.fixture(autouse=True, scope="module")
+def _restore_base_class_props():
+    """Restore BaseTab/BaseWorker properties that were deleted at module level."""
+    yield
+    if _BaseTab is not None:
+        for _pn, _prop in _saved_basetab_props.items():
+            setattr(_BaseTab, _pn, _prop)
+    if _BaseWorker is not None:
+        for _pn, _prop in _saved_baseworker_props.items():
+            setattr(_BaseWorker, _pn, _prop)
 
 
 # ---------------------------------------------------------------------------
