@@ -2,156 +2,232 @@
 
 **Professional Music Library Management System**
 
-Version: 2.1.0 | Python 3.13 | PySide6 | License: MIT
+Version 2.1.0 | Python 3.13 | PySide6 | Windows | MIT License
 
 ---
 
-## Overview
+## The Problem
 
-Desktop music library manager with YouTube downloading, Spotify search, automatic metadata tagging (MusicBrainz), real-time audio visualization (OpenGL), AI-powered song similarity, chord detection, lyrics, plugin system, mobile remote control, and cloud sync. Supports Spanish and English.
+Music lovers managing MP3 libraries (100-10,000 songs) juggle multiple tools: yt-dlp for downloads, MusicBrainz Picard for tags, foobar2000 for playback, and manual scripts for organization. NEXUS Music Manager unifies everything into one desktop application.
 
-**Metrics:** 111 source files, 38K LOC, 1,289 tests, audit score 7.6/10.
+## Solution
+
+A professional music library manager with a PySide6 GUI that integrates downloading, metadata enrichment, organization, playback, and AI-powered analysis.
+
+**User journey:** Import your MP3s -> Enrich metadata automatically -> Organize your library -> Enjoy with visualizers and smart recommendations.
 
 ---
 
-## Quick Start
+## Install
+
+### Windows Installer (recommended)
+
+Download `Setup_NEXUS_Music_v2.1.0.exe` (154 MB) from [Releases](https://github.com/rrojashub-source/agente-musica-mp3/releases).
+
+### Development Setup
 
 ```bash
-# Pre-built Windows executable
-dist/NEXUS_Music_Manager.exe
-
-# Development
+git clone https://github.com/rrojashub-source/agente-musica-mp3.git
+cd agente-musica-mp3
 pip install -r requirements.txt
+pip install -r requirements-dev.txt   # for testing/linting
 python src/main.py
-
-# Tests
-pytest tests/ -v
 ```
+
+**Prerequisite:** [libmpv](https://sourceforge.net/projects/mpv-player-windows/) — place `libmpv-2.dll` in `src/` or system PATH.
 
 ---
 
 ## Features
 
 ### Download & Search
-- **YouTube Download** -- High quality MP3 320kbps via yt-dlp
-- **Spotify Search** -- Find songs with auto-conversion to YouTube
-- **Playlist Download** -- One-click full playlist downloads
-- **Concurrent Queue** -- 3 simultaneous downloads with progress tracking
+- **YouTube Download** — MP3 320kbps via yt-dlp with concurrent queue (3 simultaneous)
+- **Spotify Search** — Find songs, auto-convert to YouTube download
+- **Playlist Download** — Full playlist import with progress tracking
 
 ### Library Management
-- **SQLite + FTS5 + WAL** -- Full-text search across title, artist, album
-- **Duplicate Detector** -- Audio fingerprinting (AcoustID), metadata, filesize
-- **Auto-Organizer** -- Artist/Album folder structure templates
-- **Batch Rename** -- Template-based mass renaming
-- **Content Filter** -- Kids/Family/Clean modes with AI classification
+- **SQLite + FTS5 + WAL** — Full-text search across title, artist, album
+- **Duplicate Detection** — Audio fingerprinting (AcoustID) + metadata + file hash
+- **Auto-Organizer** — Artist/Album folder structure templates
+- **Batch Rename** — Template-based mass renaming
+- **Import Scanner** — Drag-and-drop folder import with metadata extraction
 
 ### Music Player
-- **python-mpv** -- Gapless playback, all audio formats
-- **10-Band Equalizer** -- Rock, Pop, Jazz, Classical presets
-- **4 Visualizers** -- Bars, Waveform, Brain AI, Organic SDF (OpenGL 3.3 + GLSL)
-- **Lyrics Display** -- LRC synchronized + Genius API
-- **Chord Detection** -- Real-time chord analysis via librosa
-- **Keyboard Shortcuts** -- Space=play, arrows=seek, etc.
+- **python-mpv** — Gapless playback, all audio formats
+- **10-Band Equalizer** — Rock, Pop, Jazz, Classical presets
+- **4 Visualizers** — Bars, Waveform, Brain AI, Organic SDF (OpenGL 3.3 + GLSL)
+- **Synced Lyrics** — LRC format + Genius API fallback
+- **Chord Detection** — Real-time chord analysis with guitar diagrams
+- **Keyboard Shortcuts** — Fully customizable (Space, arrows, F11 fullscreen)
 
-### AI Features
-- **Audio Embeddings** -- 128D feature vectors from numpy FFT analysis
-- **Find Similar Songs** -- Cosine similarity search
-- **BPM Detection** -- Automatic tempo analysis
-- **Mood Classification** -- Happy, Sad, Energetic, Calm
+### AI & Analysis
+- **Audio Embeddings** — 128D feature vectors from numpy FFT
+- **Find Similar Songs** — Cosine similarity search across your library
+- **BPM Detection** — Automatic tempo analysis
+- **Mood Classification** — Happy, Sad, Energetic, Calm
 
-### Cloud & Remote
-- **Mobile Remote** -- Flask REST API + JWT auth + QR code pairing
-- **Cloud Sync** -- Local folder + Google Drive providers
-- **Plugin System** -- 17 hooks, 3 included plugins (PlayCounter, Scrobbler, Discord RPC)
-- **Multi-language** -- Spanish/English (274 translation keys)
+### Extras
+- **Cloud Sync** — Local folder + Google Drive providers
+- **Plugin System** — 17 hooks, 3 included plugins (PlayCounter, Scrobbler, Discord RPC)
+- **Multi-language** — Spanish/English (274 translation keys)
+- **Dark/Light Themes** — QSS-based with style constants
+- **Statistics** — Play history, top artists, listening trends
 
-## Screenshots
-
-*Screenshots coming soon.*
+---
 
 ## Technology Stack
 
 | Component | Technology |
 |-----------|-----------|
 | Language | Python 3.13 |
-| GUI | PySide6 |
+| GUI | PySide6 6.10 |
 | Database | SQLite + FTS5 + WAL |
 | Audio | python-mpv (libmpv) + numpy FFT |
 | Visualizers | OpenGL 3.3 + GLSL shaders |
 | Downloads | yt-dlp |
 | Metadata | Mutagen (ID3 tags) |
-| APIs | YouTube, Spotify, MusicBrainz, Genius, AcoustID |
-| Remote | Flask REST + JWT Bearer auth |
-| Packaging | PyInstaller 6.19 + UPX (151 MB) |
-| CI/CD | GitHub Actions (test, mypy, bandit, flake8, build) |
+| APIs | YouTube Data v3, Spotify, MusicBrainz, Genius, AcoustID |
+| Packaging | PyInstaller 6.19 + Inno Setup 6 (154 MB installer) |
+| Quality | mypy strict, pytest, flake8, bandit, black, isort |
+| CI/CD | GitHub Actions (test, type-check, security, build) |
+
+---
 
 ## Project Structure
 
 ```
-src/
-├── main.py                 # Entry point (Facade pattern)
-├── api/                    # YouTube, Spotify, MusicBrainz, Genius, Chords
-├── core/                   # Player, downloads, embeddings, duplicates, metadata
-├── controllers/            # Playback, Library, UIComposer, Remote
-├── gui/
-│   ├── base/               # BaseTab template for tabs
-│   ├── tabs/               # 14 tabs
-│   ├── widgets/            # 9 custom widgets
-│   ├── visualizers/        # Organic SDF visualizer (OpenGL)
-│   ├── dialogs/            # API settings, shortcuts
-│   └── themes/             # dark.qss, light.qss, style constants
-├── services/               # Cloud sync, remote server, content filter
-├── plugins/                # Plugin system (17 hooks) + 3 plugins
-├── database/               # SQLite manager + 6 SQL migrations
-├── workers/                # Download, import, scan workers (BaseWorker)
-├── utils/                  # Sanitizer, rate limiter, credentials, constants
-└── translations.py         # ES/EN (274 keys)
-tests/                      # 68 files, 1,289 tests
-docs/                       # Architecture, API reference, audit report
+agente-musica-mp3/
+├── src/                        # Application source (116 files, 37K LOC)
+│   ├── main.py                 # Entry point (Facade pattern, 338 LOC)
+│   ├── api/                    # YouTube, Spotify, MusicBrainz, Genius, Chords
+│   ├── core/                   # Audio player, downloads, embeddings, metadata, playlists
+│   ├── controllers/            # Playback, Library, UIComposer, Remote
+│   ├── database/               # SQLite manager + 6 SQL migrations
+│   ├── gui/
+│   │   ├── base/               # BaseTab shared template
+│   │   ├── tabs/               # 12 tabs (library, search, lyrics, chords, import, ...)
+│   │   ├── widgets/            # 9 widgets (player, visualizer, equalizer, ...)
+│   │   ├── visualizers/        # Organic SDF visualizer (OpenGL + GLSL)
+│   │   ├── dialogs/            # API settings, shortcuts
+│   │   └── themes/             # dark.qss, light.qss, style_constants.py
+│   ├── services/               # Cloud sync, statistics, download service
+│   ├── plugins/                # Plugin system (17 hooks) + 3 built-in plugins
+│   ├── workers/                # Background workers (download, import, scan)
+│   └── utils/                  # Sanitizer, rate limiter, credentials, constants
+├── tests/                      # 86 test files
+├── docs/                       # PRD, architecture, API reference, audit reports
+│   ├── history/                # Archived docs from previous phases
+│   └── plans/                  # Active roadmaps
+├── scripts/                    # Build scripts, DB utilities
+├── installer/                  # Inno Setup configuration
+├── agent_docs/                 # Build, test, and architecture guides
+└── tasks/                      # Active development notes
 ```
+
+---
+
+## Quality Metrics
+
+| Metric | Status |
+|--------|--------|
+| mypy | 0 errors (116 files, strict mode) |
+| flake8 | Clean (max-line-length=120) |
+| bandit | Clean (-ll) |
+| pre-commit | black + isort + flake8 |
+| Audit | MAPS 4-phase audit: 15/15 modules approved (63 rounds) |
+
+---
 
 ## API Keys (Optional)
 
-Configure via Tools > Configure API Keys in the app.
+Configure via **Tools > Configure API Keys** in the app. Keys are stored in your OS keyring (never in code).
 
-| API | Purpose |
-|-----|---------|
-| YouTube Data v3 | Search |
-| Spotify Web API | Alternative search |
-| Genius | Lyrics |
-| AcoustID | Audio fingerprinting |
+| API | Purpose | Required? |
+|-----|---------|-----------|
+| YouTube Data v3 | Search | Optional (scraping fallback) |
+| Spotify Web API | Alternative search | Optional |
+| Genius | Lyrics | Optional |
+| AcoustID | Audio fingerprinting | Optional |
 
-Keys are stored in OS keyring (never in code).
+---
 
 ## System Requirements
 
-- Windows 10/11 (64-bit)
-- 4 GB RAM minimum (8 GB recommended)
-- 200 MB storage
+- **OS:** Windows 10/11 (64-bit)
+- **RAM:** 4 GB minimum, 8 GB recommended
+- **Storage:** 200 MB for application
+- **GPU:** OpenGL 3.3 compatible (for visualizers)
+- **Audio:** libmpv-2.dll (bundled in installer)
 
-### Prerequisites
-
-- **libmpv** (required for audio playback):
-  - Windows: `libmpv-2.dll` must be in PATH or application directory
-  - Linux: `sudo apt install libmpv-dev`
-  - macOS: `brew install mpv`
-- **FFmpeg** (required for audio conversion): included with yt-dlp on Windows
+---
 
 ## Security
 
 - JWT Bearer authentication on remote API (24h expiration)
-- CORS restricted to localhost + server IP
+- CORS restricted to specific server IP (not wildcard)
 - Path traversal protection with symlink checks
-- FTS5 query sanitization (injection prevention)
+- FTS5 query sanitization (SQL injection prevention)
 - Plugin whitelist (default-deny)
-- SQL column name allowlists
 - Input sanitization on all external data
+- Credentials in OS keyring (4-tier fallback)
+
+---
+
+## Development
+
+```bash
+# Run application
+python src/main.py
+
+# Run tests
+pytest tests/ -v
+
+# Type checking
+mypy src/ --ignore-missing-imports
+
+# Security scan
+bandit -r src/ -ll
+
+# Code formatting
+black src/ tests/ && isort src/ tests/
+```
+
+Pre-commit hooks (black, isort, flake8) run automatically on every commit.
+
+---
 
 ## Documentation
 
-- `docs/ARCHITECTURE.md` -- System architecture and design patterns
-- `docs/API_REFERENCE.md` -- Internal API and REST endpoint reference
-- `CHANGELOG.md` -- Version history
+| Document | Description |
+|----------|-------------|
+| [PRD](docs/PRD.md) | Product requirements, scope, and non-goals |
+| [Architecture](docs/ARCHITECTURE.md) | System design and patterns |
+| [API Reference](docs/API_REFERENCE.md) | Internal API and REST endpoints |
+| [Progress](docs/PROGRESS.md) | Current status and next steps |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and fixes |
+| [Changelog](CHANGELOG.md) | Version history |
+| [Commercial Roadmap](docs/plans/ROADMAP_COMERCIAL_V2.md) | Future plans |
+
+---
+
+## Implementation Phases
+
+| Phase | Name | Period |
+|-------|------|--------|
+| 1 | Core Library + Database | Sep 2025 |
+| 2 | Search + Download | Oct 2025 |
+| 3 | Stack Migration (PyQt6 -> PySide6) | Oct 2025 |
+| 4 | API Integration (Spotify, MusicBrainz, Genius) | Nov 2025 |
+| 5 | Management Tools (duplicates, organize, rename) | Nov 2025 |
+| 6 | Player Polish (gapless, visualizer) | Nov 2025 |
+| 7 | Advanced Features (plugins, remote, cloud, i18n) | Nov-Dec 2025 |
+| 8 | AI Features (embeddings, content filter, chords) | Dec 2025 |
+| 9 | Packaging + Build | Dec 2025 |
+| 10 | Refactoring + Audit | Mar 2026 |
+
+All 10 phases completed.
+
+---
 
 ## Contributing
 
@@ -162,10 +238,10 @@ Keys are stored in OS keyring (never in code).
 5. Run checks: `mypy src/ --ignore-missing-imports && flake8 src/`
 6. Submit a PR to `main`
 
-Pre-commit hooks (black, isort, flake8) run automatically on commit.
+---
 
 ## Credits
 
 - **Development:** Ricardo Rojas + NEXUS@CLI
-- **Period:** September--December 2025, refactoring + audit March 2026
-- **License:** MIT -- Copyright (c) 2025 Ricardo Rojas
+- **Period:** September 2025 - March 2026
+- **License:** MIT — Copyright (c) 2025-2026 Ricardo Rojas
