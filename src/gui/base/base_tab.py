@@ -155,6 +155,11 @@ class BaseTab(QWidget):
                 self.layout().addWidget(self._progress_bar)
         return self._progress_bar
 
+    @progress_bar.setter
+    def progress_bar(self, value: QProgressBar) -> None:
+        """Allow subclasses to assign their own progress bar."""
+        self._progress_bar = value
+
     @property
     def status_label(self) -> QLabel:
         """Lazy-create status label on first access."""
@@ -163,6 +168,11 @@ class BaseTab(QWidget):
             if self.layout():
                 self.layout().addWidget(self._status_label)
         return self._status_label
+
+    @status_label.setter
+    def status_label(self, value: QLabel) -> None:
+        """Allow subclasses to assign their own status label."""
+        self._status_label = value
 
     def add_progress_section(self, layout: QVBoxLayout) -> None:
         """Add progress bar + status label to a layout.
