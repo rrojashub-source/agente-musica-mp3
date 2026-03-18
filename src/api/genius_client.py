@@ -19,8 +19,6 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
-import requests  # type: ignore[import-untyped]
-
 from utils.constants import API_DEFAULT_TIMEOUT
 from utils.rate_limiter import RateLimiter
 from utils.text_normalizer import strip_artist_suffix, strip_youtube_artifacts
@@ -172,9 +170,16 @@ class GeniusClient:
                 logger.warning(f"Lyrics not found: {title} - {artist}")
                 return None
 
-        except (requests.RequestException, AttributeError, ValueError) as e:
+        except Exception as e:
             safe_title = clean_title.replace("\n", " ").replace("\r", " ")
             safe_artist = clean_artist.replace("\n", " ").replace("\r", " ")
+            error_str = str(e)
+            # Detect expired/invalid token (lyricsgenius raises with full HTTP response)
+            if "401" in error_str or "invalid_token" in error_str:
+                logger.error(f"Genius API token expired or invalid for '{safe_title} - {safe_artist}'")
+                raise RuntimeError(
+                    "Genius API token expired. Update it in Settings > Configure API Keys, then restart the app."
+                ) from e
             logger.error(f"Genius API error for '{safe_title} - {safe_artist}': {e}")
             return None
 

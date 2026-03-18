@@ -245,19 +245,23 @@ class LyricsTab(BaseTab):
         Args:
             error: Error message
         """
+        # Truncate long API error messages for display
+        short_error = error[:200] + "..." if len(error) > 200 else error
         self.lyrics_text.setPlainText(
-            f"❌ {error}\n\n"
+            f"❌ {short_error}\n\n"
             "Possible reasons:\n"
             "• Song not found on Genius database\n"
             "• Artist/title mismatch\n"
             "• Network connection issue\n"
-            "• Genius API rate limit\n\n"
+            "• Genius API token expired\n\n"
             "Try:\n"
+            "• Settings > Configure API Keys (update Genius token)\n"
             "• Click 'Manual Search' to retry\n"
-            "• Check your internet connection\n"
-            "• Wait a moment and try again"
+            "• Restart the app after updating the token"
         )
-        self.status_label.setText(f"❌ {error}")
+        # Status label: single line, max 100 chars
+        status_msg = error[:100] + "..." if len(error) > 100 else error
+        self.status_label.setText(f"❌ {status_msg}")
         self.search_button.setEnabled(True)
         self.copy_button.setEnabled(False)
 
