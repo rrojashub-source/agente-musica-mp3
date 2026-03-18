@@ -59,17 +59,19 @@ class APITabWidget(QWidget):
     - See validation status
     """
 
-    def __init__(self, api_name: str, service_name: str = "nexus_music") -> None:
+    def __init__(self, api_name: str, service_name: str = "nexus_music", keyring_key: str = "") -> None:
         """
         Initialize API tab
 
         Args:
             api_name: Display name (e.g., "YouTube", "Spotify")
             service_name: Keyring service identifier
+            keyring_key: Explicit keyring key (overrides auto-generated name)
         """
         super().__init__()
         self.api_name: str = api_name
         self.service_name: str = service_name
+        self.keyring_key: str = keyring_key or f"{api_name.lower()}_api_key"
         self.api_key_input: QLineEdit
         self.validate_button: QPushButton
         self.clear_button: QPushButton
@@ -198,7 +200,7 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
     def _load_existing_key(self) -> None:
         """Load existing key from keyring"""
         try:
-            key = keyring.get_password(self.service_name, f"{self.api_name.lower()}_api_key")
+            key = keyring.get_password(self.service_name, self.keyring_key)
             if key:
                 self.api_key_input.setText(key)
                 self.status_label.setText("✅ Clave existente cargada / Existing key loaded")
@@ -293,7 +295,7 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
 
     def _validate_genius(self, api_key: str) -> None:
         """
-        Validate Genius API token
+        Validate Genius API token by making a test API call.
 
         Args:
             api_key: Genius API token
@@ -301,12 +303,24 @@ Clic en 'Validar' para probar tu clave. / Click 'Validate' to test your key.
         Raises:
             Exception: If validation fails
         """
-        # Basic format validation
-        if len(api_key) >= 20:
-            self.status_label.setText("✅ Válida - Formato de token correcto / Valid - Token format correct")
-            logger.info("Genius token format validated")
-        else:
+        if len(api_key) < 20:
             raise Exception("Token muy corto (esperado 20+ caracteres) / Token too short (expected 20+ characters)")
+
+        import requests
+
+        r = requests.get(
+            "https://api.genius.com/search",
+            params={"q": "test"},
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=10,
+        )
+        if r.status_code == 200:
+            self.status_label.setText("✅ Válida - Genius API funcionando! / Valid - Genius API working!")
+            logger.info("Genius token validated successfully via API")
+        elif r.status_code == 401:
+            raise Exception("Token expirado o inválido / Token expired or invalid")
+        else:
+            raise Exception(f"Error HTTP {r.status_code}")
 
     def _validate_acoustid(self, api_key: str) -> None:
         """
@@ -585,10 +599,10 @@ class APISettingsDialog(QDialog):
         self.tab_widget = QTabWidget()
 
         # Create tabs
-        self.youtube_tab = APITabWidget("YouTube")
+        self.youtube_tab = APITabWidget("YouTube", keyring_key="youtube_api_key")
         self.spotify_tab = SpotifyTabWidget()  # Specialized for Client ID + Secret
-        self.genius_tab = APITabWidget("Genius")
-        self.acoustid_tab = APITabWidget("AcoustID")  # Audio fingerprinting
+        self.genius_tab = APITabWidget("Genius", keyring_key="genius_token")
+        self.acoustid_tab = APITabWidget("AcoustID", keyring_key="acoustid_api_key")
 
         self.tab_widget.addTab(self.youtube_tab, "📺 YouTube")
         self.tab_widget.addTab(self.spotify_tab, "🎵 Spotify")
@@ -666,12 +680,13 @@ class APISettingsDialog(QDialog):
         try:
             saved_count = 0
 
-            # Save YouTube key
-            youtube_key = self.youtube_tab.get_api_key()
-            if youtube_key:
-                keyring.set_password("nexus_music", "youtube_api_key", youtube_key)
-                logger.info("YouTube API key saved to keyring")
-                saved_count += 1
+            # Save single-key tabs (YouTube, Genius, AcoustID)
+            for tab in (self.youtube_tab, self.genius_tab, self.acoustid_tab):
+                key = tab.get_api_key()
+                if key:
+                    keyring.set_password("nexus_music", tab.keyring_key, key)
+                    logger.info(f"{tab.api_name} key saved to keyring ({tab.keyring_key})")
+                    saved_count += 1
 
             # Save Spotify credentials (Client ID + Secret)
             spotify_client_id, spotify_client_secret = self.spotify_tab.get_credentials()
@@ -690,20 +705,6 @@ class APISettingsDialog(QDialog):
                     "Por favor ingresa ambos Client ID y Client Secret, o deja ambos vacíos.\n\n"
                     "Please enter both Spotify Client ID and Client Secret, or leave both empty.",
                 )
-
-            # Save Genius key
-            genius_key = self.genius_tab.get_api_key()
-            if genius_key:
-                keyring.set_password("nexus_music", "genius_token", genius_key)
-                logger.info("Genius token saved to keyring")
-                saved_count += 1
-
-            # Save AcoustID key
-            acoustid_key = self.acoustid_tab.get_api_key()
-            if acoustid_key:
-                keyring.set_password("nexus_music", "acoustid_api_key", acoustid_key)
-                logger.info("AcoustID API key saved to keyring")
-                saved_count += 1
 
             if saved_count > 0:
                 logger.info(f"Saved {saved_count} API key(s) to secure storage")
