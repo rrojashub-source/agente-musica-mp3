@@ -21,8 +21,17 @@ from typing import Any, Dict, Optional
 # CRITICAL: Patch subprocess FIRST to hide console windows on Windows
 import utils.subprocess_patch  # noqa: F401
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+# Configure logging — console + file
+_log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+logging.basicConfig(level=logging.INFO, format=_log_format)
+
+# Add file handler: logs go to nexus_music.log next to the executable/script
+_log_dir = Path(sys.argv[0]).resolve().parent
+_file_handler = logging.FileHandler(_log_dir / "nexus_music.log", encoding="utf-8")
+_file_handler.setLevel(logging.DEBUG)  # Capture everything to file
+_file_handler.setFormatter(logging.Formatter(_log_format))
+logging.getLogger().addHandler(_file_handler)
+
 logger = logging.getLogger(__name__)
 
 # Multi-language translation system
