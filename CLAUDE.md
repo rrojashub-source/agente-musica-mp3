@@ -37,16 +37,16 @@ Antes de cualquier sesion de auditoria:
 |-------------|--------|--------|
 | mypy | 0 errores (111 archivos) | mypy.ini strict |
 | pytest | 980+ tests pass | pytest.ini, coverage >= 20% |
-| flake8 | Limpio | max-line-length=120 |
+| ruff | Limpio | ruff.toml, line-length=120 |
 | bandit | Limpio | -ll |
-| pre-commit | Activo | black, isort, flake8 |
+| pre-commit | Activo | ruff (lint + format) |
 
 ## Reglas
 
 - Commits atomicos: un cambio logico por commit
 - Type hints requeridos en todos los archivos (mypy strict)
 - API keys en OS keyring (no en codigo), via `utils/credentials.py`
-- numpy FFT (no librosa) para audio analysis
+- scipy.fft para audio analysis (reemplaza numpy.fft, 2-4x mas rapido)
 - DB principal: `music_library.db` (SQLite + FTS5 + WAL)
 - Paths en DB pueden necesitar update si cambia ubicacion de MP3s
 
@@ -56,6 +56,8 @@ Antes de cualquier sesion de auditoria:
 python src/main.py                          # Dev
 pytest tests/ -v                            # Tests
 mypy src/ --ignore-missing-imports          # Types
+ruff check src/ tests/                      # Lint
+ruff format --check src/ tests/             # Format check
 bandit -r src/ -ll                          # Security
 ```
 

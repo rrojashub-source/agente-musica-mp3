@@ -36,11 +36,34 @@ Proyecto completado (v2.1.0). Auditoria MAPS finalizada. Alineando estructura co
 |--------|-------|
 | mypy | 0 errors (111 files, strict) |
 | pytest | 980+ pass (1,289 collected) |
-| flake8 | clean |
+| ruff | clean (replaces black+isort+flake8) |
 | bandit | clean (-ll) |
 | MAPS audit | 15/15 modules, 4/4 phases |
 
+### 2026-03-20
+- Tooling upgrade: ruff replaces black+isort+flake8 (pre-commit 50-100x faster)
+- Performance: scipy.fft replaces numpy.fft (2-4x faster FFT in visualizer, mood, features)
+- DevX: mcp-server-sqlite configured for direct DB queries from Claude Code
+
 ## What's Next
-- Push 15 commits pendientes + crear PR
+- Push commits pendientes + crear PR
 - Alinear repo con NEXUS Protocol v1.0 (PRD, agent_docs, lessons, catchup)
 - Monitorear yt_dlp #2879 para migration a Nuitka
+
+## Planned: v2.2.0 — Auto-Update (tufup)
+
+**Tool:** [tufup](https://github.com/dfdx/tufup) — TUF-based auto-update for PyInstaller apps.
+
+**What it requires:**
+1. **Update server** — GitHub Releases or Hostinger VPS serving signed metadata + bundles
+2. **Ed25519 key pair** — for TUF signing (root + targets keys)
+3. **Client integration** — `tufup.client` in `main.py`, check on startup
+4. **Build pipeline** — PyInstaller produces bundle → tufup signs → uploads to server
+
+**Why tufup over alternatives:**
+- Designed specifically for PyInstaller/desktop apps
+- TUF framework = cryptographic verification of updates
+- Delta updates = small downloads for patches
+- No custom server needed (static file hosting works)
+
+**Estimated effort:** 2-3 sessions (key gen, server setup, client integration, testing)
