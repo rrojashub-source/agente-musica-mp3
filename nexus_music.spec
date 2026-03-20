@@ -56,6 +56,9 @@ a = Analysis(
         'pydub',
         'numpy',
         'numpy.fft',
+        'scipy',
+        'scipy.fft',
+        'scipy.fft._pocketfft',
         'librosa',
         'pychord',
 
@@ -73,7 +76,10 @@ a = Analysis(
         'lyricsgenius',
         'yt_dlp',
 
-        # === Metadata ===
+        # === Metadata (mutagen-rs primary, mutagen fallback) ===
+        'mutagen_rs',
+        'mutagen_rs.id3',
+        'mutagen_rs.mp3',
         'mutagen',
         'mutagen.mp3',
         'mutagen.id3',
@@ -204,6 +210,7 @@ a = Analysis(
         'utils.constants',
         'utils.rate_limiter',
         'utils.fpcalc_checker',
+        'utils.mutagen_compat',
 
         # === Our modules: workers ===
         'workers',
