@@ -14,10 +14,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
-from mutagen import MutagenError
-from mutagen.id3 import APIC, ID3, TALB, TCON, TDRC, TIT2, TPE1
-from mutagen.id3 import error as ID3Error
-from mutagen.mp3 import MP3
+from utils.mutagen_compat import APIC, ID3, ID3Error, MP3, TALB, TCON, TDRC, TIT2, TPE1, MutagenError
 
 from core.metadata_autocompleter import MetadataAutocompleter
 

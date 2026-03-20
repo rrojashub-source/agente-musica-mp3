@@ -195,7 +195,7 @@ class AudioPlayer:
     def _get_file_duration(self, file_path: str) -> float:
         """Get audio file duration using mutagen"""
         try:
-            from mutagen import File as MutagenFile
+            from utils.mutagen_compat import MutagenFile
 
             audio = MutagenFile(file_path)
             if audio and audio.info:

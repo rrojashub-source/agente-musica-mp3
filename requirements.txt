@@ -36,7 +36,8 @@ musicbrainzngs>=0.7.1
 # ========================================
 # Phase 5: Management Tools
 # ========================================
-# Audio metadata
+# Audio metadata (mutagen-rs is Rust-based, 100-300x faster; mutagen is fallback)
+mutagen-rs>=0.2.7
 mutagen>=1.47.0
 
 # Audio processing (used by embeddings, BPM, mood, waveform)

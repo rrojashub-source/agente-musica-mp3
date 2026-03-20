@@ -25,7 +25,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from mutagen import File as MutagenFile
+from utils.mutagen_compat import MutagenFile
 
 from utils.resource_path import get_resource_path
 

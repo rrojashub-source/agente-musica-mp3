@@ -51,8 +51,7 @@ def extract_metadata(file_path: str) -> Optional[Dict[str, Any]]:
         - file_size (int): File size in bytes
     """
     try:
-        from mutagen.id3 import ID3
-        from mutagen.mp3 import MP3
+        from utils.mutagen_compat import ID3, MP3
 
         # Normalize path to canonical format (absolute, resolved symlinks, correct separators)
         normalized_path = str(Path(file_path).resolve())

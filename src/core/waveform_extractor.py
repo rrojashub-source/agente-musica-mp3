@@ -165,7 +165,7 @@ class WaveformExtractor:
         """
         try:
             # Use mutagen to get duration
-            from mutagen import File
+            from utils.mutagen_compat import MutagenFile as File
 
             audio_file = File(file_path)
             if not audio_file or not hasattr(audio_file.info, "length"):

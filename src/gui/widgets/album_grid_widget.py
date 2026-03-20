@@ -139,8 +139,7 @@ class AlbumCard(QFrame):
     def _extract_cover_from_file(self, file_path: str) -> Optional[QPixmap]:
         """Extract cover art from audio file using mutagen"""
         try:
-            from mutagen import File
-            from mutagen.id3 import APIC
+            from utils.mutagen_compat import MutagenFile as File, APIC
 
             audio = File(file_path)
             if audio is None:

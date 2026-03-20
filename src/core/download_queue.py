@@ -472,7 +472,7 @@ class DownloadQueue(QObject):
             metadata (dict): Song metadata
         """
         try:
-            from mutagen.mp3 import MP3
+            from utils.mutagen_compat import MP3
 
             # Find actual file (handles yt-dlp quirks)
             file_path_obj = self._find_downloaded_file(file_path)
