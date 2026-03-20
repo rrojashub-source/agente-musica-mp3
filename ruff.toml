@@ -1,0 +1,31 @@
+# Ruff — replaces black + isort + flake8
+# Docs: https://docs.astral.sh/ruff/
+
+line-length = 120
+target-version = "py313"
+
+[lint]
+# Same ignore codes as previous flake8 config
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "E302",   # expected 2 blank lines
+    "E303",   # too many blank lines
+    "E741",   # ambiguous variable name
+    "F403",   # 'from module import *' used
+    "F405",   # may be undefined from star imports
+    "F541",   # f-string without placeholders
+    "E203",   # whitespace before ':'
+    "E226",   # missing whitespace around arithmetic operator
+    "E402",   # module level import not at top
+]
+
+[lint.per-file-ignores]
+"tests/*.py" = ["F841", "F401"]  # unused vars in assertions, availability-check imports
+"src/**/__init__.py" = ["F401"]  # re-exports
+
+[lint.isort]
+known-first-party = ["core", "gui", "api", "database", "services", "plugins", "utils", "controllers", "workers"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
