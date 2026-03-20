@@ -207,7 +207,11 @@ class MetadataTagger:
 
             # Embed cover art (APIC frame)
             audio.tags["APIC"] = APIC(  # type: ignore[index]
-                encoding=3, mime=mime, type=3, desc="Cover", data=img_data  # Cover (front)
+                encoding=3,
+                mime=mime,
+                type=3,
+                desc="Cover",
+                data=img_data,  # Cover (front)
             )
 
             # Save

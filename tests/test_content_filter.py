@@ -88,12 +88,12 @@ class TestContentScore:
             clean_score=0.5,
             confidence=0.6,
             source="metadata",
-            reasons=["test reason"]
+            reasons=["test reason"],
         )
         result = score.to_dict()
-        assert result['explicit_score'] == 0.5
-        assert result['source'] == "metadata"
-        assert "test reason" in result['reasons']
+        assert result["explicit_score"] == 0.5
+        assert result["source"] == "metadata"
+        assert "test reason" in result["reasons"]
 
 
 class TestContentClassifier:
@@ -113,27 +113,24 @@ class TestContentClassifier:
     def test_artist_database_loaded(self, classifier):
         """Test artist database is loaded"""
         stats = classifier.get_stats()
-        assert stats['explicit_artists'] > 0
-        assert stats['children_artists'] > 0
-        assert stats['christian_artists'] > 0
-        assert stats['clean_artists'] > 0
+        assert stats["explicit_artists"] > 0
+        assert stats["children_artists"] > 0
+        assert stats["christian_artists"] > 0
+        assert stats["clean_artists"] > 0
 
     def test_database_stats(self, classifier):
         """Test database statistics"""
         stats = classifier.get_stats()
         # Based on our database
-        assert stats['explicit_artists'] >= 90  # ~99 artists
-        assert stats['children_artists'] >= 50  # ~54 artists
-        assert stats['christian_artists'] >= 50  # ~54 artists
-        assert stats['clean_artists'] >= 70  # ~72 artists
+        assert stats["explicit_artists"] >= 90  # ~99 artists
+        assert stats["children_artists"] >= 50  # ~54 artists
+        assert stats["christian_artists"] >= 50  # ~54 artists
+        assert stats["clean_artists"] >= 70  # ~72 artists
 
     def test_explicit_artist_detection(self, classifier):
         """Test detection of known explicit artist"""
         score = classifier._analyze_metadata(
-            artist="Bad Bunny",
-            title="Titi Me Pregunto",
-            genre="Reggaeton",
-            filename="bad_bunny_song.mp3"
+            artist="Bad Bunny", title="Titi Me Pregunto", genre="Reggaeton", filename="bad_bunny_song.mp3"
         )
         assert score.explicit_score >= 0.9
         assert score.rating == ContentRating.EXPLICIT
@@ -142,10 +139,7 @@ class TestContentClassifier:
     def test_children_artist_detection(self, classifier):
         """Test detection of known children's artist"""
         score = classifier._analyze_metadata(
-            artist="Plim Plim",
-            title="La Cancion del ABC",
-            genre="Infantil",
-            filename="plim_plim.mp3"
+            artist="Plim Plim", title="La Cancion del ABC", genre="Infantil", filename="plim_plim.mp3"
         )
         assert score.children_score >= 0.9
         assert score.rating == ContentRating.CHILDREN
@@ -154,10 +148,7 @@ class TestContentClassifier:
     def test_christian_artist_detection(self, classifier):
         """Test detection of known christian artist"""
         score = classifier._analyze_metadata(
-            artist="Hillsong",
-            title="What A Beautiful Name",
-            genre="Worship",
-            filename="hillsong.mp3"
+            artist="Hillsong", title="What A Beautiful Name", genre="Worship", filename="hillsong.mp3"
         )
         assert score.christian_score >= 0.9
         assert score.rating == ContentRating.CHRISTIAN
@@ -165,10 +156,7 @@ class TestContentClassifier:
     def test_clean_artist_detection(self, classifier):
         """Test detection of known clean artist"""
         score = classifier._analyze_metadata(
-            artist="Coldplay",
-            title="Yellow",
-            genre="Alternative Rock",
-            filename="coldplay.mp3"
+            artist="Coldplay", title="Yellow", genre="Alternative Rock", filename="coldplay.mp3"
         )
         assert score.clean_score >= 0.8
         assert score.rating == ContentRating.CLEAN
@@ -176,10 +164,7 @@ class TestContentClassifier:
     def test_explicit_keyword_detection(self, classifier):
         """Test detection of explicit keywords in title"""
         score = classifier._analyze_metadata(
-            artist="Unknown Artist",
-            title="Song With Fuck Word",
-            genre="",
-            filename="explicit_song.mp3"
+            artist="Unknown Artist", title="Song With Fuck Word", genre="", filename="explicit_song.mp3"
         )
         assert score.explicit_score >= 0.7
         assert "Explicit keyword" in str(score.reasons)
@@ -187,40 +172,26 @@ class TestContentClassifier:
     def test_children_keyword_detection(self, classifier):
         """Test detection of children keywords in title"""
         score = classifier._analyze_metadata(
-            artist="Unknown",
-            title="Nursery Rhyme for Kids",
-            genre="",
-            filename="kids_song.mp3"
+            artist="Unknown", title="Nursery Rhyme for Kids", genre="", filename="kids_song.mp3"
         )
         assert score.children_score >= 0.5
 
     def test_genre_detection(self, classifier):
         """Test genre-based classification hints"""
         # Trap genre typically explicit
-        score1 = classifier._analyze_metadata(
-            artist="Unknown",
-            title="Song",
-            genre="Trap",
-            filename="song.mp3"
-        )
+        score1 = classifier._analyze_metadata(artist="Unknown", title="Song", genre="Trap", filename="song.mp3")
         assert score1.explicit_score >= 0.3
 
         # Classical genre typically clean
         score2 = classifier._analyze_metadata(
-            artist="Unknown",
-            title="Symphony",
-            genre="Classical",
-            filename="symphony.mp3"
+            artist="Unknown", title="Symphony", genre="Classical", filename="symphony.mp3"
         )
         assert score2.clean_score >= 0.5
 
     def test_unknown_artist(self, classifier):
         """Test handling of unknown artist"""
         score = classifier._analyze_metadata(
-            artist="Unknown Artist XYZ",
-            title="Random Song Title",
-            genre="Pop",
-            filename="random.mp3"
+            artist="Unknown Artist XYZ", title="Random Song Title", genre="Pop", filename="random.mp3"
         )
         # Should get low confidence
         assert score.confidence <= 0.5
@@ -228,18 +199,8 @@ class TestContentClassifier:
 
     def test_case_insensitive(self, classifier):
         """Test artist detection is case insensitive"""
-        score1 = classifier._analyze_metadata(
-            artist="BAD BUNNY",
-            title="Song",
-            genre="",
-            filename="song.mp3"
-        )
-        score2 = classifier._analyze_metadata(
-            artist="bad bunny",
-            title="Song",
-            genre="",
-            filename="song.mp3"
-        )
+        score1 = classifier._analyze_metadata(artist="BAD BUNNY", title="Song", genre="", filename="song.mp3")
+        score2 = classifier._analyze_metadata(artist="bad bunny", title="Song", genre="", filename="song.mp3")
         assert score1.explicit_score == score2.explicit_score
 
 
@@ -271,9 +232,9 @@ class TestClassificationResult:
             score=score,
         )
         data = result.to_dict()
-        assert data['artist'] == "Test Artist"
-        assert data['rating'] == "explicit"
-        assert 'score' in data
+        assert data["artist"] == "Test Artist"
+        assert data["rating"] == "explicit"
+        assert "score" in data
 
 
 class TestLyricsAnalyzer:
@@ -283,16 +244,15 @@ class TestLyricsAnalyzer:
         """Test LyricsAnalyzer can be imported"""
         try:
             from services.content_filter.lyrics_analyzer import LyricsAnalyzer
+
             assert LyricsAnalyzer is not None
         except ImportError:
             pytest.skip("lyricsgenius not installed")
 
     def test_profanity_lists(self):
         """Test profanity word lists are defined"""
-        from services.content_filter.lyrics_analyzer import (
-            PROFANITY_ES, PROFANITY_EN,
-            VIOLENCE_KEYWORDS, DRUG_KEYWORDS
-        )
+        from services.content_filter.lyrics_analyzer import PROFANITY_ES, PROFANITY_EN, VIOLENCE_KEYWORDS, DRUG_KEYWORDS
+
         assert len(PROFANITY_ES) > 0
         assert len(PROFANITY_EN) > 0
         assert len(VIOLENCE_KEYWORDS) > 0
@@ -302,6 +262,7 @@ class TestLyricsAnalyzer:
         """Test analysis of text with explicit content"""
         try:
             from services.content_filter.lyrics_analyzer import LyricsAnalyzer
+
             analyzer = LyricsAnalyzer()
             # Test with sample explicit lyrics
             score = analyzer.analyze_text("Fuck this shit bitch damn")
@@ -314,10 +275,10 @@ class TestLyricsAnalyzer:
         """Test analysis of clean text"""
         try:
             from services.content_filter.lyrics_analyzer import LyricsAnalyzer
+
             analyzer = LyricsAnalyzer()
             score = analyzer.analyze_text(
-                "I love you, you love me, we are happy family. "
-                "Peace and joy and happiness forever."
+                "I love you, you love me, we are happy family. Peace and joy and happiness forever."
             )
             assert score.profanity == 0
             assert score.positive_messages > 0.3
@@ -332,6 +293,7 @@ class TestAudioAnalyzer:
         """Test AudioAnalyzer can be imported"""
         try:
             from services.content_filter.audio_analyzer import AudioAnalyzer, LIBROSA_AVAILABLE
+
             assert AudioAnalyzer is not None
             # If librosa not available, should still import
         except ImportError:
@@ -340,6 +302,7 @@ class TestAudioAnalyzer:
     def test_librosa_flag(self):
         """Test LIBROSA_AVAILABLE flag is set correctly"""
         from services.content_filter.audio_analyzer import LIBROSA_AVAILABLE
+
         # Flag should be boolean
         assert isinstance(LIBROSA_AVAILABLE, bool)
 
@@ -353,10 +316,7 @@ class TestIntegration:
 
         # Simulate classifying metadata only (no real file)
         score = classifier._analyze_metadata(
-            artist="Anuel AA",
-            title="China",
-            genre="Reggaeton",
-            filename="anuel_china.mp3"
+            artist="Anuel AA", title="China", genre="Reggaeton", filename="anuel_china.mp3"
         )
 
         # Create mock result
@@ -381,7 +341,7 @@ class TestIntegration:
             results.append((current, total, result.rating))
 
         # Would need real files - just test interface exists
-        assert hasattr(classifier, 'classify_batch')
+        assert hasattr(classifier, "classify_batch")
         assert callable(classifier.classify_batch)
 
 

@@ -197,8 +197,7 @@ class SetupWizard(QDialog):
 
         # No standard folder found
         self.results_text.append(
-            "⚠️ No se detectó una carpeta de música estándar.\n"
-            "Por favor, selecciona tu carpeta de música manualmente.\n"
+            "⚠️ No se detectó una carpeta de música estándar.\nPor favor, selecciona tu carpeta de música manualmente.\n"
         )
 
     def browse_folder(self) -> None:
@@ -251,7 +250,7 @@ class SetupWizard(QDialog):
         self.audio_files_count = total_files
 
         self.results_text.append(
-            f"\n✅ Escaneo completado!\n" f"📊 Total de archivos de audio encontrados: {total_files:,}\n\n"
+            f"\n✅ Escaneo completado!\n📊 Total de archivos de audio encontrados: {total_files:,}\n\n"
         )
 
         if total_files > 0:

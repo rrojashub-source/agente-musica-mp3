@@ -10,10 +10,11 @@ Validates:
 
 Phase 2.2 — Structural Refactoring
 """
+
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from PySide6.QtWidgets import QApplication, QVBoxLayout, QProgressBar, QLabel, QGroupBox
-from PySide6.QtCore import Qt, Signal, QThread
+from PySide6.QtCore import Signal, QThread
 import sys
 
 # Ensure QApplication exists
@@ -171,6 +172,7 @@ class TestBaseTabLayoutHelpers(unittest.TestCase):
 
 class MockWorker(QThread):
     """Mock worker with standard signals."""
+
     progress = Signal(int, str)
     finished = Signal(str)
     error = Signal(str)
@@ -200,6 +202,7 @@ class TestBaseTabWorkerIntegration(unittest.TestCase):
 
     def test_connect_worker_disables_action_button(self):
         from PySide6.QtWidgets import QPushButton
+
         btn = QPushButton("Test")
         btn.setEnabled(True)
         self.tab.connect_worker(self.worker, action_button=btn)
@@ -215,36 +218,33 @@ class TestBaseTabWorkerIntegration(unittest.TestCase):
         custom_called = {}
 
         def custom_progress(pct, msg):
-            custom_called['pct'] = pct
-            custom_called['msg'] = msg
+            custom_called["pct"] = pct
+            custom_called["msg"] = msg
 
         self.tab.connect_worker(self.worker, on_progress=custom_progress)
         self.worker.progress.emit(55, "Custom")
-        self.assertEqual(custom_called['pct'], 55)
-        self.assertEqual(custom_called['msg'], "Custom")
+        self.assertEqual(custom_called["pct"], 55)
+        self.assertEqual(custom_called["msg"], "Custom")
 
     def test_connect_worker_finished_hides_progress(self):
         from PySide6.QtWidgets import QPushButton
+
         btn = QPushButton("Test")
         results = {}
 
         def on_finished(result):
-            results['value'] = result
+            results["value"] = result
 
-        self.tab.connect_worker(
-            self.worker,
-            on_finished=on_finished,
-            action_button=btn
-        )
+        self.tab.connect_worker(self.worker, on_finished=on_finished, action_button=btn)
         self.worker.finished.emit("done")
 
         self.assertFalse(self.tab.progress_bar.isVisible())
         self.assertTrue(btn.isEnabled())
-        self.assertEqual(results['value'], "done")
+        self.assertEqual(results["value"], "done")
         self.assertIsNone(self.tab._active_worker)
 
     def test_connect_worker_error_shows_dialog(self):
-        with patch.object(self.tab, 'show_error') as mock_error:
+        with patch.object(self.tab, "show_error") as mock_error:
             self.tab.connect_worker(self.worker)
             self.worker.error.emit("Something failed")
             mock_error.assert_called_once_with("Something failed")
@@ -254,11 +254,11 @@ class TestBaseTabWorkerIntegration(unittest.TestCase):
         errors = {}
 
         def on_error(msg):
-            errors['msg'] = msg
+            errors["msg"] = msg
 
         self.tab.connect_worker(self.worker, on_error=on_error)
         self.worker.error.emit("Custom error")
-        self.assertEqual(errors['msg'], "Custom error")
+        self.assertEqual(errors["msg"], "Custom error")
 
 
 class TestBaseTabDialogs(unittest.TestCase):
@@ -271,36 +271,36 @@ class TestBaseTabDialogs(unittest.TestCase):
         self.tab.close()
 
     def test_show_error(self):
-        with patch('gui.base.base_tab.QMessageBox.critical') as mock:
+        with patch("gui.base.base_tab.QMessageBox.critical") as mock:
             self.tab.show_error("Test error")
             mock.assert_called_once_with(self.tab, "Error", "Test error")
 
     def test_show_error_custom_title(self):
-        with patch('gui.base.base_tab.QMessageBox.critical') as mock:
+        with patch("gui.base.base_tab.QMessageBox.critical") as mock:
             self.tab.show_error("Test error", title="Custom")
             mock.assert_called_once_with(self.tab, "Custom", "Test error")
 
     def test_show_warning(self):
-        with patch('gui.base.base_tab.QMessageBox.warning') as mock:
+        with patch("gui.base.base_tab.QMessageBox.warning") as mock:
             self.tab.show_warning("Test warning")
             mock.assert_called_once_with(self.tab, "Warning", "Test warning")
 
     def test_show_success(self):
-        with patch('gui.base.base_tab.QMessageBox.information') as mock:
+        with patch("gui.base.base_tab.QMessageBox.information") as mock:
             self.tab.show_success("Done!")
             mock.assert_called_once_with(self.tab, "Success", "Done!")
 
     def test_show_confirm_yes(self):
         from PySide6.QtWidgets import QMessageBox
-        with patch('gui.base.base_tab.QMessageBox.question',
-                   return_value=QMessageBox.StandardButton.Yes):
+
+        with patch("gui.base.base_tab.QMessageBox.question", return_value=QMessageBox.StandardButton.Yes):
             result = self.tab.show_confirm("Sure?")
             self.assertTrue(result)
 
     def test_show_confirm_no(self):
         from PySide6.QtWidgets import QMessageBox
-        with patch('gui.base.base_tab.QMessageBox.question',
-                   return_value=QMessageBox.StandardButton.No):
+
+        with patch("gui.base.base_tab.QMessageBox.question", return_value=QMessageBox.StandardButton.No):
             result = self.tab.show_confirm("Sure?")
             self.assertFalse(result)
 
@@ -310,39 +310,45 @@ class TestBaseTabInheritance(unittest.TestCase):
 
     def test_duplicates_tab_inherits_base_tab(self):
         from src.gui.tabs.duplicates_tab import DuplicatesTab
+
         self.assertTrue(issubclass(DuplicatesTab, BaseTab))
 
     def test_rename_tab_inherits_base_tab(self):
         from src.gui.tabs.rename_tab import RenameTab
+
         self.assertTrue(issubclass(RenameTab, BaseTab))
 
     def test_organize_tab_inherits_base_tab(self):
         from src.gui.tabs.organize_tab import OrganizeTab
+
         self.assertTrue(issubclass(OrganizeTab, BaseTab))
 
     def test_duplicates_tab_has_base_methods(self):
         from src.gui.tabs.duplicates_tab import DuplicatesTab
+
         mock_db = Mock()
         tab = DuplicatesTab(mock_db)
-        self.assertTrue(hasattr(tab, 'show_error'))
-        self.assertTrue(hasattr(tab, 'connect_worker'))
-        self.assertTrue(hasattr(tab, 'show_progress'))
+        self.assertTrue(hasattr(tab, "show_error"))
+        self.assertTrue(hasattr(tab, "connect_worker"))
+        self.assertTrue(hasattr(tab, "show_progress"))
         tab.close()
 
     def test_rename_tab_connect_worker_pattern(self):
         from src.gui.tabs.rename_tab import RenameTab
+
         mock_db = Mock()
         tab = RenameTab(mock_db)
-        self.assertTrue(hasattr(tab, 'connect_worker'))
-        self.assertTrue(hasattr(tab, '_on_worker_error'))
+        self.assertTrue(hasattr(tab, "connect_worker"))
+        self.assertTrue(hasattr(tab, "_on_worker_error"))
         tab.close()
 
     def test_organize_tab_connect_worker_pattern(self):
         from src.gui.tabs.organize_tab import OrganizeTab
+
         mock_db = Mock()
         tab = OrganizeTab(mock_db)
-        self.assertTrue(hasattr(tab, 'connect_worker'))
-        self.assertTrue(hasattr(tab, '_on_worker_error'))
+        self.assertTrue(hasattr(tab, "connect_worker"))
+        self.assertTrue(hasattr(tab, "_on_worker_error"))
         tab.close()
 
 

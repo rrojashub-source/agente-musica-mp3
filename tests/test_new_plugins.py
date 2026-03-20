@@ -1,20 +1,21 @@
 """
 Tests for New Plugins (Discord RPC, Lyrics)
 """
+
 import sys
 import os
 import pytest
-import json
 from pathlib import Path
 from unittest.mock import Mock, MagicMock, patch
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 
 # ==========================================
 # Discord RPC Plugin Tests
 # ==========================================
+
 
 class TestDiscordRPCPlugin:
     """Tests for Discord RPC plugin"""
@@ -68,7 +69,7 @@ class TestDiscordRPCPlugin:
         assert result is True
         assert plugin._running is False
 
-    @patch('plugins.available.discord_rpc.plugin.HAS_PYPRESENCE', True)
+    @patch("plugins.available.discord_rpc.plugin.HAS_PYPRESENCE", True)
     def test_on_song_play_handler(self):
         """Test song play handler updates current song"""
         from plugins.available.discord_rpc.plugin import DiscordRPCPlugin
@@ -77,40 +78,31 @@ class TestDiscordRPCPlugin:
         plugin._connected = True
         plugin._rpc = MagicMock()
 
-        song_data = {
-            'title': 'Test Song',
-            'artist': 'Test Artist',
-            'album': 'Test Album',
-            'duration': 180
-        }
+        song_data = {"title": "Test Song", "artist": "Test Artist", "album": "Test Album", "duration": 180}
 
         plugin._on_song_play(song_data)
 
         assert plugin._current_song is not None
-        assert plugin._current_song['title'] == 'Test Song'
-        assert plugin._current_song['artist'] == 'Test Artist'
+        assert plugin._current_song["title"] == "Test Song"
+        assert plugin._current_song["artist"] == "Test Artist"
 
     def test_on_song_pause_handler(self):
         """Test song pause handler clears start time"""
         from plugins.available.discord_rpc.plugin import DiscordRPCPlugin
 
         plugin = DiscordRPCPlugin()
-        plugin._current_song = {
-            'title': 'Test',
-            'artist': 'Artist',
-            'start_time': 12345
-        }
+        plugin._current_song = {"title": "Test", "artist": "Artist", "start_time": 12345}
 
         plugin._on_song_pause()
 
-        assert plugin._current_song['start_time'] is None
+        assert plugin._current_song["start_time"] is None
 
     def test_on_song_end_handler(self):
         """Test song end handler clears current song"""
         from plugins.available.discord_rpc.plugin import DiscordRPCPlugin
 
         plugin = DiscordRPCPlugin()
-        plugin._current_song = {'title': 'Test'}
+        plugin._current_song = {"title": "Test"}
 
         plugin._on_song_end()
 
@@ -170,7 +162,7 @@ class TestLyricsPlugin:
         """Test enable creates cache directory"""
         from plugins.available.lyrics.plugin import LyricsPlugin
 
-        with patch.object(Path, 'home', return_value=tmp_path):
+        with patch.object(Path, "home", return_value=tmp_path):
             plugin = LyricsPlugin()
             result = plugin.on_enable()
 
@@ -199,7 +191,7 @@ class TestLyricsPlugin:
             artist="Test Artist",
             lyrics="These are the lyrics...",
             source="Genius",
-            url="https://genius.com/test"
+            url="https://genius.com/test",
         )
 
         assert result.title == "Test Song"
@@ -250,10 +242,7 @@ class TestLyricsPlugin:
         plugin._cache_dir = tmp_path
 
         lyrics_result = LyricsResult(
-            title="Cached Song",
-            artist="Cached Artist",
-            lyrics="These lyrics are cached",
-            source="Test"
+            title="Cached Song", artist="Cached Artist", lyrics="These lyrics are cached", source="Test"
         )
 
         plugin._cache_lyrics(lyrics_result)
@@ -286,10 +275,7 @@ class TestLyricsPlugin:
         plugin = LyricsPlugin()
 
         lyrics_result = LyricsResult(
-            title="Save Test",
-            artist="Test Artist",
-            lyrics="Line 1\nLine 2\nLine 3",
-            source="Test"
+            title="Save Test", artist="Test Artist", lyrics="Line 1\nLine 2\nLine 3", source="Test"
         )
 
         mp3_path = tmp_path / "test_song.mp3"
@@ -310,12 +296,7 @@ class TestLyricsPlugin:
         from plugins.available.lyrics.plugin import LyricsPlugin, LyricsResult
 
         plugin = LyricsPlugin()
-        plugin._current_lyrics = LyricsResult(
-            title="Current",
-            artist="Artist",
-            lyrics="Current lyrics",
-            source="Test"
-        )
+        plugin._current_lyrics = LyricsResult(title="Current", artist="Artist", lyrics="Current lyrics", source="Test")
 
         result = plugin.get_current_lyrics()
 
@@ -326,6 +307,7 @@ class TestLyricsPlugin:
 # ==========================================
 # Integration Tests
 # ==========================================
+
 
 class TestPluginIntegration:
     """Integration tests for plugins with PluginManager"""
@@ -347,5 +329,5 @@ class TestPluginIntegration:
         PluginManager.reset_instance()
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

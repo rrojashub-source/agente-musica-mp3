@@ -16,9 +16,4 @@ Usage:
 from .plugin_base import Plugin, PluginMetadata, PluginHook
 from .plugin_manager import PluginManager
 
-__all__ = [
-    'Plugin',
-    'PluginMetadata',
-    'PluginHook',
-    'PluginManager'
-]
+__all__ = ["Plugin", "PluginMetadata", "PluginHook", "PluginManager"]

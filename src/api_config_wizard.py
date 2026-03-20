@@ -500,12 +500,12 @@ class CompletionPage(QWizardPage):
 
             <h3>Configured APIs:</h3>
             <ul>
-                {''.join(f'<li>{api}</li>' for api in configured) if configured else '<li><i>None</i></li>'}
+                {"".join(f"<li>{api}</li>" for api in configured) if configured else "<li><i>None</i></li>"}
             </ul>
 
             <h3>Skipped (can configure later):</h3>
             <ul>
-                {''.join(f'<li>{api}</li>' for api in skipped) if skipped else '<li><i>None</i></li>'}
+                {"".join(f"<li>{api}</li>" for api in skipped) if skipped else "<li><i>None</i></li>"}
             </ul>
 
             <hr>

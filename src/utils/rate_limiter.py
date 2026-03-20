@@ -281,7 +281,7 @@ def with_retry_on_rate_limit(
                     if is_rate_limit and attempt < max_retries:
                         delay = base_delay * (2**attempt)  # Exponential backoff
                         logger.warning(
-                            f"{service} rate limit hit, retry {attempt + 1}/{max_retries} " f"after {delay:.1f}s"
+                            f"{service} rate limit hit, retry {attempt + 1}/{max_retries} after {delay:.1f}s"
                         )
                         time.sleep(delay)
                         last_exception = e

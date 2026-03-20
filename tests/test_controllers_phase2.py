@@ -739,9 +739,11 @@ class TestUIComposerPhase2:
         composer.window.statusBar.showMessage.assert_called_once()
 
     def test_change_language_success(self, composer) -> None:
-        with patch("controllers.ui_composer.set_language", return_value=True), patch(
-            "controllers.ui_composer.QMessageBox"
-        ) as MockMB, patch("controllers.ui_composer.tr", return_value="Changed"):
+        with (
+            patch("controllers.ui_composer.set_language", return_value=True),
+            patch("controllers.ui_composer.QMessageBox") as MockMB,
+            patch("controllers.ui_composer.tr", return_value="Changed"),
+        ):
             composer._change_language("en")
             MockMB.information.assert_called_once()
 
@@ -778,9 +780,11 @@ class TestUIComposerPhase2:
             composer._show_api_settings()
 
     def test_show_equalizer(self, composer) -> None:
-        with patch("controllers.ui_composer.QDialog") as MockDialog, patch(
-            "controllers.ui_composer.QVBoxLayout"
-        ), patch("gui.widgets.equalizer_widget.EqualizerWidget") as MockEQ:
+        with (
+            patch("controllers.ui_composer.QDialog") as MockDialog,
+            patch("controllers.ui_composer.QVBoxLayout"),
+            patch("gui.widgets.equalizer_widget.EqualizerWidget") as MockEQ,
+        ):
             mock_eq = Mock()
             MockEQ.return_value = mock_eq
             mock_dialog = Mock()
@@ -790,9 +794,12 @@ class TestUIComposerPhase2:
             mock_dialog.exec.assert_called_once()
 
     def test_show_api_guide(self, composer) -> None:
-        with patch("controllers.ui_composer.QDialog") as MockDialog, patch(
-            "controllers.ui_composer.QVBoxLayout"
-        ), patch("controllers.ui_composer.QPushButton"), patch("PySide6.QtWidgets.QTextBrowser"):
+        with (
+            patch("controllers.ui_composer.QDialog") as MockDialog,
+            patch("controllers.ui_composer.QVBoxLayout"),
+            patch("controllers.ui_composer.QPushButton"),
+            patch("PySide6.QtWidgets.QTextBrowser"),
+        ):
             mock_dialog = Mock()
             MockDialog.return_value = mock_dialog
             composer._show_api_guide()

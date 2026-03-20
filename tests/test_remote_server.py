@@ -1,22 +1,21 @@
 """
 Tests for Remote Control Server
 """
+
 import sys
 import os
 import pytest
 import json
-from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch
-import threading
-import time
+from unittest.mock import Mock
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Check for Flask and flask-cors
 try:
     import flask
     from flask_cors import CORS
+
     HAS_FLASK = True
 except ImportError:
     HAS_FLASK = False
@@ -27,6 +26,7 @@ from services.remote_server import RemoteServer, NowPlayingInfo, QueueItem
 # ==========================================
 # Data Model Tests
 # ==========================================
+
 
 class TestDataModels:
     """Tests for data models"""
@@ -52,7 +52,7 @@ class TestDataModels:
             duration=180,
             position=45,
             is_playing=True,
-            volume=75
+            volume=75,
         )
 
         assert info.title == "Test Song"
@@ -62,12 +62,7 @@ class TestDataModels:
 
     def test_queue_item(self):
         """Test QueueItem"""
-        item = QueueItem(
-            id=1,
-            title="Song",
-            artist="Artist",
-            duration=200
-        )
+        item = QueueItem(id=1, title="Song", artist="Artist", duration=200)
 
         assert item.id == 1
         assert item.title == "Song"
@@ -76,6 +71,7 @@ class TestDataModels:
 # ==========================================
 # Remote Server Tests
 # ==========================================
+
 
 class TestRemoteServer:
     """Tests for RemoteServer"""
@@ -106,11 +102,7 @@ class TestRemoteServer:
         """Test updating now playing info"""
         server = RemoteServer.get_instance()
 
-        info = NowPlayingInfo(
-            title="Test Song",
-            artist="Test Artist",
-            is_playing=True
-        )
+        info = NowPlayingInfo(title="Test Song", artist="Test Artist", is_playing=True)
         server.update_now_playing(info)
 
         assert server._now_playing.title == "Test Song"
@@ -120,43 +112,40 @@ class TestRemoteServer:
         """Test updating queue"""
         server = RemoteServer.get_instance()
 
-        queue = [
-            {'id': 1, 'title': 'Song 1'},
-            {'id': 2, 'title': 'Song 2'}
-        ]
+        queue = [{"id": 1, "title": "Song 1"}, {"id": 2, "title": "Song 2"}]
         server.update_queue(queue)
 
         assert len(server._queue) == 2
-        assert server._queue[0]['title'] == 'Song 1'
+        assert server._queue[0]["title"] == "Song 1"
 
     def test_register_callback(self):
         """Test registering callbacks"""
         server = RemoteServer.get_instance()
 
         callback = Mock()
-        server.register_callback('play', callback)
+        server.register_callback("play", callback)
 
         # Verify callback is registered
-        assert 'play' in server._callbacks
-        assert server._callbacks['play'] is callback
+        assert "play" in server._callbacks
+        assert server._callbacks["play"] is callback
 
     def test_execute_callback(self):
         """Test executing callbacks"""
         server = RemoteServer.get_instance()
 
         callback = Mock(return_value="result")
-        server.register_callback('test', callback)
+        server.register_callback("test", callback)
 
-        result = server._execute_callback('test', 'arg1', 'arg2')
+        result = server._execute_callback("test", "arg1", "arg2")
 
-        callback.assert_called_once_with('arg1', 'arg2')
+        callback.assert_called_once_with("arg1", "arg2")
         assert result == "result"
 
     def test_execute_callback_not_registered(self):
         """Test executing non-existent callback"""
         server = RemoteServer.get_instance()
 
-        result = server._execute_callback('nonexistent')
+        result = server._execute_callback("nonexistent")
         assert result is None
 
     def test_get_local_ip(self):
@@ -165,13 +154,14 @@ class TestRemoteServer:
 
         # Should be a valid IP or localhost
         assert ip is not None
-        parts = ip.split('.')
+        parts = ip.split(".")
         assert len(parts) == 4 or ip == "127.0.0.1"
 
 
 # ==========================================
 # API Endpoint Tests (with Flask test client)
 # ==========================================
+
 
 @pytest.mark.skipif(not HAS_FLASK, reason="Flask/flask-cors not installed")
 class TestRemoteServerAPI:
@@ -190,200 +180,182 @@ class TestRemoteServerAPI:
         server = RemoteServer.get_instance()
         if server._app is None:
             pytest.skip("Flask app not initialized")
-        server._app.config['TESTING'] = True
+        server._app.config["TESTING"] = True
         return server._app.test_client()
 
     @pytest.fixture
     def auth_headers(self):
         """Get auth headers with valid token"""
         server = RemoteServer.get_instance()
-        return {'Authorization': f'Bearer {server.auth_token}'}
+        return {"Authorization": f"Bearer {server.auth_token}"}
 
     def test_status_endpoint(self, client, auth_headers):
         """Test GET /api/status"""
-        response = client.get('/api/status', headers=auth_headers)
+        response = client.get("/api/status", headers=auth_headers)
 
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert 'now_playing' in data
-        assert 'queue_length' in data
+        assert "now_playing" in data
+        assert "queue_length" in data
 
     def test_status_endpoint_unauthorized(self, client):
         """Test GET /api/status returns 401 without auth"""
-        response = client.get('/api/status')
+        response = client.get("/api/status")
         assert response.status_code == 401
 
     def test_status_endpoint_invalid_token(self, client):
         """Test GET /api/status returns 401 with invalid token"""
-        response = client.get('/api/status', headers={'Authorization': 'Bearer invalid'})
+        response = client.get("/api/status", headers={"Authorization": "Bearer invalid"})
         assert response.status_code == 401
 
     def test_play_endpoint(self, client, auth_headers):
         """Test POST /api/play"""
-        response = client.post('/api/play', headers=auth_headers)
+        response = client.post("/api/play", headers=auth_headers)
 
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert data['success'] is True
-        assert data['action'] == 'play'
+        assert data["success"] is True
+        assert data["action"] == "play"
 
     def test_pause_endpoint(self, client, auth_headers):
         """Test POST /api/pause"""
-        response = client.post('/api/pause', headers=auth_headers)
+        response = client.post("/api/pause", headers=auth_headers)
 
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert data['success'] is True
-        assert data['action'] == 'pause'
+        assert data["success"] is True
+        assert data["action"] == "pause"
 
     def test_toggle_endpoint(self, client, auth_headers):
         """Test POST /api/toggle"""
-        response = client.post('/api/toggle', headers=auth_headers)
+        response = client.post("/api/toggle", headers=auth_headers)
 
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert data['success'] is True
-        assert data['action'] == 'toggle'
+        assert data["success"] is True
+        assert data["action"] == "toggle"
 
     def test_next_endpoint(self, client, auth_headers):
         """Test POST /api/next"""
-        response = client.post('/api/next', headers=auth_headers)
+        response = client.post("/api/next", headers=auth_headers)
 
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert data['success'] is True
-        assert data['action'] == 'next'
+        assert data["success"] is True
+        assert data["action"] == "next"
 
     def test_previous_endpoint(self, client, auth_headers):
         """Test POST /api/previous"""
-        response = client.post('/api/previous', headers=auth_headers)
+        response = client.post("/api/previous", headers=auth_headers)
 
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert data['success'] is True
-        assert data['action'] == 'previous'
+        assert data["success"] is True
+        assert data["action"] == "previous"
 
     def test_volume_endpoint(self, client, auth_headers):
         """Test POST /api/volume"""
         response = client.post(
-            '/api/volume',
-            data=json.dumps({'volume': 75}),
-            content_type='application/json',
-            headers=auth_headers
+            "/api/volume", data=json.dumps({"volume": 75}), content_type="application/json", headers=auth_headers
         )
 
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert data['success'] is True
-        assert data['volume'] == 75
+        assert data["success"] is True
+        assert data["volume"] == 75
 
     def test_volume_endpoint_clamps_value(self, client, auth_headers):
         """Test volume is clamped to 0-100"""
         # Test over 100
         response = client.post(
-            '/api/volume',
-            data=json.dumps({'volume': 150}),
-            content_type='application/json',
-            headers=auth_headers
+            "/api/volume", data=json.dumps({"volume": 150}), content_type="application/json", headers=auth_headers
         )
         data = json.loads(response.data)
-        assert data['volume'] == 100
+        assert data["volume"] == 100
 
         # Test under 0
         response = client.post(
-            '/api/volume',
-            data=json.dumps({'volume': -50}),
-            content_type='application/json',
-            headers=auth_headers
+            "/api/volume", data=json.dumps({"volume": -50}), content_type="application/json", headers=auth_headers
         )
         data = json.loads(response.data)
-        assert data['volume'] == 0
+        assert data["volume"] == 0
 
     def test_seek_endpoint(self, client, auth_headers):
         """Test POST /api/seek"""
         response = client.post(
-            '/api/seek',
-            data=json.dumps({'position': 60}),
-            content_type='application/json',
-            headers=auth_headers
+            "/api/seek", data=json.dumps({"position": 60}), content_type="application/json", headers=auth_headers
         )
 
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert data['success'] is True
-        assert data['position'] == 60
+        assert data["success"] is True
+        assert data["position"] == 60
 
     def test_queue_endpoint(self, client, auth_headers):
         """Test GET /api/queue"""
         server = RemoteServer.get_instance()
-        server.update_queue([{'id': 1, 'title': 'Test'}])
+        server.update_queue([{"id": 1, "title": "Test"}])
 
-        response = client.get('/api/queue', headers=auth_headers)
+        response = client.get("/api/queue", headers=auth_headers)
 
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert 'queue' in data
-        assert len(data['queue']) == 1
+        assert "queue" in data
+        assert len(data["queue"]) == 1
 
     def test_queue_add_endpoint(self, client, auth_headers):
         """Test POST /api/queue/add"""
         response = client.post(
-            '/api/queue/add',
-            data=json.dumps({'song_id': 123}),
-            content_type='application/json',
-            headers=auth_headers
+            "/api/queue/add", data=json.dumps({"song_id": 123}), content_type="application/json", headers=auth_headers
         )
 
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert data['success'] is True
-        assert data['song_id'] == 123
+        assert data["success"] is True
+        assert data["song_id"] == 123
 
     def test_queue_add_no_id(self, client, auth_headers):
         """Test queue/add without song_id"""
         response = client.post(
-            '/api/queue/add',
-            data=json.dumps({}),
-            content_type='application/json',
-            headers=auth_headers
+            "/api/queue/add", data=json.dumps({}), content_type="application/json", headers=auth_headers
         )
 
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert data['success'] is False
+        assert data["success"] is False
 
     def test_queue_clear_endpoint(self, client, auth_headers):
         """Test POST /api/queue/clear"""
-        response = client.post('/api/queue/clear', headers=auth_headers)
+        response = client.post("/api/queue/clear", headers=auth_headers)
 
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert data['success'] is True
+        assert data["success"] is True
 
     def test_search_endpoint(self, client, auth_headers):
         """Test GET /api/search"""
         server = RemoteServer.get_instance()
-        server.register_callback('search', lambda q, l: [{'title': 'Result'}])
+        server.register_callback("search", lambda q, l: [{"title": "Result"}])
 
-        response = client.get('/api/search?q=test&limit=10', headers=auth_headers)
+        response = client.get("/api/search?q=test&limit=10", headers=auth_headers)
 
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert 'results' in data
-        assert data['query'] == 'test'
+        assert "results" in data
+        assert data["query"] == "test"
 
     def test_index_returns_html_with_token(self, client):
         """Test GET / returns HTML when token is provided"""
         server = RemoteServer.get_instance()
-        response = client.get(f'/?token={server.auth_token}')
+        response = client.get(f"/?token={server.auth_token}")
 
         assert response.status_code == 200
-        assert b'NEXUS Remote' in response.data
-        assert b'html' in response.data
+        assert b"NEXUS Remote" in response.data
+        assert b"html" in response.data
 
     def test_index_unauthorized_without_token(self, client):
         """Test GET / returns 401 without token"""
-        response = client.get('/')
+        response = client.get("/")
         assert response.status_code == 401
 
     def test_auth_token_is_generated(self):
@@ -411,6 +383,7 @@ class TestRemoteServerAPI:
 # Callback Integration Tests
 # ==========================================
 
+
 @pytest.mark.skipif(not HAS_FLASK, reason="Flask/flask-cors not installed")
 class TestRemoteServerCallbacks:
     """Tests for callback integration"""
@@ -428,22 +401,22 @@ class TestRemoteServerCallbacks:
         server = RemoteServer.get_instance()
         if server._app is None:
             pytest.skip("Flask app not initialized")
-        server._app.config['TESTING'] = True
+        server._app.config["TESTING"] = True
         return server._app.test_client()
 
     @pytest.fixture
     def auth_headers(self):
         """Get auth headers with valid token"""
         server = RemoteServer.get_instance()
-        return {'Authorization': f'Bearer {server.auth_token}'}
+        return {"Authorization": f"Bearer {server.auth_token}"}
 
     def test_play_triggers_callback(self, client, auth_headers):
         """Test play endpoint triggers callback"""
         server = RemoteServer.get_instance()
         callback = Mock()
-        server.register_callback('play', callback)
+        server.register_callback("play", callback)
 
-        client.post('/api/play', headers=auth_headers)
+        client.post("/api/play", headers=auth_headers)
 
         callback.assert_called_once()
 
@@ -451,13 +424,10 @@ class TestRemoteServerCallbacks:
         """Test volume endpoint passes value to callback"""
         server = RemoteServer.get_instance()
         callback = Mock()
-        server.register_callback('volume', callback)
+        server.register_callback("volume", callback)
 
         client.post(
-            '/api/volume',
-            data=json.dumps({'volume': 50}),
-            content_type='application/json',
-            headers=auth_headers
+            "/api/volume", data=json.dumps({"volume": 50}), content_type="application/json", headers=auth_headers
         )
 
         callback.assert_called_once_with(50)
@@ -465,16 +435,14 @@ class TestRemoteServerCallbacks:
     def test_search_uses_callback_result(self, client, auth_headers):
         """Test search endpoint uses callback result"""
         server = RemoteServer.get_instance()
-        server.register_callback('search', lambda q, l: [
-            {'id': 1, 'title': f'Result for {q}'}
-        ])
+        server.register_callback("search", lambda q, l: [{"id": 1, "title": f"Result for {q}"}])
 
-        response = client.get('/api/search?q=hello', headers=auth_headers)
+        response = client.get("/api/search?q=hello", headers=auth_headers)
         data = json.loads(response.data)
 
-        assert len(data['results']) == 1
-        assert data['results'][0]['title'] == 'Result for hello'
+        assert len(data["results"]) == 1
+        assert data["results"][0]["title"] == "Result for hello"
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

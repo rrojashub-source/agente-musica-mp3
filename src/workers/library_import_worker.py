@@ -195,8 +195,7 @@ class LibraryImportWorker(BaseWorker):
         }
 
         logger.info(
-            f"Import complete: {self.success_count} success, "
-            f"{self.failed_count} failed, {self.skipped_count} skipped"
+            f"Import complete: {self.success_count} success, {self.failed_count} failed, {self.skipped_count} skipped"
         )
 
         return summary

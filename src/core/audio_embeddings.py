@@ -311,7 +311,7 @@ class AudioEmbeddings:
         similar_songs.sort(key=lambda x: x["similarity"], reverse=True)
         result = similar_songs[:limit]
 
-        logger.info(f"Found {len(result)} similar songs to '{ref_song.get('title')}' " f"(threshold: {min_similarity})")
+        logger.info(f"Found {len(result)} similar songs to '{ref_song.get('title')}' (threshold: {min_similarity})")
 
         return result
 
@@ -378,7 +378,7 @@ class AudioEmbeddings:
             else:
                 failed += 1
 
-        logger.info(f"Batch embedding complete: {processed} processed, " f"{cached} cached, {failed} failed")
+        logger.info(f"Batch embedding complete: {processed} processed, {cached} cached, {failed} failed")
 
         return {"processed": processed, "cached": cached, "failed": failed}
 

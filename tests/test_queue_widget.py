@@ -2,12 +2,10 @@
 Tests for Queue Widget GUI (Phase 4.7)
 TDD: Write tests FIRST, then implement src/gui/widgets/queue_widget.py
 """
-import pytest
+
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
-from PySide6.QtTest import QTest
 import sys
 
 # Ensure QApplication exists for Qt tests
@@ -24,6 +22,7 @@ class TestQueueWidget(unittest.TestCase):
         # Import the class we're testing (will fail initially - expected in TDD Red phase)
         try:
             from src.gui.widgets.queue_widget import QueueWidget
+
             self.widget_class = QueueWidget
 
             # Mock download queue
@@ -46,6 +45,7 @@ class TestQueueWidget(unittest.TestCase):
             self.fail("QueueWidget class not found - implement src/gui/widgets/queue_widget.py")
 
         from PySide6.QtWidgets import QWidget
+
         self.assertTrue(issubclass(self.widget_class, QWidget))
 
     def test_queue_widget_has_table(self):
@@ -54,8 +54,9 @@ class TestQueueWidget(unittest.TestCase):
             self.fail("QueueWidget not initialized")
 
         # Should have table widget
-        self.assertTrue(hasattr(self.widget, 'table'))
+        self.assertTrue(hasattr(self.widget, "table"))
         from PySide6.QtWidgets import QTableWidget
+
         self.assertIsInstance(self.widget.table, QTableWidget)
 
     def test_queue_widget_table_has_columns(self):
@@ -65,7 +66,7 @@ class TestQueueWidget(unittest.TestCase):
 
         # Should have columns: Title, Artist, Progress, Status, Actions
         table = self.widget.table
-        expected_columns = ['Title', 'Artist', 'Progress', 'Status', 'Actions']
+        expected_columns = ["Title", "Artist", "Progress", "Status", "Actions"]
 
         self.assertEqual(table.columnCount(), len(expected_columns))
 
@@ -75,8 +76,9 @@ class TestQueueWidget(unittest.TestCase):
             self.fail("QueueWidget not initialized")
 
         # Should have refresh button
-        self.assertTrue(hasattr(self.widget, 'refresh_button'))
+        self.assertTrue(hasattr(self.widget, "refresh_button"))
         from PySide6.QtWidgets import QPushButton
+
         self.assertIsInstance(self.widget.refresh_button, QPushButton)
 
     def test_queue_widget_displays_queue_items(self):
@@ -86,20 +88,20 @@ class TestQueueWidget(unittest.TestCase):
 
         # Mock queue items
         self.mock_queue.get_all_items.return_value = {
-            'item-1': {
-                'id': 'item-1',
-                'video_url': 'https://youtube.com/watch?v=1',
-                'metadata': {'title': 'Song 1', 'artist': 'Artist 1'},
-                'status': 'downloading',
-                'progress': 50
+            "item-1": {
+                "id": "item-1",
+                "video_url": "https://youtube.com/watch?v=1",
+                "metadata": {"title": "Song 1", "artist": "Artist 1"},
+                "status": "downloading",
+                "progress": 50,
             },
-            'item-2': {
-                'id': 'item-2',
-                'video_url': 'https://youtube.com/watch?v=2',
-                'metadata': {'title': 'Song 2', 'artist': 'Artist 2'},
-                'status': 'pending',
-                'progress': 0
-            }
+            "item-2": {
+                "id": "item-2",
+                "video_url": "https://youtube.com/watch?v=2",
+                "metadata": {"title": "Song 2", "artist": "Artist 2"},
+                "status": "pending",
+                "progress": 0,
+            },
         }
 
         # Refresh display
@@ -115,19 +117,19 @@ class TestQueueWidget(unittest.TestCase):
 
         # Mock queue item with progress
         self.mock_queue.get_all_items.return_value = {
-            'item-1': {
-                'id': 'item-1',
-                'video_url': 'https://youtube.com/watch?v=1',
-                'metadata': {'title': 'Song 1', 'artist': 'Artist 1'},
-                'status': 'downloading',
-                'progress': 75
+            "item-1": {
+                "id": "item-1",
+                "video_url": "https://youtube.com/watch?v=1",
+                "metadata": {"title": "Song 1", "artist": "Artist 1"},
+                "status": "downloading",
+                "progress": 75,
             }
         }
 
         self.widget.refresh_display()
 
         # Should have progress bar (check via method existence)
-        self.assertTrue(hasattr(self.widget, '_create_progress_bar'))
+        self.assertTrue(hasattr(self.widget, "_create_progress_bar"))
 
     def test_queue_widget_shows_status(self):
         """Test widget displays status for each item"""
@@ -136,10 +138,34 @@ class TestQueueWidget(unittest.TestCase):
 
         # Mock items with different statuses
         self.mock_queue.get_all_items.return_value = {
-            'item-1': {'id': 'item-1', 'video_url': 'url', 'metadata': {'title': 'S1', 'artist': 'A1'}, 'status': 'pending', 'progress': 0},
-            'item-2': {'id': 'item-2', 'video_url': 'url', 'metadata': {'title': 'S2', 'artist': 'A2'}, 'status': 'downloading', 'progress': 50},
-            'item-3': {'id': 'item-3', 'video_url': 'url', 'metadata': {'title': 'S3', 'artist': 'A3'}, 'status': 'completed', 'progress': 100},
-            'item-4': {'id': 'item-4', 'video_url': 'url', 'metadata': {'title': 'S4', 'artist': 'A4'}, 'status': 'failed', 'progress': 0}
+            "item-1": {
+                "id": "item-1",
+                "video_url": "url",
+                "metadata": {"title": "S1", "artist": "A1"},
+                "status": "pending",
+                "progress": 0,
+            },
+            "item-2": {
+                "id": "item-2",
+                "video_url": "url",
+                "metadata": {"title": "S2", "artist": "A2"},
+                "status": "downloading",
+                "progress": 50,
+            },
+            "item-3": {
+                "id": "item-3",
+                "video_url": "url",
+                "metadata": {"title": "S3", "artist": "A3"},
+                "status": "completed",
+                "progress": 100,
+            },
+            "item-4": {
+                "id": "item-4",
+                "video_url": "url",
+                "metadata": {"title": "S4", "artist": "A4"},
+                "status": "failed",
+                "progress": 0,
+            },
         }
 
         self.widget.refresh_display()
@@ -153,7 +179,7 @@ class TestQueueWidget(unittest.TestCase):
             self.fail("QueueWidget not initialized")
 
         # Should have method to create pause button
-        self.assertTrue(hasattr(self.widget, '_create_action_buttons'))
+        self.assertTrue(hasattr(self.widget, "_create_action_buttons"))
 
     def test_queue_widget_pause_calls_queue_pause(self):
         """Test pause button calls download queue pause method"""
@@ -161,14 +187,14 @@ class TestQueueWidget(unittest.TestCase):
             self.fail("QueueWidget not initialized")
 
         # Mock queue item
-        item_id = 'test-item-1'
+        item_id = "test-item-1"
         self.mock_queue.get_all_items.return_value = {
             item_id: {
-                'id': item_id,
-                'video_url': 'https://youtube.com/watch?v=1',
-                'metadata': {'title': 'Song 1', 'artist': 'Artist 1'},
-                'status': 'downloading',
-                'progress': 30
+                "id": item_id,
+                "video_url": "https://youtube.com/watch?v=1",
+                "metadata": {"title": "Song 1", "artist": "Artist 1"},
+                "status": "downloading",
+                "progress": 30,
             }
         }
 
@@ -186,14 +212,14 @@ class TestQueueWidget(unittest.TestCase):
             self.fail("QueueWidget not initialized")
 
         # Mock paused item
-        item_id = 'test-item-1'
+        item_id = "test-item-1"
         self.mock_queue.get_all_items.return_value = {
             item_id: {
-                'id': item_id,
-                'video_url': 'https://youtube.com/watch?v=1',
-                'metadata': {'title': 'Song 1', 'artist': 'Artist 1'},
-                'status': 'paused',
-                'progress': 30
+                "id": item_id,
+                "video_url": "https://youtube.com/watch?v=1",
+                "metadata": {"title": "Song 1", "artist": "Artist 1"},
+                "status": "paused",
+                "progress": 30,
             }
         }
 
@@ -211,14 +237,14 @@ class TestQueueWidget(unittest.TestCase):
             self.fail("QueueWidget not initialized")
 
         # Mock downloading item
-        item_id = 'test-item-1'
+        item_id = "test-item-1"
         self.mock_queue.get_all_items.return_value = {
             item_id: {
-                'id': item_id,
-                'video_url': 'https://youtube.com/watch?v=1',
-                'metadata': {'title': 'Song 1', 'artist': 'Artist 1'},
-                'status': 'downloading',
-                'progress': 50
+                "id": item_id,
+                "video_url": "https://youtube.com/watch?v=1",
+                "metadata": {"title": "Song 1", "artist": "Artist 1"},
+                "status": "downloading",
+                "progress": 50,
             }
         }
 
@@ -236,26 +262,26 @@ class TestQueueWidget(unittest.TestCase):
             self.fail("QueueWidget not initialized")
 
         # Mock queue with signals
-        item_id = 'test-item-1'
+        item_id = "test-item-1"
 
         # Initial state
         self.mock_queue.get_all_items.return_value = {
             item_id: {
-                'id': item_id,
-                'video_url': 'https://youtube.com/watch?v=1',
-                'metadata': {'title': 'Song 1', 'artist': 'Artist 1'},
-                'status': 'downloading',
-                'progress': 10
+                "id": item_id,
+                "video_url": "https://youtube.com/watch?v=1",
+                "metadata": {"title": "Song 1", "artist": "Artist 1"},
+                "status": "downloading",
+                "progress": 10,
             }
         }
 
         self.widget.refresh_display()
 
         # Simulate progress update
-        self.mock_queue.get_all_items.return_value[item_id]['progress'] = 50
+        self.mock_queue.get_all_items.return_value[item_id]["progress"] = 50
 
         # Should have method to handle progress updates
-        self.assertTrue(hasattr(self.widget, '_on_item_progress'))
+        self.assertTrue(hasattr(self.widget, "_on_item_progress"))
 
     def test_queue_widget_integration_with_download_queue(self):
         """Test QueueWidget properly integrates with DownloadQueue"""
@@ -263,7 +289,7 @@ class TestQueueWidget(unittest.TestCase):
             self.fail("QueueWidget not initialized")
 
         # Should have download_queue instance
-        self.assertTrue(hasattr(self.widget, 'download_queue'))
+        self.assertTrue(hasattr(self.widget, "download_queue"))
         self.assertIsNotNone(self.widget.download_queue)
 
     def test_queue_widget_clear_completed_button(self):
@@ -272,8 +298,9 @@ class TestQueueWidget(unittest.TestCase):
             self.fail("QueueWidget not initialized")
 
         # Should have clear completed button
-        self.assertTrue(hasattr(self.widget, 'clear_completed_button'))
+        self.assertTrue(hasattr(self.widget, "clear_completed_button"))
         from PySide6.QtWidgets import QPushButton
+
         self.assertIsInstance(self.widget.clear_completed_button, QPushButton)
 
     def test_queue_widget_clear_completed_removes_items(self):
@@ -283,9 +310,27 @@ class TestQueueWidget(unittest.TestCase):
 
         # Mock queue with completed and active items
         self.mock_queue.get_all_items.return_value = {
-            'item-1': {'id': 'item-1', 'video_url': 'url', 'metadata': {'title': 'S1', 'artist': 'A1'}, 'status': 'completed', 'progress': 100},
-            'item-2': {'id': 'item-2', 'video_url': 'url', 'metadata': {'title': 'S2', 'artist': 'A2'}, 'status': 'downloading', 'progress': 50},
-            'item-3': {'id': 'item-3', 'video_url': 'url', 'metadata': {'title': 'S3', 'artist': 'A3'}, 'status': 'completed', 'progress': 100}
+            "item-1": {
+                "id": "item-1",
+                "video_url": "url",
+                "metadata": {"title": "S1", "artist": "A1"},
+                "status": "completed",
+                "progress": 100,
+            },
+            "item-2": {
+                "id": "item-2",
+                "video_url": "url",
+                "metadata": {"title": "S2", "artist": "A2"},
+                "status": "downloading",
+                "progress": 50,
+            },
+            "item-3": {
+                "id": "item-3",
+                "video_url": "url",
+                "metadata": {"title": "S3", "artist": "A3"},
+                "status": "completed",
+                "progress": 100,
+            },
         }
 
         self.widget.refresh_display()
@@ -297,7 +342,7 @@ class TestQueueWidget(unittest.TestCase):
         def mock_clear_completed():
             items = self.mock_queue.get_all_items()
             for item_id in list(items.keys()):
-                if items[item_id]['status'] == 'completed':
+                if items[item_id]["status"] == "completed":
                     del items[item_id]
 
         self.mock_queue.clear_completed = mock_clear_completed
@@ -306,7 +351,7 @@ class TestQueueWidget(unittest.TestCase):
         self.widget._on_clear_completed_clicked()
 
         # After clear: should have method to handle clearing
-        self.assertTrue(hasattr(self.widget, '_on_clear_completed_clicked'))
+        self.assertTrue(hasattr(self.widget, "_on_clear_completed_clicked"))
 
 
 if __name__ == "__main__":

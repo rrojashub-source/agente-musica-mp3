@@ -18,9 +18,9 @@ from .classifier import (
 )
 
 __all__ = [
-    'ContentClassifier',
-    'ContentRating',
-    'ContentScore',
-    'ClassificationResult',
-    'get_classifier',
+    "ContentClassifier",
+    "ContentRating",
+    "ContentScore",
+    "ClassificationResult",
+    "get_classifier",
 ]

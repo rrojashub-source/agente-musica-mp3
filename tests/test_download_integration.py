@@ -2,14 +2,11 @@
 Tests for Download Integration (Phase 4.8)
 TDD: Write tests FIRST, then implement integration
 """
-import pytest
+
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
-from PySide6.QtTest import QTest
 import sys
-import time
 
 # Ensure QApplication exists for Qt tests
 app = QApplication.instance()
@@ -30,12 +27,13 @@ class TestDownloadIntegration(unittest.TestCase):
 
             class _TestableSearchTab(SearchTab):
                 """Subclass that suppresses all modal dialogs for testing."""
+
                 def _show_missing_credentials_prompt(self):
                     pass
 
                 def on_add_to_library_clicked(self):
                     """Call parent but patch out QMessageBox to avoid modal blocks."""
-                    with patch('PySide6.QtWidgets.QMessageBox'):
+                    with patch("PySide6.QtWidgets.QMessageBox"):
                         super().on_add_to_library_clicked()
 
             # Create download queue
@@ -52,11 +50,11 @@ class TestDownloadIntegration(unittest.TestCase):
 
     def tearDown(self):
         """Cleanup"""
-        if hasattr(self, 'search_tab'):
+        if hasattr(self, "search_tab"):
             self.search_tab.close()
-        if hasattr(self, 'queue_widget'):
+        if hasattr(self, "queue_widget"):
             self.queue_widget.close()
-        if hasattr(self, 'download_queue'):
+        if hasattr(self, "download_queue"):
             # Cancel all pending downloads
             items = self.download_queue.get_all_items()
             for item_id in items.keys():
@@ -70,21 +68,19 @@ class TestDownloadIntegration(unittest.TestCase):
 
     def test_search_tab_has_download_queue_reference(self):
         """Test SearchTab has reference to DownloadQueue"""
-        self.assertTrue(hasattr(self.search_tab, 'download_queue'))
+        self.assertTrue(hasattr(self.search_tab, "download_queue"))
         self.assertIsNotNone(self.search_tab.download_queue)
 
     def test_queue_widget_has_download_queue_reference(self):
         """Test QueueWidget has reference to DownloadQueue"""
-        self.assertTrue(hasattr(self.queue_widget, 'download_queue'))
+        self.assertTrue(hasattr(self.queue_widget, "download_queue"))
         self.assertIsNotNone(self.queue_widget.download_queue)
 
     def test_add_to_library_adds_to_queue(self):
         """Test 'Add to Library' button adds songs to download queue"""
         # Mock YouTube search results
-        with patch.object(self.search_tab, 'youtube_searcher') as mock_yt:
-            mock_yt.search.return_value = [
-                {'video_id': 'test123', 'title': 'Test Song', 'thumbnail_url': 'url'}
-            ]
+        with patch.object(self.search_tab, "youtube_searcher") as mock_yt:
+            mock_yt.search.return_value = [{"video_id": "test123", "title": "Test Song", "thumbnail_url": "url"}]
 
             # Search
             self.search_tab.search_box.setText("Test Song")
@@ -108,8 +104,7 @@ class TestDownloadIntegration(unittest.TestCase):
         """Test QueueWidget displays songs added to queue"""
         # Add mock item to queue
         item_id = self.download_queue.add(
-            video_url='https://youtube.com/watch?v=test123',
-            metadata={'title': 'Test Song', 'artist': 'Test Artist'}
+            video_url="https://youtube.com/watch?v=test123", metadata={"title": "Test Song", "artist": "Test Artist"}
         )
 
         # Refresh queue widget display
@@ -121,14 +116,13 @@ class TestDownloadIntegration(unittest.TestCase):
         # Verify title displayed correctly
         title_item = self.queue_widget.table.item(0, 0)  # Column 0 = Title
         self.assertIsNotNone(title_item)
-        self.assertIn('Test Song', title_item.text())
+        self.assertIn("Test Song", title_item.text())
 
     def test_queue_widget_shows_correct_status(self):
         """Test QueueWidget shows correct status for items"""
         # Add item to queue
         item_id = self.download_queue.add(
-            video_url='https://youtube.com/watch?v=test123',
-            metadata={'title': 'Test Song', 'artist': 'Test Artist'}
+            video_url="https://youtube.com/watch?v=test123", metadata={"title": "Test Song", "artist": "Test Artist"}
         )
 
         # Refresh display
@@ -137,19 +131,18 @@ class TestDownloadIntegration(unittest.TestCase):
         # Verify status column shows 'Pending' or 'Downloading'
         status_item = self.queue_widget.table.item(0, 3)  # Column 3 = Status
         self.assertIsNotNone(status_item)
-        self.assertIn(status_item.text().lower(), ['pending', 'downloading'])
+        self.assertIn(status_item.text().lower(), ["pending", "downloading"])
 
     def test_pause_button_appears_for_downloading_items(self):
         """Test pause button appears for downloading items"""
         # Add item and start download
         item_id = self.download_queue.add(
-            video_url='https://youtube.com/watch?v=test123',
-            metadata={'title': 'Test Song', 'artist': 'Test Artist'}
+            video_url="https://youtube.com/watch?v=test123", metadata={"title": "Test Song", "artist": "Test Artist"}
         )
 
         # Mock as downloading
         items = self.download_queue.get_all_items()
-        items[item_id]['status'] = 'downloading'
+        items[item_id]["status"] = "downloading"
 
         # Refresh display
         self.queue_widget.refresh_display()
@@ -162,13 +155,12 @@ class TestDownloadIntegration(unittest.TestCase):
         """Test pausing download from QueueWidget"""
         # Add item to queue
         item_id = self.download_queue.add(
-            video_url='https://youtube.com/watch?v=test123',
-            metadata={'title': 'Test Song', 'artist': 'Test Artist'}
+            video_url="https://youtube.com/watch?v=test123", metadata={"title": "Test Song", "artist": "Test Artist"}
         )
 
         # Mock as downloading
         items = self.download_queue.get_all_items()
-        items[item_id]['status'] = 'downloading'
+        items[item_id]["status"] = "downloading"
 
         # Refresh display
         self.queue_widget.refresh_display()
@@ -178,14 +170,13 @@ class TestDownloadIntegration(unittest.TestCase):
 
         # Verify item paused in queue
         updated_items = self.download_queue.get_all_items()
-        self.assertEqual(updated_items[item_id]['status'], 'paused')
+        self.assertEqual(updated_items[item_id]["status"], "paused")
 
     def test_resume_from_queue_widget(self):
         """Test resuming download from QueueWidget"""
         # Add item to queue
         item_id = self.download_queue.add(
-            video_url='https://youtube.com/watch?v=test123',
-            metadata={'title': 'Test Song', 'artist': 'Test Artist'}
+            video_url="https://youtube.com/watch?v=test123", metadata={"title": "Test Song", "artist": "Test Artist"}
         )
 
         # Pause it
@@ -196,14 +187,13 @@ class TestDownloadIntegration(unittest.TestCase):
 
         # Verify item resumed (pending or downloading)
         updated_items = self.download_queue.get_all_items()
-        self.assertIn(updated_items[item_id]['status'], ['pending', 'downloading'])
+        self.assertIn(updated_items[item_id]["status"], ["pending", "downloading"])
 
     def test_cancel_from_queue_widget(self):
         """Test cancelling download from QueueWidget"""
         # Add item to queue
         item_id = self.download_queue.add(
-            video_url='https://youtube.com/watch?v=test123',
-            metadata={'title': 'Test Song', 'artist': 'Test Artist'}
+            video_url="https://youtube.com/watch?v=test123", metadata={"title": "Test Song", "artist": "Test Artist"}
         )
 
         # Cancel via widget method
@@ -211,16 +201,16 @@ class TestDownloadIntegration(unittest.TestCase):
 
         # Verify item cancelled in queue
         updated_items = self.download_queue.get_all_items()
-        self.assertEqual(updated_items[item_id]['status'], 'canceled')
+        self.assertEqual(updated_items[item_id]["status"], "canceled")
 
     def test_multiple_songs_from_search_to_queue(self):
         """Test adding multiple songs from search to queue"""
         # Mock YouTube search with multiple results
-        with patch.object(self.search_tab, 'youtube_searcher') as mock_yt:
+        with patch.object(self.search_tab, "youtube_searcher") as mock_yt:
             mock_yt.search.return_value = [
-                {'video_id': 'vid1', 'title': 'Song 1', 'thumbnail_url': 'url1'},
-                {'video_id': 'vid2', 'title': 'Song 2', 'thumbnail_url': 'url2'},
-                {'video_id': 'vid3', 'title': 'Song 3', 'thumbnail_url': 'url3'}
+                {"video_id": "vid1", "title": "Song 1", "thumbnail_url": "url1"},
+                {"video_id": "vid2", "title": "Song 2", "thumbnail_url": "url2"},
+                {"video_id": "vid3", "title": "Song 3", "thumbnail_url": "url3"},
             ]
 
             # Search
@@ -252,17 +242,15 @@ class TestDownloadIntegration(unittest.TestCase):
         """Test clearing completed downloads removes them from display"""
         # Add items to queue
         item_id_1 = self.download_queue.add(
-            video_url='https://youtube.com/watch?v=test1',
-            metadata={'title': 'Song 1', 'artist': 'Artist 1'}
+            video_url="https://youtube.com/watch?v=test1", metadata={"title": "Song 1", "artist": "Artist 1"}
         )
         item_id_2 = self.download_queue.add(
-            video_url='https://youtube.com/watch?v=test2',
-            metadata={'title': 'Song 2', 'artist': 'Artist 2'}
+            video_url="https://youtube.com/watch?v=test2", metadata={"title": "Song 2", "artist": "Artist 2"}
         )
 
         # Mark first as completed (access internal _items directly)
-        self.download_queue._items[item_id_1]['status'] = 'completed'
-        self.download_queue._items[item_id_1]['progress'] = 100
+        self.download_queue._items[item_id_1]["status"] = "completed"
+        self.download_queue._items[item_id_1]["progress"] = 100
 
         # Refresh display
         self.queue_widget.refresh_display()
@@ -281,10 +269,8 @@ class TestDownloadIntegration(unittest.TestCase):
     def test_search_tab_clears_selection_after_adding(self):
         """Test SearchTab clears selection after adding to library"""
         # Mock search
-        with patch.object(self.search_tab, 'youtube_searcher') as mock_yt:
-            mock_yt.search.return_value = [
-                {'video_id': 'test123', 'title': 'Test Song', 'thumbnail_url': 'url'}
-            ]
+        with patch.object(self.search_tab, "youtube_searcher") as mock_yt:
+            mock_yt.search.return_value = [{"video_id": "test123", "title": "Test Song", "thumbnail_url": "url"}]
 
             # Search and select
             self.search_tab.search_box.setText("Test Song")

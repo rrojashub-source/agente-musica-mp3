@@ -100,7 +100,6 @@ def current_song():
 
 
 class TestGetRecommendations:
-
     def test_empty_library_returns_empty(self, engine, mock_db, current_song):
         """No songs in library -> no recommendations."""
         mock_db.get_all_songs.return_value = []
@@ -198,7 +197,6 @@ class TestGetRecommendations:
 
 
 class TestGenreAndArtistRandom:
-
     def test_random_from_genre_filters_correctly(self, engine, mock_db, library_songs):
         mock_db.get_all_songs.return_value = library_songs
         recs = engine.get_random_from_genre("Rock", limit=10)
@@ -224,7 +222,6 @@ class TestGenreAndArtistRandom:
 
 
 class TestDiscoverPlaylist:
-
     def test_discover_empty_library(self, engine, mock_db):
         mock_db.get_all_songs.return_value = []
         assert engine.get_discover_playlist() == []

@@ -10,11 +10,10 @@ Purpose: GUI for reviewing and managing duplicate songs
 Test Strategy: Red → Green → Refactor
 Expected Result: All tests FAIL initially (no implementation yet)
 """
-import pytest
+
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from PySide6.QtWidgets import QApplication, QTreeWidgetItem, QMessageBox
-from PySide6.QtTest import QTest
 from PySide6.QtCore import Qt
 import sys
 
@@ -57,7 +56,7 @@ class TestDuplicatesTab(unittest.TestCase):
         if self.tab is None:
             self.skipTest("Tab not implemented")
 
-        self.assertTrue(hasattr(self.tab, 'scan_button'), "Tab missing scan_button")
+        self.assertTrue(hasattr(self.tab, "scan_button"), "Tab missing scan_button")
         self.assertEqual(self.tab.scan_button.text(), "Scan Library")
 
     def test_03_tab_has_method_selector(self):
@@ -65,7 +64,7 @@ class TestDuplicatesTab(unittest.TestCase):
         if self.tab is None:
             self.skipTest("Tab not implemented")
 
-        self.assertTrue(hasattr(self.tab, 'method_combo'), "Tab missing method_combo")
+        self.assertTrue(hasattr(self.tab, "method_combo"), "Tab missing method_combo")
 
         # Verify method options
         items = [self.tab.method_combo.itemText(i) for i in range(self.tab.method_combo.count())]
@@ -78,7 +77,7 @@ class TestDuplicatesTab(unittest.TestCase):
         if self.tab is None:
             self.skipTest("Tab not implemented")
 
-        self.assertTrue(hasattr(self.tab, 'threshold_slider'), "Tab missing threshold_slider")
+        self.assertTrue(hasattr(self.tab, "threshold_slider"), "Tab missing threshold_slider")
 
         # Verify range
         self.assertGreaterEqual(self.tab.threshold_slider.minimum(), 70)
@@ -89,7 +88,7 @@ class TestDuplicatesTab(unittest.TestCase):
         if self.tab is None:
             self.skipTest("Tab not implemented")
 
-        self.assertTrue(hasattr(self.tab, 'results_tree'), "Tab missing results_tree")
+        self.assertTrue(hasattr(self.tab, "results_tree"), "Tab missing results_tree")
         self.assertIsNotNone(self.tab.results_tree)
 
     # ========== FUNCTIONAL TESTS ==========
@@ -100,10 +99,7 @@ class TestDuplicatesTab(unittest.TestCase):
             self.skipTest("Tab not implemented")
 
         # Verify that _on_scan_clicked method exists (it will trigger detection)
-        self.assertTrue(
-            hasattr(self.tab, '_on_scan_clicked'),
-            "Tab missing _on_scan_clicked method"
-        )
+        self.assertTrue(hasattr(self.tab, "_on_scan_clicked"), "Tab missing _on_scan_clicked method")
 
         # Verify scan button is connected
         self.assertIsNotNone(self.tab.scan_button, "Scan button not found")
@@ -116,12 +112,12 @@ class TestDuplicatesTab(unittest.TestCase):
         # Mock duplicate groups
         duplicate_groups = [
             {
-                'songs': [
-                    {'id': 1, 'title': 'Song A', 'artist': 'Artist', 'bitrate': 320, 'file_path': '/path/1.mp3'},
-                    {'id': 2, 'title': 'Song A', 'artist': 'Artist', 'bitrate': 128, 'file_path': '/path/2.mp3'},
+                "songs": [
+                    {"id": 1, "title": "Song A", "artist": "Artist", "bitrate": 320, "file_path": "/path/1.mp3"},
+                    {"id": 2, "title": "Song A", "artist": "Artist", "bitrate": 128, "file_path": "/path/2.mp3"},
                 ],
-                'confidence': 0.95,
-                'method': 'metadata'
+                "confidence": 0.95,
+                "method": "metadata",
             }
         ]
 
@@ -138,12 +134,18 @@ class TestDuplicatesTab(unittest.TestCase):
 
         duplicate_groups = [
             {
-                'songs': [
-                    {'id': 1, 'title': 'Song A', 'artist': 'Artist', 'bitrate': 320,
-                     'file_path': '/path/1.mp3', 'duration': 200},
+                "songs": [
+                    {
+                        "id": 1,
+                        "title": "Song A",
+                        "artist": "Artist",
+                        "bitrate": 320,
+                        "file_path": "/path/1.mp3",
+                        "duration": 200,
+                    },
                 ],
-                'confidence': 0.95,
-                'method': 'metadata'
+                "confidence": 0.95,
+                "method": "metadata",
             }
         ]
 
@@ -164,12 +166,12 @@ class TestDuplicatesTab(unittest.TestCase):
 
         duplicate_groups = [
             {
-                'songs': [
-                    {'id': 1, 'title': 'Song A', 'artist': 'Artist', 'bitrate': 320, 'file_path': '/path/1.mp3'},
-                    {'id': 2, 'title': 'Song A', 'artist': 'Artist', 'bitrate': 128, 'file_path': '/path/2.mp3'},
+                "songs": [
+                    {"id": 1, "title": "Song A", "artist": "Artist", "bitrate": 320, "file_path": "/path/1.mp3"},
+                    {"id": 2, "title": "Song A", "artist": "Artist", "bitrate": 128, "file_path": "/path/2.mp3"},
                 ],
-                'confidence': 0.95,
-                'method': 'metadata'
+                "confidence": 0.95,
+                "method": "metadata",
             }
         ]
 
@@ -189,7 +191,7 @@ class TestDuplicatesTab(unittest.TestCase):
         if self.tab is None:
             self.skipTest("Tab not implemented")
 
-        self.assertTrue(hasattr(self.tab, 'delete_button'), "Tab missing delete_button")
+        self.assertTrue(hasattr(self.tab, "delete_button"), "Tab missing delete_button")
         self.assertIsNotNone(self.tab.delete_button)
 
     def test_11_delete_shows_confirmation_dialog(self):
@@ -198,21 +200,21 @@ class TestDuplicatesTab(unittest.TestCase):
             self.skipTest("Tab not implemented")
 
         # Mock QMessageBox
-        with patch('src.gui.tabs.duplicates_tab.QMessageBox.question') as mock_msg:
+        with patch("src.gui.tabs.duplicates_tab.QMessageBox.question") as mock_msg:
             mock_msg.return_value = QMessageBox.StandardButton.No
 
             # Add a checked item first
             test_item = QTreeWidgetItem(["Test"])
             test_item.setFlags(test_item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
             test_item.setCheckState(0, Qt.CheckState.Checked)
-            test_item.setData(0, Qt.ItemDataRole.UserRole, {'id': 1, 'file_path': '/test.mp3'})
+            test_item.setData(0, Qt.ItemDataRole.UserRole, {"id": 1, "file_path": "/test.mp3"})
 
             group_item = QTreeWidgetItem(["Group"])
             group_item.addChild(test_item)
             self.tab.results_tree.addTopLevelItem(group_item)
 
             # Try to delete (should show confirmation)
-            if hasattr(self.tab, '_on_delete_clicked'):
+            if hasattr(self.tab, "_on_delete_clicked"):
                 self.tab._on_delete_clicked()
 
                 # Verify confirmation was shown
@@ -225,8 +227,7 @@ class TestDuplicatesTab(unittest.TestCase):
 
         # Tab should have progress indicator
         self.assertTrue(
-            hasattr(self.tab, 'progress_bar') or hasattr(self.tab, 'status_label'),
-            "Tab missing progress feedback"
+            hasattr(self.tab, "progress_bar") or hasattr(self.tab, "status_label"), "Tab missing progress feedback"
         )
 
 

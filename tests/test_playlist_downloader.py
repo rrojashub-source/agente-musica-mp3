@@ -9,7 +9,7 @@ define the expected contract for a future PlaylistDownloader if one is created.
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 
 import pytest
 

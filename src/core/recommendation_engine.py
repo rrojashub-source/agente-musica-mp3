@@ -129,8 +129,7 @@ class RecommendationEngine:
             recommendations = top_3 + rest
 
         logger.info(
-            f"Generated {len(recommendations)} recommendations for "
-            f"'{current_song.get('title')}' by {current_artist}"
+            f"Generated {len(recommendations)} recommendations for '{current_song.get('title')}' by {current_artist}"
         )
 
         return recommendations

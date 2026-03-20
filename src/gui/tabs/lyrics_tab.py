@@ -116,7 +116,7 @@ class LyricsTab(BaseTab):
         self.lyrics_text = QTextEdit()
         self.lyrics_text.setReadOnly(True)
         self.lyrics_text.setPlaceholderText(
-            "🎵 Play a song to see lyrics...\n\n" "Lyrics will automatically load from Genius.com"
+            "🎵 Play a song to see lyrics...\n\nLyrics will automatically load from Genius.com"
         )
 
         # Professional monospace font for lyrics

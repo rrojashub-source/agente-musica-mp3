@@ -11,17 +11,16 @@ Purpose: Verify production-ready quality improvements
 Test Strategy: Red → Green → Refactor
 Expected Result: All tests FAIL initially (improvements not yet implemented)
 """
-import pytest
+
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock
 import sys
 import logging
-import os
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 # Ensure QApplication exists for PySide6 tests
 app = QApplication.instance()
@@ -56,7 +55,7 @@ class TestProductionPolish(unittest.TestCase):
     def test_02_module_loggers_work(self):
         """Test module-level loggers work correctly"""
         # Create test logger
-        test_logger = logging.getLogger('test.production_polish')
+        test_logger = logging.getLogger("test.production_polish")
 
         # Should be able to log without errors
         test_logger.info("Test info message")
@@ -117,14 +116,14 @@ class TestProductionPolish(unittest.TestCase):
             # Mock database
             mock_db = Mock()
             mock_db.fetch_all.return_value = [
-                {'id': i, 'title': f'Song {i}', 'artist': 'Artist', 'duration': 180}
-                for i in range(1000)
+                {"id": i, "title": f"Song {i}", "artist": "Artist", "duration": 180} for i in range(1000)
             ]
 
             manager = PlaylistManager(mock_db)
 
             # Get playlist songs (1000 songs)
             import time
+
             start = time.time()
             songs = manager.get_playlist_songs(1)
             elapsed = time.time() - start
@@ -149,6 +148,7 @@ class TestProductionPolish(unittest.TestCase):
 
             # Simulate rendering
             import time
+
             start = time.time()
             for i in range(60):  # 60 frames (1 second at 60 FPS)
                 widget.update()
@@ -242,7 +242,7 @@ class TestProductionPolish(unittest.TestCase):
             player = AudioPlayer()
 
             # Should have cleanup method
-            self.assertTrue(hasattr(player, 'cleanup'))
+            self.assertTrue(hasattr(player, "cleanup"))
 
             # Cleanup should not crash
             player.cleanup()

@@ -11,16 +11,14 @@ Purpose: Waveform visualization during playback
 Test Strategy: Red → Green → Refactor
 Expected Result: All tests FAIL initially (no implementation yet)
 """
-import pytest
+
 import unittest
-from unittest.mock import Mock, patch, MagicMock
 import sys
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt, QSize
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 # Ensure QApplication exists for PySide6 tests (module level, created once)
 app = QApplication.instance()
@@ -44,7 +42,7 @@ class TestVisualizerWidget(unittest.TestCase):
 
     def tearDown(self):
         """Cleanup"""
-        if hasattr(self, 'widget') and self.widget:
+        if hasattr(self, "widget") and self.widget:
             self.widget.close()
 
     # ========== STRUCTURAL TESTS ==========
@@ -66,7 +64,7 @@ class TestVisualizerWidget(unittest.TestCase):
         self.widget.set_waveform(waveform_data)
 
         # Should have waveform data
-        self.assertTrue(hasattr(self.widget, 'waveform_data'))
+        self.assertTrue(hasattr(self.widget, "waveform_data"))
         self.assertIsNotNone(self.widget.waveform_data)
 
     def test_03_widget_updates_position(self):
@@ -85,7 +83,7 @@ class TestVisualizerWidget(unittest.TestCase):
         self.widget.set_position(50.0)
 
         # Should update position to 0.5 (50%)
-        self.assertTrue(hasattr(self.widget, 'position'))
+        self.assertTrue(hasattr(self.widget, "position"))
         self.assertEqual(self.widget.position, 0.5)
 
     def test_04_widget_handles_no_audio(self):
@@ -107,11 +105,12 @@ class TestVisualizerWidget(unittest.TestCase):
 
         # Set color
         from PySide6.QtGui import QColor
+
         red_color = QColor(255, 0, 0)
         self.widget.set_color(red_color)
 
         # Should update color
-        self.assertTrue(hasattr(self.widget, 'waveform_color'))
+        self.assertTrue(hasattr(self.widget, "waveform_color"))
         self.assertEqual(self.widget.waveform_color, red_color)
 
     def test_06_widget_changes_style(self):
@@ -120,23 +119,23 @@ class TestVisualizerWidget(unittest.TestCase):
             self.skipTest("VisualizerWidget not implemented")
 
         # Set style to 'bars'
-        self.widget.set_style('bars')
+        self.widget.set_style("bars")
 
         # Should update style
-        self.assertTrue(hasattr(self.widget, 'viz_style'))
-        self.assertEqual(self.widget.viz_style, 'bars')
+        self.assertTrue(hasattr(self.widget, "viz_style"))
+        self.assertEqual(self.widget.viz_style, "bars")
 
         # Set style to 'circular'
-        self.widget.set_style('circular')
-        self.assertEqual(self.widget.viz_style, 'circular')
+        self.widget.set_style("circular")
+        self.assertEqual(self.widget.viz_style, "circular")
 
         # Set style to 'brain_ai'
-        self.widget.set_style('brain_ai')
-        self.assertEqual(self.widget.viz_style, 'brain_ai')
+        self.widget.set_style("brain_ai")
+        self.assertEqual(self.widget.viz_style, "brain_ai")
 
         # Legacy: 'waveform' should redirect to 'bars'
-        self.widget.set_style('waveform')
-        self.assertEqual(self.widget.viz_style, 'bars')  # Migrated to bars
+        self.widget.set_style("waveform")
+        self.assertEqual(self.widget.viz_style, "bars")  # Migrated to bars
 
     def test_07_widget_scales_to_window(self):
         """Test widget scales waveform to window size"""
@@ -166,6 +165,7 @@ class TestVisualizerWidget(unittest.TestCase):
 
         # Simulate 60 position updates (1 second at 60 FPS)
         import time
+
         start_time = time.time()
 
         for i in range(60):

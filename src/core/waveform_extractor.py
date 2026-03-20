@@ -331,7 +331,7 @@ class WaveformExtractor:
 
                 spectrum_data.append(bar_magnitudes)
 
-            logger.debug(f"Extracted {len(spectrum_data)} spectrum windows " f"({num_bars} bars each)")
+            logger.debug(f"Extracted {len(spectrum_data)} spectrum windows ({num_bars} bars each)")
 
             return (spectrum_data, duration)
 
@@ -417,9 +417,7 @@ class WaveformExtractor:
             result = (samples, audio.frame_rate)
             self.cache[cache_key] = result
 
-            logger.info(
-                f"Raw samples extracted: {Path(file_path).name} " f"({len(samples)} samples, {audio.frame_rate}Hz)"
-            )
+            logger.info(f"Raw samples extracted: {Path(file_path).name} ({len(samples)} samples, {audio.frame_rate}Hz)")
             return result
 
         except (OSError, ValueError) as e:

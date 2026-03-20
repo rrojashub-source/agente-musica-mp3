@@ -12,10 +12,7 @@ Expected Result: All tests FAIL initially (no implementation yet)
 """
 
 import os
-import shutil
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -250,9 +247,9 @@ class TestLibraryOrganizer:
         # changes can be rolled back (if implemented)
 
         # For now, just verify organizer has rollback capability
-        assert hasattr(organizer, "rollback") or hasattr(
-            organizer, "_rollback"
-        ), "Organizer missing rollback capability"
+        assert hasattr(organizer, "rollback") or hasattr(organizer, "_rollback"), (
+            "Organizer missing rollback capability"
+        )
 
     # ========== PERFORMANCE TEST ==========
 

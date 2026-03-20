@@ -160,7 +160,7 @@ class Styles:
 
     # ── Action buttons (padded with border-radius) ────────────
 
-    BTN_ACTION = "QPushButton { padding: 8px 16px; font-size: 10pt;" " border-radius: 4px; }"
+    BTN_ACTION = "QPushButton { padding: 8px 16px; font-size: 10pt; border-radius: 4px; }"
 
     # ── Fonts ──────────────────────────────────────────────────
 
@@ -196,9 +196,7 @@ class Styles:
 
     # ── Log text area ────────────────────────────────────────
 
-    LOG_TEXT = (
-        "font-family: monospace; font-size: 10px;" f" background: {Colors.BG_DARK}; color: {Colors.TEXT_PRIMARY};"
-    )
+    LOG_TEXT = f"font-family: monospace; font-size: 10px; background: {Colors.BG_DARK}; color: {Colors.TEXT_PRIMARY};"
 
     # ── Margin helpers ───────────────────────────────────────
 

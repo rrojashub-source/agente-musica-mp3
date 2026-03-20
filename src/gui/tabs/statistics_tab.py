@@ -297,7 +297,7 @@ class StatisticsTab(BaseTab):
 
             hours = overview.get("total_duration_hours", 0)
             if hours >= 24:
-                self.total_duration_card.update_value(f"{hours/24:.1f}d", f"({hours:.0f} hours)")
+                self.total_duration_card.update_value(f"{hours / 24:.1f}d", f"({hours:.0f} hours)")
             else:
                 self.total_duration_card.update_value(f"{hours:.1f}h", "of music")
 

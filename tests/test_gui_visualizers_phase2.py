@@ -515,13 +515,13 @@ class TestGLPathsMocked:
         mock_shaders.compileProgram.return_value = 42
 
         with self._patch_gl_available():
-            with patch.object(ovm, "shaders", mock_shaders, create=True), patch.object(
-                ovm, "GL_VERTEX_SHADER", 0x8B31, create=True
-            ), patch.object(ovm, "GL_FRAGMENT_SHADER", 0x8B30, create=True), patch.object(
-                ovm, "glClearColor", create=True
-            ), patch.object(
-                ovm, "get_resource_path"
-            ) as mock_grp:
+            with (
+                patch.object(ovm, "shaders", mock_shaders, create=True),
+                patch.object(ovm, "GL_VERTEX_SHADER", 0x8B31, create=True),
+                patch.object(ovm, "GL_FRAGMENT_SHADER", 0x8B30, create=True),
+                patch.object(ovm, "glClearColor", create=True),
+                patch.object(ovm, "get_resource_path") as mock_grp,
+            ):
                 mock_path = MagicMock()
                 mock_grp.return_value = mock_path
                 mock_path.__truediv__ = lambda s, n: MagicMock()
@@ -564,22 +564,17 @@ class TestGLPathsMocked:
         w.start_time = 0.0
 
         with self._patch_gl_available():
-            with patch.object(ovm, "glClear", create=True), patch.object(
-                ovm, "glUseProgram", create=True
-            ) as mock_use, patch.object(ovm, "glGetUniformLocation", create=True, return_value=0), patch.object(
-                ovm, "glUniform1f", create=True
-            ), patch.object(
-                ovm, "glUniform2f", create=True
-            ), patch.object(
-                ovm, "glUniform3f", create=True
-            ), patch.object(
-                ovm, "glBindVertexArray", create=True
-            ), patch.object(
-                ovm, "glDrawArrays", create=True
-            ) as mock_draw, patch.object(
-                ovm, "GL_COLOR_BUFFER_BIT", 0x4000, create=True
-            ), patch.object(
-                ovm, "GL_TRIANGLES", 0x0004, create=True
+            with (
+                patch.object(ovm, "glClear", create=True),
+                patch.object(ovm, "glUseProgram", create=True) as mock_use,
+                patch.object(ovm, "glGetUniformLocation", create=True, return_value=0),
+                patch.object(ovm, "glUniform1f", create=True),
+                patch.object(ovm, "glUniform2f", create=True),
+                patch.object(ovm, "glUniform3f", create=True),
+                patch.object(ovm, "glBindVertexArray", create=True),
+                patch.object(ovm, "glDrawArrays", create=True) as mock_draw,
+                patch.object(ovm, "GL_COLOR_BUFFER_BIT", 0x4000, create=True),
+                patch.object(ovm, "GL_TRIANGLES", 0x0004, create=True),
             ):
                 _get("paintGL")(w)
                 mock_use.assert_called()
@@ -595,22 +590,17 @@ class TestGLPathsMocked:
         w.start_time = 0.0
 
         with self._patch_gl_available():
-            with patch.object(ovm, "glClear", create=True), patch.object(
-                ovm, "glUseProgram", create=True
-            ), patch.object(ovm, "glGetUniformLocation", create=True, return_value=-1), patch.object(
-                ovm, "glUniform1f", create=True
-            ) as mock_u1f, patch.object(
-                ovm, "glUniform2f", create=True
-            ) as mock_u2f, patch.object(
-                ovm, "glUniform3f", create=True
-            ) as mock_u3f, patch.object(
-                ovm, "glBindVertexArray", create=True
-            ), patch.object(
-                ovm, "glDrawArrays", create=True
-            ), patch.object(
-                ovm, "GL_COLOR_BUFFER_BIT", 0x4000, create=True
-            ), patch.object(
-                ovm, "GL_TRIANGLES", 0x0004, create=True
+            with (
+                patch.object(ovm, "glClear", create=True),
+                patch.object(ovm, "glUseProgram", create=True),
+                patch.object(ovm, "glGetUniformLocation", create=True, return_value=-1),
+                patch.object(ovm, "glUniform1f", create=True) as mock_u1f,
+                patch.object(ovm, "glUniform2f", create=True) as mock_u2f,
+                patch.object(ovm, "glUniform3f", create=True) as mock_u3f,
+                patch.object(ovm, "glBindVertexArray", create=True),
+                patch.object(ovm, "glDrawArrays", create=True),
+                patch.object(ovm, "GL_COLOR_BUFFER_BIT", 0x4000, create=True),
+                patch.object(ovm, "GL_TRIANGLES", 0x0004, create=True),
             ):
                 _get("paintGL")(w)
                 mock_u1f.assert_not_called()
@@ -627,9 +617,11 @@ class TestGLPathsMocked:
         w.shader_program = 30
 
         with self._patch_gl_available():
-            with patch.object(ovm, "glDeleteVertexArrays", create=True) as mock_del_vao, patch.object(
-                ovm, "glDeleteBuffers", create=True
-            ) as mock_del_vbo, patch.object(ovm, "glDeleteProgram", create=True) as mock_del_prog:
+            with (
+                patch.object(ovm, "glDeleteVertexArrays", create=True) as mock_del_vao,
+                patch.object(ovm, "glDeleteBuffers", create=True) as mock_del_vbo,
+                patch.object(ovm, "glDeleteProgram", create=True) as mock_del_prog,
+            ):
                 _get("cleanup")(w)
                 mock_del_vao.assert_called_once()
                 mock_del_vbo.assert_called_once()
@@ -646,9 +638,11 @@ class TestGLPathsMocked:
         w.shader_program = None
 
         with self._patch_gl_available():
-            with patch.object(ovm, "glDeleteVertexArrays", create=True) as mock_dv, patch.object(
-                ovm, "glDeleteBuffers", create=True
-            ) as mock_db, patch.object(ovm, "glDeleteProgram", create=True) as mock_dp:
+            with (
+                patch.object(ovm, "glDeleteVertexArrays", create=True) as mock_dv,
+                patch.object(ovm, "glDeleteBuffers", create=True) as mock_db,
+                patch.object(ovm, "glDeleteProgram", create=True) as mock_dp,
+            ):
                 _get("cleanup")(w)
                 mock_dv.assert_not_called()
                 mock_db.assert_not_called()
@@ -661,26 +655,19 @@ class TestGLPathsMocked:
         w = _make_widget()
         w.shader_program = 42
 
-        with patch.object(ovm, "glGenVertexArrays", create=True, return_value=1), patch.object(
-            ovm, "glBindVertexArray", create=True
-        ), patch.object(ovm, "glGenBuffers", create=True, return_value=2), patch.object(
-            ovm, "glBindBuffer", create=True
-        ), patch.object(
-            ovm, "glBufferData", create=True
-        ), patch.object(
-            ovm, "glGetAttribLocation", create=True, return_value=0
-        ), patch.object(
-            ovm, "glEnableVertexAttribArray", create=True
-        ), patch.object(
-            ovm, "glVertexAttribPointer", create=True
-        ), patch.object(
-            ovm, "GL_ARRAY_BUFFER", 0x8892, create=True
-        ), patch.object(
-            ovm, "GL_STATIC_DRAW", 0x88E4, create=True
-        ), patch.object(
-            ovm, "GL_FLOAT", 0x1406, create=True
-        ), patch.object(
-            ovm, "GL_FALSE", 0, create=True
+        with (
+            patch.object(ovm, "glGenVertexArrays", create=True, return_value=1),
+            patch.object(ovm, "glBindVertexArray", create=True),
+            patch.object(ovm, "glGenBuffers", create=True, return_value=2),
+            patch.object(ovm, "glBindBuffer", create=True),
+            patch.object(ovm, "glBufferData", create=True),
+            patch.object(ovm, "glGetAttribLocation", create=True, return_value=0),
+            patch.object(ovm, "glEnableVertexAttribArray", create=True),
+            patch.object(ovm, "glVertexAttribPointer", create=True),
+            patch.object(ovm, "GL_ARRAY_BUFFER", 0x8892, create=True),
+            patch.object(ovm, "GL_STATIC_DRAW", 0x88E4, create=True),
+            patch.object(ovm, "GL_FLOAT", 0x1406, create=True),
+            patch.object(ovm, "GL_FALSE", 0, create=True),
         ):
             _get("_setup_quad")(w)
             assert w.vao == 1
@@ -693,20 +680,16 @@ class TestGLPathsMocked:
         w = _make_widget()
         w.shader_program = 42
 
-        with patch.object(ovm, "glGenVertexArrays", create=True, return_value=1), patch.object(
-            ovm, "glBindVertexArray", create=True
-        ), patch.object(ovm, "glGenBuffers", create=True, return_value=2), patch.object(
-            ovm, "glBindBuffer", create=True
-        ), patch.object(
-            ovm, "glBufferData", create=True
-        ), patch.object(
-            ovm, "glGetAttribLocation", create=True, return_value=-1
-        ), patch.object(
-            ovm, "glEnableVertexAttribArray", create=True
-        ) as mock_enable, patch.object(
-            ovm, "GL_ARRAY_BUFFER", 0x8892, create=True
-        ), patch.object(
-            ovm, "GL_STATIC_DRAW", 0x88E4, create=True
+        with (
+            patch.object(ovm, "glGenVertexArrays", create=True, return_value=1),
+            patch.object(ovm, "glBindVertexArray", create=True),
+            patch.object(ovm, "glGenBuffers", create=True, return_value=2),
+            patch.object(ovm, "glBindBuffer", create=True),
+            patch.object(ovm, "glBufferData", create=True),
+            patch.object(ovm, "glGetAttribLocation", create=True, return_value=-1),
+            patch.object(ovm, "glEnableVertexAttribArray", create=True) as mock_enable,
+            patch.object(ovm, "GL_ARRAY_BUFFER", 0x8892, create=True),
+            patch.object(ovm, "GL_STATIC_DRAW", 0x88E4, create=True),
         ):
             _get("_setup_quad")(w)
             mock_enable.assert_not_called()

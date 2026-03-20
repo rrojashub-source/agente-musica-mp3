@@ -240,9 +240,9 @@ class TestMusicBrainzClient:
         client = self.client_class()
 
         # Client should have rate limiting mechanism
-        assert hasattr(client, "_rate_limiter") or hasattr(
-            client, "_last_request_time"
-        ), "Client should have rate limiting mechanism"
+        assert hasattr(client, "_rate_limiter") or hasattr(client, "_last_request_time"), (
+            "Client should have rate limiting mechanism"
+        )
 
     def test_search_recording_extracts_genre_from_tags(self):
         """Test genre extraction from MusicBrainz tags"""

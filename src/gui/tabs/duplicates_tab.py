@@ -328,7 +328,7 @@ class DuplicatesTab(BaseTab):
 
         # Update status label with clear feedback
         self.status_label.setText(
-            f"✓ Selected {selected_count} LOW QUALITY songs for deletion " f"(Keeping {kept_count} BEST QUALITY)"
+            f"✓ Selected {selected_count} LOW QUALITY songs for deletion (Keeping {kept_count} BEST QUALITY)"
         )
 
         logger.info(f"Auto-selected {selected_count} low quality duplicates (keeping {kept_count} best)")

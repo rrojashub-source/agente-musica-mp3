@@ -3,7 +3,7 @@ Tests for Metadata Autocompleter (Phase 4.3)
 TDD: Write tests FIRST, then implement src/core/metadata_autocompleter.py
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 

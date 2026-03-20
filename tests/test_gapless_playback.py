@@ -1,11 +1,12 @@
 """
 Tests for Gapless Playback Feature (python-mpv)
 """
+
 import sys
 import os
 
 # Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pytest
 from unittest.mock import Mock, MagicMock, patch
@@ -29,9 +30,10 @@ def mock_mpv():
 def player_with_mock(mock_mpv):
     """Create AudioPlayer with mocked mpv"""
     mock_module, mock_instance = mock_mpv
-    with patch.dict('sys.modules', {'mpv': mock_module}):
+    with patch.dict("sys.modules", {"mpv": mock_module}):
         import importlib
         import core.audio_player as ap
+
         importlib.reload(ap)
 
         player = ap.AudioPlayer()
@@ -178,6 +180,7 @@ class TestGaplessTransition:
         player._queued_duration = 180.0
 
         from core.audio_player import PlaybackState
+
         player._state = PlaybackState.PLAYING
         mock_instance.core_idle = True
 
@@ -196,6 +199,7 @@ class TestGaplessTransition:
         player._queued_file = None
 
         from core.audio_player import PlaybackState
+
         player._state = PlaybackState.PLAYING
         mock_instance.core_idle = True
 
@@ -204,5 +208,5 @@ class TestGaplessTransition:
         assert player._state == PlaybackState.STOPPED
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

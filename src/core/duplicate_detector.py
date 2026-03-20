@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 
 class DuplicateDetector:
-
     # Confidence scores by detection method
     CONFIDENCE_FINGERPRINT = 0.99
     CONFIDENCE_FILESIZE = 0.70

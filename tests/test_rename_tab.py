@@ -12,12 +12,10 @@ Purpose: GUI for batch renaming MP3 files
 Test Strategy: Red → Green → Refactor
 Expected Result: All tests FAIL initially (no implementation yet)
 """
-import pytest
+
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from PySide6.QtWidgets import QApplication
-from PySide6.QtTest import QTest
-from PySide6.QtCore import Qt
 import sys
 
 # Ensure QApplication exists for PySide6 tests
@@ -59,7 +57,7 @@ class TestRenameTab(unittest.TestCase):
         if self.tab is None:
             self.skipTest("Tab not implemented")
 
-        self.assertTrue(hasattr(self.tab, 'template_combo'), "Tab missing template_combo")
+        self.assertTrue(hasattr(self.tab, "template_combo"), "Tab missing template_combo")
 
         # Verify common templates
         items = [self.tab.template_combo.itemText(i) for i in range(self.tab.template_combo.count())]
@@ -67,10 +65,7 @@ class TestRenameTab(unittest.TestCase):
 
         # Should have at least track-title pattern
         templates = [self.tab.template_combo.itemData(i) for i in range(self.tab.template_combo.count())]
-        self.assertTrue(
-            any("{track" in t and "{title}" in t for t in templates),
-            "Missing track-title template"
-        )
+        self.assertTrue(any("{track" in t and "{title}" in t for t in templates), "Missing track-title template")
 
     def test_03_tab_has_find_replace_fields(self):
         """Test find/replace input fields"""
@@ -78,15 +73,11 @@ class TestRenameTab(unittest.TestCase):
             self.skipTest("Tab not implemented")
 
         # Should have find input
-        self.assertTrue(
-            hasattr(self.tab, 'find_input') or hasattr(self.tab, 'find_edit'),
-            "Tab missing find input"
-        )
+        self.assertTrue(hasattr(self.tab, "find_input") or hasattr(self.tab, "find_edit"), "Tab missing find input")
 
         # Should have replace input
         self.assertTrue(
-            hasattr(self.tab, 'replace_input') or hasattr(self.tab, 'replace_edit'),
-            "Tab missing replace input"
+            hasattr(self.tab, "replace_input") or hasattr(self.tab, "replace_edit"), "Tab missing replace input"
         )
 
     def test_04_tab_has_case_conversion_selector(self):
@@ -94,7 +85,7 @@ class TestRenameTab(unittest.TestCase):
         if self.tab is None:
             self.skipTest("Tab not implemented")
 
-        self.assertTrue(hasattr(self.tab, 'case_combo'), "Tab missing case_combo")
+        self.assertTrue(hasattr(self.tab, "case_combo"), "Tab missing case_combo")
 
         # Verify case options
         items = [self.tab.case_combo.itemText(i) for i in range(self.tab.case_combo.count())]
@@ -108,10 +99,10 @@ class TestRenameTab(unittest.TestCase):
             self.skipTest("Tab not implemented")
 
         # Preview button
-        self.assertTrue(hasattr(self.tab, 'preview_button'), "Tab missing preview_button")
+        self.assertTrue(hasattr(self.tab, "preview_button"), "Tab missing preview_button")
 
         # Results tree
-        self.assertTrue(hasattr(self.tab, 'results_tree'), "Tab missing results_tree")
+        self.assertTrue(hasattr(self.tab, "results_tree"), "Tab missing results_tree")
         self.assertIsNotNone(self.tab.results_tree)
 
     def test_06_preview_displays_changes(self):
@@ -121,24 +112,24 @@ class TestRenameTab(unittest.TestCase):
 
         # Mock database to return sample songs
         self.mock_db.get_all_songs.return_value = [
-            {'id': 1, 'title': 'Song A', 'artist': 'Artist', 'track': 1, 'file_path': '/music/old_name1.mp3'},
-            {'id': 2, 'title': 'Song B', 'artist': 'Artist', 'track': 2, 'file_path': '/music/old_name2.mp3'}
+            {"id": 1, "title": "Song A", "artist": "Artist", "track": 1, "file_path": "/music/old_name1.mp3"},
+            {"id": 2, "title": "Song B", "artist": "Artist", "track": 2, "file_path": "/music/old_name2.mp3"},
         ]
 
         # Mock renamer to return preview
         preview_result = {
-            'success': 2,
-            'failed': 0,
-            'errors': [],
-            'preview': [
-                {'old': '/music/old_name1.mp3', 'new': '/music/01 - Song A.mp3'},
-                {'old': '/music/old_name2.mp3', 'new': '/music/02 - Song B.mp3'}
-            ]
+            "success": 2,
+            "failed": 0,
+            "errors": [],
+            "preview": [
+                {"old": "/music/old_name1.mp3", "new": "/music/01 - Song A.mp3"},
+                {"old": "/music/old_name2.mp3", "new": "/music/02 - Song B.mp3"},
+            ],
         }
 
         # Simulate preview
-        with patch.object(self.tab.renamer, 'rename_batch', return_value=preview_result):
-            self.tab._populate_preview(preview_result['preview'])
+        with patch.object(self.tab.renamer, "rename_batch", return_value=preview_result):
+            self.tab._populate_preview(preview_result["preview"])
 
             # Verify results displayed
             self.assertGreater(self.tab.results_tree.topLevelItemCount(), 0, "No preview results shown")
@@ -146,15 +137,15 @@ class TestRenameTab(unittest.TestCase):
             # Verify shows old and new names
             first_item = self.tab.results_tree.topLevelItem(0)
             self.assertIsNotNone(first_item)
-            self.assertIn('old_name1', first_item.text(0), "Old filename not shown")
-            self.assertIn('01 - Song A', first_item.text(2), "New filename not shown")
+            self.assertIn("old_name1", first_item.text(0), "Old filename not shown")
+            self.assertIn("01 - Song A", first_item.text(2), "New filename not shown")
 
     def test_07_tab_has_apply_button(self):
         """Test apply button exists"""
         if self.tab is None:
             self.skipTest("Tab not implemented")
 
-        self.assertTrue(hasattr(self.tab, 'apply_button'), "Tab missing apply_button")
+        self.assertTrue(hasattr(self.tab, "apply_button"), "Tab missing apply_button")
         self.assertIn("Apply", self.tab.apply_button.text())
 
     def test_08_tab_shows_progress_feedback(self):
@@ -164,8 +155,7 @@ class TestRenameTab(unittest.TestCase):
 
         # Tab should have progress indicator
         self.assertTrue(
-            hasattr(self.tab, 'progress_bar') or hasattr(self.tab, 'status_label'),
-            "Tab missing progress feedback"
+            hasattr(self.tab, "progress_bar") or hasattr(self.tab, "status_label"), "Tab missing progress feedback"
         )
 
 

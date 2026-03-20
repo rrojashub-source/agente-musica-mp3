@@ -131,8 +131,7 @@ class AcoustIDClient:
 
             if best_match:
                 logger.info(
-                    f"Match found: {best_match['artist']} - {best_match['title']} "
-                    f"(score: {best_match['score']:.2f})"
+                    f"Match found: {best_match['artist']} - {best_match['title']} (score: {best_match['score']:.2f})"
                 )
 
                 # Enrich with MusicBrainz data if needed
@@ -145,7 +144,7 @@ class AcoustIDClient:
 
         except acoustid.NoBackendError:
             logger.error(
-                "Chromaprint backend not found. Install fpcalc:\n" f"{self.fpcalc_checker.get_install_instructions()}"
+                f"Chromaprint backend not found. Install fpcalc:\n{self.fpcalc_checker.get_install_instructions()}"
             )
             return None
 
@@ -216,7 +215,7 @@ class AcoustIDClient:
                 results[audio_file] = None
 
         logger.info(
-            f"Batch identification complete: {len([v for v in results.values() if v])}/" f"{len(audio_files)} matches"
+            f"Batch identification complete: {len([v for v in results.values() if v])}/{len(audio_files)} matches"
         )
 
         return results

@@ -97,7 +97,7 @@ class CleanupTab(BaseTab):
         self.download_covers_check = QCheckBox("Download album cover art automatically")
         self.download_covers_check.setChecked(False)
         self.download_covers_check.setToolTip(
-            "Download cover images from Cover Art Archive\n" "Saves to: downloads/covers/{artist}/{album}/cover.jpg"
+            "Download cover images from Cover Art Archive\nSaves to: downloads/covers/{artist}/{album}/cover.jpg"
         )
         scan_layout.addWidget(self.download_covers_check)
 
@@ -258,9 +258,7 @@ class CleanupTab(BaseTab):
         cleaned_count = len(results.get("cleaned", []))
         fetched_count = len(results.get("fetched", []))
 
-        self.status_label.setText(
-            f"Scan complete: {cleaned_count} songs cleaned, " f"{fetched_count} fetched from APIs"
-        )
+        self.status_label.setText(f"Scan complete: {cleaned_count} songs cleaned, {fetched_count} fetched from APIs")
 
         # Populate preview tree
         self._populate_preview(self.preview_changes)

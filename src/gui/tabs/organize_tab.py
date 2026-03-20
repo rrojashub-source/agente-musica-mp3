@@ -269,7 +269,7 @@ class OrganizeTab(BaseTab):
         reply = QMessageBox.question(
             self,
             "Confirm Rollback",
-            "Rollback last organization?\n\n" "Files will be moved back to their original locations.",
+            "Rollback last organization?\n\nFiles will be moved back to their original locations.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -345,5 +345,5 @@ class OrganizeTab(BaseTab):
             QMessageBox.warning(
                 self,
                 "Organization Partially Complete",
-                f"Organized {success} files.\n" f"Failed to organize {failed} files.\n\n" f"Errors:\n{error_text}",
+                f"Organized {success} files.\nFailed to organize {failed} files.\n\nErrors:\n{error_text}",
             )

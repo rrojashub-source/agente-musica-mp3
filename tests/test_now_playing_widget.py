@@ -13,11 +13,10 @@ Purpose: GUI widget for displaying currently playing song with playback controls
 Test Strategy: Red → Green → Refactor
 Expected Result: All tests FAIL initially (no implementation yet)
 """
-import pytest
+
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock
 from PySide6.QtWidgets import QApplication, QPushButton, QSlider, QLabel
-from PySide6.QtTest import QTest
 from PySide6.QtCore import Qt
 import sys
 
@@ -61,9 +60,9 @@ class TestNowPlayingWidget(unittest.TestCase):
             self.skipTest("Widget not implemented")
 
         # Should have labels for song info
-        self.assertTrue(hasattr(self.widget, 'title_label'), "Missing title_label")
-        self.assertTrue(hasattr(self.widget, 'artist_label'), "Missing artist_label")
-        self.assertTrue(hasattr(self.widget, 'album_label'), "Missing album_label")
+        self.assertTrue(hasattr(self.widget, "title_label"), "Missing title_label")
+        self.assertTrue(hasattr(self.widget, "artist_label"), "Missing artist_label")
+        self.assertTrue(hasattr(self.widget, "album_label"), "Missing album_label")
 
         # Labels should be QLabel
         self.assertIsInstance(self.widget.title_label, QLabel)
@@ -75,8 +74,8 @@ class TestNowPlayingWidget(unittest.TestCase):
             self.skipTest("Widget not implemented")
 
         # Should have control buttons
-        self.assertTrue(hasattr(self.widget, 'play_button'), "Missing play_button")
-        self.assertTrue(hasattr(self.widget, 'stop_button'), "Missing stop_button")
+        self.assertTrue(hasattr(self.widget, "play_button"), "Missing play_button")
+        self.assertTrue(hasattr(self.widget, "stop_button"), "Missing stop_button")
 
         # Buttons should be QPushButton
         self.assertIsInstance(self.widget.play_button, QPushButton)
@@ -88,7 +87,7 @@ class TestNowPlayingWidget(unittest.TestCase):
             self.skipTest("Widget not implemented")
 
         # Should have progress slider
-        self.assertTrue(hasattr(self.widget, 'progress_slider'), "Missing progress_slider")
+        self.assertTrue(hasattr(self.widget, "progress_slider"), "Missing progress_slider")
         self.assertIsInstance(self.widget.progress_slider, QSlider)
 
         # Should be horizontal
@@ -100,7 +99,7 @@ class TestNowPlayingWidget(unittest.TestCase):
             self.skipTest("Widget not implemented")
 
         # Should have volume slider
-        self.assertTrue(hasattr(self.widget, 'volume_slider'), "Missing volume_slider")
+        self.assertTrue(hasattr(self.widget, "volume_slider"), "Missing volume_slider")
         self.assertIsInstance(self.widget.volume_slider, QSlider)
 
         # Should have reasonable range (0-100)
@@ -115,11 +114,11 @@ class TestNowPlayingWidget(unittest.TestCase):
             self.skipTest("Widget not implemented")
 
         # Should have timer for position updates
-        self.assertTrue(hasattr(self.widget, 'position_timer'), "Missing position_timer")
+        self.assertTrue(hasattr(self.widget, "position_timer"), "Missing position_timer")
 
         # Should have time labels
-        self.assertTrue(hasattr(self.widget, 'current_time_label'), "Missing current_time_label")
-        self.assertTrue(hasattr(self.widget, 'total_time_label'), "Missing total_time_label")
+        self.assertTrue(hasattr(self.widget, "current_time_label"), "Missing current_time_label")
+        self.assertTrue(hasattr(self.widget, "total_time_label"), "Missing total_time_label")
 
     def test_07_play_button_toggles_state(self):
         """Test play button toggles between play and pause"""
@@ -130,17 +129,17 @@ class TestNowPlayingWidget(unittest.TestCase):
         initial_text = self.widget.play_button.text()
 
         # Should have method to update song info
-        if hasattr(self.widget, 'load_song'):
+        if hasattr(self.widget, "load_song"):
             song_info = {
-                'title': 'Bohemian Rhapsody',
-                'artist': 'Queen',
-                'album': 'A Night at the Opera',
-                'duration': 355.0
+                "title": "Bohemian Rhapsody",
+                "artist": "Queen",
+                "album": "A Night at the Opera",
+                "duration": 355.0,
             }
             self.widget.load_song(song_info)
 
             # After loading, verify labels updated
-            self.assertIn('Bohemian Rhapsody', self.widget.title_label.text())
+            self.assertIn("Bohemian Rhapsody", self.widget.title_label.text())
 
     def test_08_progress_slider_seeks(self):
         """Test dragging progress slider triggers seek"""
@@ -148,11 +147,8 @@ class TestNowPlayingWidget(unittest.TestCase):
             self.skipTest("Widget not implemented")
 
         # Load a song first
-        if hasattr(self.widget, 'load_song'):
-            song_info = {
-                'title': 'Test Song',
-                'duration': 200.0
-            }
+        if hasattr(self.widget, "load_song"):
+            song_info = {"title": "Test Song", "duration": 200.0}
             self.widget.load_song(song_info)
 
             # Change slider position
@@ -170,7 +166,7 @@ class TestNowPlayingWidget(unittest.TestCase):
         self.mock_player.set_volume = Mock()
 
         # Change volume slider
-        if hasattr(self.widget, '_on_volume_changed'):
+        if hasattr(self.widget, "_on_volume_changed"):
             self.widget._on_volume_changed(75)  # 75%
 
             # Should call player.set_volume with 0.0-1.0 range
@@ -190,7 +186,7 @@ class TestNowPlayingWidget(unittest.TestCase):
 
         # Play button should be disabled or show "No song"
         # Progress slider should be disabled
-        if hasattr(self.widget, 'progress_slider'):
+        if hasattr(self.widget, "progress_slider"):
             # Initial state should be reasonable
             self.assertEqual(self.widget.progress_slider.value(), 0)
 

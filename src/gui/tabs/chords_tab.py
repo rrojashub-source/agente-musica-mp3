@@ -284,7 +284,7 @@ class ChordsTab(BaseTab):
         """Start background chord analysis."""
         if not self.chords_client:
             self.chords_text.setPlainText(
-                "❌ Servicio de acordes no disponible\n\n" "Requiere: pip install librosa pychord"
+                "❌ Servicio de acordes no disponible\n\nRequiere: pip install librosa pychord"
             )
             self.status_label.setText("⚠️ Librosa no instalado")
             return
@@ -351,7 +351,7 @@ class ChordsTab(BaseTab):
             self.chords_text.setPlainText("No se detectaron acordes.")
             return
 
-        lines = ['<div style="font-family: Consolas, monospace; font-size: 13pt; ' 'line-height: 2.0;">']
+        lines = ['<div style="font-family: Consolas, monospace; font-size: 13pt; line-height: 2.0;">']
 
         for i, entry in enumerate(chords):
             t = entry["t"]
@@ -405,9 +405,7 @@ class ChordsTab(BaseTab):
             transposed = self.chords_client.transpose_chords(self._chords, self._transpose)
             self._displayed_chords = transposed
             self._render_chords(transposed)
-            self.status_label.setText(
-                f"✅ Transpuesto {'+' if self._transpose > 0 else ''}" f"{self._transpose} semitonos"
-            )
+            self.status_label.setText(f"✅ Transpuesto {'+' if self._transpose > 0 else ''}{self._transpose} semitonos")
 
             # Update diagram with current chord in new key
             if 0 <= self._current_chord_idx < len(transposed):

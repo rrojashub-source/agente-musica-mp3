@@ -11,12 +11,10 @@ Purpose: GUI for auto-organizing music library into folders
 Test Strategy: Red → Green → Refactor
 Expected Result: All tests FAIL initially (no implementation yet)
 """
-import pytest
+
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from PySide6.QtWidgets import QApplication
-from PySide6.QtTest import QTest
-from PySide6.QtCore import Qt
 import sys
 
 # Ensure QApplication exists for PySide6 tests
@@ -58,7 +56,7 @@ class TestOrganizeTab(unittest.TestCase):
         if self.tab is None:
             self.skipTest("Tab not implemented")
 
-        self.assertTrue(hasattr(self.tab, 'template_combo'), "Tab missing template_combo")
+        self.assertTrue(hasattr(self.tab, "template_combo"), "Tab missing template_combo")
 
         # Verify common templates
         items = [self.tab.template_combo.itemText(i) for i in range(self.tab.template_combo.count())]
@@ -66,10 +64,7 @@ class TestOrganizeTab(unittest.TestCase):
 
         # Should have at least these common patterns
         templates = [self.tab.template_combo.itemData(i) for i in range(self.tab.template_combo.count())]
-        self.assertTrue(
-            any("{artist}" in t and "{album}" in t for t in templates),
-            "Missing artist/album template"
-        )
+        self.assertTrue(any("{artist}" in t and "{album}" in t for t in templates), "Missing artist/album template")
 
     def test_03_tab_has_base_path_selector(self):
         """Test base directory selection"""
@@ -77,20 +72,17 @@ class TestOrganizeTab(unittest.TestCase):
             self.skipTest("Tab not implemented")
 
         # Should have path input field
-        self.assertTrue(
-            hasattr(self.tab, 'path_input') or hasattr(self.tab, 'path_edit'),
-            "Tab missing path input"
-        )
+        self.assertTrue(hasattr(self.tab, "path_input") or hasattr(self.tab, "path_edit"), "Tab missing path input")
 
         # Should have browse button
-        self.assertTrue(hasattr(self.tab, 'browse_button'), "Tab missing browse button")
+        self.assertTrue(hasattr(self.tab, "browse_button"), "Tab missing browse button")
 
     def test_04_tab_has_preview_button(self):
         """Test preview button exists"""
         if self.tab is None:
             self.skipTest("Tab not implemented")
 
-        self.assertTrue(hasattr(self.tab, 'preview_button'), "Tab missing preview_button")
+        self.assertTrue(hasattr(self.tab, "preview_button"), "Tab missing preview_button")
         self.assertEqual(self.tab.preview_button.text(), "Preview Changes")
 
     def test_05_tab_has_results_tree(self):
@@ -98,7 +90,7 @@ class TestOrganizeTab(unittest.TestCase):
         if self.tab is None:
             self.skipTest("Tab not implemented")
 
-        self.assertTrue(hasattr(self.tab, 'results_tree'), "Tab missing results_tree")
+        self.assertTrue(hasattr(self.tab, "results_tree"), "Tab missing results_tree")
         self.assertIsNotNone(self.tab.results_tree)
 
     # ========== FUNCTIONAL TESTS ==========
@@ -110,8 +102,22 @@ class TestOrganizeTab(unittest.TestCase):
 
         # Mock database to return sample songs
         self.mock_db.get_all_songs.return_value = [
-            {'id': 1, 'title': 'Song 1', 'artist': 'Artist', 'album': 'Album', 'track': 1, 'file_path': '/music/song1.mp3'},
-            {'id': 2, 'title': 'Song 2', 'artist': 'Artist', 'album': 'Album', 'track': 2, 'file_path': '/music/song2.mp3'}
+            {
+                "id": 1,
+                "title": "Song 1",
+                "artist": "Artist",
+                "album": "Album",
+                "track": 1,
+                "file_path": "/music/song1.mp3",
+            },
+            {
+                "id": 2,
+                "title": "Song 2",
+                "artist": "Artist",
+                "album": "Album",
+                "track": 2,
+                "file_path": "/music/song2.mp3",
+            },
         ]
 
         # Set base path
@@ -119,19 +125,19 @@ class TestOrganizeTab(unittest.TestCase):
 
         # Mock the organizer's organize method to return preview
         preview_result = {
-            'success': 2,
-            'failed': 0,
-            'errors': [],
-            'preview': [
-                {'old': '/music/song1.mp3', 'new': '/music/organized/Artist/Album/01 - Song 1.mp3'},
-                {'old': '/music/song2.mp3', 'new': '/music/organized/Artist/Album/02 - Song 2.mp3'}
-            ]
+            "success": 2,
+            "failed": 0,
+            "errors": [],
+            "preview": [
+                {"old": "/music/song1.mp3", "new": "/music/organized/Artist/Album/01 - Song 1.mp3"},
+                {"old": "/music/song2.mp3", "new": "/music/organized/Artist/Album/02 - Song 2.mp3"},
+            ],
         }
 
         # Mock organize method to verify dry_run=True is used
-        with patch.object(self.tab.organizer, 'organize', return_value=preview_result) as mock_organize:
+        with patch.object(self.tab.organizer, "organize", return_value=preview_result) as mock_organize:
             # Directly populate preview (simulating successful preview)
-            self.tab._populate_preview(preview_result['preview'])
+            self.tab._populate_preview(preview_result["preview"])
 
             # Verify results displayed
             self.assertGreater(self.tab.results_tree.topLevelItemCount(), 0, "No preview results shown")
@@ -139,15 +145,15 @@ class TestOrganizeTab(unittest.TestCase):
             # Verify at least one row shows old → new path transition
             first_item = self.tab.results_tree.topLevelItem(0)
             self.assertIsNotNone(first_item, "No items in results tree")
-            self.assertIn('/music/song1.mp3', first_item.text(0), "Old path not shown")
-            self.assertIn('/music/organized', first_item.text(2), "New path not shown")
+            self.assertIn("/music/song1.mp3", first_item.text(0), "Old path not shown")
+            self.assertIn("/music/organized", first_item.text(2), "New path not shown")
 
     def test_07_tab_has_execute_button(self):
         """Test execute button exists"""
         if self.tab is None:
             self.skipTest("Tab not implemented")
 
-        self.assertTrue(hasattr(self.tab, 'execute_button'), "Tab missing execute_button")
+        self.assertTrue(hasattr(self.tab, "execute_button"), "Tab missing execute_button")
         self.assertIn("Organize", self.tab.execute_button.text())
 
     def test_08_execute_shows_confirmation_dialog(self):
@@ -156,10 +162,7 @@ class TestOrganizeTab(unittest.TestCase):
             self.skipTest("Tab not implemented")
 
         # Verify that _on_execute_clicked method exists (it will show confirmation)
-        self.assertTrue(
-            hasattr(self.tab, '_on_execute_clicked'),
-            "Tab missing _on_execute_clicked method"
-        )
+        self.assertTrue(hasattr(self.tab, "_on_execute_clicked"), "Tab missing _on_execute_clicked method")
 
         # Verify execute button is connected to the method
         self.assertIsNotNone(self.tab.execute_button, "Execute button not found")
@@ -171,8 +174,7 @@ class TestOrganizeTab(unittest.TestCase):
 
         # Tab should have progress indicator
         self.assertTrue(
-            hasattr(self.tab, 'progress_bar') or hasattr(self.tab, 'status_label'),
-            "Tab missing progress feedback"
+            hasattr(self.tab, "progress_bar") or hasattr(self.tab, "status_label"), "Tab missing progress feedback"
         )
 
     def test_10_results_show_summary(self):
@@ -181,20 +183,14 @@ class TestOrganizeTab(unittest.TestCase):
             self.skipTest("Tab not implemented")
 
         # Verify that _show_results method exists
-        self.assertTrue(
-            hasattr(self.tab, '_show_results'),
-            "Tab missing _show_results method"
-        )
+        self.assertTrue(hasattr(self.tab, "_show_results"), "Tab missing _show_results method")
 
         # Verify status label exists for showing results
-        self.assertTrue(
-            hasattr(self.tab, 'status_label'),
-            "Tab missing status_label for results"
-        )
+        self.assertTrue(hasattr(self.tab, "status_label"), "Tab missing status_label for results")
 
         # Verify status label can display text
         self.tab.status_label.setText("Test: 150 success")
-        self.assertIn('150', self.tab.status_label.text(), "Status label not working")
+        self.assertIn("150", self.tab.status_label.text(), "Status label not working")
 
 
 if __name__ == "__main__":

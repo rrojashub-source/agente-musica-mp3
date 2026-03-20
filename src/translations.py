@@ -17,6 +17,7 @@ Usage:
     # Get current language
     current = get_language()  # "es" or "en"
 """
+
 import logging
 from typing import Any
 

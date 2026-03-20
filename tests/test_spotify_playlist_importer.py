@@ -7,15 +7,11 @@ Tests cover:
 - Playlist fetching (mocked)
 - Download item generation
 """
-import pytest
-from unittest.mock import Mock, MagicMock, patch
 
-from services.spotify_playlist_importer import (
-    SpotifyPlaylistImporter,
-    SpotifyTrack,
-    SpotifyPlaylist,
-    parse_spotify_url
-)
+import pytest
+from unittest.mock import Mock
+
+from services.spotify_playlist_importer import SpotifyPlaylistImporter, SpotifyTrack, SpotifyPlaylist, parse_spotify_url
 
 
 class TestSpotifyTrack:
@@ -29,7 +25,7 @@ class TestSpotifyTrack:
             artist="Queen",
             album="A Night at the Opera",
             duration_ms=354000,
-            position=0
+            position=0,
         )
 
         assert track.search_query == "Queen - Bohemian Rhapsody"
@@ -37,12 +33,7 @@ class TestSpotifyTrack:
     def test_duration_seconds(self):
         """Should convert ms to seconds"""
         track = SpotifyTrack(
-            track_id="abc123",
-            title="Test",
-            artist="Test",
-            album="Test",
-            duration_ms=180000,
-            position=0
+            track_id="abc123", title="Test", artist="Test", album="Test", duration_ms=180000, position=0
         )
 
         assert track.duration_seconds == 180
@@ -114,28 +105,28 @@ class TestTrackParsing:
     def test_parse_valid_track(self, importer):
         """Should parse valid track item"""
         item = {
-            'track': {
-                'id': 'abc123',
-                'name': 'Test Song',
-                'artists': [{'name': 'Test Artist'}],
-                'album': {'name': 'Test Album'},
-                'duration_ms': 200000
+            "track": {
+                "id": "abc123",
+                "name": "Test Song",
+                "artists": [{"name": "Test Artist"}],
+                "album": {"name": "Test Album"},
+                "duration_ms": 200000,
             }
         }
 
         track = importer._parse_track(item, 0)
 
         assert track is not None
-        assert track.track_id == 'abc123'
-        assert track.title == 'Test Song'
-        assert track.artist == 'Test Artist'
-        assert track.album == 'Test Album'
+        assert track.track_id == "abc123"
+        assert track.title == "Test Song"
+        assert track.artist == "Test Artist"
+        assert track.album == "Test Album"
         assert track.duration_ms == 200000
         assert track.position == 0
 
     def test_parse_track_missing_track_data(self, importer):
         """Should return None for missing track data"""
-        item = {'track': None}
+        item = {"track": None}
         track = importer._parse_track(item, 0)
 
         assert track is None
@@ -143,13 +134,13 @@ class TestTrackParsing:
     def test_parse_local_track(self, importer):
         """Should skip local tracks"""
         item = {
-            'track': {
-                'id': 'local123',
-                'name': 'Local Song',
-                'is_local': True,
-                'artists': [{'name': 'Local Artist'}],
-                'album': {'name': 'Local Album'},
-                'duration_ms': 180000
+            "track": {
+                "id": "local123",
+                "name": "Local Song",
+                "is_local": True,
+                "artists": [{"name": "Local Artist"}],
+                "album": {"name": "Local Album"},
+                "duration_ms": 180000,
             }
         }
 
@@ -160,37 +151,34 @@ class TestTrackParsing:
     def test_parse_track_multiple_artists(self, importer):
         """Should use first artist when multiple"""
         item = {
-            'track': {
-                'id': 'abc123',
-                'name': 'Collab Song',
-                'artists': [
-                    {'name': 'Artist One'},
-                    {'name': 'Artist Two'}
-                ],
-                'album': {'name': 'Album'},
-                'duration_ms': 180000
+            "track": {
+                "id": "abc123",
+                "name": "Collab Song",
+                "artists": [{"name": "Artist One"}, {"name": "Artist Two"}],
+                "album": {"name": "Album"},
+                "duration_ms": 180000,
             }
         }
 
         track = importer._parse_track(item, 0)
 
-        assert track.artist == 'Artist One'
+        assert track.artist == "Artist One"
 
     def test_parse_track_no_artists(self, importer):
         """Should handle missing artists"""
         item = {
-            'track': {
-                'id': 'abc123',
-                'name': 'Unknown Song',
-                'artists': [],
-                'album': {'name': 'Album'},
-                'duration_ms': 180000
+            "track": {
+                "id": "abc123",
+                "name": "Unknown Song",
+                "artists": [],
+                "album": {"name": "Album"},
+                "duration_ms": 180000,
             }
         }
 
         track = importer._parse_track(item, 0)
 
-        assert track.artist == 'Unknown Artist'
+        assert track.artist == "Unknown Artist"
 
 
 class TestPlaylistFetching:
@@ -203,75 +191,75 @@ class TestPlaylistFetching:
 
         # Simulate playlist_data dict
         playlist_data = {
-            'name': 'Test Playlist',
-            'description': 'A test playlist',
-            'owner': {'display_name': 'Test User'},
-            'images': [{'url': 'http://example.com/image.jpg'}],
-            'tracks': {
-                'total': 2,
-                'items': [
+            "name": "Test Playlist",
+            "description": "A test playlist",
+            "owner": {"display_name": "Test User"},
+            "images": [{"url": "http://example.com/image.jpg"}],
+            "tracks": {
+                "total": 2,
+                "items": [
                     {
-                        'track': {
-                            'id': 'track1',
-                            'name': 'Song One',
-                            'artists': [{'name': 'Artist One'}],
-                            'album': {'name': 'Album One'},
-                            'duration_ms': 180000
+                        "track": {
+                            "id": "track1",
+                            "name": "Song One",
+                            "artists": [{"name": "Artist One"}],
+                            "album": {"name": "Album One"},
+                            "duration_ms": 180000,
                         }
                     },
                     {
-                        'track': {
-                            'id': 'track2',
-                            'name': 'Song Two',
-                            'artists': [{'name': 'Artist Two'}],
-                            'album': {'name': 'Album Two'},
-                            'duration_ms': 200000
+                        "track": {
+                            "id": "track2",
+                            "name": "Song Two",
+                            "artists": [{"name": "Artist Two"}],
+                            "album": {"name": "Album Two"},
+                            "duration_ms": 200000,
                         }
-                    }
+                    },
                 ],
-                'next': None  # No pagination
-            }
+                "next": None,  # No pagination
+            },
         }
 
         # Test _fetch_all_tracks directly
-        tracks = importer._fetch_all_tracks('test_id', playlist_data)
+        tracks = importer._fetch_all_tracks("test_id", playlist_data)
 
         assert len(tracks) == 2
-        assert tracks[0].title == 'Song One'
-        assert tracks[0].artist == 'Artist One'
-        assert tracks[1].title == 'Song Two'
-        assert tracks[1].artist == 'Artist Two'
+        assert tracks[0].title == "Song One"
+        assert tracks[0].artist == "Artist One"
+        assert tracks[1].title == "Song Two"
+        assert tracks[1].artist == "Artist Two"
 
     def test_playlist_data_parsing(self):
         """Should correctly build SpotifyPlaylist from parsed data"""
         playlist = SpotifyPlaylist(
-            playlist_id='test_id',
-            name='Test Playlist',
-            description='A test playlist',
-            owner='Test User',
+            playlist_id="test_id",
+            name="Test Playlist",
+            description="A test playlist",
+            owner="Test User",
             total_tracks=2,
             tracks=[
                 SpotifyTrack(
-                    track_id='track1',
-                    title='Song One',
-                    artist='Artist One',
-                    album='Album One',
+                    track_id="track1",
+                    title="Song One",
+                    artist="Artist One",
+                    album="Album One",
                     duration_ms=180000,
-                    position=0
+                    position=0,
                 ),
                 SpotifyTrack(
-                    track_id='track2',
-                    title='Song Two',
-                    artist='Artist Two',
-                    album='Album Two',
+                    track_id="track2",
+                    title="Song Two",
+                    artist="Artist Two",
+                    album="Album Two",
                     duration_ms=200000,
-                    position=1
-                )
-            ]
+                    position=1,
+                ),
+            ],
         )
 
-        assert playlist.name == 'Test Playlist'
-        assert playlist.owner == 'Test User'
+        assert playlist.name == "Test Playlist"
+        assert playlist.owner == "Test User"
         assert playlist.total_tracks == 2
         assert len(playlist.tracks) == 2
 
@@ -281,7 +269,7 @@ class TestPlaylistFetching:
         mock_sp.playlist.return_value = None
 
         importer = SpotifyPlaylistImporter(mock_sp)
-        playlist = importer.fetch_playlist('nonexistent_id')
+        playlist = importer.fetch_playlist("nonexistent_id")
 
         assert playlist is None
 
@@ -291,7 +279,7 @@ class TestPlaylistFetching:
         mock_sp.playlist.side_effect = Exception("API Error")
 
         importer = SpotifyPlaylistImporter(mock_sp)
-        playlist = importer.fetch_playlist('test_id')
+        playlist = importer.fetch_playlist("test_id")
 
         assert playlist is None
 
@@ -303,29 +291,29 @@ class TestDownloadItems:
     def sample_playlist(self):
         """Create sample playlist"""
         return SpotifyPlaylist(
-            playlist_id='test_id',
-            name='Test Playlist',
-            description='Test',
-            owner='Test User',
+            playlist_id="test_id",
+            name="Test Playlist",
+            description="Test",
+            owner="Test User",
             total_tracks=2,
             tracks=[
                 SpotifyTrack(
-                    track_id='track1',
-                    title='Song One',
-                    artist='Artist One',
-                    album='Album One',
+                    track_id="track1",
+                    title="Song One",
+                    artist="Artist One",
+                    album="Album One",
                     duration_ms=180000,
-                    position=0
+                    position=0,
                 ),
                 SpotifyTrack(
-                    track_id='track2',
-                    title='Song Two',
-                    artist='Artist Two',
-                    album='Album Two',
+                    track_id="track2",
+                    title="Song Two",
+                    artist="Artist Two",
+                    album="Album Two",
                     duration_ms=200000,
-                    position=1
-                )
-            ]
+                    position=1,
+                ),
+            ],
         )
 
     def test_get_tracks_for_download(self, sample_playlist):
@@ -335,14 +323,14 @@ class TestDownloadItems:
 
         assert len(items) == 2
 
-        assert items[0]['id'] == 'spotify_track1'
-        assert items[0]['title'] == 'Song One'
-        assert items[0]['artist'] == 'Artist One'
-        assert items[0]['source'] == 'spotify'
-        assert items[0]['search_query'] == 'Artist One - Song One'
+        assert items[0]["id"] == "spotify_track1"
+        assert items[0]["title"] == "Song One"
+        assert items[0]["artist"] == "Artist One"
+        assert items[0]["source"] == "spotify"
+        assert items[0]["search_query"] == "Artist One - Song One"
 
-        assert items[1]['id'] == 'spotify_track2'
-        assert items[1]['search_query'] == 'Artist Two - Song Two'
+        assert items[1]["id"] == "spotify_track2"
+        assert items[1]["search_query"] == "Artist Two - Song Two"
 
     def test_add_to_queue(self, sample_playlist):
         """Should add tracks to download queue"""
@@ -366,23 +354,21 @@ class TestDownloadItems:
         importer.add_to_queue(sample_playlist, mock_queue, progress_callback=progress_callback)
 
         assert len(progress_calls) == 2
-        assert progress_calls[0] == (1, 2, 'Song One')
-        assert progress_calls[1] == (2, 2, 'Song Two')
+        assert progress_calls[0] == (1, 2, "Song One")
+        assert progress_calls[1] == (2, 2, "Song Two")
 
     def test_add_to_queue_with_youtube_search(self, sample_playlist):
         """Should search YouTube when searcher provided"""
         mock_queue = Mock()
         mock_youtube = Mock()
-        mock_youtube.search.return_value = [
-            {'url': 'https://youtube.com/watch?v=abc', 'video_id': 'abc'}
-        ]
+        mock_youtube.search.return_value = [{"url": "https://youtube.com/watch?v=abc", "video_id": "abc"}]
 
         importer = SpotifyPlaylistImporter(Mock())
         importer.add_to_queue(sample_playlist, mock_queue, youtube_searcher=mock_youtube)
 
         # Check that queue items have YouTube URLs
         call_args = mock_queue.add.call_args_list
-        assert call_args[0][0][0]['url'] == 'https://youtube.com/watch?v=abc'
+        assert call_args[0][0][0]["url"] == "https://youtube.com/watch?v=abc"
 
 
 class TestConvenienceFunction:

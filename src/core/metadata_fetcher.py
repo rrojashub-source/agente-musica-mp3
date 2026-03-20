@@ -393,8 +393,7 @@ class MetadataFetcher:
 
         if best["score"] >= min_confidence:
             logger.info(
-                f"Best match: {best['title']} - {best['artist']} "
-                f"(score: {best['score']}%, source: {best['source']})"
+                f"Best match: {best['title']} - {best['artist']} (score: {best['score']}%, source: {best['source']})"
             )
             return best
         else:

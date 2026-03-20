@@ -3,10 +3,7 @@ Tests for Metadata Tagging (Phase 4.9)
 TDD: Write tests FIRST, then implement src/core/metadata_tagger.py
 """
 
-import os
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

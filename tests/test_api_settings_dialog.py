@@ -9,9 +9,9 @@ Purpose: User-friendly GUI for API key management
 Test Strategy: Red → Green → Refactor
 Expected Result: All tests FAIL initially (no implementation yet)
 """
-import pytest
+
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from PySide6.QtWidgets import QApplication
 from PySide6.QtTest import QTest
 from PySide6.QtCore import Qt
@@ -30,6 +30,7 @@ class TestAPISettingsDialog(unittest.TestCase):
         """Setup test fixtures"""
         try:
             from src.gui.dialogs.api_settings_dialog import APISettingsDialog
+
             self.dialog = APISettingsDialog()
         except ImportError:
             self.dialog = None
@@ -55,7 +56,7 @@ class TestAPISettingsDialog(unittest.TestCase):
         if self.dialog is None:
             self.skipTest("Dialog not implemented yet")
 
-        self.assertTrue(hasattr(self.dialog, 'tab_widget'), "Dialog missing tab_widget")
+        self.assertTrue(hasattr(self.dialog, "tab_widget"), "Dialog missing tab_widget")
         self.assertEqual(self.dialog.tab_widget.count(), 4, "Expected 4 tabs (YouTube, Spotify, Genius, AcoustID)")
 
         # Verify tab names contain expected APIs
@@ -70,7 +71,7 @@ class TestAPISettingsDialog(unittest.TestCase):
             self.skipTest("Dialog not implemented yet")
 
         youtube_tab = self.dialog.youtube_tab
-        self.assertTrue(hasattr(youtube_tab, 'api_key_input'), "YouTube tab missing api_key_input")
+        self.assertTrue(hasattr(youtube_tab, "api_key_input"), "YouTube tab missing api_key_input")
         self.assertIsNotNone(youtube_tab.api_key_input)
 
         # Verify input field has placeholder (bilingual)
@@ -83,7 +84,7 @@ class TestAPISettingsDialog(unittest.TestCase):
             self.skipTest("Dialog not implemented yet")
 
         youtube_tab = self.dialog.youtube_tab
-        self.assertTrue(hasattr(youtube_tab, 'validate_button'), "YouTube tab missing validate_button")
+        self.assertTrue(hasattr(youtube_tab, "validate_button"), "YouTube tab missing validate_button")
         # Bilingual button text
         self.assertIn("Validate", youtube_tab.validate_button.text())
 
@@ -93,7 +94,7 @@ class TestAPISettingsDialog(unittest.TestCase):
             self.skipTest("Dialog not implemented yet")
 
         youtube_tab = self.dialog.youtube_tab
-        self.assertTrue(hasattr(youtube_tab, 'status_label'), "YouTube tab missing status_label")
+        self.assertTrue(hasattr(youtube_tab, "status_label"), "YouTube tab missing status_label")
         self.assertIsNotNone(youtube_tab.status_label)
 
     def test_06_save_button_exists(self):
@@ -101,7 +102,7 @@ class TestAPISettingsDialog(unittest.TestCase):
         if self.dialog is None:
             self.skipTest("Dialog not implemented yet")
 
-        self.assertTrue(hasattr(self.dialog, 'save_button'), "Dialog missing save_button")
+        self.assertTrue(hasattr(self.dialog, "save_button"), "Dialog missing save_button")
         # Bilingual button text
         self.assertIn("Save", self.dialog.save_button.text())
 
@@ -113,10 +114,10 @@ class TestAPISettingsDialog(unittest.TestCase):
             self.skipTest("Dialog not implemented yet")
 
         # Mock the YouTube API where it's imported (api_settings_dialog module level)
-        with patch('src.gui.dialogs.api_settings_dialog.YouTubeSearcher') as MockYT:
+        with patch("src.gui.dialogs.api_settings_dialog.YouTubeSearcher") as MockYT:
             # Setup mock to return valid results
             mock_instance = MockYT.return_value
-            mock_instance.search.return_value = [{'video_id': 'abc123', 'title': 'Test Video'}]
+            mock_instance.search.return_value = [{"video_id": "abc123", "title": "Test Video"}]
 
             # Enter valid key (30+ chars to pass format validation)
             self.dialog.youtube_tab.api_key_input.setText("a" * 35)  # 35 chars
@@ -160,7 +161,7 @@ class TestAPISettingsDialog(unittest.TestCase):
             self.skipTest("Dialog not implemented yet")
 
         # Mock keyring
-        with patch('keyring.set_password') as mock_set:
+        with patch("keyring.set_password") as mock_set:
             # Enter keys
             self.dialog.youtube_tab.api_key_input.setText("youtube_key_123")
             # SpotifyTabWidget uses client_id_input and client_secret_input
@@ -198,16 +199,17 @@ class TestAPISettingsDialog(unittest.TestCase):
                 return "existing_spotify_id_012"
             return None
 
-        with patch('keyring.get_password', side_effect=mock_get_password):
+        with patch("keyring.get_password", side_effect=mock_get_password):
             # Create NEW dialog (should load keys)
             from src.gui.dialogs.api_settings_dialog import APISettingsDialog
+
             new_dialog = APISettingsDialog()
 
             # Verify keys loaded
             self.assertEqual(
                 new_dialog.youtube_tab.api_key_input.text(),
                 "existing_youtube_key_789",
-                "YouTube key not loaded from keyring"
+                "YouTube key not loaded from keyring",
             )
 
             new_dialog.close()

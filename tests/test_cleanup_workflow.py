@@ -30,7 +30,6 @@ sys.modules.setdefault("PySide6.QtCore", _mock_qtcore)
 sys.modules.setdefault("PySide6.QtWidgets", MagicMock())
 sys.modules.setdefault("PySide6.QtGui", MagicMock())
 
-import core.cleanup_workflow as cw_module
 from core.cleanup_workflow import CleanupApplier, CleanupWorkflowWorker
 
 # ─── Fixtures ───────────────────────────────────────────────────────────

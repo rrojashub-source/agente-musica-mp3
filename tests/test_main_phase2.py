@@ -176,9 +176,11 @@ class TestInitControllers:
     def test_creates_all_controllers(self, mock_self):
         """_init_controllers creates playback, remote, and library controllers."""
         func = _method("_init_controllers")
-        with patch("main.PlaybackController") as mock_pc, patch("main.RemoteController") as mock_rc, patch(
-            "main.LibraryController"
-        ) as mock_lc:
+        with (
+            patch("main.PlaybackController") as mock_pc,
+            patch("main.RemoteController") as mock_rc,
+            patch("main.LibraryController") as mock_lc,
+        ):
             mock_pc.return_value = MagicMock()
             mock_rc.return_value = MagicMock()
             mock_lc.return_value = MagicMock()
@@ -278,19 +280,18 @@ class TestInitServices:
     def test_success_with_genius(self, mock_self):
         """_init_services initializes all services with Genius token."""
         func = _method("_init_services")
-        with patch("main.DatabaseManager") as mock_db, patch("main.AudioPlayer") as mock_audio, patch(
-            "main.PlaylistManager"
-        ) as mock_pm, patch("main.WaveformExtractor") as mock_wf, patch("main.ConfigManager") as mock_cfg, patch(
-            "main.DownloadQueue"
-        ) as mock_dq, patch(
-            "main.ThemeManager"
-        ) as mock_tm, patch(
-            "main.KeyboardShortcutManager"
-        ) as mock_ks, patch(
-            "main.QApplication"
-        ) as mock_qapp, patch(
-            "main.GeniusClient"
-        ) as mock_gc:
+        with (
+            patch("main.DatabaseManager") as mock_db,
+            patch("main.AudioPlayer") as mock_audio,
+            patch("main.PlaylistManager") as mock_pm,
+            patch("main.WaveformExtractor") as mock_wf,
+            patch("main.ConfigManager") as mock_cfg,
+            patch("main.DownloadQueue") as mock_dq,
+            patch("main.ThemeManager") as mock_tm,
+            patch("main.KeyboardShortcutManager") as mock_ks,
+            patch("main.QApplication") as mock_qapp,
+            patch("main.GeniusClient") as mock_gc,
+        ):
             mock_qapp.instance.return_value = MagicMock()
             mock_db.return_value = MagicMock()
             mock_dq.return_value = MagicMock()
@@ -313,13 +314,17 @@ class TestInitServices:
     def test_no_genius_token(self, mock_self):
         """_init_services works without Genius token."""
         func = _method("_init_services")
-        with patch("main.DatabaseManager") as mock_db, patch("main.AudioPlayer"), patch("main.PlaylistManager"), patch(
-            "main.WaveformExtractor"
-        ), patch("main.ConfigManager"), patch("main.DownloadQueue") as mock_dq, patch("main.ThemeManager"), patch(
-            "main.KeyboardShortcutManager"
-        ), patch(
-            "main.QApplication"
-        ) as mock_qapp:
+        with (
+            patch("main.DatabaseManager") as mock_db,
+            patch("main.AudioPlayer"),
+            patch("main.PlaylistManager"),
+            patch("main.WaveformExtractor"),
+            patch("main.ConfigManager"),
+            patch("main.DownloadQueue") as mock_dq,
+            patch("main.ThemeManager"),
+            patch("main.KeyboardShortcutManager"),
+            patch("main.QApplication") as mock_qapp,
+        ):
             mock_qapp.instance.return_value = MagicMock()
             mock_db.return_value = MagicMock()
             mock_dq.return_value = MagicMock()
@@ -334,14 +339,17 @@ class TestInitServices:
     def test_genius_error(self, mock_self):
         """_init_services handles Genius client initialization error."""
         func = _method("_init_services")
-        with patch("main.DatabaseManager") as mock_db, patch("main.AudioPlayer"), patch("main.PlaylistManager"), patch(
-            "main.WaveformExtractor"
-        ), patch("main.ConfigManager"), patch("main.DownloadQueue") as mock_dq, patch("main.ThemeManager"), patch(
-            "main.KeyboardShortcutManager"
-        ), patch(
-            "main.QApplication"
-        ) as mock_qapp, patch(
-            "main.GeniusClient", side_effect=RuntimeError("API error")
+        with (
+            patch("main.DatabaseManager") as mock_db,
+            patch("main.AudioPlayer"),
+            patch("main.PlaylistManager"),
+            patch("main.WaveformExtractor"),
+            patch("main.ConfigManager"),
+            patch("main.DownloadQueue") as mock_dq,
+            patch("main.ThemeManager"),
+            patch("main.KeyboardShortcutManager"),
+            patch("main.QApplication") as mock_qapp,
+            patch("main.GeniusClient", side_effect=RuntimeError("API error")),
         ):
             mock_qapp.instance.return_value = MagicMock()
             mock_db.return_value = MagicMock()
@@ -357,9 +365,11 @@ class TestInitServices:
     def test_db_error(self, mock_self):
         """_init_services exits on database error."""
         func = _method("_init_services")
-        with patch("main.DatabaseManager", side_effect=sqlite3.Error("DB fail")), patch(
-            "main.QMessageBox"
-        ) as mock_msgbox, pytest.raises(SystemExit):
+        with (
+            patch("main.DatabaseManager", side_effect=sqlite3.Error("DB fail")),
+            patch("main.QMessageBox") as mock_msgbox,
+            pytest.raises(SystemExit),
+        ):
             func(mock_self)
         mock_msgbox.critical.assert_called_once()
 
@@ -383,14 +393,17 @@ class TestMainEntryPoint:
         mock_qtgui = MagicMock()
         mock_qtgui.QFont.return_value = MagicMock()
 
-        with patch("main.QApplication", return_value=mock_qapp), patch("main.MusicPlayerApp") as mock_app_cls, patch(
-            "main.set_language"
-        ) as mock_set_lang, patch.dict(
-            "sys.modules",
-            {
-                "PySide6.QtCore": mock_qtcore,
-                "PySide6.QtGui": mock_qtgui,
-            },
+        with (
+            patch("main.QApplication", return_value=mock_qapp),
+            patch("main.MusicPlayerApp") as mock_app_cls,
+            patch("main.set_language") as mock_set_lang,
+            patch.dict(
+                "sys.modules",
+                {
+                    "PySide6.QtCore": mock_qtcore,
+                    "PySide6.QtGui": mock_qtgui,
+                },
+            ),
         ):
             with pytest.raises(SystemExit) as exc_info:
                 main()
@@ -416,14 +429,17 @@ class TestMainEntryPoint:
         mock_qtgui = MagicMock()
         mock_qtgui.QFont.return_value = MagicMock()
 
-        with patch("main.QApplication", return_value=mock_qapp), patch("main.MusicPlayerApp"), patch(
-            "main.set_language"
-        ) as mock_set_lang, patch.dict(
-            "sys.modules",
-            {
-                "PySide6.QtCore": mock_qtcore,
-                "PySide6.QtGui": mock_qtgui,
-            },
+        with (
+            patch("main.QApplication", return_value=mock_qapp),
+            patch("main.MusicPlayerApp"),
+            patch("main.set_language") as mock_set_lang,
+            patch.dict(
+                "sys.modules",
+                {
+                    "PySide6.QtCore": mock_qtcore,
+                    "PySide6.QtGui": mock_qtgui,
+                },
+            ),
         ):
             with pytest.raises(SystemExit):
                 main()

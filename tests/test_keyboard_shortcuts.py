@@ -12,11 +12,10 @@ Test Strategy:
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from PySide6.QtWidgets import QApplication, QLineEdit, QWidget
 from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QKeyEvent
-from PySide6.QtTest import QTest
 
 
 class TestKeyboardShortcutManager(unittest.TestCase):
@@ -44,15 +43,12 @@ class TestKeyboardShortcutManager(unittest.TestCase):
 
     def _create_key_event(self, key, modifiers=Qt.KeyboardModifier.NoModifier):
         """Helper to create QKeyEvent"""
-        return QKeyEvent(
-            QEvent.Type.KeyPress,
-            key,
-            modifiers
-        )
+        return QKeyEvent(QEvent.Type.KeyPress, key, modifiers)
 
     def test_01_manager_class_exists(self):
         """KeyboardShortcutManager class should exist"""
         from core.keyboard_shortcuts import KeyboardShortcutManager
+
         self.assertIsNotNone(KeyboardShortcutManager)
 
     def test_02_manager_is_instantiable(self):
@@ -69,14 +65,8 @@ class TestKeyboardShortcutManager(unittest.TestCase):
 
     def test_03_manager_has_event_filter(self):
         """Manager should have eventFilter method"""
-        self.assertTrue(
-            hasattr(self.manager, 'eventFilter'),
-            "Manager should have eventFilter method"
-        )
-        self.assertTrue(
-            callable(self.manager.eventFilter),
-            "eventFilter should be callable"
-        )
+        self.assertTrue(hasattr(self.manager, "eventFilter"), "Manager should have eventFilter method")
+        self.assertTrue(callable(self.manager.eventFilter), "eventFilter should be callable")
 
     def test_04_space_triggers_play_pause_signal(self):
         """Pressing Space should emit play_pause_requested signal"""
@@ -187,7 +177,7 @@ class TestKeyboardShortcutManager(unittest.TestCase):
 
         self.manager.eventFilter(widget, event)
 
-        signal_mock.assert_called_once_with('library')
+        signal_mock.assert_called_once_with("library")
 
     def test_12_ctrl_d_switches_to_queue_tab(self):
         """Ctrl+D should emit switch_to_tab_requested('queue')"""
@@ -199,7 +189,7 @@ class TestKeyboardShortcutManager(unittest.TestCase):
 
         self.manager.eventFilter(widget, event)
 
-        signal_mock.assert_called_once_with('queue')
+        signal_mock.assert_called_once_with("queue")
 
     def test_13_typing_context_ignored(self):
         """Keys should be ignored when QLineEdit has focus"""
@@ -211,7 +201,7 @@ class TestKeyboardShortcutManager(unittest.TestCase):
         event = self._create_key_event(Qt.Key.Key_Space)
 
         # Mock focusWidget to return the QLineEdit (simulates it having focus)
-        with patch('core.keyboard_shortcuts.QApplication.focusWidget', return_value=line_edit):
+        with patch("core.keyboard_shortcuts.QApplication.focusWidget", return_value=line_edit):
             result = self.manager.eventFilter(line_edit, event)
 
         self.assertFalse(result, "Should not consume event in typing context")
@@ -239,5 +229,5 @@ class TestKeyboardShortcutManager(unittest.TestCase):
         self.assertIn("Ctrl+L", shortcut_keys)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

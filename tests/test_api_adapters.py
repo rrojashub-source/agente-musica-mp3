@@ -15,7 +15,6 @@ from src.core.api_adapters import MusicBrainzAdapter, SpotifyAdapter
 
 
 class TestMusicBrainzAdapter:
-
     @pytest.fixture
     def mb_client(self):
         return MagicMock()
@@ -67,7 +66,6 @@ class TestMusicBrainzAdapter:
 
 
 class TestSpotifyAdapter:
-
     @pytest.fixture
     def sp_searcher(self):
         return MagicMock()

@@ -178,9 +178,7 @@ Benefits of AcoustID:
 ✨ Works even with corrupted/missing metadata
 ✨ 95-100% accuracy (analyzes actual audio)
 ✨ Same technology used by MusicBrainz Picard
-""".format(
-            project_tools=Path(__file__).parent.parent.parent / "tools" / "fpcalc.exe"
-        )
+""".format(project_tools=Path(__file__).parent.parent.parent / "tools" / "fpcalc.exe")
 
         return instructions.strip()
 

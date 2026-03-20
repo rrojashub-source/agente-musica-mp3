@@ -12,7 +12,7 @@ Purpose: Core audio playback engine using python-mpv (libmpv)
 """
 
 import sys
-from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

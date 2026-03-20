@@ -612,7 +612,7 @@ def create_decade_playlist(decade: int) -> SmartPlaylistConfig:
                 field=RuleField.YEAR.value, operator=RuleOperator.BETWEEN.value, value=decade, value2=decade + 9
             )
         ],
-        description=f"Songs from {decade}-{decade+9}",
+        description=f"Songs from {decade}-{decade + 9}",
     )
 
 

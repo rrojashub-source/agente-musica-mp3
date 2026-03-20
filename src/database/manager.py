@@ -110,7 +110,9 @@ class DatabaseManager:
     def _create_connection(self) -> sqlite3.Connection:
         """Create a new optimized SQLite connection"""
         conn = sqlite3.connect(
-            str(self.db_path), timeout=DB_CONNECTION_TIMEOUT, check_same_thread=True  # Enforce thread safety
+            str(self.db_path),
+            timeout=DB_CONNECTION_TIMEOUT,
+            check_same_thread=True,  # Enforce thread safety
         )
         conn.row_factory = sqlite3.Row
 
@@ -389,7 +391,7 @@ class DatabaseManager:
                     "UPDATE songs SET title = ?, artist = ? WHERE id = ?", (clean_title, clean_artist, song_id)
                 )
                 cleaned_count += 1
-                logger.debug(f"Cleaned song {song_id}: " f"'{title}' → '{clean_title}', '{artist}' → '{clean_artist}'")
+                logger.debug(f"Cleaned song {song_id}: '{title}' → '{clean_title}', '{artist}' → '{clean_artist}'")
 
         if cleaned_count:
             logger.info(f"Batch cleaned {cleaned_count}/{len(songs)} songs")

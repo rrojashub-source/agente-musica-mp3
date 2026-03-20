@@ -7,18 +7,12 @@ Tests cover:
 - Custom preset save/load
 - Gain limits validation
 """
+
 import pytest
 import tempfile
 import shutil
-from pathlib import Path
 
-from core.audio_equalizer import (
-    AudioEqualizer,
-    EqualizerPreset,
-    EqualizerBand,
-    BUILTIN_PRESETS,
-    BAND_LABELS
-)
+from core.audio_equalizer import AudioEqualizer, EqualizerPreset, EqualizerBand, BUILTIN_PRESETS, BAND_LABELS
 
 
 class TestEqualizerBands:
@@ -87,11 +81,11 @@ class TestPresets:
 
     def test_builtin_presets_exist(self):
         """Built-in presets should exist"""
-        assert 'flat' in BUILTIN_PRESETS
-        assert 'rock' in BUILTIN_PRESETS
-        assert 'pop' in BUILTIN_PRESETS
-        assert 'jazz' in BUILTIN_PRESETS
-        assert 'classical' in BUILTIN_PRESETS
+        assert "flat" in BUILTIN_PRESETS
+        assert "rock" in BUILTIN_PRESETS
+        assert "pop" in BUILTIN_PRESETS
+        assert "jazz" in BUILTIN_PRESETS
+        assert "classical" in BUILTIN_PRESETS
 
     def test_apply_flat_preset(self):
         """Applying flat preset should reset all bands"""
@@ -102,7 +96,7 @@ class TestPresets:
         eq.set_band_gain(125, -3.0)
 
         # Apply flat
-        eq.apply_preset('flat')
+        eq.apply_preset("flat")
 
         gains = eq.get_all_gains()
         for gain in gains.values():
@@ -111,7 +105,7 @@ class TestPresets:
     def test_apply_rock_preset(self):
         """Rock preset should have enhanced bass/treble"""
         eq = AudioEqualizer()
-        eq.apply_preset('rock')
+        eq.apply_preset("rock")
 
         # Rock typically has boosted bass and treble
         assert eq.get_band_gain(31) > 0  # Bass boost
@@ -120,33 +114,33 @@ class TestPresets:
     def test_apply_invalid_preset(self):
         """Applying invalid preset should return False"""
         eq = AudioEqualizer()
-        result = eq.apply_preset('nonexistent')
+        result = eq.apply_preset("nonexistent")
         assert result is False
 
     def test_get_current_preset(self):
         """Current preset should be tracked"""
         eq = AudioEqualizer()
 
-        assert eq.get_current_preset() == 'flat'
+        assert eq.get_current_preset() == "flat"
 
-        eq.apply_preset('rock')
-        assert eq.get_current_preset() == 'rock'
+        eq.apply_preset("rock")
+        assert eq.get_current_preset() == "rock"
 
     def test_manual_change_marks_custom(self):
         """Manual band change should mark preset as custom"""
         eq = AudioEqualizer()
-        eq.apply_preset('rock')
+        eq.apply_preset("rock")
 
         eq.set_band_gain(1000, 10.0)  # Manual change
-        assert eq.get_current_preset() == 'custom'
+        assert eq.get_current_preset() == "custom"
 
     def test_preset_info(self):
         """Preset info should include name and description"""
         eq = AudioEqualizer()
 
-        preset = eq.get_preset_info('rock')
+        preset = eq.get_preset_info("rock")
         assert preset is not None
-        assert preset.name == 'Rock'
+        assert preset.name == "Rock"
         assert len(preset.description) > 0
 
 
@@ -173,7 +167,7 @@ class TestCustomPresets:
         assert result is True
 
         # Check it exists
-        assert 'my_test' in eq.get_preset_names()
+        assert "my_test" in eq.get_preset_names()
 
     def test_load_custom_preset(self, temp_config_dir):
         """Loading saved preset should restore bands"""
@@ -186,7 +180,7 @@ class TestCustomPresets:
 
         # Reset and reload
         eq.reset()
-        eq.apply_preset('test_preset')
+        eq.apply_preset("test_preset")
 
         assert eq.get_band_gain(1000) == 7.5
         assert eq.get_band_gain(250) == -4.0
@@ -196,17 +190,17 @@ class TestCustomPresets:
         eq = AudioEqualizer(config_dir=temp_config_dir)
 
         eq.save_custom_preset("To Delete")
-        assert 'to_delete' in eq.get_preset_names()
+        assert "to_delete" in eq.get_preset_names()
 
-        result = eq.delete_custom_preset('to_delete')
+        result = eq.delete_custom_preset("to_delete")
         assert result is True
-        assert 'to_delete' not in eq.get_preset_names()
+        assert "to_delete" not in eq.get_preset_names()
 
     def test_cannot_delete_builtin(self, temp_config_dir):
         """Deleting built-in preset should fail"""
         eq = AudioEqualizer(config_dir=temp_config_dir)
 
-        result = eq.delete_custom_preset('rock')
+        result = eq.delete_custom_preset("rock")
         assert result is False
 
     def test_cannot_overwrite_builtin(self, temp_config_dir):
@@ -225,9 +219,9 @@ class TestCustomPresets:
 
         # Second instance - should load it
         eq2 = AudioEqualizer(config_dir=temp_config_dir)
-        assert 'persistent' in eq2.get_preset_names()
+        assert "persistent" in eq2.get_preset_names()
 
-        eq2.apply_preset('persistent')
+        eq2.apply_preset("persistent")
         assert eq2.get_band_gain(500) == 6.0
 
 
@@ -253,10 +247,10 @@ class TestEqualizerState:
         """Reset should return to flat"""
         eq = AudioEqualizer()
 
-        eq.apply_preset('rock')
+        eq.apply_preset("rock")
         eq.reset()
 
-        assert eq.get_current_preset() == 'flat'
+        assert eq.get_current_preset() == "flat"
         gains = eq.get_all_gains()
         for gain in gains.values():
             assert gain == 0.0
@@ -267,24 +261,16 @@ class TestEqualizerPresetDataclass:
 
     def test_to_dict(self):
         """Preset should serialize to dict"""
-        preset = EqualizerPreset(
-            name="Test",
-            bands={1000: 5.0, 2000: 3.0},
-            description="Test preset"
-        )
+        preset = EqualizerPreset(name="Test", bands={1000: 5.0, 2000: 3.0}, description="Test preset")
 
         d = preset.to_dict()
-        assert d['name'] == "Test"
-        assert '1000' in d['bands']
-        assert d['bands']['1000'] == 5.0
+        assert d["name"] == "Test"
+        assert "1000" in d["bands"]
+        assert d["bands"]["1000"] == 5.0
 
     def test_from_dict(self):
         """Preset should deserialize from dict"""
-        d = {
-            'name': "Test",
-            'bands': {'1000': 5.0, '2000': 3.0},
-            'description': "Test preset"
-        }
+        d = {"name": "Test", "bands": {"1000": 5.0, "2000": 3.0}, "description": "Test preset"}
 
         preset = EqualizerPreset.from_dict(d)
         assert preset.name == "Test"

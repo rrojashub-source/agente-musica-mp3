@@ -4,15 +4,12 @@ Tests for utils/credentials.py — 4-tier credential loading.
 
 import json
 import os
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 import utils.credentials as creds_module
 from utils.credentials import (
-    KEYRING_SERVICE,
     _load_from_env,
     _load_from_json,
     _load_from_keyring,

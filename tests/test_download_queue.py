@@ -4,9 +4,7 @@ TDD: Write tests FIRST, then implement src/core/download_queue.py
 """
 
 import json
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 

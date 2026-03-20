@@ -197,7 +197,7 @@ class RemoteTab(BaseTab):
                 QMessageBox.warning(
                     self,
                     "Server Error",
-                    "Failed to start server.\n" "Make sure Flask is installed: pip install flask flask-cors",
+                    "Failed to start server.\nMake sure Flask is installed: pip install flask flask-cors",
                 )
         except (OSError, RuntimeError) as e:
             logger.error(f"Server start error: {e}")

@@ -56,7 +56,7 @@ class PluginSettingsDialog(QDialog):
 
         # Plugin info
         info_label = QLabel(
-            f"<b>{self.plugin.metadata.display_name}</b> v{self.plugin.version}<br>" f"by {self.plugin.metadata.author}"
+            f"<b>{self.plugin.metadata.display_name}</b> v{self.plugin.version}<br>by {self.plugin.metadata.author}"
         )
         layout.addWidget(info_label)
 

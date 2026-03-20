@@ -2,13 +2,13 @@
 Tests for LibraryImportWorker - Background MP3 Import
 Phase: Library Import Feature
 """
+
 import pytest
 import tempfile
 import os
-import struct
 import shutil
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from PySide6.QtCore import QCoreApplication
 from src.workers.library_import_worker import LibraryImportWorker, extract_metadata
 from src.database.manager import DatabaseManager
@@ -43,9 +43,9 @@ def create_test_mp3(
     # MPEG1 Layer3 128kbps 44100Hz stereo — sync word 0xFFE0 | 0x1B | 0x90 | 0x04
     # Frame header bytes: FF FB 90 04
     # Frame size at 128kbps / 44100Hz = floor(144 * 128000 / 44100) + 0 = 417 bytes
-    frame_header = b'\xff\xfb\x90\x04'
+    frame_header = b"\xff\xfb\x90\x04"
     frame_size = 417
-    silence = b'\x00' * (frame_size - len(frame_header))
+    silence = b"\x00" * (frame_size - len(frame_header))
     # 115 frames ≈ 3 seconds
     frames = (frame_header + silence) * 115
 
@@ -64,7 +64,7 @@ def create_test_mp3(
 @pytest.fixture
 def temp_db():
     """Create temporary database for testing"""
-    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
 
     db = DatabaseManager(db_path)
@@ -73,7 +73,7 @@ def temp_db():
     db.close()
 
     # Remove database files (including WAL and SHM)
-    for ext in ['', '-wal', '-shm']:
+    for ext in ["", "-wal", "-shm"]:
         file_path = db_path + ext
         if os.path.exists(file_path):
             try:
@@ -85,7 +85,7 @@ def temp_db():
 @pytest.fixture
 def temp_music_folder():
     """Create temporary folder with synthetic test MP3 files."""
-    temp_dir = tempfile.mkdtemp(prefix='music_import_test_')
+    temp_dir = tempfile.mkdtemp(prefix="music_import_test_")
 
     # Create subfolder structure mirroring a real music library
     subfolder = Path(temp_dir) / "TestArtist"
@@ -117,7 +117,7 @@ def temp_music_folder():
 @pytest.fixture
 def empty_music_folder():
     """Create empty temporary folder"""
-    temp_dir = tempfile.mkdtemp(prefix='music_empty_test_')
+    temp_dir = tempfile.mkdtemp(prefix="music_empty_test_")
     yield temp_dir
     shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -125,6 +125,7 @@ def empty_music_folder():
 # ==========================================
 # METADATA EXTRACTION TESTS
 # ==========================================
+
 
 def test_extract_metadata_valid_mp3(tmp_path: Path):
     """Test metadata extraction from a synthetic valid MP3 with known tags."""
@@ -141,21 +142,21 @@ def test_extract_metadata_valid_mp3(tmp_path: Path):
     metadata = extract_metadata(str(mp3_file))
 
     assert metadata is not None
-    assert metadata['title'] == 'Clavaito'
-    assert metadata['artist'] == 'Chanel'
-    assert metadata['album'] == 'Agua'
-    assert metadata['year'] == 2024
-    assert metadata['genre'] == 'Latin Pop'
-    assert metadata['duration'] > 0
-    assert metadata['bitrate'] > 0
-    assert metadata['sample_rate'] > 0
-    assert metadata['file_path'] == str(mp3_file.resolve())
-    assert metadata['file_size'] > 0
+    assert metadata["title"] == "Clavaito"
+    assert metadata["artist"] == "Chanel"
+    assert metadata["album"] == "Agua"
+    assert metadata["year"] == 2024
+    assert metadata["genre"] == "Latin Pop"
+    assert metadata["duration"] > 0
+    assert metadata["bitrate"] > 0
+    assert metadata["sample_rate"] > 0
+    assert metadata["file_path"] == str(mp3_file.resolve())
+    assert metadata["file_size"] > 0
 
 
 def test_extract_metadata_missing_file():
     """Test extract_metadata handles missing files gracefully"""
-    metadata = extract_metadata('/nonexistent/file.mp3')
+    metadata = extract_metadata("/nonexistent/file.mp3")
 
     assert metadata is None
 
@@ -194,6 +195,7 @@ def test_extract_metadata_missing_tags(temp_music_folder):
 # WORKER INITIALIZATION TESTS
 # ==========================================
 
+
 def test_worker_initializes(temp_db, temp_music_folder):
     """Test LibraryImportWorker initializes correctly"""
     worker = LibraryImportWorker(temp_db, temp_music_folder, recursive=True)
@@ -206,6 +208,7 @@ def test_worker_initializes(temp_db, temp_music_folder):
 # ==========================================
 # SCAN FOLDER TESTS
 # ==========================================
+
 
 def test_scan_folder_finds_mp3s(temp_db, temp_music_folder):
     """Test recursive scan finds all .mp3 files"""
@@ -224,7 +227,7 @@ def test_scan_folder_finds_mp3s(temp_db, temp_music_folder):
     # Verify 2 MP3s were found
     assert len(import_count) == 2
     assert len(finished_result) == 1
-    assert finished_result[0]['success'] == 2
+    assert finished_result[0]["success"] == 2
 
 
 def test_scan_non_recursive_mode(temp_db, temp_music_folder):
@@ -244,12 +247,13 @@ def test_scan_empty_folder(temp_db, empty_music_folder):
     worker.run()
 
     assert len(finished_result) == 1
-    assert finished_result[0]['success'] == 0
+    assert finished_result[0]["success"] == 0
 
 
 # ==========================================
 # DUPLICATE DETECTION TESTS
 # ==========================================
+
 
 def test_import_skips_duplicates(temp_db, temp_music_folder):
     """Test worker skips files already imported"""
@@ -260,7 +264,7 @@ def test_import_skips_duplicates(temp_db, temp_music_folder):
     worker1.finished.connect(lambda result: finished1.append(result))
     worker1.run()
 
-    assert finished1[0]['success'] == 2
+    assert finished1[0]["success"] == 2
 
     # Second import (should skip duplicates)
     worker2 = LibraryImportWorker(temp_db, temp_music_folder, recursive=True)
@@ -269,13 +273,14 @@ def test_import_skips_duplicates(temp_db, temp_music_folder):
     worker2.run()
 
     # Should skip all 2 files
-    assert finished2[0]['success'] == 0
-    assert finished2[0]['skipped'] == 2
+    assert finished2[0]["success"] == 0
+    assert finished2[0]["skipped"] == 2
 
 
 # ==========================================
 # PROGRESS SIGNALS TESTS
 # ==========================================
+
 
 def test_import_emits_progress_signals(temp_db, temp_music_folder):
     """Test worker emits progress signals during import"""
@@ -303,13 +308,14 @@ def test_import_emits_song_imported_signals(temp_db, temp_music_folder):
 
     # Should emit 2 signals (2 MP3s)
     assert len(imported_songs) == 2
-    assert all('title' in song for song in imported_songs)
-    assert all('file_path' in song for song in imported_songs)
+    assert all("title" in song for song in imported_songs)
+    assert all("file_path" in song for song in imported_songs)
 
 
 # ==========================================
 # ERROR HANDLING TESTS
 # ==========================================
+
 
 def test_import_handles_db_errors_gracefully(temp_db, temp_music_folder):
     """Test worker completes without raising an exception even after db.close().
@@ -333,15 +339,16 @@ def test_import_handles_db_errors_gracefully(temp_db, temp_music_folder):
 
     assert len(finished_result) == 1
     # finished dict must have the expected keys regardless of outcome
-    assert 'success' in finished_result[0]
-    assert 'failed' in finished_result[0]
-    assert 'skipped' in finished_result[0]
-    assert 'errors' in finished_result[0]
+    assert "success" in finished_result[0]
+    assert "failed" in finished_result[0]
+    assert "skipped" in finished_result[0]
+    assert "errors" in finished_result[0]
 
 
 # ==========================================
 # INTEGRATION TESTS
 # ==========================================
+
 
 def test_full_import_workflow(temp_db, temp_music_folder):
     """Test complete import workflow end-to-end"""
@@ -357,8 +364,8 @@ def test_full_import_workflow(temp_db, temp_music_folder):
     worker.run()
 
     # Verify results
-    assert finished_result[0]['success'] == 2
-    assert finished_result[0]['failed'] == 0
+    assert finished_result[0]["success"] == 2
+    assert finished_result[0]["failed"] == 0
 
     # Verify database has songs
     assert temp_db.get_song_count() == 2
@@ -366,4 +373,4 @@ def test_full_import_workflow(temp_db, temp_music_folder):
     # Verify songs have correct data
     songs = temp_db.get_all_songs()
     assert len(songs) == 2
-    assert any(song['title'] == 'Clavaito' for song in songs)
+    assert any(song["title"] == "Clavaito" for song in songs)

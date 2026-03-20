@@ -81,9 +81,9 @@ class TestYouTubeSearch:
         # First result should be relevant (contain "Bohemian" or "Queen")
         first_result = results[0]
         title_lower = first_result["title"].lower()
-        assert (
-            "bohemian" in title_lower or "queen" in title_lower
-        ), f"First result title '{first_result['title']}' not relevant"
+        assert "bohemian" in title_lower or "queen" in title_lower, (
+            f"First result title '{first_result['title']}' not relevant"
+        )
 
     def test_search_results_format(self):
         """Test search results return correct format"""

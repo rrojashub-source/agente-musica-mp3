@@ -9,12 +9,13 @@ Tests cover:
 - LRC generation
 - File operations
 """
+
 import pytest
 import tempfile
 import os
 from pathlib import Path
 
-from core.lrc_parser import LRCParser, LRCLine, LRCMetadata, parse_lrc, load_lrc
+from core.lrc_parser import LRCParser, LRCLine, parse_lrc, load_lrc
 
 
 class TestLRCLine:
@@ -206,9 +207,7 @@ class TestCurrentLine:
     def test_get_surrounding_lines(self, sample_lines):
         """Should get lines around current position"""
         parser = LRCParser()
-        surrounding, current_idx = parser.get_surrounding_lines(
-            sample_lines, 10000, before=1, after=2
-        )
+        surrounding, current_idx = parser.get_surrounding_lines(sample_lines, 10000, before=1, after=2)
 
         # At 10000ms, current is "Verse 2" (index 2)
         # Should return lines 1-4 (Verse 1, Verse 2, Chorus, Outro)
@@ -239,11 +238,7 @@ Third line"""
         parser = LRCParser()
         lyrics = "Test line"
         timings = [0]
-        metadata = {
-            'title': 'Test Song',
-            'artist': 'Test Artist',
-            'album': 'Test Album'
-        }
+        metadata = {"title": "Test Song", "artist": "Test Artist", "album": "Test Album"}
 
         lrc = parser.generate_lrc(lyrics, timings, metadata)
 
@@ -277,8 +272,8 @@ class TestFileOperations:
 [00:12.00]First line
 [00:15.00]Second line"""
 
-        fd, path = tempfile.mkstemp(suffix='.lrc')
-        os.write(fd, content.encode('utf-8'))
+        fd, path = tempfile.mkstemp(suffix=".lrc")
+        os.write(fd, content.encode("utf-8"))
         os.close(fd)
 
         yield path
@@ -345,7 +340,7 @@ class TestConvenienceFunctions:
     def test_load_lrc_function(self):
         """Should load and parse file"""
         # Create temp file
-        fd, path = tempfile.mkstemp(suffix='.lrc')
+        fd, path = tempfile.mkstemp(suffix=".lrc")
         os.write(fd, b"[00:00.00]Test")
         os.close(fd)
 

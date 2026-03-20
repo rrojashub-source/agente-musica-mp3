@@ -3,9 +3,8 @@ Tests for AcoustIDClient - Audio Fingerprinting
 Mocks subprocess (fpcalc), HTTP calls, and the acoustid library.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 
 from src.core.acoustid_client import AcoustIDClient
 
@@ -31,7 +30,6 @@ def _make_client(api_key="test-api-key", fpcalc_available=True):
 
 
 class TestIsAvailable:
-
     def test_available_when_key_and_fpcalc(self):
         client = _make_client(api_key="key", fpcalc_available=True)
         assert client.is_available() is True
@@ -51,7 +49,6 @@ class TestIsAvailable:
 
 
 class TestIdentifySong:
-
     def test_returns_none_when_not_available(self):
         client = _make_client(api_key=None, fpcalc_available=False)
         assert client.identify_song("some_file.mp3") is None
@@ -120,7 +117,6 @@ class TestIdentifySong:
 
 
 class TestBatchIdentify:
-
     @patch.object(AcoustIDClient, "identify_song")
     def test_batch_filters_by_min_score(self, mock_identify):
         client = _make_client()
@@ -145,7 +141,6 @@ class TestBatchIdentify:
 
 
 class TestGetFingerprint:
-
     @patch("src.core.acoustid_client.acoustid.fingerprint_file")
     def test_get_fingerprint_success(self, mock_fp_file):
         client = _make_client()

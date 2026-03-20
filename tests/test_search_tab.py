@@ -2,9 +2,9 @@
 Tests for Search Tab GUI (Phase 4.4)
 TDD: Write tests FIRST, then implement src/gui/tabs/search_tab.py
 """
-import pytest
+
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
@@ -65,6 +65,7 @@ class TestSearchTab(unittest.TestCase):
             self.fail("SearchTab class not found - implement src/gui/tabs/search_tab.py")
 
         from PySide6.QtWidgets import QWidget
+
         self.assertTrue(issubclass(self.tab_class, QWidget))
 
     def test_search_tab_has_search_box(self):
@@ -73,8 +74,9 @@ class TestSearchTab(unittest.TestCase):
             self.fail("SearchTab not initialized")
 
         # Should have search box (QLineEdit)
-        self.assertTrue(hasattr(self.tab, 'search_box'))
+        self.assertTrue(hasattr(self.tab, "search_box"))
         from PySide6.QtWidgets import QLineEdit
+
         self.assertIsInstance(self.tab.search_box, QLineEdit)
 
     def test_search_tab_has_search_button(self):
@@ -83,8 +85,9 @@ class TestSearchTab(unittest.TestCase):
             self.fail("SearchTab not initialized")
 
         # Should have search button
-        self.assertTrue(hasattr(self.tab, 'search_button'))
+        self.assertTrue(hasattr(self.tab, "search_button"))
         from PySide6.QtWidgets import QPushButton
+
         self.assertIsInstance(self.tab.search_button, QPushButton)
 
     def test_search_tab_has_youtube_checkbox(self):
@@ -93,8 +96,9 @@ class TestSearchTab(unittest.TestCase):
             self.fail("SearchTab not initialized")
 
         # Should have YouTube checkbox
-        self.assertTrue(hasattr(self.tab, 'youtube_checkbox'))
+        self.assertTrue(hasattr(self.tab, "youtube_checkbox"))
         from PySide6.QtWidgets import QCheckBox
+
         self.assertIsInstance(self.tab.youtube_checkbox, QCheckBox)
 
         # Should be checked by default
@@ -106,8 +110,9 @@ class TestSearchTab(unittest.TestCase):
             self.fail("SearchTab not initialized")
 
         # Should have Spotify checkbox
-        self.assertTrue(hasattr(self.tab, 'spotify_checkbox'))
+        self.assertTrue(hasattr(self.tab, "spotify_checkbox"))
         from PySide6.QtWidgets import QCheckBox
+
         self.assertIsInstance(self.tab.spotify_checkbox, QCheckBox)
 
         # Should be checked by default
@@ -119,10 +124,10 @@ class TestSearchTab(unittest.TestCase):
             self.fail("SearchTab not initialized")
 
         # Should have YouTube results area
-        self.assertTrue(hasattr(self.tab, 'youtube_results'))
+        self.assertTrue(hasattr(self.tab, "youtube_results"))
 
         # Should have Spotify results area
-        self.assertTrue(hasattr(self.tab, 'spotify_results'))
+        self.assertTrue(hasattr(self.tab, "spotify_results"))
 
     def test_search_tab_has_add_to_library_button(self):
         """Test SearchTab has 'Add to Library' button"""
@@ -130,8 +135,9 @@ class TestSearchTab(unittest.TestCase):
             self.fail("SearchTab not initialized")
 
         # Should have add button
-        self.assertTrue(hasattr(self.tab, 'add_to_library_button'))
+        self.assertTrue(hasattr(self.tab, "add_to_library_button"))
         from PySide6.QtWidgets import QPushButton
+
         self.assertIsInstance(self.tab.add_to_library_button, QPushButton)
 
     def test_search_button_click_triggers_search(self):
@@ -143,9 +149,10 @@ class TestSearchTab(unittest.TestCase):
         self.tab.search_box.setText("Bohemian Rhapsody")
 
         # Mock API searchers
-        with patch.object(self.tab, 'youtube_searcher') as mock_yt, \
-             patch.object(self.tab, 'spotify_searcher') as mock_sp:
-
+        with (
+            patch.object(self.tab, "youtube_searcher") as mock_yt,
+            patch.object(self.tab, "spotify_searcher") as mock_sp,
+        ):
             mock_yt.search.return_value = []
             mock_sp.search_tracks.return_value = []
 
@@ -154,7 +161,7 @@ class TestSearchTab(unittest.TestCase):
 
             # Should call searchers (may be async, so check eventually)
             # For now, just verify method exists
-            self.assertTrue(hasattr(self.tab, 'on_search_clicked'))
+            self.assertTrue(hasattr(self.tab, "on_search_clicked"))
 
     def test_search_calls_apis_concurrently(self):
         """Test search calls YouTube and Spotify APIs concurrently"""
@@ -167,11 +174,12 @@ class TestSearchTab(unittest.TestCase):
         self.tab.search_box.setText("Test Query")
 
         # Mock searchers
-        with patch.object(self.tab, 'youtube_searcher') as mock_yt, \
-             patch.object(self.tab, 'spotify_searcher') as mock_sp:
-
-            mock_yt.search.return_value = [{'video_id': '1', 'title': 'Test'}]
-            mock_sp.search_tracks.return_value = [{'track_id': '1', 'title': 'Test'}]
+        with (
+            patch.object(self.tab, "youtube_searcher") as mock_yt,
+            patch.object(self.tab, "spotify_searcher") as mock_sp,
+        ):
+            mock_yt.search.return_value = [{"video_id": "1", "title": "Test"}]
+            mock_sp.search_tracks.return_value = [{"track_id": "1", "title": "Test"}]
 
             # Trigger search
             self.tab.on_search_clicked()
@@ -190,9 +198,10 @@ class TestSearchTab(unittest.TestCase):
         self.tab.spotify_checkbox.setChecked(False)
         self.tab.search_box.setText("Test")
 
-        with patch.object(self.tab, 'youtube_searcher') as mock_yt, \
-             patch.object(self.tab, 'spotify_searcher') as mock_sp:
-
+        with (
+            patch.object(self.tab, "youtube_searcher") as mock_yt,
+            patch.object(self.tab, "spotify_searcher") as mock_sp,
+        ):
             mock_yt.search.return_value = []
             mock_sp.search_tracks.return_value = []
 
@@ -209,13 +218,13 @@ class TestSearchTab(unittest.TestCase):
 
         # Mock search results
         youtube_results = [
-            {'video_id': '1', 'title': 'Song 1', 'thumbnail_url': 'url1'},
-            {'video_id': '2', 'title': 'Song 2', 'thumbnail_url': 'url2'}
+            {"video_id": "1", "title": "Song 1", "thumbnail_url": "url1"},
+            {"video_id": "2", "title": "Song 2", "thumbnail_url": "url2"},
         ]
 
         spotify_results = [
-            {'track_id': '1', 'title': 'Song A', 'artist': 'Artist A', 'album': 'Album A'},
-            {'track_id': '2', 'title': 'Song B', 'artist': 'Artist B', 'album': 'Album B'}
+            {"track_id": "1", "title": "Song A", "artist": "Artist A", "album": "Album A"},
+            {"track_id": "2", "title": "Song B", "artist": "Artist B", "album": "Album B"},
         ]
 
         # Display results
@@ -224,8 +233,8 @@ class TestSearchTab(unittest.TestCase):
 
         # Verify results are displayed
         # (This would check the UI widgets are populated)
-        self.assertTrue(hasattr(self.tab, '_display_youtube_results'))
-        self.assertTrue(hasattr(self.tab, '_display_spotify_results'))
+        self.assertTrue(hasattr(self.tab, "_display_youtube_results"))
+        self.assertTrue(hasattr(self.tab, "_display_spotify_results"))
 
     def test_user_can_select_songs(self):
         """Test user can select songs from results"""
@@ -236,12 +245,12 @@ class TestSearchTab(unittest.TestCase):
         self.tab.selected_songs = []
 
         # Simulate selecting a song
-        song_data = {'video_id': '1', 'title': 'Test Song', 'source': 'youtube'}
+        song_data = {"video_id": "1", "title": "Test Song", "source": "youtube"}
         self.tab._add_to_selection(song_data)
 
         # Verify song added to selection
         self.assertEqual(len(self.tab.selected_songs), 1)
-        self.assertEqual(self.tab.selected_songs[0]['title'], 'Test Song')
+        self.assertEqual(self.tab.selected_songs[0]["title"], "Test Song")
 
     def test_selected_count_updates(self):
         """Test selected songs counter updates"""
@@ -249,19 +258,19 @@ class TestSearchTab(unittest.TestCase):
             self.fail("SearchTab not initialized")
 
         # Should have label showing count
-        self.assertTrue(hasattr(self.tab, 'selected_count_label'))
+        self.assertTrue(hasattr(self.tab, "selected_count_label"))
 
         # Add songs to selection
         self.tab.selected_songs = []
-        self.tab._add_to_selection({'title': 'Song 1', 'source': 'youtube'})
-        self.tab._add_to_selection({'title': 'Song 2', 'source': 'spotify'})
+        self.tab._add_to_selection({"title": "Song 1", "source": "youtube"})
+        self.tab._add_to_selection({"title": "Song 2", "source": "spotify"})
 
         # Update UI
         self.tab._update_selected_count()
 
         # Verify label updated
         label_text = self.tab.selected_count_label.text()
-        self.assertIn('2', label_text)
+        self.assertIn("2", label_text)
 
     def test_add_to_library_adds_to_download_queue(self):
         """Test 'Add to Library' adds songs to download queue"""
@@ -269,11 +278,11 @@ class TestSearchTab(unittest.TestCase):
             self.fail("SearchTab not initialized")
 
         # Mock download queue
-        with patch.object(self.tab, 'download_queue') as mock_queue:
+        with patch.object(self.tab, "download_queue") as mock_queue:
             # Add songs to selection (only YouTube for now, Spotify needs conversion)
             self.tab.selected_songs = [
-                {'title': 'Song 1', 'video_id': 'vid1', 'source': 'youtube'},
-                {'title': 'Song 2', 'video_id': 'vid2', 'source': 'youtube'}
+                {"title": "Song 1", "video_id": "vid1", "source": "youtube"},
+                {"title": "Song 2", "video_id": "vid2", "source": "youtube"},
             ]
 
             # Click add to library
@@ -295,7 +304,7 @@ class TestSearchTab(unittest.TestCase):
 
         # Should not proceed (or show warning)
         # For now, just verify method handles it
-        self.assertTrue(hasattr(self.tab, 'on_search_clicked'))
+        self.assertTrue(hasattr(self.tab, "on_search_clicked"))
 
     def test_search_tab_integrates_with_apis(self):
         """Test SearchTab properly integrates API searchers"""
@@ -303,8 +312,8 @@ class TestSearchTab(unittest.TestCase):
             self.fail("SearchTab not initialized")
 
         # Should have searcher instances
-        self.assertTrue(hasattr(self.tab, 'youtube_searcher'))
-        self.assertTrue(hasattr(self.tab, 'spotify_searcher'))
+        self.assertTrue(hasattr(self.tab, "youtube_searcher"))
+        self.assertTrue(hasattr(self.tab, "spotify_searcher"))
 
 
 if __name__ == "__main__":

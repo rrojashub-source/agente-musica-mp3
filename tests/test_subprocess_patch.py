@@ -5,14 +5,13 @@ Validates that the patch correctly injects creationflags on Windows
 and leaves subprocess untouched on other platforms.
 """
 
-import importlib
 import os
 import subprocess
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import patch
 
 import pytest
 

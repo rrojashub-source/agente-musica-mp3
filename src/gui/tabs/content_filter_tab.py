@@ -657,8 +657,7 @@ class ContentFilterTab(BaseTab):
             QMessageBox.information(
                 self,
                 "Info",
-                f"No songs match {zone['name']} criteria.\n"
-                f"Allowed: {', '.join([RATING_LABELS[r] for r in allowed])}",
+                f"No songs match {zone['name']} criteria.\nAllowed: {', '.join([RATING_LABELS[r] for r in allowed])}",
             )
             return
 

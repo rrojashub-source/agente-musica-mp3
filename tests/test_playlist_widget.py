@@ -12,15 +12,15 @@ Purpose: GUI for managing playlists
 Test Strategy: Red → Green → Refactor
 Expected Result: All tests FAIL initially (no implementation yet)
 """
-import pytest
+
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import sys
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 # Ensure QApplication exists for PySide6 tests (module level, created once)
 app = QApplication.instance()
@@ -53,7 +53,7 @@ class TestPlaylistWidget(unittest.TestCase):
 
     def tearDown(self):
         """Cleanup"""
-        if hasattr(self, 'widget') and self.widget:
+        if hasattr(self, "widget") and self.widget:
             self.widget.close()
 
     # ========== STRUCTURAL TESTS ==========
@@ -71,7 +71,7 @@ class TestPlaylistWidget(unittest.TestCase):
             self.skipTest("PlaylistWidget not implemented")
 
         # Should have QListWidget or QTreeWidget for playlists
-        self.assertTrue(hasattr(self.widget, 'playlists_table'))
+        self.assertTrue(hasattr(self.widget, "playlists_table"))
 
     def test_03_widget_has_songs_table(self):
         """Test widget has songs table for current playlist"""
@@ -79,7 +79,7 @@ class TestPlaylistWidget(unittest.TestCase):
             self.skipTest("PlaylistWidget not implemented")
 
         # Should have QTableWidget for playlist songs
-        self.assertTrue(hasattr(self.widget, 'songs_table'))
+        self.assertTrue(hasattr(self.widget, "songs_table"))
 
     def test_04_widget_has_create_button(self):
         """Test widget has create playlist button"""
@@ -87,7 +87,7 @@ class TestPlaylistWidget(unittest.TestCase):
             self.skipTest("PlaylistWidget not implemented")
 
         # Should have create button
-        self.assertTrue(hasattr(self.widget, 'create_button'))
+        self.assertTrue(hasattr(self.widget, "create_button"))
 
     # ========== FUNCTIONAL TESTS ==========
 
@@ -100,8 +100,8 @@ class TestPlaylistWidget(unittest.TestCase):
 
         # Mock playlist data
         self.mock_playlist_manager.get_playlists.return_value = [
-            {'id': 1, 'name': 'Favorites', 'description': 'My favorites', 'song_count': 10},
-            {'id': 2, 'name': 'Rock', 'description': 'Rock songs', 'song_count': 25},
+            {"id": 1, "name": "Favorites", "description": "My favorites", "song_count": 10},
+            {"id": 2, "name": "Rock", "description": "Rock songs", "song_count": 25},
         ]
 
         # Call real load_playlists (bypassing the no-op override)
@@ -114,8 +114,8 @@ class TestPlaylistWidget(unittest.TestCase):
         item1 = self.widget.playlists_table.item(0, 1)
         self.assertIsNotNone(item0)
         self.assertIsNotNone(item1)
-        self.assertIn('Favorites', item0.text())
-        self.assertIn('Rock', item1.text())
+        self.assertIn("Favorites", item0.text())
+        self.assertIn("Rock", item1.text())
 
     def test_06_create_new_playlist(self):
         """Test creating new playlist"""
@@ -123,9 +123,11 @@ class TestPlaylistWidget(unittest.TestCase):
             self.skipTest("PlaylistWidget not implemented")
 
         # Mock dialogs and manager
-        with patch('gui.widgets.playlist_widget.QInputDialog.getText') as mock_input, \
-             patch('gui.widgets.playlist_widget.QMessageBox.information') as mock_msg:
-            mock_input.return_value = ('New Playlist', True)
+        with (
+            patch("gui.widgets.playlist_widget.QInputDialog.getText") as mock_input,
+            patch("gui.widgets.playlist_widget.QMessageBox.information") as mock_msg,
+        ):
+            mock_input.return_value = ("New Playlist", True)
             self.mock_playlist_manager.create_playlist.return_value = 3
             self.mock_playlist_manager.get_playlists.return_value = []  # For load_playlists call
 
@@ -147,9 +149,11 @@ class TestPlaylistWidget(unittest.TestCase):
         self.mock_playlist_manager.get_playlists.return_value = []
 
         # Mock ALL dialog methods to prevent real modal dialogs
-        with patch('gui.widgets.playlist_widget.QMessageBox.question') as mock_question, \
-             patch('gui.widgets.playlist_widget.QMessageBox.information') as mock_info, \
-             patch('gui.widgets.playlist_widget.QMessageBox.warning') as mock_warn:
+        with (
+            patch("gui.widgets.playlist_widget.QMessageBox.question") as mock_question,
+            patch("gui.widgets.playlist_widget.QMessageBox.information") as mock_info,
+            patch("gui.widgets.playlist_widget.QMessageBox.warning") as mock_warn,
+        ):
             mock_question.return_value = QMessageBox.StandardButton.Yes
 
             # Delete playlist
@@ -165,7 +169,7 @@ class TestPlaylistWidget(unittest.TestCase):
 
         # Mock playlists
         self.mock_playlist_manager.get_playlists.return_value = [
-            {'id': 1, 'name': 'Favorites', 'song_count': 0},
+            {"id": 1, "name": "Favorites", "song_count": 0},
         ]
         self.widget.load_playlists()
 
@@ -174,8 +178,10 @@ class TestPlaylistWidget(unittest.TestCase):
         self.widget.current_playlist_id = 1
 
         # Mock song selection dialog and message box
-        with patch.object(self.widget, 'select_songs_dialog') as mock_dialog, \
-             patch('gui.widgets.playlist_widget.QMessageBox.information') as mock_msg:
+        with (
+            patch.object(self.widget, "select_songs_dialog") as mock_dialog,
+            patch("gui.widgets.playlist_widget.QMessageBox.information") as mock_msg,
+        ):
             mock_dialog.return_value = [100, 200, 300]  # Selected song IDs
             self.mock_playlist_manager.get_playlist_songs.return_value = []  # For load_playlist_songs
 
@@ -191,9 +197,11 @@ class TestPlaylistWidget(unittest.TestCase):
             self.skipTest("PlaylistWidget not implemented")
 
         # Mock file dialog and message box
-        with patch('gui.widgets.playlist_widget.QFileDialog.getOpenFileName') as mock_dialog, \
-             patch('gui.widgets.playlist_widget.QMessageBox.information') as mock_msg:
-            mock_dialog.return_value = ('/path/to/playlist.m3u8', 'M3U8 Files (*.m3u8)')
+        with (
+            patch("gui.widgets.playlist_widget.QFileDialog.getOpenFileName") as mock_dialog,
+            patch("gui.widgets.playlist_widget.QMessageBox.information") as mock_msg,
+        ):
+            mock_dialog.return_value = ("/path/to/playlist.m3u8", "M3U8 Files (*.m3u8)")
             self.mock_playlist_manager.load_playlist.return_value = 5  # New playlist ID
             self.mock_playlist_manager.get_playlists.return_value = []  # For load_playlists call
 
@@ -212,10 +220,12 @@ class TestPlaylistWidget(unittest.TestCase):
         self.widget.current_playlist_id = 1
 
         # Mock file dialog and ALL message boxes to prevent modal dialogs
-        with patch('gui.widgets.playlist_widget.QFileDialog.getSaveFileName') as mock_dialog, \
-             patch('gui.widgets.playlist_widget.QMessageBox.information') as mock_msg, \
-             patch('gui.widgets.playlist_widget.QMessageBox.warning') as mock_warn:
-            mock_dialog.return_value = ('/path/to/export.m3u8', 'M3U8 Files (*.m3u8)')
+        with (
+            patch("gui.widgets.playlist_widget.QFileDialog.getSaveFileName") as mock_dialog,
+            patch("gui.widgets.playlist_widget.QMessageBox.information") as mock_msg,
+            patch("gui.widgets.playlist_widget.QMessageBox.warning") as mock_warn,
+        ):
+            mock_dialog.return_value = ("/path/to/export.m3u8", "M3U8 Files (*.m3u8)")
             self.mock_playlist_manager.save_playlist.return_value = True
 
             # Export playlist

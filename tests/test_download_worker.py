@@ -8,10 +8,9 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QThread
 from PySide6.QtWidgets import QApplication
 
 # Ensure QApplication exists for Qt tests

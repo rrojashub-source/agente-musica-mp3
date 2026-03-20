@@ -186,14 +186,14 @@ class LibraryTab(BaseTab):
         self.clean_db_button = QPushButton("🧹 Clean Database")
         self.clean_db_button.setFixedWidth(140)
         self.clean_db_button.setToolTip(
-            "Remove songs from database whose files no longer exist\n" "(Prevents duplicates when re-importing)"
+            "Remove songs from database whose files no longer exist\n(Prevents duplicates when re-importing)"
         )
         buttons_layout.addWidget(self.clean_db_button)
 
         self.clean_titles_button = QPushButton("✨ Clean Titles")
         self.clean_titles_button.setFixedWidth(120)
         self.clean_titles_button.setToolTip(
-            "Clean YouTube artifacts from song titles\n" "Removes: (Official Video), Artist prefix, [Audio], etc."
+            "Clean YouTube artifacts from song titles\nRemoves: (Official Video), Artist prefix, [Audio], etc."
         )
         buttons_layout.addWidget(self.clean_titles_button)
 
@@ -285,7 +285,6 @@ class LibraryTab(BaseTab):
 
             # Populate table
             for row, song in enumerate(songs):
-
                 # Title
                 title_item = QTableWidgetItem(song.get("title", "Unknown"))
                 title_item.setData(Qt.ItemDataRole.UserRole, song.get("id"))  # Store song ID
@@ -836,7 +835,7 @@ class LibraryTab(BaseTab):
             title = "Delete Song"
         else:
             # Multiple songs confirmation
-            message = f"Are you sure you want to delete {len(songs)} songs from the library?\n\n" f"First 5 songs:\n"
+            message = f"Are you sure you want to delete {len(songs)} songs from the library?\n\nFirst 5 songs:\n"
             for song in songs[:5]:
                 message += f"  • {song['title']} - {song['artist']}\n"
 
@@ -938,7 +937,7 @@ class LibraryTab(BaseTab):
 
             if found == 0:
                 QMessageBox.information(
-                    self, "Database Clean", f"Database is clean!\n\n" f"Checked {total} songs, no orphans found."
+                    self, "Database Clean", f"Database is clean!\n\nChecked {total} songs, no orphans found."
                 )
                 self.status_label.setText(f"Database clean ({total} songs checked)")
             elif deleted > 0:
@@ -962,7 +961,7 @@ class LibraryTab(BaseTab):
                 QMessageBox.warning(
                     self,
                     "Cleanup Failed",
-                    f"Found {found} orphans but failed to delete them.\n\n" f"Errors: {len(errors)}",
+                    f"Found {found} orphans but failed to delete them.\n\nErrors: {len(errors)}",
                 )
                 self.status_label.setText("Cleanup failed")
 

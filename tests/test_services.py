@@ -2,20 +2,19 @@
 Tests for Service Layer
 Tests LibraryService, DownloadService, and PlayerService
 """
+
 import sys
 import os
 import pytest
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch
-from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Skip all if PySide6 not available
 try:
     from PySide6.QtCore import QCoreApplication
+
     HAS_QT = True
 except ImportError:
     HAS_QT = False
@@ -23,7 +22,7 @@ except ImportError:
 pytestmark = pytest.mark.skipif(not HAS_QT, reason="PySide6 not available")
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def qapp():
     """Create QCoreApplication for signal testing"""
     app = QCoreApplication.instance()
@@ -36,6 +35,7 @@ def qapp():
 # LibraryService Tests
 # ==========================================
 
+
 class TestLibraryService:
     """Tests for LibraryService"""
 
@@ -43,6 +43,7 @@ class TestLibraryService:
     def reset_singleton(self):
         """Reset singleton before each test"""
         from services.library_service import LibraryService
+
         LibraryService.reset_instance()
         yield
         LibraryService.reset_instance()
@@ -52,18 +53,22 @@ class TestLibraryService:
         """Create mock database manager"""
         mock = MagicMock()
         mock.fetch_one.return_value = {
-            'id': 1, 'title': 'Test Song', 'artist': 'Test Artist',
-            'album': 'Test Album', 'year': 2023, 'genre': 'Rock',
-            'duration': 180, 'play_count': 5, 'rating': 4
+            "id": 1,
+            "title": "Test Song",
+            "artist": "Test Artist",
+            "album": "Test Album",
+            "year": 2023,
+            "genre": "Rock",
+            "duration": 180,
+            "play_count": 5,
+            "rating": 4,
         }
         mock.fetch_all.return_value = [
-            {'id': 1, 'title': 'Song 1', 'artist': 'Artist 1'},
-            {'id': 2, 'title': 'Song 2', 'artist': 'Artist 2'},
+            {"id": 1, "title": "Song 1", "artist": "Artist 1"},
+            {"id": 2, "title": "Song 2", "artist": "Artist 2"},
         ]
         mock.add_song.return_value = 1
-        mock.search_songs.return_value = [
-            {'id': 1, 'title': 'Found Song', 'artist': 'Found Artist'}
-        ]
+        mock.search_songs.return_value = [{"id": 1, "title": "Found Song", "artist": "Found Artist"}]
         return mock
 
     def test_singleton_pattern(self, qapp):
@@ -79,30 +84,27 @@ class TestLibraryService:
         """Test Song dataclass conversion"""
         from services.library_service import Song
 
-        data = {
-            'id': 1, 'title': 'Test', 'artist': 'Artist',
-            'album': 'Album', 'year': 2023, 'genre': 'Rock'
-        }
+        data = {"id": 1, "title": "Test", "artist": "Artist", "album": "Album", "year": 2023, "genre": "Rock"}
         song = Song.from_dict(data)
 
         assert song.id == 1
-        assert song.title == 'Test'
-        assert song.artist == 'Artist'
+        assert song.title == "Test"
+        assert song.artist == "Artist"
 
         # Test to_dict roundtrip
         result = song.to_dict()
-        assert result['title'] == 'Test'
+        assert result["title"] == "Test"
 
     def test_library_stats_dataclass(self):
         """Test LibraryStats dataclass"""
         from services.library_service import LibraryStats
 
         data = {
-            'total_songs': 100,
-            'total_artists': 20,
-            'total_albums': 15,
-            'total_genres': 5,
-            'total_duration_hours': 50.5
+            "total_songs": 100,
+            "total_artists": 20,
+            "total_albums": 15,
+            "total_genres": 5,
+            "total_duration_hours": 50.5,
         }
         stats = LibraryStats.from_dict(data)
 
@@ -114,14 +116,14 @@ class TestLibraryService:
         """Test getting a song by ID"""
         from services.library_service import LibraryService
 
-        with patch('services.library_service.LibraryService.db', mock_db):
+        with patch("services.library_service.LibraryService.db", mock_db):
             service = LibraryService.get_instance("test.db")
             service._db_manager = mock_db
 
             song = service.get_song(1)
 
             assert song is not None
-            assert song.title == 'Test Song'
+            assert song.title == "Test Song"
             mock_db.fetch_one.assert_called()
 
     def test_add_song_emits_signal(self, qapp, mock_db):
@@ -135,7 +137,7 @@ class TestLibraryService:
         signal_received = []
         service.song_added.connect(lambda x: signal_received.append(x))
 
-        song_id = service.add_song({'title': 'New Song', 'artist': 'New Artist'})
+        song_id = service.add_song({"title": "New Song", "artist": "New Artist"})
 
         assert song_id == 1
         assert len(signal_received) == 1
@@ -151,16 +153,18 @@ class TestLibraryService:
         results = service.search("test")
 
         assert len(results) == 1
-        assert results[0].title == 'Found Song'
+        assert results[0].title == "Found Song"
 
     def test_stats_caching(self, qapp, mock_db):
         """Test statistics are cached"""
         from services.library_service import LibraryService
 
         mock_db.fetch_one.return_value = {
-            'total_songs': 100, 'total_artists': 20,
-            'total_albums': 15, 'total_genres': 5,
-            'total_duration_hours': 50.0
+            "total_songs": 100,
+            "total_artists": 20,
+            "total_albums": 15,
+            "total_genres": 5,
+            "total_duration_hours": 50.0,
         }
 
         service = LibraryService.get_instance("test.db")
@@ -193,6 +197,7 @@ class TestLibraryService:
 # DownloadService Tests
 # ==========================================
 
+
 class TestDownloadService:
     """Tests for DownloadService"""
 
@@ -200,6 +205,7 @@ class TestDownloadService:
     def reset_singleton(self):
         """Reset singleton before each test"""
         from services.download_service import DownloadService
+
         DownloadService.reset_instance()
         yield
         DownloadService.reset_instance()
@@ -230,16 +236,16 @@ class TestDownloadService:
         from services.download_service import DownloadItem, DownloadStatus
 
         data = {
-            'id': 'test-123',
-            'url': 'https://youtube.com/watch?v=test',
-            'title': 'Test Video',
-            'status': 'downloading',
-            'progress': 50.0
+            "id": "test-123",
+            "url": "https://youtube.com/watch?v=test",
+            "title": "Test Video",
+            "status": "downloading",
+            "progress": 50.0,
         }
         item = DownloadItem.from_dict(data)
 
-        assert item.id == 'test-123'
-        assert item.title == 'Test Video'
+        assert item.id == "test-123"
+        assert item.title == "Test Video"
         assert item.status == DownloadStatus.DOWNLOADING
         assert item.progress == 50.0
 
@@ -255,8 +261,7 @@ class TestDownloadService:
         service.download_added.connect(lambda x: signal_received.append(x))
 
         item_id = service.add_download(
-            url="https://youtube.com/watch?v=test",
-            metadata={'title': 'Test', 'artist': 'Artist'}
+            url="https://youtube.com/watch?v=test", metadata={"title": "Test", "artist": "Artist"}
         )
 
         assert item_id == "item-123"
@@ -328,6 +333,7 @@ class TestDownloadService:
 # PlayerService Tests
 # ==========================================
 
+
 class TestPlayerService:
     """Tests for PlayerService"""
 
@@ -335,6 +341,7 @@ class TestPlayerService:
     def reset_singleton(self):
         """Reset singleton before each test"""
         from services.player_service import PlayerService
+
         PlayerService.reset_instance()
         yield
         PlayerService.reset_instance()
@@ -391,15 +398,15 @@ class TestPlayerService:
             artist="Test Artist",
             duration=180.0,
             position=45.0,
-            state=PlaybackState.PLAYING
+            state=PlaybackState.PLAYING,
         )
 
         assert np.title == "Test Song"
         assert np.duration == 180.0
 
         result = np.to_dict()
-        assert result['title'] == "Test Song"
-        assert result['state'] == "playing"
+        assert result["title"] == "Test Song"
+        assert result["state"] == "playing"
 
     def test_play_file(self, qapp, mock_player):
         """Test playing a file"""
@@ -413,8 +420,7 @@ class TestPlayerService:
         service.state_changed.connect(lambda x: state_changes.append(x))
 
         result = service.play(
-            file_path="/path/to/song.mp3",
-            metadata={'title': 'Test', 'artist': 'Artist', 'duration': 180}
+            file_path="/path/to/song.mp3", metadata={"title": "Test", "artist": "Artist", "duration": 180}
         )
 
         assert result is True
@@ -423,13 +429,13 @@ class TestPlayerService:
 
     def test_pause_resume(self, qapp, mock_player):
         """Test pause and resume"""
-        from services.player_service import PlayerService, PlaybackState
+        from services.player_service import PlayerService
 
         service = PlayerService.get_instance()
         service._player = mock_player
 
         # Start playing
-        service.play("/path/to/song.mp3", metadata={'title': 'Test'})
+        service.play("/path/to/song.mp3", metadata={"title": "Test"})
 
         # Pause
         result = service.pause()
@@ -443,13 +449,13 @@ class TestPlayerService:
 
     def test_toggle_play_pause(self, qapp, mock_player):
         """Test toggle play/pause"""
-        from services.player_service import PlayerService, PlaybackState
+        from services.player_service import PlayerService
 
         service = PlayerService.get_instance()
         service._player = mock_player
 
         # Start playing
-        service.play("/path/to/song.mp3", metadata={'title': 'Test'})
+        service.play("/path/to/song.mp3", metadata={"title": "Test"})
         assert service.is_playing()
 
         # Toggle to pause
@@ -485,9 +491,9 @@ class TestPlayerService:
         service._player = mock_player
 
         songs = [
-            {'id': 1, 'file_path': '/path/1.mp3', 'title': 'Song 1'},
-            {'id': 2, 'file_path': '/path/2.mp3', 'title': 'Song 2'},
-            {'id': 3, 'file_path': '/path/3.mp3', 'title': 'Song 3'},
+            {"id": 1, "file_path": "/path/1.mp3", "title": "Song 1"},
+            {"id": 2, "file_path": "/path/2.mp3", "title": "Song 2"},
+            {"id": 3, "file_path": "/path/3.mp3", "title": "Song 3"},
         ]
 
         service.set_queue(songs)
@@ -504,8 +510,8 @@ class TestPlayerService:
         service._player = mock_player
 
         songs = [
-            {'id': 1, 'file_path': '/path/1.mp3', 'title': 'Song 1'},
-            {'id': 2, 'file_path': '/path/2.mp3', 'title': 'Song 2'},
+            {"id": 1, "file_path": "/path/1.mp3", "title": "Song 1"},
+            {"id": 2, "file_path": "/path/2.mp3", "title": "Song 2"},
         ]
 
         service.set_queue(songs)
@@ -577,6 +583,7 @@ class TestPlayerService:
 # Integration Tests
 # ==========================================
 
+
 class TestServiceIntegration:
     """Integration tests across services"""
 
@@ -621,5 +628,5 @@ class TestServiceIntegration:
         assert dl1 is not pl1
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

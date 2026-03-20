@@ -3,17 +3,14 @@ Tests for Search Tab UI (Phase 4.1)
 TDD: Write tests FIRST, then implement src/gui/tabs/search_tab.py
 """
 
-import sys
 import time
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 # Guard: skip entire module if PySide6 is not available (CI headless, etc.)
 PySide6 = pytest.importorskip("PySide6")
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QListWidgetItem
 
 # ------------------------------------------------------------------ fixtures
 
@@ -24,8 +21,9 @@ def search_tab(qapp):
     Create a SearchTab with mocked credentials / searchers so no real
     API calls are made and no credential-missing dialog appears.
     """
-    with patch("gui.tabs.search_tab.SearchTab._load_credentials"), patch(
-        "gui.tabs.search_tab.SearchTab._show_missing_credentials_prompt"
+    with (
+        patch("gui.tabs.search_tab.SearchTab._load_credentials"),
+        patch("gui.tabs.search_tab.SearchTab._show_missing_credentials_prompt"),
     ):
         from gui.tabs.search_tab import SearchTab
 

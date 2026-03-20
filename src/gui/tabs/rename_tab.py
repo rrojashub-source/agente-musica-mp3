@@ -319,5 +319,5 @@ class RenameTab(BaseTab):
             QMessageBox.warning(
                 self,
                 "Rename Partially Complete",
-                f"Renamed {success} files.\n" f"Failed to rename {failed} files.\n\n" f"Errors:\n{error_text}",
+                f"Renamed {success} files.\nFailed to rename {failed} files.\n\nErrors:\n{error_text}",
             )

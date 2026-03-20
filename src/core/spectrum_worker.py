@@ -85,7 +85,7 @@ class SpectrumWorker(BaseWorker):
 
         if spectrum_result:
             spectrum_data, duration = spectrum_result
-            logger.info(f"Spectrum extracted: {len(spectrum_data)} windows, " f"{duration:.1f}s, {self.num_bars} bars")
+            logger.info(f"Spectrum extracted: {len(spectrum_data)} windows, {duration:.1f}s, {self.num_bars} bars")
             self.progress.emit(95)
 
             if not self.is_cancelled:

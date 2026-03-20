@@ -267,7 +267,7 @@ if _qt_widgets is not None:
 if _qt_core is not None:
     _qt_core.Qt = MagicMock()
     _qt_core.Signal = MagicMock(return_value=MagicMock())
-    _qt_core.Slot = lambda *a, **k: (lambda f: f)
+    _qt_core.Slot = lambda *a, **k: lambda f: f
     _qt_core.QTimer = type(
         "QTimer",
         (),
@@ -1715,10 +1715,13 @@ class TestChordLoadDB:
 class TestChordPaintEvent:
     def _paint(self, w, event):
         """Call paintEvent with Qt GUI classes patched to avoid spec errors."""
-        with patch("gui.widgets.chord_diagram_widget.QPainter"), patch("gui.widgets.chord_diagram_widget.QFont"), patch(
-            "gui.widgets.chord_diagram_widget.QColor"
-        ), patch("gui.widgets.chord_diagram_widget.QPen"), patch("gui.widgets.chord_diagram_widget.QBrush"), patch(
-            "gui.widgets.chord_diagram_widget.QRectF", create=True
+        with (
+            patch("gui.widgets.chord_diagram_widget.QPainter"),
+            patch("gui.widgets.chord_diagram_widget.QFont"),
+            patch("gui.widgets.chord_diagram_widget.QColor"),
+            patch("gui.widgets.chord_diagram_widget.QPen"),
+            patch("gui.widgets.chord_diagram_widget.QBrush"),
+            patch("gui.widgets.chord_diagram_widget.QRectF", create=True),
         ):
             _get(ChordDiagramWidget, "paintEvent")(w, event)
 
@@ -2186,9 +2189,10 @@ class TestNowPlayingSearchCover:
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         w.cover_manager.get_cover_path.return_value = mock_path
-        with patch("gui.widgets.now_playing_widget.QPixmap") as mp, patch(
-            "gui.widgets.now_playing_widget.QMessageBox"
-        ) as mmb:
+        with (
+            patch("gui.widgets.now_playing_widget.QPixmap") as mp,
+            patch("gui.widgets.now_playing_widget.QMessageBox") as mmb,
+        ):
             px_inst = MagicMock()
             px_inst.isNull.return_value = False
             px_inst.scaled.return_value = px_inst
@@ -2204,9 +2208,10 @@ class TestNowPlayingSearchCover:
         w.cover_manager.download_cover.return_value = True
         mock_path = MagicMock()
         w.cover_manager.get_cover_path.return_value = mock_path
-        with patch("gui.widgets.now_playing_widget.QPixmap") as mp, patch(
-            "gui.widgets.now_playing_widget.QMessageBox"
-        ) as mmb:
+        with (
+            patch("gui.widgets.now_playing_widget.QPixmap") as mp,
+            patch("gui.widgets.now_playing_widget.QMessageBox") as mmb,
+        ):
             px_inst = MagicMock()
             px_inst.isNull.return_value = False
             px_inst.scaled.return_value = px_inst
@@ -2362,8 +2367,10 @@ class TestNeonIconButton:
         w.height.return_value = 40
         w._hovered = False
         w.color_cyan = MagicMock()
-        with patch("gui.widgets.now_playing_widget.QPainter"), patch("gui.widgets.now_playing_widget.QBrush"), patch(
-            "gui.widgets.now_playing_widget.QColor"
+        with (
+            patch("gui.widgets.now_playing_widget.QPainter"),
+            patch("gui.widgets.now_playing_widget.QBrush"),
+            patch("gui.widgets.now_playing_widget.QColor"),
         ):
             _get(self.cls, "paintEvent")(w, MagicMock())
             w._draw_play.assert_called()
@@ -2377,8 +2384,10 @@ class TestNeonIconButton:
         w.height.return_value = 40
         w._hovered = False
         w.color_cyan = MagicMock()
-        with patch("gui.widgets.now_playing_widget.QPainter"), patch("gui.widgets.now_playing_widget.QBrush"), patch(
-            "gui.widgets.now_playing_widget.QColor"
+        with (
+            patch("gui.widgets.now_playing_widget.QPainter"),
+            patch("gui.widgets.now_playing_widget.QBrush"),
+            patch("gui.widgets.now_playing_widget.QColor"),
         ):
             _get(self.cls, "paintEvent")(w, MagicMock())
             w._draw_pause.assert_called()
@@ -2392,8 +2401,10 @@ class TestNeonIconButton:
         w.height.return_value = 40
         w._hovered = True
         w.color_cyan = MagicMock()
-        with patch("gui.widgets.now_playing_widget.QPainter"), patch("gui.widgets.now_playing_widget.QBrush"), patch(
-            "gui.widgets.now_playing_widget.QColor"
+        with (
+            patch("gui.widgets.now_playing_widget.QPainter"),
+            patch("gui.widgets.now_playing_widget.QBrush"),
+            patch("gui.widgets.now_playing_widget.QColor"),
         ):
             _get(self.cls, "paintEvent")(w, MagicMock())
             w._draw_stop.assert_called()
@@ -2407,8 +2418,10 @@ class TestNeonIconButton:
         w.height.return_value = 40
         w._hovered = False
         w.color_cyan = MagicMock()
-        with patch("gui.widgets.now_playing_widget.QPainter"), patch("gui.widgets.now_playing_widget.QBrush"), patch(
-            "gui.widgets.now_playing_widget.QColor"
+        with (
+            patch("gui.widgets.now_playing_widget.QPainter"),
+            patch("gui.widgets.now_playing_widget.QBrush"),
+            patch("gui.widgets.now_playing_widget.QColor"),
         ):
             _get(self.cls, "paintEvent")(w, MagicMock())
             w._draw_prev.assert_called()
@@ -2422,8 +2435,10 @@ class TestNeonIconButton:
         w.height.return_value = 40
         w._hovered = False
         w.color_cyan = MagicMock()
-        with patch("gui.widgets.now_playing_widget.QPainter"), patch("gui.widgets.now_playing_widget.QBrush"), patch(
-            "gui.widgets.now_playing_widget.QColor"
+        with (
+            patch("gui.widgets.now_playing_widget.QPainter"),
+            patch("gui.widgets.now_playing_widget.QBrush"),
+            patch("gui.widgets.now_playing_widget.QColor"),
         ):
             _get(self.cls, "paintEvent")(w, MagicMock())
             w._draw_next.assert_called()
@@ -2437,8 +2452,10 @@ class TestNeonIconButton:
         w.height.return_value = 40
         w._hovered = False
         w.color_magenta = MagicMock()
-        with patch("gui.widgets.now_playing_widget.QPainter"), patch("gui.widgets.now_playing_widget.QBrush"), patch(
-            "gui.widgets.now_playing_widget.QColor"
+        with (
+            patch("gui.widgets.now_playing_widget.QPainter"),
+            patch("gui.widgets.now_playing_widget.QBrush"),
+            patch("gui.widgets.now_playing_widget.QColor"),
         ):
             _get(self.cls, "paintEvent")(w, MagicMock())
             w._draw_shuffle.assert_called()
@@ -2452,8 +2469,10 @@ class TestNeonIconButton:
         w.height.return_value = 40
         w._hovered = True
         w.color_cyan = MagicMock()
-        with patch("gui.widgets.now_playing_widget.QPainter"), patch("gui.widgets.now_playing_widget.QBrush"), patch(
-            "gui.widgets.now_playing_widget.QColor"
+        with (
+            patch("gui.widgets.now_playing_widget.QPainter"),
+            patch("gui.widgets.now_playing_widget.QBrush"),
+            patch("gui.widgets.now_playing_widget.QColor"),
         ):
             _get(self.cls, "paintEvent")(w, MagicMock())
             w._draw_repeat_one.assert_called()
@@ -2467,8 +2486,10 @@ class TestNeonIconButton:
         w.height.return_value = 40
         w._hovered = False
         w.color_magenta = MagicMock()
-        with patch("gui.widgets.now_playing_widget.QPainter"), patch("gui.widgets.now_playing_widget.QBrush"), patch(
-            "gui.widgets.now_playing_widget.QColor"
+        with (
+            patch("gui.widgets.now_playing_widget.QPainter"),
+            patch("gui.widgets.now_playing_widget.QBrush"),
+            patch("gui.widgets.now_playing_widget.QColor"),
         ):
             _get(self.cls, "paintEvent")(w, MagicMock())
             w._draw_continue.assert_called()
@@ -2512,8 +2533,10 @@ class TestNeonIconButton:
         w = MagicMock()
         painter = MagicMock()
         color = MagicMock()
-        with patch("gui.widgets.now_playing_widget.QPen"), patch("gui.widgets.now_playing_widget.QPainterPath"), patch(
-            "gui.widgets.now_playing_widget.QBrush"
+        with (
+            patch("gui.widgets.now_playing_widget.QPen"),
+            patch("gui.widgets.now_playing_widget.QPainterPath"),
+            patch("gui.widgets.now_playing_widget.QBrush"),
         ):
             _get(self.cls, "_draw_shuffle")(w, painter, 20, 20, 14, color)
             assert painter.drawPath.call_count == 2
@@ -2522,8 +2545,10 @@ class TestNeonIconButton:
         w = MagicMock()
         painter = MagicMock()
         color = MagicMock()
-        with patch("gui.widgets.now_playing_widget.QPen"), patch("gui.widgets.now_playing_widget.QRectF"), patch(
-            "gui.widgets.now_playing_widget.QBrush"
+        with (
+            patch("gui.widgets.now_playing_widget.QPen"),
+            patch("gui.widgets.now_playing_widget.QRectF"),
+            patch("gui.widgets.now_playing_widget.QBrush"),
         ):
             _get(self.cls, "_draw_repeat")(w, painter, 20, 20, 14, color)
             painter.drawArc.assert_called()
@@ -2539,9 +2564,12 @@ class TestNeonIconButton:
         w = MagicMock()
         painter = MagicMock()
         color = MagicMock()
-        with patch("gui.widgets.now_playing_widget.QPen"), patch("gui.widgets.now_playing_widget.QRectF"), patch(
-            "gui.widgets.now_playing_widget.QBrush"
-        ), patch("gui.widgets.now_playing_widget.QFont"):
+        with (
+            patch("gui.widgets.now_playing_widget.QPen"),
+            patch("gui.widgets.now_playing_widget.QRectF"),
+            patch("gui.widgets.now_playing_widget.QBrush"),
+            patch("gui.widgets.now_playing_widget.QFont"),
+        ):
             _get(self.cls, "_draw_repeat_one")(w, painter, 20, 20, 14, color)
             painter.drawArc.assert_called()
             painter.drawText.assert_called()
@@ -2550,8 +2578,10 @@ class TestNeonIconButton:
         w = MagicMock()
         painter = MagicMock()
         color = MagicMock()
-        with patch("gui.widgets.now_playing_widget.QPointF"), patch("gui.widgets.now_playing_widget.QPolygonF"), patch(
-            "gui.widgets.now_playing_widget.QBrush"
+        with (
+            patch("gui.widgets.now_playing_widget.QPointF"),
+            patch("gui.widgets.now_playing_widget.QPolygonF"),
+            patch("gui.widgets.now_playing_widget.QBrush"),
         ):
             _get(self.cls, "_draw_continue")(w, painter, 20, 20, 14, color)
             assert painter.drawPolygon.call_count == 2
@@ -2970,9 +3000,10 @@ class TestPlaylistWidgetCoverage:
     def test_select_songs_dialog(self):
         w = MagicMock()
         w.db_manager = MagicMock()
-        with patch("gui.widgets.playlist_widget.SongSelectionDialog") as mock_dlg, patch(
-            "gui.widgets.playlist_widget.QDialog"
-        ) as mock_qd:
+        with (
+            patch("gui.widgets.playlist_widget.SongSelectionDialog") as mock_dlg,
+            patch("gui.widgets.playlist_widget.QDialog") as mock_qd,
+        ):
             dialog = MagicMock()
             mock_dlg.return_value = dialog
             dialog.exec.return_value = mock_qd.DialogCode.Accepted
@@ -2983,9 +3014,10 @@ class TestPlaylistWidgetCoverage:
     def test_select_songs_dialog_cancel(self):
         w = MagicMock()
         w.db_manager = MagicMock()
-        with patch("gui.widgets.playlist_widget.SongSelectionDialog") as mock_dlg, patch(
-            "gui.widgets.playlist_widget.QDialog"
-        ) as mock_qd:
+        with (
+            patch("gui.widgets.playlist_widget.SongSelectionDialog") as mock_dlg,
+            patch("gui.widgets.playlist_widget.QDialog") as mock_qd,
+        ):
             dialog = MagicMock()
             mock_dlg.return_value = dialog
             mock_qd.DialogCode.Accepted = "ACCEPTED"
@@ -3070,9 +3102,12 @@ class TestAlbumCardCoverage:
         w = MagicMock()
         w.COVER_SIZE = 140
         w.album_data = {"album": "Test Album"}
-        with patch("gui.widgets.album_grid_widget.QImage") as mi, patch(
-            "gui.widgets.album_grid_widget.QPainter"
-        ), patch("gui.widgets.album_grid_widget.QColor"), patch("gui.widgets.album_grid_widget.QPixmap"):
+        with (
+            patch("gui.widgets.album_grid_widget.QImage") as mi,
+            patch("gui.widgets.album_grid_widget.QPainter"),
+            patch("gui.widgets.album_grid_widget.QColor"),
+            patch("gui.widgets.album_grid_widget.QPixmap"),
+        ):
             img = MagicMock()
             mi.return_value = img
             img.rect.return_value = MagicMock()
@@ -3225,32 +3260,40 @@ class TestVisualizerPaintMethods:
 
     def test_paint_event_bars(self):
         w = self._make_viz("bars")
-        with patch("gui.widgets.visualizer_widget.QPainter"), patch("gui.widgets.visualizer_widget.QColor"), patch(
-            "gui.widgets.visualizer_widget.QPen"
+        with (
+            patch("gui.widgets.visualizer_widget.QPainter"),
+            patch("gui.widgets.visualizer_widget.QColor"),
+            patch("gui.widgets.visualizer_widget.QPen"),
         ):
             _get(self.cls, "paintEvent")(w, MagicMock())
         w._draw_bars.assert_called()
 
     def test_paint_event_circular(self):
         w = self._make_viz("circular")
-        with patch("gui.widgets.visualizer_widget.QPainter"), patch("gui.widgets.visualizer_widget.QColor"), patch(
-            "gui.widgets.visualizer_widget.QPen"
+        with (
+            patch("gui.widgets.visualizer_widget.QPainter"),
+            patch("gui.widgets.visualizer_widget.QColor"),
+            patch("gui.widgets.visualizer_widget.QPen"),
         ):
             _get(self.cls, "paintEvent")(w, MagicMock())
         w._draw_circular.assert_called()
 
     def test_paint_event_brain_ai(self):
         w = self._make_viz("brain_ai")
-        with patch("gui.widgets.visualizer_widget.QPainter"), patch("gui.widgets.visualizer_widget.QColor"), patch(
-            "gui.widgets.visualizer_widget.QPen"
+        with (
+            patch("gui.widgets.visualizer_widget.QPainter"),
+            patch("gui.widgets.visualizer_widget.QColor"),
+            patch("gui.widgets.visualizer_widget.QPen"),
         ):
             _get(self.cls, "paintEvent")(w, MagicMock())
         w._draw_brain_ai.assert_called()
 
     def test_paint_event_no_data(self):
         w = self._make_viz("bars", has_waveform=False)
-        with patch("gui.widgets.visualizer_widget.QPainter"), patch("gui.widgets.visualizer_widget.QColor"), patch(
-            "gui.widgets.visualizer_widget.QPen"
+        with (
+            patch("gui.widgets.visualizer_widget.QPainter"),
+            patch("gui.widgets.visualizer_widget.QColor"),
+            patch("gui.widgets.visualizer_widget.QPen"),
         ):
             _get(self.cls, "paintEvent")(w, MagicMock())
         w._draw_placeholder.assert_called()
@@ -3280,9 +3323,11 @@ class TestVisualizerPaintMethods:
         w = self._make_viz()
         w._get_current_bar_magnitudes = MagicMock(return_value=[0.5] * 50)
         painter = MagicMock()
-        with patch("gui.widgets.visualizer_widget.QColor"), patch(
-            "gui.widgets.visualizer_widget.QLinearGradient"
-        ), patch("gui.widgets.visualizer_widget.QRect"):
+        with (
+            patch("gui.widgets.visualizer_widget.QColor"),
+            patch("gui.widgets.visualizer_widget.QLinearGradient"),
+            patch("gui.widgets.visualizer_widget.QRect"),
+        ):
             _get(self.cls, "_draw_bars")(w, painter)
         painter.fillRect.assert_called()
 
@@ -3290,9 +3335,11 @@ class TestVisualizerPaintMethods:
         w = self._make_viz()
         w._get_current_bar_magnitudes = MagicMock(return_value=[0.5] * 50)
         painter = MagicMock()
-        with patch("gui.widgets.visualizer_widget.QColor"), patch(
-            "gui.widgets.visualizer_widget.QLinearGradient"
-        ), patch("gui.widgets.visualizer_widget.QPen"):
+        with (
+            patch("gui.widgets.visualizer_widget.QColor"),
+            patch("gui.widgets.visualizer_widget.QLinearGradient"),
+            patch("gui.widgets.visualizer_widget.QPen"),
+        ):
             _get(self.cls, "_draw_circular")(w, painter)
         painter.drawLine.assert_called()
 
@@ -3314,16 +3361,20 @@ class TestVisualizerPaintMethods:
     def test_draw_waveform(self):
         w = self._make_viz()
         painter = MagicMock()
-        with patch("gui.widgets.visualizer_widget.QPainterPath"), patch("gui.widgets.visualizer_widget.QColor"), patch(
-            "gui.widgets.visualizer_widget.QPen"
+        with (
+            patch("gui.widgets.visualizer_widget.QPainterPath"),
+            patch("gui.widgets.visualizer_widget.QColor"),
+            patch("gui.widgets.visualizer_widget.QPen"),
         ):
             _get(self.cls, "_draw_waveform")(w, painter)
 
     def test_draw_waveform_from_spectrum(self):
         w = self._make_viz(has_waveform=False, has_spectrum=True)
         painter = MagicMock()
-        with patch("gui.widgets.visualizer_widget.QPainterPath"), patch("gui.widgets.visualizer_widget.QColor"), patch(
-            "gui.widgets.visualizer_widget.QPen"
+        with (
+            patch("gui.widgets.visualizer_widget.QPainterPath"),
+            patch("gui.widgets.visualizer_widget.QColor"),
+            patch("gui.widgets.visualizer_widget.QPen"),
         ):
             _get(self.cls, "_draw_waveform")(w, painter)
 
@@ -3346,9 +3397,10 @@ class TestVisualizerPaintMethods:
     def test_enter_fullscreen(self):
         w = MagicMock()
         w._fullscreen_window = None
-        with patch("gui.widgets.visualizer_widget.ORGANIC_AVAILABLE", True), patch(
-            "gui.widgets.visualizer_widget._FullscreenVisualizer"
-        ) as mfs:
+        with (
+            patch("gui.widgets.visualizer_widget.ORGANIC_AVAILABLE", True),
+            patch("gui.widgets.visualizer_widget._FullscreenVisualizer") as mfs,
+        ):
             fs_inst = MagicMock()
             mfs.return_value = fs_inst
             _get(self.cls, "_enter_fullscreen")(w)
@@ -3604,8 +3656,9 @@ class TestEqualizerSaveDelete:
         w = MagicMock()
         w.equalizer = MagicMock()
         w.equalizer.save_custom_preset.return_value = True
-        with patch("gui.widgets.equalizer_widget.QInputDialog") as mid, patch(
-            "gui.widgets.equalizer_widget.QMessageBox"
+        with (
+            patch("gui.widgets.equalizer_widget.QInputDialog") as mid,
+            patch("gui.widgets.equalizer_widget.QMessageBox"),
         ):
             mid.getText.side_effect = [("My Preset", True), ("Description", True)]
             _get(self.cls, "_save_preset")(w)
@@ -3635,9 +3688,10 @@ class TestEqualizerSaveDelete:
         w.preset_combo.currentText.return_value = "My Preset"
         w.equalizer = MagicMock()
         w.equalizer.delete_custom_preset.return_value = True
-        with patch("gui.widgets.equalizer_widget.BUILTIN_PRESETS", {}), patch(
-            "gui.widgets.equalizer_widget.QMessageBox"
-        ) as mmb:
+        with (
+            patch("gui.widgets.equalizer_widget.BUILTIN_PRESETS", {}),
+            patch("gui.widgets.equalizer_widget.QMessageBox") as mmb,
+        ):
             yes_val = MagicMock()
             no_val = MagicMock()
             mmb.StandardButton.Yes = yes_val
@@ -3812,9 +3866,10 @@ class TestNowPlayingFinal:
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         w.cover_manager.get_cover_path.return_value = mock_path
-        with patch("gui.widgets.now_playing_widget.QPixmap") as mp, patch(
-            "gui.widgets.now_playing_widget.QMessageBox"
-        ) as mmb:
+        with (
+            patch("gui.widgets.now_playing_widget.QPixmap") as mp,
+            patch("gui.widgets.now_playing_widget.QMessageBox") as mmb,
+        ):
             px_inst = MagicMock()
             px_inst.isNull.return_value = True  # Invalid image
             mp.return_value = px_inst
@@ -3911,8 +3966,10 @@ class TestPlaylistWidgetConstructor:
         pm = MagicMock()
         pm.get_all_playlists.return_value = []
         db = MagicMock()
-        with patch("gui.widgets.playlist_widget.QMessageBox"), patch("gui.widgets.playlist_widget.QInputDialog"), patch(
-            "gui.widgets.playlist_widget.QFileDialog"
+        with (
+            patch("gui.widgets.playlist_widget.QMessageBox"),
+            patch("gui.widgets.playlist_widget.QInputDialog"),
+            patch("gui.widgets.playlist_widget.QFileDialog"),
         ):
             w = self.cls(pm, db)
         assert w.playlist_manager is pm
@@ -3926,8 +3983,10 @@ class TestPlaylistWidgetConstructor:
             {"id": 2, "name": "Jazz", "song_count": 3},
         ]
         db = MagicMock()
-        with patch("gui.widgets.playlist_widget.QMessageBox"), patch("gui.widgets.playlist_widget.QInputDialog"), patch(
-            "gui.widgets.playlist_widget.QFileDialog"
+        with (
+            patch("gui.widgets.playlist_widget.QMessageBox"),
+            patch("gui.widgets.playlist_widget.QInputDialog"),
+            patch("gui.widgets.playlist_widget.QFileDialog"),
         ):
             w = self.cls(pm, db)
         # Verify playlists were loaded (table rows set)
@@ -3938,8 +3997,10 @@ class TestPlaylistWidgetConstructor:
         pm = MagicMock()
         pm.get_all_playlists.side_effect = sqlite3.Error("db locked")
         db = MagicMock()
-        with patch("gui.widgets.playlist_widget.QMessageBox"), patch("gui.widgets.playlist_widget.QInputDialog"), patch(
-            "gui.widgets.playlist_widget.QFileDialog"
+        with (
+            patch("gui.widgets.playlist_widget.QMessageBox"),
+            patch("gui.widgets.playlist_widget.QInputDialog"),
+            patch("gui.widgets.playlist_widget.QFileDialog"),
         ):
             w = self.cls(pm, db)
         # The error is caught and logged — widget still initializes
@@ -3950,9 +4011,11 @@ class TestPlaylistWidgetConstructor:
         pm.get_all_playlists.return_value = []
         pm.create_playlist.side_effect = sqlite3.Error("db error")
         db = MagicMock()
-        with patch("gui.widgets.playlist_widget.QMessageBox") as mmb, patch(
-            "gui.widgets.playlist_widget.QInputDialog"
-        ) as mid, patch("gui.widgets.playlist_widget.QFileDialog"):
+        with (
+            patch("gui.widgets.playlist_widget.QMessageBox") as mmb,
+            patch("gui.widgets.playlist_widget.QInputDialog") as mid,
+            patch("gui.widgets.playlist_widget.QFileDialog"),
+        ):
             w = self.cls(pm, db)
             mid.getText.return_value = ("Test", True)
             _get(self.cls, "create_playlist")(w)
@@ -3981,9 +4044,10 @@ class TestPlaylistWidgetConstructor:
         w._current_playlist_item.text.return_value = "PL\n(3)"
         w.playlist_manager = MagicMock()
         w.playlist_manager.rename_playlist.side_effect = sqlite3.Error("fail")
-        with patch("gui.widgets.playlist_widget.QMessageBox") as mmb, patch(
-            "gui.widgets.playlist_widget.QInputDialog"
-        ) as mid:
+        with (
+            patch("gui.widgets.playlist_widget.QMessageBox") as mmb,
+            patch("gui.widgets.playlist_widget.QInputDialog") as mid,
+        ):
             mid.getText.return_value = ("New", True)
             _get(self.cls, "rename_playlist")(w)
         mmb.warning.assert_called()
@@ -3995,9 +4059,10 @@ class TestPlaylistWidgetConstructor:
         w._current_playlist_item.text.return_value = "PL\n(3)"
         w.playlist_manager = MagicMock()
         w.playlist_manager.rename_playlist.return_value = False
-        with patch("gui.widgets.playlist_widget.QMessageBox") as mmb, patch(
-            "gui.widgets.playlist_widget.QInputDialog"
-        ) as mid:
+        with (
+            patch("gui.widgets.playlist_widget.QMessageBox") as mmb,
+            patch("gui.widgets.playlist_widget.QInputDialog") as mid,
+        ):
             mid.getText.return_value = ("New", True)
             _get(self.cls, "rename_playlist")(w)
         mmb.warning.assert_called()
@@ -4006,9 +4071,10 @@ class TestPlaylistWidgetConstructor:
         w = MagicMock()
         w.playlist_manager = MagicMock()
         w.playlist_manager.load_playlist.return_value = 10
-        with patch("gui.widgets.playlist_widget.QFileDialog") as mfd, patch(
-            "gui.widgets.playlist_widget.QMessageBox"
-        ) as mmb:
+        with (
+            patch("gui.widgets.playlist_widget.QFileDialog") as mfd,
+            patch("gui.widgets.playlist_widget.QMessageBox") as mmb,
+        ):
             mfd.getOpenFileName.return_value = ("/test.m3u8", "filter")
             _get(self.cls, "import_playlist")(w)
         mmb.information.assert_called()
@@ -4017,9 +4083,10 @@ class TestPlaylistWidgetConstructor:
         w = MagicMock()
         w.playlist_manager = MagicMock()
         w.playlist_manager.load_playlist.return_value = None
-        with patch("gui.widgets.playlist_widget.QFileDialog") as mfd, patch(
-            "gui.widgets.playlist_widget.QMessageBox"
-        ) as mmb:
+        with (
+            patch("gui.widgets.playlist_widget.QFileDialog") as mfd,
+            patch("gui.widgets.playlist_widget.QMessageBox") as mmb,
+        ):
             mfd.getOpenFileName.return_value = ("/test.m3u8", "filter")
             _get(self.cls, "import_playlist")(w)
         mmb.warning.assert_called()
@@ -4028,9 +4095,10 @@ class TestPlaylistWidgetConstructor:
         w = MagicMock()
         w.playlist_manager = MagicMock()
         w.playlist_manager.load_playlist.side_effect = OSError("fail")
-        with patch("gui.widgets.playlist_widget.QFileDialog") as mfd, patch(
-            "gui.widgets.playlist_widget.QMessageBox"
-        ) as mmb:
+        with (
+            patch("gui.widgets.playlist_widget.QFileDialog") as mfd,
+            patch("gui.widgets.playlist_widget.QMessageBox") as mmb,
+        ):
             mfd.getOpenFileName.return_value = ("/test.m3u8", "filter")
             _get(self.cls, "import_playlist")(w)
         mmb.warning.assert_called()
@@ -4042,9 +4110,10 @@ class TestPlaylistWidgetConstructor:
         w._current_playlist_item.text.return_value = "PL\n(3)"
         w.playlist_manager = MagicMock()
         w.playlist_manager.save_playlist.return_value = False
-        with patch("gui.widgets.playlist_widget.QFileDialog") as mfd, patch(
-            "gui.widgets.playlist_widget.QMessageBox"
-        ) as mmb:
+        with (
+            patch("gui.widgets.playlist_widget.QFileDialog") as mfd,
+            patch("gui.widgets.playlist_widget.QMessageBox") as mmb,
+        ):
             mfd.getSaveFileName.return_value = ("/out.m3u8", "filter")
             _get(self.cls, "export_playlist")(w)
         mmb.warning.assert_called()
@@ -4056,9 +4125,10 @@ class TestPlaylistWidgetConstructor:
         w._current_playlist_item.text.return_value = "PL\n(3)"
         w.playlist_manager = MagicMock()
         w.playlist_manager.save_playlist.side_effect = OSError("fail")
-        with patch("gui.widgets.playlist_widget.QFileDialog") as mfd, patch(
-            "gui.widgets.playlist_widget.QMessageBox"
-        ) as mmb:
+        with (
+            patch("gui.widgets.playlist_widget.QFileDialog") as mfd,
+            patch("gui.widgets.playlist_widget.QMessageBox") as mmb,
+        ):
             mfd.getSaveFileName.return_value = ("/out.m3u8", "filter")
             _get(self.cls, "export_playlist")(w)
         mmb.warning.assert_called()
@@ -4194,9 +4264,11 @@ class TestEqualizerWidgetConstructor:
         eq.get_preset_info.return_value = preset_info
         eq.get_all_gains.return_value = {60: 0.0, 250: 0.0, 1000: 0.0, 4000: 0.0, 16000: 0.0}
         eq.get_current_preset.return_value = "flat"
-        with patch("gui.widgets.equalizer_widget.BUILTIN_PRESETS", {"flat": MagicMock(name="Flat")}), patch(
-            "gui.widgets.equalizer_widget.QMessageBox"
-        ), patch("gui.widgets.equalizer_widget.QInputDialog"):
+        with (
+            patch("gui.widgets.equalizer_widget.BUILTIN_PRESETS", {"flat": MagicMock(name="Flat")}),
+            patch("gui.widgets.equalizer_widget.QMessageBox"),
+            patch("gui.widgets.equalizer_widget.QInputDialog"),
+        ):
             w = self.cls(eq)
         assert w.equalizer is eq
         assert len(w._sliders) == 5
@@ -4272,9 +4344,12 @@ class TestAlbumGridConstructor:
         w = MagicMock()
         w.COVER_SIZE = 100
         w.album_data = {"album": "Test Album"}
-        with patch("gui.widgets.album_grid_widget.QImage") as mi, patch(
-            "gui.widgets.album_grid_widget.QPainter"
-        ), patch("gui.widgets.album_grid_widget.QColor") as mc, patch("gui.widgets.album_grid_widget.QPixmap") as mpx:
+        with (
+            patch("gui.widgets.album_grid_widget.QImage") as mi,
+            patch("gui.widgets.album_grid_widget.QPainter"),
+            patch("gui.widgets.album_grid_widget.QColor") as mc,
+            patch("gui.widgets.album_grid_widget.QPixmap") as mpx,
+        ):
             mc.fromHsv.return_value = MagicMock()
             mi.return_value = MagicMock()
             mi.return_value.rect.return_value = MagicMock()
@@ -4354,10 +4429,11 @@ class TestNowPlayingConstructor:
 
     def test_instantiate(self):
         player = MagicMock()
-        with patch("gui.widgets.now_playing_widget.CoverArtManager") as mcam, patch(
-            "gui.widgets.now_playing_widget.QGraphicsDropShadowEffect"
-        ) as mglow, patch("gui.widgets.now_playing_widget.QColor") as mc, patch(
-            "gui.widgets.now_playing_widget.QMessageBox"
+        with (
+            patch("gui.widgets.now_playing_widget.CoverArtManager") as mcam,
+            patch("gui.widgets.now_playing_widget.QGraphicsDropShadowEffect") as mglow,
+            patch("gui.widgets.now_playing_widget.QColor") as mc,
+            patch("gui.widgets.now_playing_widget.QMessageBox"),
         ):
             mc.return_value = MagicMock()
             mglow.return_value = MagicMock()
