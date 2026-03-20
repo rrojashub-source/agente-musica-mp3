@@ -344,6 +344,9 @@ C:/Users/
 # Debug output
 debug_output.txt
 
+# === MCP CONFIG (local dev tool settings) ===
+.mcp.json
+
 # === RECURRING ARTIFACTS (auto-generated, not in repo) ===
 MagicMock/
 .benchmarks/
