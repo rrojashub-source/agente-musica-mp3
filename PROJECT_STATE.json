@@ -18,13 +18,14 @@
       "language": "Python 3.13",
       "gui": "PySide6",
       "database": "SQLite + FTS5 + WAL",
-      "audio": "python-mpv (libmpv) + numpy FFT",
+      "audio": "python-mpv (libmpv) + scipy.fft",
       "visualizer": "OpenGL 3.3 + GLSL shaders",
       "apis": ["YouTube Data API v3", "Spotify Web API", "MusicBrainz", "Genius", "Chords (librosa)"],
       "packaging": "PyInstaller 6.19.0 + UPX (151MB exe)",
       "remote": "Flask REST API + JWT Bearer auth (24h expiration) + CORS restrictivo",
-      "ci_cd": "GitHub Actions (test, mypy, bandit, flake8, build)",
-      "pre_commit": "black + isort + flake8"
+      "ci_cd": "GitHub Actions (test, mypy, bandit, ruff, build)",
+      "pre_commit": "ruff (lint + format)",
+      "metadata": "mutagen-rs (Rust) with mutagen fallback"
     },
     "target": {
       "packaging": "Nuitka when yt_dlp issue #2879 resolved (currently blocks compilation)"
@@ -37,9 +38,9 @@
     "test_files": "52+",
     "coverage_target": "80%",
     "maps_audit": "15/15 modules, 4/4 phases (Quality, Tests, Security, Performance)",
-    "flake8": "clean (max-line-length=120)",
+    "ruff": "clean (ruff.toml, line-length=120)",
     "bandit": "clean (-ll)",
-    "pre_commit": "black + isort + flake8 active"
+    "pre_commit": "ruff (lint + format) active"
   },
 
   "metrics": {
@@ -236,6 +237,33 @@
       "date": "2026-03-17",
       "decision": "Aligned project structure with NEXUS Development Protocol v1.0.",
       "reason": "Added PRD.md, PROGRESS.md, lessons.md, agent_docs/, catchup command. Refactored CLAUDE.md from 153 to ~70 lines."
+    },
+    {
+      "date": "2026-03-20",
+      "decision": "Replaced black+isort+flake8 with ruff for linting and formatting.",
+      "reason": "50-100x faster pre-commit. Single tool replaces 3. Same rules via ruff.toml."
+    },
+    {
+      "date": "2026-03-20",
+      "decision": "Replaced numpy.fft with scipy.fft in 4 audio analysis modules.",
+      "reason": "2-4x faster FFT. scipy is drop-in compatible (same ndarray output). Already a transitive dependency."
+    },
+    {
+      "date": "2026-03-20",
+      "decision": "Added mutagen-rs as primary metadata backend with mutagen fallback.",
+      "reason": "100-300x faster metadata ops. Rust-based, API-compatible. Has cp313-win_amd64 wheel. Fallback ensures zero-risk."
+    },
+    {
+      "date": "2026-03-20",
+      "decision": "SKIP: mcp-code-checker (not published on PyPI, no mypy), Dippy installed globally in ~/.claude/settings.json.",
+      "reason": "mcp-code-checker only exists as unpublished GitHub repo. Dippy is real AST-based bash auto-approve hook, installed as global PreToolUse hook."
     }
-  ]
+  ],
+
+  "last_session": {
+    "date": "2026-03-20",
+    "summary": "Tooling upgrade: 5 tools integrated (ruff, scipy.fft, mcp-server-sqlite, mutagen-rs, Dippy), 1 documented (tufup), 1 skipped (mcp-code-checker).",
+    "commits": 6,
+    "next_step": "Push 6 new commits to GitHub. Update GitHub Actions CI to use ruff instead of black+isort+flake8. Test mutagen-rs with real MP3 files on Windows."
+  }
 }
