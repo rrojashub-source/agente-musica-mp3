@@ -46,3 +46,8 @@
 
 23. **Mock contamination** — Phase-2 GUI tests modifican PySide6 mock modules a nivel de modulo, contaminando tests subsecuentes. Fix: snapshot/restore en conftest.py.
 24. **Tests usando atributos renombrados** — Despues de renombrar atributos a _private, tests seguian accediendo al nombre viejo. Fix: actualizar tests junto con el rename.
+
+## Compatibilidad de Librerías
+
+25. **mutagen-rs vs mutagen API differences** — mutagen-rs es drop-in EXCEPTO: `mutagen.id3.error` no existe en mutagen_rs (usar `mutagen_rs.id3.ID3Error`). `MutagenError` se llama `MutagenPyError` internamente pero se re-exporta como `MutagenError`. Siempre usar shim `utils/mutagen_compat.py`.
+26. **PyPI name collision** — `dippy` en PyPI v0.1.0 es un paquete DIFERENTE al Dippy de ldayton (auto-approve hook). Instalar siempre desde `git+https://github.com/ldayton/Dippy.git`.
