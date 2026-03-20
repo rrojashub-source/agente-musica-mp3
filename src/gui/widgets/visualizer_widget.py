@@ -339,6 +339,7 @@ class VisualizerWidget(QWidget):
             position_seconds: Current playback position in seconds
         """
         import numpy as np
+        from scipy.fft import rfft
 
         samples = self._raw_samples
         sr = self._raw_sample_rate
@@ -357,7 +358,7 @@ class VisualizerWidget(QWidget):
         window *= np.hanning(len(window))
 
         # FFT — raw linear magnitudes (NOT dB)
-        fft_result = np.fft.rfft(window)
+        fft_result = rfft(window)
         magnitudes = np.abs(fft_result)
 
         # Logarithmic distribution into 60 bars (more resolution for bass)

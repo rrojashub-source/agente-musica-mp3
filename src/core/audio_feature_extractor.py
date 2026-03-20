@@ -13,6 +13,7 @@ import logging
 from typing import Any, List, Optional
 
 import numpy as np
+from scipy.fft import rfft, rfftfreq
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +92,9 @@ class AudioFeatureExtractor:
                 window = np.hanning(len(frame))
                 windowed_frame = frame * window
 
-                fft = np.fft.rfft(windowed_frame)
+                fft = rfft(windowed_frame)
                 magnitude = np.abs(fft)
-                freqs = np.fft.rfftfreq(len(windowed_frame), 1 / self.sample_rate)
+                freqs = rfftfreq(len(windowed_frame), 1 / self.sample_rate)
 
                 # Spectral centroid (brightness)
                 if np.sum(magnitude) > 0:

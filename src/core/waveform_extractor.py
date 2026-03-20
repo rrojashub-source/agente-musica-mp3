@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+from scipy.fft import rfft
 
 logger = logging.getLogger(__name__)
 
@@ -313,7 +314,7 @@ class WaveformExtractor:
                 window = window * np.hanning(len(window))
 
                 # Apply FFT
-                fft_result = np.fft.rfft(window)
+                fft_result = rfft(window)
                 magnitudes = np.abs(fft_result)
 
                 # Convert to log scale (decibels) for better visualization

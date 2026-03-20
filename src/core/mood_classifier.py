@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import numpy as np
+from scipy.fft import rfft, rfftfreq
 
 logger = logging.getLogger(__name__)
 
@@ -127,9 +128,9 @@ class MoodClassifier:
                 window = np.hanning(len(frame))
                 windowed = frame * window
 
-                fft = np.fft.rfft(windowed)
+                fft = rfft(windowed)
                 magnitude = np.abs(fft)
-                freqs = np.fft.rfftfreq(len(windowed), 1 / self.sample_rate)
+                freqs = rfftfreq(len(windowed), 1 / self.sample_rate)
 
                 # Spectral centroid (brightness)
                 if np.sum(magnitude) > 0:
