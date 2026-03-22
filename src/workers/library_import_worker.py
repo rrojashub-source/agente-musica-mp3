@@ -51,7 +51,7 @@ def extract_metadata(file_path: str) -> Optional[Dict[str, Any]]:
         - file_size (int): File size in bytes
     """
     try:
-        from utils.mutagen_compat import ID3, MP3
+        from utils.mutagen_compat import MP3
 
         # Normalize path to canonical format (absolute, resolved symlinks, correct separators)
         normalized_path = str(Path(file_path).resolve())
@@ -61,11 +61,9 @@ def extract_metadata(file_path: str) -> Optional[Dict[str, Any]]:
             logger.error(f"File not found: {normalized_path}")
             return None
 
-        # Read audio info
+        # Read audio info + ID3 tags (MP3 object has dict-like .get() for both)
         audio = MP3(normalized_path)
-
-        # Read ID3 tags
-        tags = ID3(normalized_path)
+        tags = audio
 
         # Extract metadata with defaults (IMPORTANT: Use normalized_path for storage)
         song_data = {
