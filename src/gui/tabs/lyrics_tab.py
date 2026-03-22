@@ -210,12 +210,12 @@ class LyricsTab(BaseTab):
         # Cancel previous search if still running
         if self._worker and self._worker.isRunning():
             logger.debug("Cancelling previous lyrics search")
-            self._worker.quit()
-            # Wait max 2 seconds, then force terminate
+            self._worker.is_cancelled = True
+            self._worker.requestInterruption()
             if not self._worker.wait(2000):
-                logger.warning("Previous search didn't stop, terminating")
-                self._worker.terminate()
-                self._worker.wait()
+                logger.warning("Previous lyrics search didn't stop, detaching")
+                self._worker.finished.disconnect()
+                self._worker.error.disconnect()
 
         # Start background search
         self._worker = LyricsSearchWorker(self.genius_client, title, artist)

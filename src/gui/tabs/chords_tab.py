@@ -295,12 +295,14 @@ class ChordsTab(BaseTab):
         self.copy_button.setEnabled(False)
         self._highlight_timer.stop()
 
-        # Cancel previous worker
+        # Cancel previous worker gracefully (terminate() segfaults in librosa C extensions)
         if self._worker and self._worker.isRunning():
-            self._worker.quit()
+            self._worker.is_cancelled = True
+            self._worker.requestInterruption()
             if not self._worker.wait(3000):
-                self._worker.terminate()
-                self._worker.wait()
+                logger.warning("Chords worker still running after 3s, detaching")
+                self._worker.finished.disconnect()
+                self._worker.error.disconnect()
 
         self._worker = ChordsAnalyzeWorker(self.chords_client, file_path, song_id)
         self._worker.finished.connect(self._on_chords_found)

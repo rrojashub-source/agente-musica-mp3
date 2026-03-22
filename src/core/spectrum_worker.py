@@ -88,8 +88,13 @@ class SpectrumWorker(BaseWorker):
             logger.info(f"Spectrum extracted: {len(spectrum_data)} windows, {duration:.1f}s, {self.num_bars} bars")
             self.progress.emit(95)
 
-            if not self.is_cancelled:
-                self.finished.emit(spectrum_data, duration)
+            if self.is_cancelled:
+                return None
+
+            self.finished.emit(spectrum_data, duration)
+
+            if self.is_cancelled:
+                return None
 
             # Also extract raw samples for real-time FFT (organic visualizer)
             raw_result = self.waveform_extractor.extract_raw_samples(self.file_path)

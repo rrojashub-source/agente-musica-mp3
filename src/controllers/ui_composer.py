@@ -415,10 +415,15 @@ audio playback, playlists, and visualizer.</p>
             duration = self.audio_player.get_duration() if self.audio_player else 0.0
             self.window.statusBar.showMessage("Analyzing audio for visualizer...", 0)
 
-            # Stop any existing worker
+            # Stop any existing worker gracefully (terminate() causes segfaults in C extensions)
             if self._spectrum_worker is not None and self._spectrum_worker.isRunning():  # type: ignore[union-attr]
-                self._spectrum_worker.terminate()  # type: ignore[union-attr]
-                self._spectrum_worker.wait()  # type: ignore[union-attr]
+                self._spectrum_worker.is_cancelled = True  # type: ignore[union-attr]
+                self._spectrum_worker.requestInterruption()  # type: ignore[union-attr]
+                self._spectrum_worker.wait(3000)  # type: ignore[union-attr] — wait up to 3s
+                if self._spectrum_worker.isRunning():  # type: ignore[union-attr]
+                    logger.warning("Spectrum worker still running after 3s, detaching")
+                    self._spectrum_worker.finished.disconnect()  # type: ignore[union-attr]
+                    self._spectrum_worker.raw_audio_ready.disconnect()  # type: ignore[union-attr]
 
             from core.spectrum_worker import SpectrumWorker
 
