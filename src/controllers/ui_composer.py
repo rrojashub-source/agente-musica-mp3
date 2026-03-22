@@ -417,7 +417,7 @@ audio playback, playlists, and visualizer.</p>
 
             # Stop any existing worker gracefully (terminate() causes segfaults in C extensions)
             if self._spectrum_worker is not None and self._spectrum_worker.isRunning():  # type: ignore[union-attr]
-                self._spectrum_worker.is_cancelled = True  # type: ignore[union-attr]
+                self._spectrum_worker.cancel()  # type: ignore[union-attr]
                 self._spectrum_worker.requestInterruption()  # type: ignore[union-attr]
                 self._spectrum_worker.wait(3000)  # type: ignore[union-attr] — wait up to 3s
                 if self._spectrum_worker.isRunning():  # type: ignore[union-attr]

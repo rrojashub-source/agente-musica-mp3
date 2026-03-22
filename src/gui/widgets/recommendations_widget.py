@@ -171,7 +171,7 @@ class RecommendationsWidget(QWidget):
 
         # Cancel previous worker gracefully
         if self._worker and self._worker.isRunning():
-            self._worker.is_cancelled = True
+            self._worker.cancel()
             self._worker.requestInterruption()
             self._worker.wait(2000)
 

@@ -297,7 +297,7 @@ class ChordsTab(BaseTab):
 
         # Cancel previous worker gracefully (terminate() segfaults in librosa C extensions)
         if self._worker and self._worker.isRunning():
-            self._worker.is_cancelled = True
+            self._worker.cancel()
             self._worker.requestInterruption()
             if not self._worker.wait(3000):
                 logger.warning("Chords worker still running after 3s, detaching")

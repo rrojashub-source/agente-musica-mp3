@@ -210,7 +210,7 @@ class LyricsTab(BaseTab):
         # Cancel previous search if still running
         if self._worker and self._worker.isRunning():
             logger.debug("Cancelling previous lyrics search")
-            self._worker.is_cancelled = True
+            self._worker.cancel()
             self._worker.requestInterruption()
             if not self._worker.wait(2000):
                 logger.warning("Previous lyrics search didn't stop, detaching")
