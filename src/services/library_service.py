@@ -140,7 +140,7 @@ class LibraryService(QObject):
         """
         super().__init__()
 
-        self._db_path: Optional[str] = db_path
+        self._db_path: Optional[str] = db_path or "music_library.db"
         self._db_manager: Any = None
         self._stats_cache: Optional[LibraryStats] = None
         self._stats_cache_time: Optional[datetime] = None

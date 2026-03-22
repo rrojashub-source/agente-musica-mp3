@@ -82,6 +82,7 @@ class AudioPlayer:
         self._on_track_end_callbacks: List[Callable[[str], None]] = []
         self._end_event_timer: Optional[threading.Timer] = None
         self._crossfade_ms: int = 0
+        self._loading: bool = False  # Suppresses end-file events during load()
 
         # Initialize mpv player
         try:
@@ -131,6 +132,8 @@ class AudioPlayer:
         """Handle mpv end-file event for track transitions"""
         try:
             with self._lock:
+                if self._loading:
+                    return  # Ignore end-file from stop() during load()
                 if self._state != PlaybackState.PLAYING:
                     return
 
@@ -173,6 +176,7 @@ class AudioPlayer:
 
         try:
             with self._lock:
+                self._loading = True  # Suppress end-file events from stop()
                 # Stop current playback if any
                 try:
                     self._player.command("stop")
@@ -184,11 +188,13 @@ class AudioPlayer:
 
                 # Get duration using mutagen (faster than loading in mpv)
                 self._duration = self._get_file_duration(file_path)
+                self._loading = False
 
             logger.info(f"Loaded: {file_path} (duration: {self._duration:.2f}s)")
             return True
 
         except Exception as e:  # mpv/mutagen can raise diverse errors on corrupt files
+            self._loading = False
             logger.error(f"Failed to load {file_path}: {e}")
             return False
 
