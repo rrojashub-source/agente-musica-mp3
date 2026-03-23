@@ -334,6 +334,8 @@ scripts/test_imports.py
 # === BUILD ARTIFACTS ===
 build.log
 build/
+build_new/
+dist_new/
 
 # === USER DIRECTORIES (Windows paths that leak into WSL) ===
 C\\Users/
