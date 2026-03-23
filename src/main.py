@@ -21,6 +21,16 @@ from typing import Any, Dict, Optional
 # CRITICAL: Patch subprocess FIRST to hide console windows on Windows
 import utils.subprocess_patch  # noqa: F401
 
+# Fix certifi path for PyInstaller frozen exe (requests/urllib3 need CA bundle)
+import os
+
+if getattr(sys, "frozen", False):
+    _bundle_dir = Path(sys._MEIPASS)  # type: ignore[attr-defined]
+    _cacert = _bundle_dir / "certifi" / "cacert.pem"
+    if _cacert.exists():
+        os.environ.setdefault("SSL_CERT_FILE", str(_cacert))
+        os.environ.setdefault("REQUESTS_CA_BUNDLE", str(_cacert))
+
 # Configure logging — console + file
 _log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(level=logging.INFO, format=_log_format)

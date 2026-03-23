@@ -560,8 +560,11 @@ class DatabaseManager:
             bool: True if deleted successfully, False otherwise
         """
         try:
-            query = "DELETE FROM songs WHERE id = ?"
             cursor = self.conn.cursor()
+            # Delete related records first (FK may lack CASCADE if DB pre-dates migration)
+            cursor.execute("DELETE FROM play_history WHERE song_id = ?", (song_id,))
+            cursor.execute("DELETE FROM playlist_songs WHERE song_id = ?", (song_id,))
+            query = "DELETE FROM songs WHERE id = ?"
             cursor.execute(query, (song_id,))
             self.conn.commit()
 

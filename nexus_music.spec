@@ -33,6 +33,11 @@ a = Analysis(
         ('src/database/migrations', 'database/migrations'),
         # Include plugins
         ('src/plugins/available', 'plugins/available'),
+        # librosa .pyi stubs (required at runtime for lazy imports)
+        ('venv/Lib/site-packages/librosa/__init__.pyi', 'librosa'),
+        ('venv/Lib/site-packages/librosa/core/__init__.pyi', 'librosa/core'),
+        ('venv/Lib/site-packages/librosa/feature/__init__.pyi', 'librosa/feature'),
+        ('venv/Lib/site-packages/librosa/util/__init__.pyi', 'librosa/util'),
     ],
     hiddenimports=[
         # === PySide6 ===

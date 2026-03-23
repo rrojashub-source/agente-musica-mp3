@@ -312,6 +312,10 @@ class ChordsTab(BaseTab):
 
     def _on_chords_found(self, chords: List[Dict[str, Any]]) -> None:
         """Display detected chords."""
+        if not chords:
+            self.status_label.setText("No se detectaron acordes")
+            self.analyze_button.setEnabled(True)
+            return
         self._chords = chords
         self._displayed_chords = chords
         self._render_chords(chords)
