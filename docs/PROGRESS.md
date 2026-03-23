@@ -53,13 +53,18 @@ Proyecto completado (v2.1.0). Auditoria MAPS finalizada. Alineando estructura co
 - Fix: BaseWorker.cancel() vs is_cancelled property
 - Added: file logging (nexus_music.log), clean_build.bat, set_api_keys.py
 - Genius API credentials saved to secrets
-- Remaining: 4 bugs (librosa stub, chords NoneType, FK constraint, YouTube API validation)
+### 2026-03-23
+- Fix: 4 remaining UAT bugs (librosa stubs, chords NoneType, FK constraint, certifi TLS)
+- Fix: spectrum worker data race (each worker gets own WaveformExtractor)
+- Fix: track-end race window (keep _loading=True from load() through play())
+- Final UAT: 2576 lines, 0 errors, clean shutdown
+- Installer built: Setup_NEXUS_Music_v2.1.0.exe (154MB) — validated
+- Pushed 22 commits to GitHub
 
 ## What's Next
-- Fix 4 remaining bugs from UAT log analysis
-- Rebuild exe with proper data files in spec
-- Final UAT round
-- Push all commits to GitHub
+- Install on laptop via Setup exe
+- Monitor yt_dlp #2879 for Nuitka migration
+- v2.2.0: tufup auto-update (documented in Planned section)
 
 ## Planned: v2.2.0 — Auto-Update (tufup)
 
