@@ -257,13 +257,23 @@
       "date": "2026-03-20",
       "decision": "SKIP: mcp-code-checker (not published on PyPI, no mypy), Dippy installed globally in ~/.claude/settings.json.",
       "reason": "mcp-code-checker only exists as unpublished GitHub repo. Dippy is real AST-based bash auto-approve hook, installed as global PreToolUse hook."
+    },
+    {
+      "date": "2026-03-22",
+      "decision": "Replaced QThread.terminate() with cooperative cancellation in all workers.",
+      "reason": "terminate() kills C extensions (numpy/scipy/librosa) mid-operation, corrupting memory and causing segfault on next song change. UAT confirmed fix."
+    },
+    {
+      "date": "2026-03-22",
+      "decision": "File logging + UAT cycle adopted as standard for exe builds.",
+      "reason": "nexus_music.log captured 5 bug categories that were invisible without runtime logging. Ricardo confirmed: 'la idea de los logs fue lo mejor'."
     }
   ],
 
   "last_session": {
-    "date": "2026-03-20",
-    "summary": "Tooling upgrade: 5 tools integrated (ruff, scipy.fft, mcp-server-sqlite, mutagen-rs, Dippy), 1 documented (tufup), 1 skipped (mcp-code-checker).",
-    "commits": 6,
-    "next_step": "Push 6 new commits to GitHub. Update GitHub Actions CI to use ruff instead of black+isort+flake8. Test mutagen-rs with real MP3 files on Windows."
+    "date": "2026-03-22",
+    "summary": "UAT testing cycle: 4 builds, 4 rounds of testing with Ricardo. Fixed crash on song change (terminate→cancel), play count NoneType, mutagen-rs ID3.get() compat. Remaining: 4 bugs to fix next session.",
+    "commits": 16,
+    "next_step": "Fix 4 remaining bugs from UAT logs: (1) librosa __init__.pyi stub missing in PyInstaller build — copy to _internal or add to datas in spec, (2) chords_tab:318 NoneType len() — add None check before len(chords), (3) FOREIGN KEY constraint on song delete — add CASCADE or pre-delete play_history, (4) YouTube API key validation failing — debug api_settings_dialog. Then rebuild exe and do final UAT."
   }
 }

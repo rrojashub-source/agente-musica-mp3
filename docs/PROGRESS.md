@@ -42,13 +42,24 @@ Proyecto completado (v2.1.0). Auditoria MAPS finalizada. Alineando estructura co
 
 ### 2026-03-20
 - Tooling upgrade: ruff replaces black+isort+flake8 (pre-commit 50-100x faster)
-- Performance: scipy.fft replaces numpy.fft (2-4x faster FFT in visualizer, mood, features)
-- DevX: mcp-server-sqlite configured for direct DB queries from Claude Code
+- Performance: scipy.fft replaces numpy.fft, mutagen-rs 57x faster metadata
+- DevX: mcp-server-sqlite, Dippy auto-approve hook
+
+### 2026-03-22
+- UAT testing cycle: 4 builds, 4 rounds with Ricardo
+- Fix: crash on song change (QThread.terminate → cooperative cancel)
+- Fix: play count NoneType (LibraryService default db path)
+- Fix: mutagen-rs ID3.get() compatibility (use MP3 object)
+- Fix: BaseWorker.cancel() vs is_cancelled property
+- Added: file logging (nexus_music.log), clean_build.bat, set_api_keys.py
+- Genius API credentials saved to secrets
+- Remaining: 4 bugs (librosa stub, chords NoneType, FK constraint, YouTube API validation)
 
 ## What's Next
-- Push commits pendientes + crear PR
-- Alinear repo con NEXUS Protocol v1.0 (PRD, agent_docs, lessons, catchup)
-- Monitorear yt_dlp #2879 para migration a Nuitka
+- Fix 4 remaining bugs from UAT log analysis
+- Rebuild exe with proper data files in spec
+- Final UAT round
+- Push all commits to GitHub
 
 ## Planned: v2.2.0 — Auto-Update (tufup)
 
