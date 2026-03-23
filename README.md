@@ -61,7 +61,7 @@ python src/main.py
 - **Keyboard Shortcuts** — Fully customizable (Space, arrows, F11 fullscreen)
 
 ### AI & Analysis
-- **Audio Embeddings** — 128D feature vectors from numpy FFT
+- **Audio Embeddings** — 128D feature vectors from scipy FFT
 - **Find Similar Songs** — Cosine similarity search across your library
 - **BPM Detection** — Automatic tempo analysis
 - **Mood Classification** — Happy, Sad, Energetic, Calm
@@ -82,13 +82,13 @@ python src/main.py
 | Language | Python 3.13 |
 | GUI | PySide6 6.10 |
 | Database | SQLite + FTS5 + WAL |
-| Audio | python-mpv (libmpv) + numpy FFT |
+| Audio | python-mpv (libmpv) + scipy.fft |
 | Visualizers | OpenGL 3.3 + GLSL shaders |
 | Downloads | yt-dlp |
-| Metadata | Mutagen (ID3 tags) |
+| Metadata | mutagen-rs (Rust, 57x faster) with mutagen fallback |
 | APIs | YouTube Data v3, Spotify, MusicBrainz, Genius, AcoustID |
 | Packaging | PyInstaller 6.19 + Inno Setup 6 (154 MB installer) |
-| Quality | mypy strict, pytest, flake8, bandit, black, isort |
+| Quality | mypy strict, pytest 980+, ruff, bandit |
 | CI/CD | GitHub Actions (test, type-check, security, build) |
 
 ---
@@ -131,10 +131,12 @@ agente-musica-mp3/
 | Metric | Status |
 |--------|--------|
 | mypy | 0 errors (116 files, strict mode) |
-| flake8 | Clean (max-line-length=120) |
+| ruff | Clean (lint + format, line-length=120) |
 | bandit | Clean (-ll) |
-| pre-commit | black + isort + flake8 |
+| pytest | 980+ tests passing |
+| pre-commit | ruff (replaces black + isort + flake8) |
 | Audit | MAPS 4-phase audit: 15/15 modules approved (63 rounds) |
+| UAT | 7 rounds, 2576 log lines, 0 errors |
 
 ---
 
@@ -185,14 +187,18 @@ pytest tests/ -v
 # Type checking
 mypy src/ --ignore-missing-imports
 
+# Lint + format
+ruff check src/ tests/
+ruff format src/ tests/
+
 # Security scan
 bandit -r src/ -ll
 
-# Code formatting
-black src/ tests/ && isort src/ tests/
+# Build installer (requires PyInstaller + Inno Setup 6)
+scripts\build_installer.bat
 ```
 
-Pre-commit hooks (black, isort, flake8) run automatically on every commit.
+Pre-commit hooks (ruff lint + format) run automatically on every commit.
 
 ---
 
@@ -233,15 +239,20 @@ All 10 phases completed.
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Follow code style: `black` (120 chars), `isort` (black profile), type hints required
+3. Follow code style: `ruff` (120 chars), type hints required
 4. Run tests: `pytest tests/ -v`
-5. Run checks: `mypy src/ --ignore-missing-imports && flake8 src/`
+5. Run checks: `mypy src/ --ignore-missing-imports && ruff check src/`
 6. Submit a PR to `main`
 
 ---
 
 ## Credits
 
-- **Development:** Ricardo Rojas + NEXUS@CLI
-- **Period:** September 2025 - March 2026
-- **License:** MIT — Copyright (c) 2025-2026 Ricardo Rojas
+Built by **Ricardo Rojas** with **Claude (NEXUS@CLI)** as AI pair-programmer.
+
+This was my first software project. It started in September 2025 as a simple idea — "what if I could manage my music library with one tool?" — and grew into 304 commits, 116 source files, and 37,000 lines of code over 7 months. There were moments I thought I wouldn't finish it. I did.
+
+10 development phases. 63 audit rounds. 7 UAT rounds. From a script that barely played MP3s to a full desktop application with AI recommendations, OpenGL visualizers, and a Windows installer.
+
+**Period:** September 2025 - March 2026
+**License:** MIT — Copyright (c) 2025-2026 Ricardo Rojas
