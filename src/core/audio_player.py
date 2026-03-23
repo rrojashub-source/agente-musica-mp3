@@ -188,7 +188,9 @@ class AudioPlayer:
 
                 # Get duration using mutagen (faster than loading in mpv)
                 self._duration = self._get_file_duration(file_path)
-                self._loading = False
+                # NOTE: _loading stays True until play() is called — prevents
+                # end-file events from the stop() above reaching _handle_track_end
+                # between load() and play() (race condition window)
 
             logger.info(f"Loaded: {file_path} (duration: {self._duration:.2f}s)")
             return True
@@ -221,6 +223,7 @@ class AudioPlayer:
                     logger.warning("No file loaded")
                     return
 
+                self._loading = False  # Safe to receive end-file events now
                 self._player.play(self._current_file)
                 self._player.pause = False
                 self._state = PlaybackState.PLAYING

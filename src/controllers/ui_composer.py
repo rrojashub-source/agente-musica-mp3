@@ -419,15 +419,23 @@ audio playback, playlists, and visualizer.</p>
             if self._spectrum_worker is not None and self._spectrum_worker.isRunning():  # type: ignore[union-attr]
                 self._spectrum_worker.cancel()  # type: ignore[union-attr]
                 self._spectrum_worker.requestInterruption()  # type: ignore[union-attr]
-                self._spectrum_worker.wait(3000)  # type: ignore[union-attr] — wait up to 3s
-                if self._spectrum_worker.isRunning():  # type: ignore[union-attr]
-                    logger.warning("Spectrum worker still running after 3s, detaching")
+                # Disconnect signals so stale results don't corrupt current state
+                try:
                     self._spectrum_worker.finished.disconnect()  # type: ignore[union-attr]
                     self._spectrum_worker.raw_audio_ready.disconnect()  # type: ignore[union-attr]
+                    self._spectrum_worker.error.disconnect()  # type: ignore[union-attr]
+                    self._spectrum_worker.progress.disconnect()  # type: ignore[union-attr]
+                except (RuntimeError, TypeError):
+                    pass  # Already disconnected
+                # Wait briefly, then let it die on its own (no terminate)
+                self._spectrum_worker.wait(1000)  # type: ignore[union-attr]
 
             from core.spectrum_worker import SpectrumWorker
+            from core.waveform_extractor import WaveformExtractor
 
-            self._spectrum_worker = SpectrumWorker(self.waveform_extractor, file_path, num_bars=60)
+            # Each worker gets its own extractor to avoid data races between concurrent workers
+            fresh_extractor = WaveformExtractor()
+            self._spectrum_worker = SpectrumWorker(fresh_extractor, file_path, num_bars=60)
 
             self._spectrum_worker.finished.connect(
                 lambda data, dur: self._on_spectrum_extracted(data, dur, duration, file_path)
